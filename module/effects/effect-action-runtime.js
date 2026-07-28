@@ -116,18 +116,26 @@ export class EffectActionRuntime {
           dice: diceApi,
           result: resultApi,
           links: {
-            meleePool: foundry.utils.deepClone(test.context.meleePoolLink ?? null)
+            meleePool: foundry.utils.deepClone(test.context.meleePoolLink ?? null),
+            opposed: foundry.utils.deepClone(test.context.opposedLink ?? null)
           },
           actionContext: ctx
         });
         if (result === false) return;
       }
       if (test.context.dirty) await test.recalculate();
+      // The GM-side opposed refresh deliberately re-reads the source test card.
+      // Persist the changed dice first, then let the authoritative refresh rebuild
+      // the single duel message from both cards.
+      if (test.context.opposedLink) {
+        test.message = await test.updateMessage(message);
+      }
       const syncResult = await test.syncLinkedState({
         reason: `result-action:${action.id}`
       });
       if (!syncResult.ok) {
         test.data = foundry.utils.deepClone(checkpoint);
+        if (test.context.opposedLink) await test.updateMessage(message);
         return ui.notifications.warn("Nie udało się zsynchronizować zmiany z walką melee.");
       }
       test.context.usedResultActions ??= [];
@@ -140,6 +148,7 @@ export class EffectActionRuntime {
       await test.updateMessage(message);
     } catch (error) {
       test.data = foundry.utils.deepClone(checkpoint);
+      if (test.context.opposedLink) await test.updateMessage(message);
       console.error(`Neuroshima | executeScript failed for ${action.id}`, error);
       ui.notifications.error(`Nie udało się wykonać akcji: ${error.message}`);
     } finally {

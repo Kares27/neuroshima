@@ -7,6 +7,11 @@ const deepClone = value => structuredClone(value ?? {});
 const settingOverrides = {};
 globalThis.foundry = {
   applications: {
+    handlebars: {
+      async renderTemplate(_path, context) {
+        return JSON.stringify(context ?? {});
+      }
+    },
     sidebar: {
       tabs: {
         CombatTracker: class {
@@ -75,9 +80,10 @@ globalThis.game = {
       fireCorrection: false
     })[key]
   },
+  messages: new Map(),
   user: { id: "user", role: 4, isGM: true }
 };
-globalThis.ui = { notifications: { warn() {}, error() {} } };
+globalThis.ui = { notifications: { warn() {}, error() {}, info() {} } };
 globalThis.fromUuid = async uuid => documents.get(uuid) ?? null;
 globalThis.fromUuidSync = uuid => documents.get(uuid) ?? null;
 
@@ -120,9 +126,11 @@ const { NeuroshimaChatMessage } = await import("../module/documents/chat-message
 const { EffectActionRuntime } = await import("../module/effects/effect-action-runtime.js");
 const {
   MeleeResolution,
+  MeleeOpposedChat,
   MeleeStore,
   MeleeTurnService
 } = await import("../module/combat/combat.js");
+const { MeleeOpposedResolver } = await import("../module/tests.mjs");
 game.neuroshima.tests = NEUROSHIMA_TESTS;
 
 function actorFixture() {
@@ -1343,3 +1351,406 @@ for (const doubleSkillAction of [false, true]) {
     }
   });
 }
+
+function opposedMessage(id, opposed, extra = {}) {
+  const flags = {
+    opposedChat: deepClone(opposed),
+    ...deepClone(extra)
+  };
+  return {
+    id,
+    content: "",
+    getFlag(_scope, key) {
+      return flags[key] ?? null;
+    },
+    async update(changes) {
+      for (const [key, value] of Object.entries(changes)) {
+        if (key === "content") this.content = value;
+        else if (key.startsWith("flags.neuroshima.")) {
+          flags[key.slice("flags.neuroshima.".length)] = deepClone(value);
+        }
+      }
+      return this;
+    }
+  };
+}
+
+test("attacker roll creates one persistent opposed message", async () => {
+  const attacker = {
+    ...actorFixture(),
+    name: "Atakujący",
+    token: null,
+    async getFlag() { return false; },
+    async unsetFlag() {}
+  };
+  const defender = {
+    ...actorFixture(),
+    uuid: "Actor.defender",
+    name: "Obrońca",
+    items: []
+  };
+  documents.set(defender.uuid, defender);
+  const weapon = {
+    id: "sword",
+    name: "Miecz",
+    system: { damageMelee1: "D", damageMelee2: "L", damageMelee3: "C" }
+  };
+  const sourceMessage = { id: "attack-test" };
+  let sourceUpdates = 0;
+  const attackerTest = {
+    message: sourceMessage,
+    context: {},
+    preData: { skill: 3 },
+    result: { modifiedResults: [], successCount: 1, target: 10 },
+    async updateMessage(message) { sourceUpdates++; return message; }
+  };
+  const handler = opposedMessage("duel-one", {});
+  const originalCreate = ChatMessage.create;
+  const originalCancel = MeleeOpposedChat._cancelStalePendingsByAttacker;
+  const originalRegister = MeleeOpposedChat._registerPendingOpposed;
+  let creates = 0;
+  ChatMessage.create = async () => { creates++; return handler; };
+  MeleeOpposedChat._cancelStalePendingsByAttacker = async () => {};
+  MeleeOpposedChat._registerPendingOpposed = async () => {};
+  try {
+    const result = await MeleeOpposedChat.createOpposedHandler({
+      attacker, weapon, targetUuid: defender.uuid, mode: "opposedSuccesses", attackerTest
+    });
+    assert.equal(result, handler);
+    assert.equal(creates, 1);
+    assert.equal(sourceUpdates, 1);
+    assert.equal(attackerTest.context.opposedLink.duelMessageId, handler.id);
+  } finally {
+    ChatMessage.create = originalCreate;
+    MeleeOpposedChat._cancelStalePendingsByAttacker = originalCancel;
+    MeleeOpposedChat._registerPendingOpposed = originalRegister;
+  }
+});
+
+test("defender roll updates the existing opposed message", async () => {
+  const data = {
+    id: "opp", status: "awaitingDefender",
+    attackerUuid: "Actor.attacker", defenderUuid: "Actor.defender"
+  };
+  const message = opposedMessage("duel", data);
+  game.messages.set(message.id, message);
+  const defenderTest = {
+    message: { id: "defense-test" },
+    context: { opposedLink: { revision: "def-rev" } },
+    result: {},
+    async updateMessage(message) { return message; }
+  };
+  const originalRefresh = MeleeOpposedChat.refreshOpposedMessage;
+  const originalRemove = MeleeOpposedChat._removePending;
+  const originalUnset = MeleeOpposedChat._unsetDefenderFlag;
+  let refreshes = 0;
+  MeleeOpposedChat.refreshOpposedMessage = async id => {
+    refreshes++;
+    assert.equal(id, message.id);
+    return { ok: true, status: "duel" };
+  };
+  MeleeOpposedChat._removePending = async () => {};
+  MeleeOpposedChat._unsetDefenderFlag = async () => {};
+  try {
+    await MeleeOpposedChat.attachDefenderTest(message.id, defenderTest);
+    assert.equal(refreshes, 1);
+    assert.equal(message.getFlag("neuroshima", "opposedChat").defenderTestMessageId, "defense-test");
+  } finally {
+    MeleeOpposedChat.refreshOpposedMessage = originalRefresh;
+    MeleeOpposedChat._removePending = originalRemove;
+    MeleeOpposedChat._unsetDefenderFlag = originalUnset;
+    game.messages.delete(message.id);
+  }
+});
+
+test("attacker edit before defender refreshes pending card", async () => {
+  const message = opposedMessage("pending-duel", {
+    id: "opp", status: "awaitingDefender", attackerTestMessageId: "attack"
+  });
+  game.messages.set(message.id, message);
+  const originalGet = MeleeOpposedChat.getLinkedTest;
+  const originalRender = MeleeOpposedChat.renderPendingFromTest;
+  let rendered = 0;
+  MeleeOpposedChat.getLinkedTest = async () => ({ result: {} });
+  MeleeOpposedChat.renderPendingFromTest = async () => { rendered++; };
+  try {
+    const result = await MeleeOpposedChat._refreshOpposedMessage(message.id, {
+      reason: "gm-edit", resetProgress: true
+    });
+    assert.equal(result.status, "awaitingDefender");
+    assert.equal(rendered, 1);
+  } finally {
+    MeleeOpposedChat.getLinkedTest = originalGet;
+    MeleeOpposedChat.renderPendingFromTest = originalRender;
+    game.messages.delete(message.id);
+  }
+});
+
+test("attacker edit after defender refreshes same duel message", async () => {
+  const message = opposedMessage("same-duel", {
+    id: "opp", status: "duel", attackerTestMessageId: "attack",
+    defenderTestMessageId: "defense", mode: "opposedSuccesses"
+  }, { duelCard: { status: "picking" } });
+  game.messages.set(message.id, message);
+  const originalGet = MeleeOpposedChat.getLinkedTest;
+  const originalCreate = MeleeOpposedChat._createDuelCard;
+  const fake = role => ({
+    result: { target: 10, skill: 0 },
+    preData: { skill: 0 },
+    context: {},
+    get opposedResult() {
+      return { success: true, successes: role === "attack" ? 2 : 1, successPoints: 0, dice: [] };
+    },
+    async runTrigger() {}
+  });
+  MeleeOpposedChat.getLinkedTest = async id => fake(id);
+  let sameMessage = null;
+  MeleeOpposedChat._createDuelCard = async msg => { sameMessage = msg; };
+  try {
+    const result = await MeleeOpposedChat._refreshOpposedMessage(message.id, {
+      reason: "gm-edit", resetProgress: true
+    });
+    assert.equal(result.status, "duel");
+    assert.equal(sameMessage, message);
+  } finally {
+    MeleeOpposedChat.getLinkedTest = originalGet;
+    MeleeOpposedChat._createDuelCard = originalCreate;
+    game.messages.delete(message.id);
+  }
+});
+
+test("defender edit refreshes same duel message", async () => {
+  const message = opposedMessage("def-duel", {
+    id: "opp", status: "duel", defenderTestMessageId: "old",
+    defenderRevision: "rev"
+  });
+  game.messages.set(message.id, message);
+  const originalRefresh = MeleeOpposedChat.refreshOpposedMessage;
+  const originalGet = MeleeOpposedChat.getLinkedTest;
+  let refreshed = null;
+  MeleeOpposedChat.getLinkedTest = async () => ({
+    actor: { testUserPermission: () => true },
+    context: {
+      opposedLink: {
+        type: "meleeOpposed", opposedId: "opp", duelMessageId: message.id,
+        role: "defender", revision: "rev"
+      }
+    }
+  });
+  const originalInternalRefresh = MeleeOpposedChat._refreshOpposedMessage;
+  MeleeOpposedChat._refreshOpposedMessage = async id => {
+    refreshed = id;
+    return { ok: true };
+  };
+  try {
+    await MeleeOpposedChat.syncOpposedTestState({
+      duelMessageId: message.id, role: "defender",
+      testMessageId: "def-test", revision: "rev", reason: "gm-edit"
+    });
+    assert.equal(refreshed, message.id);
+    assert.equal(message.getFlag("neuroshima", "opposedChat").defenderTestMessageId, "def-test");
+  } finally {
+    MeleeOpposedChat.refreshOpposedMessage = originalRefresh;
+    MeleeOpposedChat.getLinkedTest = originalGet;
+    MeleeOpposedChat._refreshOpposedMessage = originalInternalRefresh;
+    game.messages.delete(message.id);
+  }
+});
+
+test("Amen replacement refreshes linked duel", async () => {
+  const instance = new SkillTest({
+    context: {
+      opposedLink: {
+        type: "meleeOpposed", opposedId: "opp", duelMessageId: "duel",
+        role: "attacker", revision: "rev"
+      }
+    }
+  }, actorFixture());
+  const originalSync = MeleeOpposedChat.syncFromTest;
+  let calls = 0;
+  MeleeOpposedChat.syncFromTest = async () => { calls++; return { ok: true }; };
+  try {
+    assert.equal(instance.triggerArgs().links.opposed.opposedId, "opp");
+    await instance.syncLinkedState({ reason: "result-action:amen" });
+    assert.equal(calls, 1);
+  } finally {
+    MeleeOpposedChat.syncFromTest = originalSync;
+  }
+});
+
+test("unresolved duel progress resets after source test edit", () => {
+  const state = MeleeOpposedChat.resetDuelProgress({
+    status: "picking",
+    usedAttackDice: [0],
+    usedDefenseDice: [1],
+    hits: [{ tier: 1 }],
+    currentSegment: 2,
+    attackerUuid: "a",
+    defenderUuid: "d",
+    damage1: "D"
+  }, {
+    attackDice: [{ modified: 2 }],
+    defenseDice: [{ modified: 3 }],
+    attackTarget: 10,
+    defenseTarget: 9
+  });
+  assert.deepEqual(state.usedAttackDice, []);
+  assert.deepEqual(state.usedDefenseDice, []);
+  assert.deepEqual(state.hits, []);
+  assert.equal(state.currentSegment, 0);
+  assert.equal(state.status, "picking");
+  assert.equal(state.damage1, "D");
+});
+
+test("resolved duel rejects source test mutation", async () => {
+  const message = opposedMessage("locked-duel", {
+    id: "opp", status: "resolved", attackerRevision: "rev"
+  }, { duelCard: { status: "done" } });
+  game.messages.set(message.id, message);
+  const instance = new SkillTest({
+    context: {
+      opposedLink: {
+        opposedId: "opp", duelMessageId: message.id, role: "attacker", revision: "rev"
+      }
+    }
+  }, actorFixture());
+  try {
+    assert.equal((await instance.validateOpposedMutation()).reason, "opposed-resolved");
+  } finally {
+    game.messages.delete(message.id);
+  }
+});
+
+test("opposed preview does not run final side effects", async () => {
+  const events = [];
+  const fake = successes => ({
+    context: {},
+    opposedResult: { successes, successPoints: successes, dice: [] },
+    async runTrigger(name, metadata) { events.push([name, metadata.preview]); }
+  });
+  const resolver = new MeleeOpposedResolver(fake(2), fake(1));
+  await resolver.resolve({ preview: true });
+  assert.deepEqual(events.map(([name]) => name), ["preOpposedAttacker", "preOpposedDefender"]);
+  assert.ok(events.every(([, preview]) => preview === true));
+});
+
+test("opposed finalization runs result triggers once", async () => {
+  const message = opposedMessage("final-duel", {
+    id: "opp", status: "duel", mode: "opposedSuccesses",
+    attackerTestMessageId: "a", defenderTestMessageId: "d",
+    attackerRevision: "ar", defenderRevision: "dr"
+  });
+  const events = [];
+  const fake = successes => ({
+    context: {},
+    opposedResult: { successes, successPoints: successes, dice: [] },
+    async runTrigger(name) { events.push(name); }
+  });
+  const originalGet = MeleeOpposedChat.getLinkedTest;
+  MeleeOpposedChat.getLinkedTest = async id => fake(id === "a" ? 2 : 1);
+  try {
+    await MeleeOpposedChat._runFinalOpposedTriggersOnce(message);
+    await MeleeOpposedChat._runFinalOpposedTriggersOnce(message);
+    assert.equal(events.filter(name => name === "opposedAttacker").length, 1);
+    assert.equal(message.getFlag("neuroshima", "opposedChat").finalTriggersRun, true);
+  } finally {
+    MeleeOpposedChat.getLinkedTest = originalGet;
+  }
+});
+
+test("simultaneous attacker and defender edits are serialized", async () => {
+  const order = [];
+  const first = MeleeOpposedChat._queueOpposedRefresh("queue-duel", async () => {
+    order.push("first-start");
+    await Promise.resolve();
+    order.push("first-end");
+  });
+  const second = MeleeOpposedChat._queueOpposedRefresh("queue-duel", async () => {
+    order.push("second");
+  });
+  await Promise.all([first, second]);
+  assert.deepEqual(order, ["first-start", "first-end", "second"]);
+});
+
+test("linked reroll replaces the original test message", async () => {
+  const instance = new SkillTest({
+    preData: { stat: 10, skill: 0, fixedDice: [2, 8, 15] },
+    context: {
+      isDebug: true,
+      opposedLink: {
+        opposedId: "opp", duelMessageId: "duel", role: "attacker", revision: "rev"
+      }
+    }
+  }, actorFixture());
+  const originalMessage = { id: "source-test" };
+  const targets = [];
+  instance.message = originalMessage;
+  instance.validateLinkedMutation = async () => ({ ok: true });
+  instance.syncLinkedState = async () => ({ ok: true });
+  instance.sendToChat = async ({ message }) => {
+    targets.push(message);
+    return message ?? { id: "new" };
+  };
+  await instance.reroll({ previousMessage: originalMessage, replaceMessage: false });
+  assert.ok(targets.every(target => target === originalMessage));
+});
+
+test("Grad Ciosow reuses the handler message", async () => {
+  const message = opposedMessage("hail-duel", {
+    id: "opp", attackerTestMessageId: "a", defenderTestMessageId: "d"
+  });
+  const originalFinal = MeleeOpposedChat._runFinalOpposedTriggersOnce;
+  const originalCreate = ChatMessage.create;
+  let creates = 0;
+  ChatMessage.create = async () => { creates++; };
+  MeleeOpposedChat._runFinalOpposedTriggersOnce = async () => ({ ok: true });
+  try {
+    await MeleeOpposedChat._createDuelCard(
+      message,
+      {
+        id: "opp", isGradCios: true,
+        attackerUuid: "a", defenderUuid: "d",
+        damage1: "D", damage2: "L", damage3: "C"
+      },
+      { name: "A" }, { name: "D" },
+      [{ original: 2, modified: 2, isSuccess: true }],
+      [{ original: 12, modified: 12, isSuccess: false }],
+      10, 10
+    );
+    assert.equal(creates, 0);
+    assert.ok(message.getFlag("neuroshima", "hailResult"));
+  } finally {
+    ChatMessage.create = originalCreate;
+    MeleeOpposedChat._runFinalOpposedTriggersOnce = originalFinal;
+  }
+});
+
+test("skill allocation reuses the handler message", async () => {
+  const message = opposedMessage("allocation-duel", {
+    id: "opp", status: "duel"
+  });
+  const originalCreate = ChatMessage.create;
+  let creates = 0;
+  ChatMessage.create = async () => { creates++; };
+  try {
+    await MeleeOpposedChat._createAllocationCard({
+      handlerMessage: message,
+      data: {
+        id: "opp", mode: "opposedSuccesses",
+        attackerUuid: "a", defenderUuid: "d",
+        damage1: "D", damage2: "L", damage3: "C"
+      },
+      attackerActor: { name: "A" },
+      defenderActor: { name: "D" },
+      attackDice: [], defenseDice: [],
+      attackTarget: 10, defenseTarget: 10,
+      attackSuccesses: 0, defenseSuccesses: 0,
+      attackerSkillBudget: 1, defenderSkillBudget: 0
+    });
+    assert.equal(creates, 0);
+    assert.equal(message.getFlag("neuroshima", "opposedChat").status, "allocation");
+    assert.ok(message.getFlag("neuroshima", "skillAlloc"));
+  } finally {
+    ChatMessage.create = originalCreate;
+  }
+});

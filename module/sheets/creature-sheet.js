@@ -127,7 +127,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
             if (opposeFlag?.messageId) {
               const pendingMsg = game.messages.get(opposeFlag.messageId);
               const opposeData = pendingMsg?.getFlag("neuroshima", "opposedChat");
-              if (opposeData?.status === "pending") {
+              if (["pending", "awaitingDefender"].includes(opposeData?.status)) {
                 const syntheticPending = {
                   id: opposeData.defenderUuid,
                   attackerId: opposeData.attackerUuid,
@@ -307,7 +307,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         if (opposeFlag?.messageId) {
           const pendingMsg = game.messages.get(opposeFlag.messageId);
           const opposeData = pendingMsg?.getFlag("neuroshima", "opposedChat");
-          if (opposeData?.status === "pending") {
+          if (["pending", "awaitingDefender"].includes(opposeData?.status)) {
             const syntheticPending = {
               id: opposeData.defenderUuid,
               attackerId: opposeData.attackerUuid,
@@ -445,7 +445,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
           if (opposeFlag?.messageId) {
             const pendingMsg = game.messages.get(opposeFlag.messageId);
             const opposeData = pendingMsg?.getFlag("neuroshima", "opposedChat");
-            if (opposeData?.status === "pending") {
+            if (["pending", "awaitingDefender"].includes(opposeData?.status)) {
               const syntheticPending = {
                 id: opposeData.defenderUuid,
                 attackerId: opposeData.attackerUuid,
@@ -829,7 +829,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         if (messageId) {
           const msg = game.messages.get(messageId);
           const chatData = msg?.getFlag("neuroshima", "opposedChat");
-          if (chatData?.status === "pending") {
+          if (["pending", "awaitingDefender"].includes(chatData?.status)) {
             await MeleeOpposedChat._setChatFlag(msg, "opposedChat", { ...chatData, status: "cancelled" });
           }
         }
@@ -847,7 +847,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         if (opposeFlag?.messageId) {
           const pendingMsg = game.messages.get(opposeFlag.messageId);
           const opposeData = pendingMsg?.getFlag("neuroshima", "opposedChat");
-          if (opposeData?.status === "pending") {
+          if (["pending", "awaitingDefender"].includes(opposeData?.status)) {
             const syntheticPending = {
               id: opposeData.defenderUuid,
               attackerId: opposeData.attackerUuid,
@@ -1074,7 +1074,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         if (p.opposedChatMessageId) {
           const msg = game.messages.get(p.opposedChatMessageId);
           const chatData = msg?.getFlag("neuroshima", "opposedChat");
-          if (chatData?.status && chatData.status !== "pending") return false;
+          if (chatData?.status && !["pending", "awaitingDefender"].includes(chatData.status)) return false;
         }
         return true;
       })
@@ -1089,7 +1089,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
     if (opposeFlag?.messageId && !meleePendingsFromCombat.some(p => p.matchesDefender)) {
       const msg = game.messages.get(opposeFlag.messageId);
       const data = msg?.getFlag("neuroshima", "opposedChat");
-      if (data?.status === "pending") {
+      if (["pending", "awaitingDefender"].includes(data?.status)) {
         const attackerDoc = fromUuidSync(data.attackerUuid);
         const attackerActor = attackerDoc?.actor ?? attackerDoc;
         meleePendingsFromCombat.push({

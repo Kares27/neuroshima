@@ -17,7 +17,7 @@
  */
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
-import { MeleeWeaponTest, MeleeOpposedResolver, TestRules } from "../tests.mjs";
+import { NeuroshimaTestBase, MeleeWeaponTest, MeleeOpposedResolver, TestRules } from "../tests.mjs";
 import { MeleeActionRegistry } from "./melee-action-registry.js";
 import { MeleeActionRunner }   from "./melee-action-runner.js";
 import { DuelContext, DuelSegmentContext, DuelLifecycle, MeleeAction, DuelActionPipeline, DuelDamageEngine, DuelDeclarationEngine, DuelSegmentEngine, DuelBeastActionEngine } from "./combat-api.js";
@@ -1241,6 +1241,11 @@ export class MeleeEncounter {
  */
 
 export class MeleeOpposedChat {
+  static _opposedRefreshQueues = new Map();
+
+  static _isAwaitingDefender(status) {
+    return status === "awaitingDefender" || status === "pending";
+  }
 
   // ── Public entry points ─────────────────────────────────────────────────
 
@@ -1265,9 +1270,9 @@ export class MeleeOpposedChat {
       targets: [targetUuid],
       lastRoll,
       isPoolRoll: true,
-      onRoll: async (rawResult) => {
+      onRoll: async (rawResult, attackerTest) => {
         delete attacker._neuroshimaAttackInitiated;
-        if (!rawResult) return;
+        if (!rawResult || !attackerTest) return;
         const { NeuroshimaSocket: _NSAtk } = await import("../helpers/socket-helper.js");
         const attackerUuid = attacker.token?.uuid ?? attacker.uuid;
         const condKey = MeleeTurnService._MANEUVER_TO_CONDITION[rawResult.maneuver] || null;
@@ -1278,7 +1283,9 @@ export class MeleeOpposedChat {
         if (tempoLevel > 0) {
           await _NSAtk.gmExecute("syncActorManeuverConditions", targetUuid, null, false, tempoLevel);
         }
-        await MeleeOpposedChat._createHandlerCard(rawResult, attacker, weapon, targetUuid, mode);
+        await MeleeOpposedChat.createOpposedHandler({
+          attacker, weapon, targetUuid, mode, attackerTest
+        });
       },
       onClose: () => {
         delete attacker._neuroshimaAttackInitiated;
@@ -1299,7 +1306,7 @@ export class MeleeOpposedChat {
     if (!message) return;
 
     const data = message.getFlag("neuroshima", "opposedChat");
-    if (!data || data.status !== "pending") {
+    if (!data || !this._isAwaitingDefender(data.status)) {
       ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.AlreadyResolved"));
       return;
     }
@@ -1352,7 +1359,7 @@ export class MeleeOpposedChat {
     }
 
     const data = message.getFlag("neuroshima", "opposedChat");
-    if (!data || data.status !== "pending") {
+    if (!data || !this._isAwaitingDefender(data.status)) {
       ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.AlreadyResolved"));
       return;
     }
@@ -1391,6 +1398,13 @@ export class MeleeOpposedChat {
 
     const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
     const lastRoll = defenderActor.system.lastWeaponRoll ?? {};
+    const opposedLink = {
+      type: "meleeOpposed",
+      opposedId: data.id,
+      duelMessageId: message.id,
+      role: "defender",
+      revision: foundry.utils.randomID()
+    };
 
     const dialog = new NeuroshimaWeaponRollDialog({
       actor: defenderActor,
@@ -1400,8 +1414,9 @@ export class MeleeOpposedChat {
       targets: [pending.attackerId],
       lastRoll,
       isPoolRoll: true,
-      onRoll: async (rawResult) => {
-        if (!rawResult) return;
+      opposedLink,
+      onRoll: async (rawResult, defenderTest) => {
+        if (!rawResult || !defenderTest) return;
         const { NeuroshimaSocket: _NSDef } = await import("../helpers/socket-helper.js");
         const defenderUuid = defenderActor.token?.uuid ?? defenderActor.uuid;
         const condKey = MeleeTurnService._MANEUVER_TO_CONDITION[rawResult.maneuver] || null;
@@ -1412,12 +1427,458 @@ export class MeleeOpposedChat {
           const atkUuid = data.attackerTokenUuid || data.attackerUuid;
           await _NSDef.gmExecute("syncActorManeuverConditions", atkUuid, null, false, tempoLevel);
         }
-        await MeleeOpposedChat.resolveOpposed(messageId, pending, defenderActor, rawResult);
+        await MeleeOpposedChat.attachDefenderTest(messageId, defenderTest);
       },
       onClose: () => {}
     });
 
     await dialog.render(true);
+  }
+
+  /**
+   * Creates the one persistent message representing the whole opposed exchange.
+   * The two test messages remain authoritative; this message is only their view.
+   */
+  static async createOpposedHandler({ attacker, weapon, targetUuid, mode, attackerTest }) {
+    const targetDoc = fromUuidSync(targetUuid);
+    const targetActor = targetDoc?.actor ?? targetDoc;
+    if (!targetActor || !attackerTest?.message) {
+      ui.notifications.warn("Nie udało się powiązać testu atakującego z pojedynkiem.");
+      return null;
+    }
+    await this._cancelStalePendingsByAttacker(attacker.uuid);
+    const opposedId = foundry.utils.randomID();
+    const revision = foundry.utils.randomID();
+    attackerTest.context.opposedLink = {
+      type: "meleeOpposed",
+      opposedId,
+      duelMessageId: null,
+      role: "attacker",
+      revision
+    };
+
+    const result = attackerTest.result;
+    const data = {
+      id: opposedId,
+      mode,
+      status: "awaitingDefender",
+      attackerUuid: attacker.uuid,
+      attackerTokenUuid: attacker.token?.uuid ?? null,
+      defenderUuid: targetActor.uuid,
+      defenderTokenUuid: targetDoc?.uuid ?? null,
+      weaponId: weapon.id,
+      beastItemId: weapon.beastItemId ?? null,
+      attackerTestMessageId: attackerTest.message.id,
+      defenderTestMessageId: null,
+      attackerRevision: revision,
+      defenderRevision: null,
+      attackerSkillBudget: result.skill ?? attackerTest.preData?.skill ?? 0,
+      damage1: result.damageMelee1 ?? weapon.system.damageMelee1,
+      damage2: result.damageMelee2 ?? weapon.system.damageMelee2,
+      damage3: result.damageMelee3 ?? weapon.system.damageMelee3,
+      location: result.finalLocation ?? null,
+      headDamageApplied: result.headDamageApplied === true,
+      isGradCios: result.isGradCios === true,
+      szachistaYield: !!(await attacker.getFlag("neuroshima", "_szachistaYield")),
+      activatedMeleePreRollMods: result.activatedMeleePreRollMods ?? [],
+      attackerManeuver: result.maneuver ?? null
+    };
+    const content = await this._renderPendingContent(data, attackerTest, attacker, targetActor, weapon);
+    const handlerMessage = await ChatMessage.create({
+      content,
+      flags: { neuroshima: { opposedChat: data } },
+      speaker: { alias: "⚔" },
+      rollMode: result.rollMode ?? game.settings.get("core", "rollMode")
+    });
+    if (!handlerMessage) return null;
+
+    attackerTest.context.opposedLink.duelMessageId = handlerMessage.id;
+    await attackerTest.updateMessage(attackerTest.message);
+    await attacker.unsetFlag("neuroshima", "_szachistaYield");
+    await this._registerPendingOpposed({
+      data, attacker, targetActor, targetDoc, weapon, handlerMessage,
+      attackerSuccesses: Number(result.successPoints ?? result.successCount ?? 0)
+    });
+    return handlerMessage;
+  }
+
+  static async attachDefenderTest(duelMessageId, defenderTest) {
+    const message = game.messages.get(duelMessageId);
+    const data = foundry.utils.deepClone(message?.getFlag("neuroshima", "opposedChat"));
+    if (!message || !data || !this._isAwaitingDefender(data.status) || !defenderTest?.message) {
+      return { ok: false, reason: "opposed-not-awaiting-defender" };
+    }
+    const link = defenderTest.context.opposedLink ?? {};
+    defenderTest.context.opposedLink = {
+      type: "meleeOpposed",
+      opposedId: data.id,
+      duelMessageId: message.id,
+      role: "defender",
+      revision: link.revision ?? foundry.utils.randomID()
+    };
+    data.defenderTestMessageId = defenderTest.message.id;
+    data.defenderRevision = defenderTest.context.opposedLink.revision;
+    data.defenderManeuver = defenderTest.result.maneuver ?? null;
+    await defenderTest.updateMessage(defenderTest.message);
+    await message.update({ "flags.neuroshima.opposedChat": data });
+    await this._removePending(data.defenderUuid);
+    await this._unsetDefenderFlag(data.defenderUuid);
+    const result = await this.refreshOpposedMessage(message.id, {
+      reason: "defender-roll",
+      resetProgress: false
+    });
+    const attackerDoc = fromUuidSync(data.attackerTokenUuid || data.attackerUuid);
+    const defenderDoc = fromUuidSync(data.defenderTokenUuid || data.defenderUuid);
+    (attackerDoc?.actor ?? attackerDoc)?.sheet?.render();
+    (defenderDoc?.actor ?? defenderDoc)?.sheet?.render();
+    return result;
+  }
+
+  static async getLinkedTest(messageId) {
+    const message = game.messages.get(messageId);
+    const data = message?.getFlag("neuroshima", "test");
+    if (!data?.preData?.rollClass) return null;
+    const test = await NeuroshimaTestBase.recreate(data);
+    test.message = message;
+    return test;
+  }
+
+  static async _queueOpposedRefresh(messageId, operation) {
+    const previous = this._opposedRefreshQueues.get(messageId) ?? Promise.resolve();
+    const current = previous.catch(() => {}).then(operation);
+    this._opposedRefreshQueues.set(messageId, current);
+    try {
+      return await current;
+    } finally {
+      if (this._opposedRefreshQueues.get(messageId) === current) {
+        this._opposedRefreshQueues.delete(messageId);
+      }
+    }
+  }
+
+  static async refreshOpposedMessage(
+    duelMessageId,
+    { reason = "test-update", resetProgress = true } = {}
+  ) {
+    return this._queueOpposedRefresh(
+      duelMessageId,
+      () => this._refreshOpposedMessage(duelMessageId, { reason, resetProgress })
+    );
+  }
+
+  static async _refreshOpposedMessage(duelMessageId, { reason, resetProgress }) {
+    const message = game.messages.get(duelMessageId);
+    if (!message) return { ok: false, reason: "duel-message-missing" };
+    const data = foundry.utils.deepClone(message.getFlag("neuroshima", "opposedChat"));
+    if (!data) return { ok: false, reason: "opposed-data-missing" };
+    if (data.status === "resolved" || data.status === "cancelled") {
+      return { ok: false, reason: "opposed-locked" };
+    }
+    const attackerTest = await this.getLinkedTest(data.attackerTestMessageId);
+    const defenderTest = data.defenderTestMessageId
+      ? await this.getLinkedTest(data.defenderTestMessageId)
+      : null;
+    if (!attackerTest) return { ok: false, reason: "attacker-test-missing" };
+    if (!defenderTest) {
+      await this.renderPendingFromTest(message, data, attackerTest);
+      return { ok: true, status: "awaitingDefender" };
+    }
+
+    const resolver = new MeleeOpposedResolver(attackerTest, defenderTest, {
+      mode: data.mode,
+      context: { messageId: duelMessageId, preview: true, reason }
+    });
+    const opposedResult = await resolver.resolve({ preview: true });
+    const attackerDoc = fromUuidSync(data.attackerTokenUuid || data.attackerUuid);
+    const defenderDoc = fromUuidSync(data.defenderTokenUuid || data.defenderUuid);
+    const attackerActor = attackerDoc?.actor ?? attackerDoc;
+    const defenderActor = defenderDoc?.actor ?? defenderDoc;
+    const augmented = {
+      ...data,
+      defenderManeuver: defenderTest.result.maneuver ?? data.defenderManeuver ?? null,
+      opposedResult
+    };
+    const doubleSkill = game.settings.get("neuroshima", "doubleSkillAction");
+    const attackerBudget = Number(data.attackerSkillBudget ?? attackerTest.preData?.skill ?? 0);
+    const defenderBudget = Number(defenderTest.result.skill ?? defenderTest.preData?.skill ?? 0);
+    if (doubleSkill && (attackerBudget > 0 || defenderBudget > 0)) {
+      await this._createAllocationCard({
+        handlerMessage: message,
+        data: augmented,
+        attackerActor,
+        defenderActor,
+        attackDice: opposedResult.attacker.dice,
+        defenseDice: opposedResult.defender.dice,
+        attackTarget: attackerTest.result.target,
+        defenseTarget: defenderTest.result.target,
+        attackSuccesses: opposedResult.attacker.successes,
+        defenseSuccesses: opposedResult.defender.successes,
+        attackerSkillBudget: attackerBudget,
+        defenderSkillBudget: defenderBudget
+      });
+      return { ok: true, status: "allocation" };
+    }
+    if ((game.settings.get("neuroshima", "meleeCombatType") || "default") !== "default") {
+      await this._renderStaticOpposedResult(
+        message, augmented, attackerActor, defenderActor,
+        opposedResult, attackerTest.result.target, defenderTest.result.target
+      );
+      return { ok: true, status: "resolved" };
+    }
+    await this._createDuelCard(
+      message, augmented, attackerActor, defenderActor,
+      opposedResult.attacker.dice, opposedResult.defender.dice,
+      attackerTest.result.target, defenderTest.result.target,
+      { resetProgress, reason }
+    );
+    return { ok: true, status: "duel", state: message.getFlag("neuroshima", "duelCard") };
+  }
+
+  static async _renderStaticOpposedResult(
+    message, data, attackerActor, defenderActor, opposedResult, attackTarget, defenseTarget
+  ) {
+    const attackDice = opposedResult.attacker.dice ?? [];
+    const defenseDice = opposedResult.defender.dice ?? [];
+    const attackSuccesses = Number(opposedResult.attacker.successes ?? 0);
+    const defenseSuccesses = Number(opposedResult.defender.successes ?? 0);
+    const hits = [];
+    if (data.mode === "opposedPips") {
+      for (let index = 0; index < Math.min(3, attackDice.length); index++) {
+        const attack = attackDice[index];
+        const defense = defenseDice[index];
+        if (attack?.isSuccess && (!defense?.isSuccess || attack.modified < defense.modified)) {
+          hits.push({ tier: index + 1, damageType: data[`damage${index + 1}`] });
+        }
+      }
+    } else {
+      const net = Math.max(0, attackSuccesses - defenseSuccesses);
+      if (net > 0) {
+        const tier = Math.min(3, net);
+        hits.push({ tier, damageType: data[`damage${tier}`] });
+      }
+    }
+    const attackerName = attackerActor?.name ?? "Attacker";
+    const defenderName = defenderActor?.name ?? "Defender";
+    const pairedDice = Array.from({ length: Math.max(attackDice.length, defenseDice.length) }, (_, index) => ({
+      label: `D${index + 1}`,
+      attack: attackDice[index] ?? null,
+      defense: defenseDice[index] ?? null
+    }));
+    const netSuccesses = data.mode === "opposedSuccesses"
+      ? Math.max(0, attackSuccesses - defenseSuccesses)
+      : hits.length;
+    const resultType = hits.length ? "hit" : "block";
+    const context = {
+      mode: data.mode,
+      modeLabel: game.i18n.localize(`NEUROSHIMA.MeleeOpposedChat.Mode.${data.mode}`),
+      attackerName,
+      attackerImg: attackerActor?.img,
+      defenderName,
+      defenderImg: defenderActor?.img,
+      weaponName: attackerActor?.items?.get?.(data.weaponId)?.name ?? "",
+      attackDice,
+      defenseDice,
+      pairedDice,
+      attackTarget,
+      defenseTarget,
+      attackSuccesses,
+      defenseSuccesses,
+      resultType,
+      resultText: hits.length
+        ? game.i18n.format("NEUROSHIMA.MeleeOpposedChat.LogSuccessesHit", {
+          attacker: attackerName, defender: defenderName,
+          net: netSuccesses, tier: hits[0].tier, damage: hits[0].damageType
+        })
+        : game.i18n.format("NEUROSHIMA.MeleeOpposedChat.LogBlock", {
+          attacker: attackerName, defender: defenderName
+        }),
+      hits,
+      isHit: hits.length > 0,
+      damage1: data.damage1,
+      damage2: data.damage2,
+      damage3: data.damage3,
+      netSuccesses,
+      affordableBeastActions: [],
+      hasBeastActions: false,
+      isBeastAttack: attackerActor?.type === "creature" && !data.weaponId
+    };
+    const content = await foundry.applications.handlebars.renderTemplate(
+      "systems/neuroshima/templates/chat/melee-opposed-result.hbs",
+      context
+    );
+    const locationRoll = attackDice[0]?.original ?? 10;
+    await message.update({
+      content,
+      "flags.neuroshima.opposedResult": {
+        attackerUuid: data.attackerUuid,
+        defenderUuid: data.defenderUuid,
+        weaponId: data.weaponId,
+        beastItemId: data.beastItemId ?? null,
+        hits,
+        location: data.location || this._getLocationFromRoll(locationRoll),
+        headDamageApplied: data.headDamageApplied === true,
+        damage1: data.damage1,
+        damage2: data.damage2,
+        damage3: data.damage3,
+        netSuccesses,
+        affordableBeastActions: [],
+        isBeastAttack: attackerActor?.type === "creature" && !data.weaponId,
+        applied: false,
+        beastActionsApplied: false
+      },
+      "flags.neuroshima.opposedChat": {
+        ...data,
+        status: "resolved",
+        finalizedAt: Date.now(),
+        finalAttackerRevision: data.attackerRevision,
+        finalDefenderRevision: data.defenderRevision
+      }
+    });
+    await this._runFinalOpposedTriggersOnce(message);
+  }
+
+  static async syncFromTest(test, { reason = "test-update" } = {}) {
+    const link = test?.context?.opposedLink;
+    if (!link) return { ok: true, skipped: true };
+    if (!game.user.isGM && game.neuroshima?.socket) {
+      return game.neuroshima.socket.executeAsGM("syncOpposedTestState", {
+        duelMessageId: link.duelMessageId,
+        role: link.role,
+        testMessageId: test.message?.id ?? null,
+        revision: link.revision,
+        reason,
+        userId: game.user.id
+      });
+    }
+    return this.syncOpposedTestState({
+      duelMessageId: link.duelMessageId,
+      role: link.role,
+      testMessageId: test.message?.id ?? null,
+      revision: link.revision,
+      reason,
+      userId: game.user.id
+    });
+  }
+
+  static async syncOpposedTestState(payload) {
+    return this._queueOpposedRefresh(payload.duelMessageId, async () => {
+      const message = game.messages.get(payload.duelMessageId);
+      if (!message) return { ok: false, reason: "duel-message-missing" };
+      const data = foundry.utils.deepClone(message.getFlag("neuroshima", "opposedChat"));
+      if (!data || data.status === "resolved" || data.status === "cancelled") {
+        return { ok: false, reason: "opposed-locked" };
+      }
+      const sourceTest = await this.getLinkedTest(payload.testMessageId);
+      const sourceLink = sourceTest?.context?.opposedLink;
+      if (
+        !sourceLink
+        || sourceLink.type !== "meleeOpposed"
+        || sourceLink.opposedId !== data.id
+        || sourceLink.duelMessageId !== payload.duelMessageId
+        || sourceLink.role !== payload.role
+        || sourceLink.revision !== payload.revision
+      ) {
+        return { ok: false, reason: "stale-opposed-link" };
+      }
+      const requestingUser = game.users?.get?.(payload.userId) ?? game.user;
+      if (!requestingUser?.isGM && !sourceTest.actor?.testUserPermission?.(requestingUser, "OWNER")) {
+        return { ok: false, reason: "opposed-permission-denied" };
+      }
+      const roleKey = payload.role === "defender"
+        ? "defenderTestMessageId"
+        : "attackerTestMessageId";
+      const revisionKey = payload.role === "defender"
+        ? "defenderRevision"
+        : "attackerRevision";
+      data[roleKey] = payload.testMessageId;
+      data[revisionKey] = payload.revision;
+      await message.update({ "flags.neuroshima.opposedChat": data });
+      return this._refreshOpposedMessage(payload.duelMessageId, {
+        reason: payload.reason,
+        resetProgress: true
+      });
+    });
+  }
+
+  static async _renderPendingContent(data, test, attackerActor = null, defenderActor = null, weapon = null) {
+    attackerActor ??= (fromUuidSync(data.attackerTokenUuid || data.attackerUuid)?.actor
+      ?? fromUuidSync(data.attackerUuid));
+    defenderActor ??= (fromUuidSync(data.defenderTokenUuid || data.defenderUuid)?.actor
+      ?? fromUuidSync(data.defenderUuid));
+    weapon ??= attackerActor?.items?.get(data.weaponId) ?? null;
+    const dice = (test.result.modifiedResults ?? []).map((die, index) => ({
+      label: `D${index + 1}`,
+      value: die.original,
+      modified: die.modified,
+      isSuccess: die.isSuccess,
+      isNat1: die.isNat1,
+      isNat20: die.isNat20
+    }));
+    const defenderWeapons = (defenderActor?.items ?? [])
+      .filter(item => item.type === "weapon" && item.system.weaponType === "melee")
+      .map(item => ({ id: item.id, name: item.name, img: item.img }));
+    return foundry.applications.handlebars.renderTemplate(
+      "systems/neuroshima/templates/chat/melee-opposed-pending.hbs",
+      {
+        mode: data.mode,
+        modeLabel: game.i18n.localize(`NEUROSHIMA.MeleeOpposedChat.Mode.${data.mode}`),
+        attackerName: attackerActor?.name ?? "",
+        attackerImg: attackerActor?.img,
+        weaponName: weapon?.name ?? "",
+        damage1: data.damage1,
+        damage2: data.damage2,
+        damage3: data.damage3,
+        attackDice: dice,
+        attackerTarget: test.result.target,
+        attackerSuccesses: test.result.successPoints ?? test.result.successCount ?? 0,
+        defenderName: defenderActor?.name ?? "",
+        defenderImg: defenderActor?.img,
+        defenderWeapons,
+        // The template keeps its legacy presentational value; the authoritative
+        // message flag uses the explicit lifecycle state "awaitingDefender".
+        status: "pending"
+      }
+    );
+  }
+
+  static async renderPendingFromTest(message, data, attackerTest) {
+    const content = await this._renderPendingContent(data, attackerTest);
+    await message.update({
+      content,
+      "flags.neuroshima.opposedChat": { ...data, status: "awaitingDefender" }
+    });
+  }
+
+  static async _registerPendingOpposed({
+    data, attacker, targetActor, targetDoc, weapon, handlerMessage, attackerSuccesses
+  }) {
+    const combat = game.combat;
+    if (combat) {
+      const pendingKey = targetActor.uuid.replace(/\./g, "-");
+      const pendings = foundry.utils.deepClone(combat.getFlag("neuroshima", "meleePendings") || {});
+      pendings[pendingKey] = {
+        id: targetActor.uuid,
+        attackerId: attacker.uuid,
+        attackerTokenUuid: attacker.token?.uuid ?? null,
+        defenderId: targetActor.uuid,
+        defenderTokenUuid: targetDoc?.uuid ?? null,
+        attackerName: attacker.name,
+        defenderName: targetActor.name,
+        mode: data.mode,
+        opposedChatMessageId: handlerMessage.id,
+        attackerInitiative: attackerSuccesses,
+        weaponId: weapon.id,
+        active: true,
+        timestamp: Date.now()
+      };
+      if (game.user.isGM || !game.neuroshima?.socket) {
+        await combat.setFlag("neuroshima", "meleePendings", pendings);
+      } else {
+        await game.neuroshima.socket.executeAsGM("updateCombatFlag", "meleePendings", pendings);
+      }
+      ui.combat?.render(true);
+    }
+    await this._setDefenderFlag(targetActor.uuid, handlerMessage.id);
   }
 
   /**
@@ -1433,7 +1894,7 @@ export class MeleeOpposedChat {
     if (!message) return;
 
     const data = message.getFlag("neuroshima", "opposedChat");
-    if (!data || data.status !== "pending") return;
+    if (!data || !this._isAwaitingDefender(data.status)) return;
 
     // Mark as resolved immediately (prevents double-click / double-response)
     await MeleeOpposedChat._setChatFlag(message, "opposedChat", { ...data, status: "resolved" });
@@ -1497,7 +1958,7 @@ export class MeleeOpposedChat {
 
     if (doubleSkill && (attackerSkillBudget > 0 || defenderSkillBudget > 0)) {
       await MeleeOpposedChat._createAllocationCard({
-        data, attackerActor, defenderActor,
+        handlerMessage: message, data, attackerActor, defenderActor,
         attackDice, defenseDice, attackTarget, defenseTarget,
         attackSuccesses, defenseSuccesses,
         attackerSkillBudget, defenderSkillBudget
@@ -1798,7 +2259,11 @@ export class MeleeOpposedChat {
     return DEFAULTS[tier - 1] ?? "D";
   }
 
-  static async _createDuelCard(handlerMessage, data, attackerActor, defenderActor, attackDice, defenseDice, attackTarget, defenseTarget) {
+  static async _createDuelCard(
+    handlerMessage, data, attackerActor, defenderActor,
+    attackDice, defenseDice, attackTarget, defenseTarget,
+    { resetProgress = false } = {}
+  ) {
     if (data.isGradCios) {
       const atkSuccessCount = attackDice.filter(d => d.isSuccess).length;
       const defSuccessCount = defenseDice.filter(d => d.isSuccess).length;
@@ -1809,7 +2274,7 @@ export class MeleeOpposedChat {
       if (netSuccesses > 0) {
         const tier = Math.min(netSuccesses, 3);
         const damage = data[`damage${tier}`] ?? data.damage1 ?? "?";
-        const locationRoll = data.attackRaw?.[0] ?? 10;
+        const locationRoll = attackDice[0]?.original ?? attackDice[0]?.modified ?? 10;
         const location = data.location || MeleeOpposedChat._getLocationFromRoll(locationRoll);
         const outcomeLabel = game.i18n.format("NEUROSHIMA.GradCios.Hit", { n: tier, dmg: damage });
         const hitContent = await foundry.applications.handlebars.renderTemplate(
@@ -1829,25 +2294,26 @@ export class MeleeOpposedChat {
             outcomeLabel
           }
         );
-        await ChatMessage.create({
+        await handlerMessage.update({
           content: hitContent,
-          flags: {
-            neuroshima: {
-              hailResult: {
-                attackerUuid: data.attackerUuid,
-                defenderUuid: data.defenderUuid,
-                weaponId:     data.weaponId,
-                tier,
-                damage1:  data.damage1,
-                damage2:  data.damage2,
-                damage3:  data.damage3,
-                location,
-                headDamageApplied: data.headDamageApplied === true
-              }
-            }
+          "flags.neuroshima.hailResult": {
+            attackerUuid: data.attackerUuid,
+            defenderUuid: data.defenderUuid,
+            weaponId: data.weaponId,
+            tier,
+            damage1: data.damage1,
+            damage2: data.damage2,
+            damage3: data.damage3,
+            location,
+            headDamageApplied: data.headDamageApplied === true
           },
-          speaker: { alias: "⚔" },
-          rollMode
+          "flags.neuroshima.opposedChat": {
+            ...data,
+            status: "resolved",
+            finalizedAt: Date.now(),
+            finalAttackerRevision: data.attackerRevision,
+            finalDefenderRevision: data.defenderRevision
+          }
         });
       } else {
         const outcomeLabel = netSuccesses === 0
@@ -1870,14 +2336,31 @@ export class MeleeOpposedChat {
             outcomeLabel
           }
         );
-        await ChatMessage.create({ content: blockContent, speaker: { alias: "⚔" }, rollMode });
+        await handlerMessage.update({
+          content: blockContent,
+          "flags.neuroshima.hailResult": {
+            attackerUuid: data.attackerUuid,
+            defenderUuid: data.defenderUuid,
+            weaponId: data.weaponId,
+            hits: [],
+            applied: false
+          },
+          "flags.neuroshima.opposedChat": {
+            ...data,
+            status: "resolved",
+            finalizedAt: Date.now(),
+            finalAttackerRevision: data.attackerRevision,
+            finalDefenderRevision: data.defenderRevision
+          }
+        });
       }
+      await this._runFinalOpposedTriggersOnce(handlerMessage);
       return;
     }
 
     const segCount = Math.min(3, attackDice.length, defenseDice.length || 1);
     const initiativeOwnerSide = data.szachistaYield ? "defender" : "attacker";
-    const state = {
+    let state = {
       status: "picking",
       initiativeOwnerSide,
       isGradCios: data.isGradCios || false,
@@ -1913,24 +2396,72 @@ export class MeleeOpposedChat {
         outcome: null
       })),
       hits: [],
+      counterHits: [],
       applied: false,
+      segmentHistory: [],
+      segmentFuture: [],
+      opposedId: data.id,
       activatedMeleePreRollMods: data.activatedMeleePreRollMods ?? []
     };
 
-    const context = await MeleeOpposedChat._buildDuelContext(state, attackerActor, defenderActor);
+    const previousState = handlerMessage.getFlag("neuroshima", "duelCard");
+    if (previousState && resetProgress) {
+      state = this.resetDuelProgress({ ...previousState, ...state }, {
+        attackDice, defenseDice, attackTarget, defenseTarget
+      });
+      ui.notifications.info("Zmiana rzutu zresetowała nierozstrzygnięty postęp pojedynku.");
+    }
+    await this.updateSameDuelMessage(handlerMessage, data, state);
+    if (!previousState) {
+      await DuelLifecycle.start(DuelContext.fromFlag(state));
+      await MeleeOpposedChat._syncInitiativeToTracker(state);
+    }
+  }
+
+  static resetDuelProgress(state, { attackDice, defenseDice, attackTarget, defenseTarget }) {
+    const segmentCount = Math.min(3, attackDice.length, defenseDice.length || 1);
+    return {
+      ...state,
+      status: "picking",
+      waitingFor: "initiativeOwner",
+      committedOwnerIndices: null,
+      declaredAction: null,
+      currentSegment: 0,
+      attackDice,
+      defenseDice,
+      attackTarget,
+      defenseTarget,
+      usedAttackDice: [],
+      usedDefenseDice: [],
+      segments: Array.from({ length: segmentCount }, (_, index) => ({
+        segNum: index + 1,
+        attackVal: null,
+        defenseVal: null,
+        outcome: null
+      })),
+      hits: [],
+      counterHits: [],
+      applied: false,
+      segmentHistory: [],
+      segmentFuture: []
+    };
+  }
+
+  static async updateSameDuelMessage(message, opposedData, state) {
+    const attackerDoc = fromUuidSync(state.attackerTokenUuid || state.attackerUuid);
+    const defenderDoc = fromUuidSync(state.defenderTokenUuid || state.defenderUuid);
+    const attackerActor = attackerDoc?.actor ?? attackerDoc;
+    const defenderActor = defenderDoc?.actor ?? defenderDoc;
+    const context = await this._buildDuelContext(state, attackerActor, defenderActor);
     const content = await foundry.applications.handlebars.renderTemplate(
       "systems/neuroshima/templates/chat/melee-duel-card.hbs",
       context
     );
-    const rollMode = game.settings.get("core", "rollMode");
-    await ChatMessage.create({
+    await message.update({
       content,
-      flags: { neuroshima: { duelCard: state } },
-      speaker: { alias: "⚔" },
-      rollMode
+      "flags.neuroshima.opposedChat": { ...opposedData, status: "duel" },
+      "flags.neuroshima.duelCard": state
     });
-    await DuelLifecycle.start(DuelContext.fromFlag(state));
-    await MeleeOpposedChat._syncInitiativeToTracker(state);
   }
 
   static async _buildDuelContext(state, attackerActor, defenderActor) {
@@ -2220,8 +2751,52 @@ export class MeleeOpposedChat {
       "systems/neuroshima/templates/chat/melee-duel-card.hbs",
       context
     );
-    await message.setFlag("neuroshima", "duelCard", state);
-    await message.update({ content });
+    const opposed = foundry.utils.deepClone(message.getFlag("neuroshima", "opposedChat"));
+    const isFinal = state.status === "done" || state.applied === true;
+    await message.update({
+      content,
+      "flags.neuroshima.duelCard": state,
+      ...(opposed ? {
+        "flags.neuroshima.opposedChat": {
+          ...opposed,
+          status: isFinal ? "resolved" : "duel",
+          ...(isFinal ? {
+            finalizedAt: opposed.finalizedAt ?? Date.now(),
+            finalAttackerRevision: opposed.attackerRevision,
+            finalDefenderRevision: opposed.defenderRevision
+          } : {})
+        }
+      } : {})
+    });
+    if (isFinal && opposed) await this._runFinalOpposedTriggersOnce(message);
+  }
+
+  static async _runFinalOpposedTriggersOnce(message) {
+    const opposed = foundry.utils.deepClone(message?.getFlag("neuroshima", "opposedChat"));
+    if (!opposed || opposed.finalTriggersRun === true) return { ok: true, skipped: true };
+    const attackerTest = await this.getLinkedTest(opposed.attackerTestMessageId);
+    const defenderTest = await this.getLinkedTest(opposed.defenderTestMessageId);
+    if (!attackerTest || !defenderTest) {
+      return { ok: false, reason: "linked-test-missing" };
+    }
+    // Claim finalization before running effects so repeated renders cannot execute
+    // document-changing opposed triggers more than once.
+    await message.update({
+      "flags.neuroshima.opposedChat": {
+        ...opposed,
+        status: "resolved",
+        finalTriggersRun: true,
+        finalizedAt: opposed.finalizedAt ?? Date.now(),
+        finalAttackerRevision: opposed.attackerRevision,
+        finalDefenderRevision: opposed.defenderRevision
+      }
+    });
+    const resolver = new MeleeOpposedResolver(attackerTest, defenderTest, {
+      mode: opposed.mode,
+      context: { messageId: message.id, preview: false, reason: "finalization" }
+    });
+    await resolver.resolve({ preview: false });
+    return { ok: true };
   }
 
   static onRenderDuelCard(root, message) {
@@ -2803,7 +3378,7 @@ export class MeleeOpposedChat {
    * Create the skill-allocation card when doubleSkillAction is ON and either side has a budget.
    * @private
    */
-  static async _createAllocationCard({ data, attackerActor, defenderActor,
+  static async _createAllocationCard({ handlerMessage, data, attackerActor, defenderActor,
       attackDice, defenseDice, attackTarget, defenseTarget,
       attackSuccesses, defenseSuccesses, attackerSkillBudget, defenderSkillBudget }) {
     const allocData = {
@@ -2838,12 +3413,13 @@ export class MeleeOpposedChat {
       context
     );
 
-    const rollMode = game.settings.get("core", "rollMode");
-    await ChatMessage.create({
+    if (!handlerMessage) {
+      throw new Error("Persistent opposed handler is required for skill allocation.");
+    }
+    await handlerMessage.update({
       content,
-      flags: { neuroshima: { skillAlloc: allocData } },
-      speaker: { alias: "⚔" },
-      rollMode
+      "flags.neuroshima.skillAlloc": allocData,
+      "flags.neuroshima.opposedChat": { ...data, status: "allocation" }
     });
   }
 
@@ -3018,8 +3594,6 @@ export class MeleeOpposedChat {
       else updated.defenderConfirmed = true;
     }
 
-    await message.setFlag("neuroshima", "skillAlloc", updated);
-
     // Re-render the card HTML
     const attackerDoc = fromUuidSync(updated.attackerUuid);
     const attackerActor = attackerDoc?.actor ?? attackerDoc;
@@ -3031,7 +3605,10 @@ export class MeleeOpposedChat {
       "systems/neuroshima/templates/chat/melee-skill-allocation.hbs",
       context
     );
-    await message.update({ content: newContent });
+    await message.update({
+      content: newContent,
+      "flags.neuroshima.skillAlloc": updated
+    });
 
     if (updated.attackerConfirmed && updated.defenderConfirmed) {
       await MeleeOpposedChat.resolveFromAllocation(messageId);
@@ -3049,7 +3626,7 @@ export class MeleeOpposedChat {
     if (!allocData || allocData.status !== "pending") return;
     if (!allocData.attackerConfirmed || !allocData.defenderConfirmed) return;
 
-    await message.setFlag("neuroshima", "skillAlloc", { ...allocData, status: "resolved" });
+    const opposed = foundry.utils.deepClone(message.getFlag("neuroshima", "opposedChat"));
 
     const attackerDoc = fromUuidSync(allocData.attackerUuid);
     const attackerActor = attackerDoc?.actor ?? attackerDoc;
@@ -3231,27 +3808,31 @@ export class MeleeOpposedChat {
     const locationRoll = (allocData.attackDice?.[0]?.original) ?? 10;
     const location = MeleeOpposedChat._getLocationFromRoll(locationRoll);
 
-    const rollMode = game.settings.get("core", "rollMode");
-    await ChatMessage.create({
+    await message.update({
       content: resContent,
-      flags: {
-        neuroshima: {
-          opposedResult: {
-            attackerUuid: allocData.attackerUuid,
-            defenderUuid: allocData.defenderUuid,
-            weaponId: allocData.weaponId,
-            beastItemId: allocData.beastItemId ?? null,
-            hits, location,
-            damage1, damage2, damage3,
-            netSuccesses, affordableBeastActions,
-            isBeastAttack: isCreatureAttacker && !allocData.weaponId,
-            applied: false, beastActionsApplied: false
-          }
-        }
+      "flags.neuroshima.skillAlloc": { ...allocData, status: "resolved" },
+      "flags.neuroshima.opposedResult": {
+        attackerUuid: allocData.attackerUuid,
+        defenderUuid: allocData.defenderUuid,
+        weaponId: allocData.weaponId,
+        beastItemId: allocData.beastItemId ?? null,
+        hits, location,
+        damage1, damage2, damage3,
+        netSuccesses, affordableBeastActions,
+        isBeastAttack: isCreatureAttacker && !allocData.weaponId,
+        applied: false, beastActionsApplied: false
       },
-      speaker: { alias: "⚔" },
-      rollMode
+      ...(opposed ? {
+        "flags.neuroshima.opposedChat": {
+          ...opposed,
+          status: "resolved",
+          finalizedAt: Date.now(),
+          finalAttackerRevision: opposed.attackerRevision,
+          finalDefenderRevision: opposed.defenderRevision
+        }
+      } : {})
     });
+    if (opposed) await this._runFinalOpposedTriggersOnce(message);
   }
 
   /**
@@ -3425,7 +4006,7 @@ export class MeleeOpposedChat {
         if (!oppFlag?.messageId) continue;
         const msg = game.messages.get(oppFlag.messageId);
         const chatData = msg?.getFlag("neuroshima", "opposedChat");
-        if (!chatData || chatData.status !== "pending") continue;
+        if (!chatData || !this._isAwaitingDefender(chatData.status)) continue;
         const sameAttacker = game.neuroshima?.NeuroshimaMeleeCombat?.isSameActor?.(chatData.attackerUuid, attackerUuid)
           ?? (chatData.attackerUuid === attackerUuid);
         if (sameAttacker) stalePendings.push({ key: null, pending: { defenderId: actor.uuid, opposedChatMessageId: oppFlag.messageId } });
@@ -3437,7 +4018,7 @@ export class MeleeOpposedChat {
       if (pending.opposedChatMessageId) {
         const msg = game.messages.get(pending.opposedChatMessageId);
         const chatData = msg?.getFlag("neuroshima", "opposedChat");
-        if (chatData?.status === "pending") {
+        if (this._isAwaitingDefender(chatData?.status)) {
           await MeleeOpposedChat._setChatFlag(msg, "opposedChat", { ...chatData, status: "cancelled" });
         }
       }

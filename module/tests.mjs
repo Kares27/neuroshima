@@ -472,7 +472,8 @@ export class NeuroshimaTestBase {
       dice: this.getDiceApi(),
       result: this.getResultApi(),
       links: {
-        meleePool: clone(this.context.meleePoolLink ?? null)
+        meleePool: clone(this.context.meleePoolLink ?? null),
+        opposed: clone(this.context.opposedLink ?? null)
       }
     };
   }
@@ -589,6 +590,7 @@ export class NeuroshimaTestBase {
   async edit({ preData = {}, rawResults = null } = {}, { message = null } = {}) {
     const validation = await this.validateLinkedMutation();
     if (!validation.ok) return this.rejectLinkedMutation(validation);
+    const linkedCheckpoint = this.context?.opposedLink ? this.toData() : null;
     this.context.previousResult = clone(this.result);
     const previousRaw = [...(this.result.rawResults ?? [])];
     this.context.edited = true;
@@ -615,8 +617,17 @@ export class NeuroshimaTestBase {
       );
     }
     edited.message = message ?? this.message ?? null;
+    if (edited.context?.opposedLink && edited.message) {
+      edited.message = await edited.updateMessage(edited.message);
+    }
     const syncResult = await edited.syncLinkedState({ reason: "gm-edit" });
-    if (!syncResult.ok) throw new Error(`Melee pool sync failed: ${syncResult.reason}`);
+    if (!syncResult.ok) {
+      if (linkedCheckpoint && edited.message) {
+        const restored = await NeuroshimaTestBase.recreate(linkedCheckpoint);
+        await restored.updateMessage(edited.message);
+      }
+      throw new Error(`Linked melee sync failed: ${syncResult.reason}`);
+    }
     edited.message = await edited.sendToChat({ message });
     return edited;
   }
@@ -624,6 +635,7 @@ export class NeuroshimaTestBase {
   async reroll({ previousMessage = null, replaceMessage = false } = {}) {
     const validation = await this.validateLinkedMutation();
     if (!validation.ok) return this.rejectLinkedMutation(validation);
+    const linkedCheckpoint = this.context?.opposedLink ? this.toData() : null;
     this.context.previousResult = clone(this.result);
     this.context.previousMessageId = previousMessage?.id ?? null;
     this.context.reroll = true;
@@ -636,10 +648,21 @@ export class NeuroshimaTestBase {
       restoreInput: false
     });
     rerolled.message = previousMessage ?? this.message ?? null;
+    if (rerolled.context?.opposedLink && rerolled.message) {
+      rerolled.message = await rerolled.updateMessage(rerolled.message);
+    }
     const syncResult = await rerolled.syncLinkedState({ reason: "reroll" });
-    if (!syncResult.ok) throw new Error(`Melee pool sync failed: ${syncResult.reason}`);
+    if (!syncResult.ok) {
+      if (linkedCheckpoint && rerolled.message) {
+        const restored = await NeuroshimaTestBase.recreate(linkedCheckpoint);
+        await restored.updateMessage(rerolled.message);
+      }
+      throw new Error(`Linked melee sync failed: ${syncResult.reason}`);
+    }
     rerolled.message = await rerolled.sendToChat({
-      message: replaceMessage ? previousMessage : null
+      message: this.context?.opposedLink
+        ? (previousMessage ?? this.message ?? null)
+        : (replaceMessage ? previousMessage : null)
     });
     return rerolled;
   }
@@ -647,6 +670,7 @@ export class NeuroshimaTestBase {
   async rerollDice(indices, { previousMessage = null, replaceMessage = false } = {}) {
     const validation = await this.validateLinkedMutation();
     if (!validation.ok) return this.rejectLinkedMutation(validation);
+    const linkedCheckpoint = this.context?.opposedLink ? this.toData() : null;
     const unique = [...new Set((indices ?? []).map(Number))]
       .filter(index => Number.isInteger(index) && index >= 0 && index < this.result.rawResults.length)
       .sort((a, b) => a - b);
@@ -681,17 +705,43 @@ export class NeuroshimaTestBase {
       effectUuid: null
     }));
     rerolledTest.message = previousMessage ?? this.message ?? null;
+    if (rerolledTest.context?.opposedLink && rerolledTest.message) {
+      rerolledTest.message = await rerolledTest.updateMessage(rerolledTest.message);
+    }
     const syncResult = await rerolledTest.syncLinkedState({ reason: "partial-reroll" });
-    if (!syncResult.ok) throw new Error(`Melee pool sync failed: ${syncResult.reason}`);
+    if (!syncResult.ok) {
+      if (linkedCheckpoint && rerolledTest.message) {
+        const restored = await NeuroshimaTestBase.recreate(linkedCheckpoint);
+        await restored.updateMessage(rerolledTest.message);
+      }
+      throw new Error(`Linked melee sync failed: ${syncResult.reason}`);
+    }
     rerolledTest.message = await rerolledTest.sendToChat({
-      message: replaceMessage ? previousMessage : null
+      message: this.context?.opposedLink
+        ? (previousMessage ?? this.message ?? null)
+        : (replaceMessage ? previousMessage : null)
     });
     return rerolledTest;
   }
 
   async validateLinkedMutation() {
-    const link = this.context?.meleePoolLink;
-    if (!link) return { ok: true, skipped: true, reason: "not-linked" };
+    if (this.context?.meleePoolLink) {
+      const result = await this.validateMeleePoolMutation();
+      if (!result.ok) return result;
+    }
+    if (this.context?.opposedLink) {
+      const result = await this.validateOpposedMutation();
+      if (!result.ok) return result;
+    }
+    return {
+      ok: true,
+      skipped: !this.context?.meleePoolLink && !this.context?.opposedLink,
+      reason: "not-linked"
+    };
+  }
+
+  async validateMeleePoolMutation() {
+    const link = this.context.meleePoolLink;
     const { MeleeStore, MeleeTurnService } = await import("./combat/combat.js");
     const encounter = MeleeStore.getEncounter(link.encounterId);
     if (!encounter) return { ok: false, reason: "encounter-missing" };
@@ -707,6 +757,30 @@ export class NeuroshimaTestBase {
     return { ok: !lock.locked, reason: lock.reason };
   }
 
+  async validateOpposedMutation() {
+    const link = this.context.opposedLink;
+    const message = game.messages.get(link.duelMessageId);
+    if (!message) return { ok: false, reason: "duel-message-missing" };
+    const opposed = message.getFlag("neuroshima", "opposedChat");
+    const duel = message.getFlag("neuroshima", "duelCard");
+    if (!opposed || opposed.id !== link.opposedId) {
+      return { ok: false, reason: "stale-opposed-link" };
+    }
+    const revisionKey = link.role === "defender" ? "defenderRevision" : "attackerRevision";
+    if (opposed[revisionKey] && opposed[revisionKey] !== link.revision) {
+      return { ok: false, reason: "stale-opposed-revision" };
+    }
+    if (
+      opposed.status === "resolved"
+      || opposed.status === "cancelled"
+      || duel?.status === "done"
+      || duel?.applied === true
+    ) {
+      return { ok: false, reason: "opposed-resolved" };
+    }
+    return { ok: true };
+  }
+
   rejectLinkedMutation(validation = {}) {
     ui.notifications.warn(
       game.i18n.localize("NEUROSHIMA.Melee.PoolMutationLocked")
@@ -716,11 +790,22 @@ export class NeuroshimaTestBase {
   }
 
   async syncLinkedState({ reason = "test-update" } = {}) {
-    if (!this.context?.meleePoolLink) {
-      return { ok: true, skipped: true, reason: "not-linked" };
+    const results = [];
+    if (this.context?.meleePoolLink) {
+      const { MeleeTurnService } = await import("./combat/combat.js");
+      results.push(await MeleeTurnService.syncPoolFromTest(this, { reason }));
     }
-    const { MeleeTurnService } = await import("./combat/combat.js");
-    return MeleeTurnService.syncPoolFromTest(this, { reason });
+    if (this.context?.opposedLink) {
+      const { MeleeOpposedChat } = await import("./combat/combat.js");
+      results.push(await MeleeOpposedChat.syncFromTest(this, { reason }));
+    }
+    const failure = results.find(result => result?.ok === false);
+    return failure ?? {
+      ok: true,
+      skipped: results.length === 0,
+      reason: results.length ? undefined : "not-linked",
+      results
+    };
   }
 
   async commitMutation({ message = null, reason = "mutation", validate = true } = {}) {
@@ -728,9 +813,21 @@ export class NeuroshimaTestBase {
       const validation = await this.validateLinkedMutation();
       if (!validation.ok) return validation;
     }
+    const linkedCheckpoint = this.context?.opposedLink && message
+      ? clone(message.getFlag?.("neuroshima", "test") ?? null)
+      : null;
     if (this.context.dirty) await this.recalculate();
+    if (this.context?.opposedLink && message) {
+      this.message = await this.updateMessage(message);
+    }
     const sync = await this.syncLinkedState({ reason });
-    if (!sync.ok) return sync;
+    if (!sync.ok) {
+      if (linkedCheckpoint && message) {
+        const restored = await NeuroshimaTestBase.recreate(linkedCheckpoint);
+        await restored.updateMessage(message);
+      }
+      return sync;
+    }
     if (message) this.message = await this.updateMessage(message);
     return { ok: true, message: this.message ?? message };
   }
@@ -1908,9 +2005,7 @@ export class MeleeOpposedResolver {
     this.context = context;
   }
 
-  async resolve() {
-    await this.attackerTest.runTrigger("preOpposedAttacker", { phase: "pre", role: "attacker" });
-    await this.defenderTest.runTrigger("preOpposedDefender", { phase: "pre", role: "defender" });
+  evaluate() {
     const attacker = this.attackerTest.opposedResult;
     const defender = this.defenderTest.opposedResult;
     const attackerValue = this.mode === "opposedSuccesses" ? attacker.successes : attacker.successPoints;
@@ -1925,9 +2020,28 @@ export class MeleeOpposedResolver {
     };
     this.attackerTest.context.opposedResult = result;
     this.defenderTest.context.opposedResult = result;
-    await this.attackerTest.runTrigger("opposedAttacker", { phase: "result", role: "attacker" });
-    await this.defenderTest.runTrigger("opposedDefender", { phase: "result", role: "defender" });
-    await this.attackerTest.runTrigger("calculateOpposedDamage", { phase: "damage", role: "attacker" });
+    return result;
+  }
+
+  async resolve({ preview = false } = {}) {
+    await this.attackerTest.runTrigger("preOpposedAttacker", {
+      phase: "pre", role: "attacker", preview, opposed: this.context
+    });
+    await this.defenderTest.runTrigger("preOpposedDefender", {
+      phase: "pre", role: "defender", preview, opposed: this.context
+    });
+    const result = this.evaluate();
+    if (!preview) {
+      await this.attackerTest.runTrigger("opposedAttacker", {
+        phase: "result", role: "attacker", preview: false, opposed: this.context
+      });
+      await this.defenderTest.runTrigger("opposedDefender", {
+        phase: "result", role: "defender", preview: false, opposed: this.context
+      });
+      await this.attackerTest.runTrigger("calculateOpposedDamage", {
+        phase: "damage", role: "attacker", preview: false, opposed: this.context
+      });
+    }
     return result;
   }
 }

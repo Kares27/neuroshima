@@ -469,6 +469,7 @@
     <div class="ctx-row"><span class="ctx-name">await args.dice.choose(options)</span><span class="ctx-type">Promise&lt;number[] | null&gt;</span><span class="ctx-desc">Otwiera kontrolowany wybór indeksów kości; szczególnie użyteczne w akcjach wyniku.</span></div>
     <div class="ctx-row"><span class="ctx-name">args.result</span><span class="ctx-type">API</span><span class="ctx-desc">Metody <code>addSuccesses</code>, <code>addSuccessPoints</code>, <code>forceSuccess</code>, <code>forceFailure</code> i <code>addAnnotation</code>.</span></div>
     <div class="ctx-row"><span class="ctx-name">args.links.meleePool</span><span class="ctx-type">object | null</span><span class="ctx-desc">Trwały link puli melee: encounter, uczestnik, tura i rewizja. System synchronizuje powiązaną kartę automatycznie.</span></div>
+    <div class="ctx-row"><span class="ctx-name">args.links.opposed</span><span class="ctx-type">object | null</span><span class="ctx-desc">Link testu do pojedynku opposed: wspólny identyfikator, wiadomość duelu, rola i rewizja. Skrypt może go odczytać, ale aktualizację jednej trwałej karty wykonuje centralnie system.</span></div>
   </div>
   <div class="callout warning">
     <strong>Modyfikowanie args:</strong> Większość wyzwalaczy przekazuje <code>args</code> przez referencję.

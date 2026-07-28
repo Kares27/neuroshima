@@ -1767,7 +1767,8 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
         },
         callback: async li => {
             const message = game.messages.get(li.dataset.messageId);
-            const rollData = message?.getFlag("neuroshima", "test")?.result;
+            const testData = message?.getFlag("neuroshima", "test");
+            const rollData = testData?.result;
             const messageType = message?.getFlag("neuroshima", "messageType");
             const actor = game.actors.get(rollData?.actorId);
             
@@ -1955,16 +1956,16 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
 
             const mode = game.settings.get("neuroshima", "meleeCombatType") || "opposedPips";
 
-            const rawResult = {
-                modifiedResults: rollData.modifiedResults || [],
-                successPoints: rollData.successPoints ?? 0,
-                target: rollData.target,
-                skill: rollData.skill ?? 0,
-                rollMode: rollData.rollMode || game.settings.get("core", "rollMode")
-            };
-
             const { MeleeOpposedChat } = await import("./module/combat/combat.js");
-            await MeleeOpposedChat._createHandlerCard(rawResult, attackerActor, weapon, defenderUuid, mode);
+            const attackerTest = await NeuroshimaTestBase.recreate(testData);
+            attackerTest.message = message;
+            await MeleeOpposedChat.createOpposedHandler({
+                attacker: attackerActor,
+                weapon,
+                targetUuid: defenderUuid,
+                mode,
+                attackerTest
+            });
         }
     });
 });
@@ -2779,6 +2780,13 @@ function initializeSocketlib() {
             payload.snapshot,
             { reason: payload.reason, userId: payload.userId }
         );
+    });
+
+    // Opposed cards are updated by the active GM. The handler re-reads both
+    // linked test messages, so a client cannot submit an authoritative duel result.
+    game.neuroshima.socket.register("syncOpposedTestState", async payload => {
+        const { MeleeOpposedChat } = await import("./module/combat/combat.js");
+        return MeleeOpposedChat.syncOpposedTestState(payload);
     });
 
     game.neuroshima.socket.register("setMeleePoolFromTest", async payload => {
