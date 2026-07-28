@@ -45,15 +45,17 @@ export class TraitChoiceDialog extends HandlebarsApplicationMixin(ApplicationV2)
       const traitItem = t.item;
       const name = traitItem.name;
       const img = traitItem.img || "systems/neuroshima/assets/Brain.svg";
+      const traitRollData = traitItem.getRollData?.() ?? {};
+      const relativeTo = traitItem.documentName ? traitItem : this._actor;
       const description = traitItem.system?.description?.trim()
         ? await foundry.applications.ux.TextEditor.enrichHTML(traitItem.system.description, {
             async: true,
-            secrets: traitItem.isOwner,
+            secrets: traitItem.isOwner ?? this._actor?.isOwner ?? false,
             rollData: {
-              ...traitItem.getRollData(),
+              ...traitRollData,
               actor: actorRollData
             },
-            relativeTo: traitItem
+            relativeTo
           })
         : `<p class="trait-choice-tooltip-empty">${foundry.utils.escapeHTML(game.i18n.localize("NEUROSHIMA.Traits.NoDescription"))}</p>`;
 

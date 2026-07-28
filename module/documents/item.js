@@ -490,6 +490,10 @@ export class NeuroshimaItem extends Item {
       }
     }
 
+    // Editing a trait definition nested in an Origin/Profession only persists
+    // template data. It must not dispatch gameplay update/equip hooks.
+    if (options.neuroshimaTraitSnapshotEditor) return;
+
     if (game.user.id !== userId) return;
     if (!actor || actor.documentName !== "Actor") return;
     await NeuroshimaScriptRunner.executeEvent("update", {

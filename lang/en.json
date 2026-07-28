@@ -381,6 +381,7 @@
             "Strike": "Strike",
             "ConfigureHP": "Configure HP",
             "Create": "Create",
+            "AddItem": "Add {type}",
             "CreateBulkWounds": "Bulk Create Wounds",
             "Load": "Load",
             "Unload": "Unload",
@@ -1152,6 +1153,8 @@
             "NoWorldTraits": "No trait items found in the world.",
             "AllAdded": "All available traits are already added.",
             "AlreadyAdded": "This trait is already added.",
+            "EmbeddedCopy": "Trait copy",
+            "CopyMissing": "This trait copy no longer exists in the Origin or Profession.",
             "SelectTrait": "Select a trait",
             "ChooseTraitDialog": "Choose a Trait to Transfer",
             "ChooseTraitPrompt": "Choose one trait from {source} to copy onto the character:",
@@ -1314,6 +1317,21 @@
                 "ArmorMods": "Armor Modifications",
                 "Facilities": "Facility",
                 "Container": "Container"
+            },
+            "AddType": {
+                "Weapon": "weapon",
+                "Armor": "armor",
+                "Gear": "gear",
+                "Trick": "trick",
+                "Trait": "trait",
+                "Ammo": "ammunition",
+                "Magazine": "magazine",
+                "Money": "currency",
+                "Specialization": "specialization",
+                "Origin": "origin",
+                "Profession": "profession",
+                "Weapon-mod": "weapon modification",
+                "Armor-mod": "armor modification"
             },
             "Empty": "No items.",
             "Fields": {

@@ -462,6 +462,8 @@ export class OriginData extends foundry.abstract.TypeDataModel {
     return {
       description: new fields.HTMLField({ initial: "" }),
       bonusText:   new fields.HTMLField({ initial: "" }),
+      traitChoices: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+      // Legacy UUID links. New data is stored as independent Item snapshots.
       traits:      new fields.ArrayField(new fields.StringField({ required: true, blank: false }), { initial: [] }),
       ...testsSchema()
     };
@@ -478,6 +480,8 @@ export class ProfessionData extends foundry.abstract.TypeDataModel {
     return {
       description: new fields.HTMLField({ initial: "" }),
       bonusText:   new fields.HTMLField({ initial: "" }),
+      traitChoices: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+      // Legacy UUID links. New data is stored as independent Item snapshots.
       traits:      new fields.ArrayField(new fields.StringField({ required: true, blank: false }), { initial: [] }),
       ...testsSchema()
     };

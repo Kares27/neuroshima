@@ -35,7 +35,9 @@
  *   4. Update normalizeAll() / normalizeActor() if applicable.
  */
 
-const CURRENT_SCHEMA_VERSION = "1.5";
+import { collectTraitSnapshots } from "./trait-snapshot.js";
+
+const CURRENT_SCHEMA_VERSION = "1.6";
 
 export function registerMigrationHook() {
     Hooks.once("ready", async () => {
@@ -61,6 +63,7 @@ export function registerMigrationHook() {
             if (!_versionGte(stored, "1.3")) await _migrate_1_2_to_1_3();
             if (!_versionGte(stored, "1.4")) await _migrate_1_3_to_1_4();
             if (!_versionGte(stored, "1.5")) await _migrate_1_4_to_1_5();
+            if (!_versionGte(stored, "1.6")) await _migrate_1_5_to_1_6();
 
             await game.settings.set("neuroshima", "schemaVersion", CURRENT_SCHEMA_VERSION);
             ui.notifications.info(game.i18n.localize("NEUROSHIMA.Migration.Done"));
@@ -344,6 +347,49 @@ async function _migrate_1_2_to_1_3() {}
 async function _migrate_1_3_to_1_4() {}
 async function _migrate_1_4_to_1_5() {}
 
+async function _materializeBackgroundTraitCopies(item) {
+    if (!["origin", "profession"].includes(item?.type)) return;
+    const legacyCount = item.system.traits?.length ?? 0;
+    const snapshots = await collectTraitSnapshots(item);
+    if (legacyCount > 0 && snapshots.length === 0) {
+        console.warn(`Neuroshima | Could not materialize legacy traits for "${item.name}"; references were preserved.`);
+        return;
+    }
+    if (legacyCount === 0 && snapshots.length === (item.system.traitChoices?.length ?? 0)) return;
+    await item.update({
+        "system.traitChoices": snapshots,
+        "system.traits": []
+    });
+}
+
+async function _migrate_1_5_to_1_6() {
+    console.log("Neuroshima | Running migration 1.5 -> 1.6 (embedded background trait copies)");
+    for (const item of _allWorldItems()) await _materializeBackgroundTraitCopies(item);
+    for (const actor of _allActors()) {
+        for (const item of actor.items) await _materializeBackgroundTraitCopies(item);
+    }
+
+    const packs = game.packs?.contents ?? Array.from(game.packs ?? []);
+    for (const pack of packs.filter(pack =>
+        (pack.metadata?.type ?? pack.documentName) === "Item"
+        && (
+            pack.metadata?.packageType === "system"
+            || pack.metadata?.system === "neuroshima"
+            || pack.collection?.startsWith("neuroshima.")
+        )
+    )) {
+        const wasLocked = pack.locked;
+        try {
+            if (wasLocked) await pack.configure({ locked: false });
+            for (const item of await pack.getDocuments()) {
+                await _materializeBackgroundTraitCopies(item);
+            }
+        } finally {
+            if (wasLocked) await pack.configure({ locked: true });
+        }
+    }
+}
+
 /** Return a read-only inventory of canonical Active Effect triggers in use. */
 export function auditEffectTriggers() {
     const report = { documents: 0, effects: 0, scripts: 0, triggers: {} };
@@ -391,6 +437,7 @@ export async function normalizeActor(actor) {
     await _repairStoredSystemData(actor);
     for (const item of actor.items) {
         try { await _repairStoredSystemData(item); } catch (_) {}
+        try { await _materializeBackgroundTraitCopies(item); } catch (_) {}
     }
 }
 
@@ -416,6 +463,7 @@ export async function normalizeAll() {
             await _repairStoredSystemData(actor);
             for (const item of actor.items) {
                 try { await _repairStoredSystemData(item); } catch (_) {}
+                try { await _materializeBackgroundTraitCopies(item); } catch (_) {}
             }
         } catch (err) {
             console.warn(`Neuroshima | Normalization failed for actor "${actor.name}":`, err);
@@ -426,6 +474,7 @@ export async function normalizeAll() {
         try {
             await _migrate_1_1_normalizeWorldItemMods(item);
             await _repairStoredSystemData(item);
+            await _materializeBackgroundTraitCopies(item);
         } catch (err) {
             console.warn(`Neuroshima | Normalization failed for world item "${item.name}":`, err);
         }

@@ -25,7 +25,17 @@
                     <span class="bg-holder-name">{{background.specialization.name}}</span>
                 </div>
                 {{else}}
-                <div class="bg-holder-empty">{{localize "NEUROSHIMA.Background.DragHere"}}</div>
+                <div class="bg-holder-empty">
+                    {{#if owner}}
+                    <button type="button" class="bg-holder-add" data-action="createItem" data-type="specialization"
+                        title="{{localize 'NEUROSHIMA.Actions.AddItem' type=(localize 'NEUROSHIMA.Items.AddType.Specialization')}}"
+                        aria-label="{{localize 'NEUROSHIMA.Actions.AddItem' type=(localize 'NEUROSHIMA.Items.AddType.Specialization')}}">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    {{else}}
+                    <span>{{localize "NEUROSHIMA.Background.None"}}</span>
+                    {{/if}}
+                </div>
                 {{/if}}
             </div>
             <div class="header-field bg-holder-field" data-slot-type="origin">
@@ -40,7 +50,17 @@
                     <span class="bg-holder-name">{{background.origin.name}}</span>
                 </div>
                 {{else}}
-                <div class="bg-holder-empty">{{localize "NEUROSHIMA.Background.DragHere"}}</div>
+                <div class="bg-holder-empty">
+                    {{#if owner}}
+                    <button type="button" class="bg-holder-add" data-action="createItem" data-type="origin"
+                        title="{{localize 'NEUROSHIMA.Actions.AddItem' type=(localize 'NEUROSHIMA.Items.AddType.Origin')}}"
+                        aria-label="{{localize 'NEUROSHIMA.Actions.AddItem' type=(localize 'NEUROSHIMA.Items.AddType.Origin')}}">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    {{else}}
+                    <span>{{localize "NEUROSHIMA.Background.None"}}</span>
+                    {{/if}}
+                </div>
                 {{/if}}
             </div>
             <div class="header-field bg-holder-field" data-slot-type="profession">
@@ -55,7 +75,17 @@
                     <span class="bg-holder-name">{{background.profession.name}}</span>
                 </div>
                 {{else}}
-                <div class="bg-holder-empty">{{localize "NEUROSHIMA.Background.DragHere"}}</div>
+                <div class="bg-holder-empty">
+                    {{#if owner}}
+                    <button type="button" class="bg-holder-add" data-action="createItem" data-type="profession"
+                        title="{{localize 'NEUROSHIMA.Actions.AddItem' type=(localize 'NEUROSHIMA.Items.AddType.Profession')}}"
+                        aria-label="{{localize 'NEUROSHIMA.Actions.AddItem' type=(localize 'NEUROSHIMA.Items.AddType.Profession')}}">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    {{else}}
+                    <span>{{localize "NEUROSHIMA.Background.None"}}</span>
+                    {{/if}}
+                </div>
                 {{/if}}
             </div>
 

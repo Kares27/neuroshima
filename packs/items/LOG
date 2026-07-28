@@ -1,3 +1,5 @@
-2026/07/28-11:21:18.287 3d9c Recovering log #910
-2026/07/28-11:21:18.291 3d9c Delete type=0 #910
-2026/07/28-11:21:18.291 3d9c Delete type=3 #909
+2026/07/29-01:17:37.207 c2c Recovering log #915
+2026/07/29-01:17:37.208 c2c Level-0 table #917: started
+2026/07/29-01:17:37.211 c2c Level-0 table #917: 63296 bytes OK
+2026/07/29-01:17:37.218 c2c Delete type=0 #915
+2026/07/29-01:17:37.218 c2c Delete type=3 #914

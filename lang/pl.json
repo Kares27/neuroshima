@@ -382,6 +382,7 @@
             "Strike": "Atak",
             "ConfigureHP": "Konfiguruj HP",
             "Create": "Stwórz",
+            "AddItem": "Dodaj {type}",
             "CreateBulkWounds": "Dodaj wiele ran",
             "Repair": "Napraw",
             "Damage": "Uszkodź",
@@ -1179,6 +1180,8 @@
             "NoWorldTraits": "Brak dostępnych cech (typ 'Cecha') w świecie.",
             "AllAdded": "Wszystkie dostępne cechy są już dodane.",
             "AlreadyAdded": "Ta cecha jest już dodana.",
+            "EmbeddedCopy": "Kopia cechy",
+            "CopyMissing": "Ta kopia cechy nie istnieje już w Pochodzeniu lub Profesji.",
             "SelectTrait": "Wybierz cechę",
             "ChooseTraitDialog": "Wybierz Cechę do przeniesienia",
             "ChooseTraitPrompt": "Wybierz jedną cechę z {source}, która zostanie skopiowana na postać:",
@@ -1342,6 +1345,21 @@
                 "ArmorMods": "Modyfikacje Pancerza",
                 "Facilities": "Udogodnienie",
                 "Container": "Pojemnik"
+            },
+            "AddType": {
+                "Weapon": "broń",
+                "Armor": "pancerz",
+                "Gear": "ekwipunek",
+                "Trick": "atut",
+                "Trait": "cechę",
+                "Ammo": "amunicję",
+                "Magazine": "magazynek",
+                "Money": "walutę",
+                "Specialization": "specjalizację",
+                "Origin": "pochodzenie",
+                "Profession": "profesję",
+                "Weapon-mod": "modyfikację broni",
+                "Armor-mod": "modyfikację pancerza"
             },
             "Empty": "Brak przedmiotów.",
             "Fields": {

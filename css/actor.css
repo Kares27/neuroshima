@@ -5679,16 +5679,39 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 .neuroshima .background-slot-empty {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 12px 10px;
+    justify-content: center;
+    padding: 10px;
     color: var(--color-text-dark-secondary);
     font-style: italic;
     font-size: var(--font-size-12, 12px);
 }
 
-.neuroshima .background-slot-empty i {
-    font-size: 1.1em;
-    opacity: 0.5;
+.neuroshima .background-slot-add {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    width: 100%;
+    min-height: 34px;
+    margin: 0;
+    border: 1px dashed var(--color-border-light-tertiary, #777);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.035);
+    color: var(--color-text-primary, #ddd);
+    font-style: normal;
+    cursor: pointer;
+}
+
+.neuroshima .background-slot-add:hover,
+.neuroshima .background-slot-add:focus-visible {
+    border-color: var(--color-warm-1, #c8a45a);
+    background: rgba(200, 164, 90, 0.1);
+    color: var(--color-warm-1, #c8a45a);
+    box-shadow: 0 0 0 1px rgba(200, 164, 90, 0.15);
+}
+
+.neuroshima .background-slot-add i {
+    font-size: 0.9rem;
 }
 
 .neuroshima .background-item {
@@ -6637,10 +6660,38 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     color: var(--color-text-dark-secondary);
     border: 1px dashed var(--ns-border-main);
     border-radius: 3px;
-    padding: 2px 6px;
+    padding: 0;
     min-height: 24px;
     display: flex;
     align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.neuroshima .bg-holder-empty > span {
+    padding: 2px 6px;
+}
+
+.neuroshima .bg-holder-add {
+    width: 100%;
+    min-height: 22px;
+    margin: 0;
+    padding: 2px 6px;
+    border: 0;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.025);
+    color: var(--color-text-dark-secondary);
+    box-shadow: none;
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.neuroshima .bg-holder-add:hover,
+.neuroshima .bg-holder-add:focus-visible {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--ns-accent, #d4b36a);
+    box-shadow: none;
+    outline: none;
 }
 
 /* ===== Movement Stat Box ===== */

@@ -2,9 +2,9 @@
     <section class="inventory-section traits-section">
         <div class="section-header inv-section-header">
             <span>{{localize "NEUROSHIMA.Traits.Label"}}</span>
-            {{#if isGM}}
+            {{#if owner}}
             <div class="item-controls">
-                <a class="item-control" data-action="createItem" data-type="trait" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+                <a class="item-control" data-action="createItem" data-type="trait" title="{{localize 'NEUROSHIMA.Actions.AddItem' type=(localize 'NEUROSHIMA.Items.AddType.Trait')}}"><i class="fas fa-plus"></i></a>
             </div>
             {{/if}}
         </div>
@@ -59,9 +59,9 @@
     <section class="inventory-section">
         <div class="section-header inv-section-header">
             <span>{{localize "NEUROSHIMA.Tricks.SectionTitle"}}</span>
-            {{#if isGM}}
+            {{#if owner}}
             <div class="item-controls">
-                <a class="item-control" data-action="createItem" data-type="trick" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+                <a class="item-control" data-action="createItem" data-type="trick" title="{{localize 'NEUROSHIMA.Actions.AddItem' type=(localize 'NEUROSHIMA.Items.AddType.Trick')}}"><i class="fas fa-plus"></i></a>
             </div>
             {{/if}}
         </div>

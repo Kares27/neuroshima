@@ -7,7 +7,6 @@
         <div class="background-slot" data-slot-type="specialization">
             <div class="background-slot-header">
                 <span class="background-slot-title">{{localize "NEUROSHIMA.Info.Specialization"}}</span>
-                <a class="item-control" data-action="createItem" data-type="specialization" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
             </div>
             {{#if background.specialization}}
             {{#with background.specialization as |item|}}
@@ -35,8 +34,15 @@
             {{/with}}
             {{else}}
             <div class="background-slot-empty">
-                <i class="fas fa-user-cog"></i>
-                <span>{{localize "NEUROSHIMA.Background.Empty.Specialization"}}</span>
+                {{#if owner}}
+                <button type="button" class="background-slot-add" data-action="createItem" data-type="specialization"
+                        title="{{localize 'NEUROSHIMA.Actions.AddItem' type=(localize 'NEUROSHIMA.Items.AddType.Specialization')}}">
+                    <i class="fas fa-plus"></i>
+                    <span>{{localize "NEUROSHIMA.Actions.AddItem" type=(localize "NEUROSHIMA.Items.AddType.Specialization")}}</span>
+                </button>
+                {{else}}
+                <span>{{localize "NEUROSHIMA.Background.None"}}</span>
+                {{/if}}
             </div>
             {{/if}}
         </div>
@@ -45,7 +51,6 @@
         <div class="background-slot" data-slot-type="origin">
             <div class="background-slot-header">
                 <span class="background-slot-title">{{localize "NEUROSHIMA.Info.Origin"}}</span>
-                <a class="item-control" data-action="createItem" data-type="origin" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
             </div>
             {{#if background.origin}}
             {{#with background.origin as |item|}}
@@ -70,8 +75,15 @@
             {{/with}}
             {{else}}
             <div class="background-slot-empty">
-                <i class="fas fa-map-marker-alt"></i>
-                <span>{{localize "NEUROSHIMA.Background.Empty.Origin"}}</span>
+                {{#if owner}}
+                <button type="button" class="background-slot-add" data-action="createItem" data-type="origin"
+                        title="{{localize 'NEUROSHIMA.Actions.AddItem' type=(localize 'NEUROSHIMA.Items.AddType.Origin')}}">
+                    <i class="fas fa-plus"></i>
+                    <span>{{localize "NEUROSHIMA.Actions.AddItem" type=(localize "NEUROSHIMA.Items.AddType.Origin")}}</span>
+                </button>
+                {{else}}
+                <span>{{localize "NEUROSHIMA.Background.None"}}</span>
+                {{/if}}
             </div>
             {{/if}}
         </div>
@@ -80,7 +92,6 @@
         <div class="background-slot" data-slot-type="profession">
             <div class="background-slot-header">
                 <span class="background-slot-title">{{localize "NEUROSHIMA.Info.Profession"}}</span>
-                <a class="item-control" data-action="createItem" data-type="profession" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
             </div>
             {{#if background.profession}}
             {{#with background.profession as |item|}}
@@ -105,8 +116,15 @@
             {{/with}}
             {{else}}
             <div class="background-slot-empty">
-                <i class="fas fa-briefcase"></i>
-                <span>{{localize "NEUROSHIMA.Background.Empty.Profession"}}</span>
+                {{#if owner}}
+                <button type="button" class="background-slot-add" data-action="createItem" data-type="profession"
+                        title="{{localize 'NEUROSHIMA.Actions.AddItem' type=(localize 'NEUROSHIMA.Items.AddType.Profession')}}">
+                    <i class="fas fa-plus"></i>
+                    <span>{{localize "NEUROSHIMA.Actions.AddItem" type=(localize "NEUROSHIMA.Items.AddType.Profession")}}</span>
+                </button>
+                {{else}}
+                <span>{{localize "NEUROSHIMA.Background.None"}}</span>
+                {{/if}}
             </div>
             {{/if}}
         </div>

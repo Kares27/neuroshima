@@ -3,6 +3,12 @@ import { TraitBrowserApp } from "../apps/trait-browser.js";
 import { BeastActivitySheet } from "../apps/beast-activity-sheet.js";
 import { installMod, attachMod, detachMod, removeMod, buildInstalledMap, buildModDeltaSummary, getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveWeight, getEffectiveCost, computeWeaponEffective, buildWeaponWriteback } from "../helpers/mod-helpers.js";
 import { buildItemPreviewTooltip } from "../helpers/item-tooltip.js";
+import {
+  collectTraitSnapshots,
+  createTraitSnapshot,
+  traitSnapshotPreview
+} from "../helpers/trait-snapshot.js";
+import { openTraitSnapshotItemSheet } from "../apps/trait-snapshot-item-editor.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ItemSheetV2 } = foundry.applications.sheets;
@@ -92,10 +98,12 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     if (["origin", "profession"].includes(item.type) && data.type === "Item") {
       const sourceItem = await fromUuid(data.uuid);
       if (sourceItem?.type === "trait") {
-        const uuid = data.uuid;
-        const currentTraits = Array.from(item.system.traits || []);
-        if (!currentTraits.includes(uuid)) {
-          await item.update({ "system.traits": [...currentTraits, uuid] });
+        const snapshot = createTraitSnapshot(sourceItem);
+        const current = await collectTraitSnapshots(item);
+        if (snapshot && !current.some(entry =>
+          entry.item.name === snapshot.item.name
+        )) {
+          await item.update({ "system.traitChoices": [...current, snapshot], "system.traits": [] });
         }
         return;
       }
@@ -155,12 +163,17 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     const traitCategory = ["origin", "profession"].includes(item.type) ? item.type : null;
     const uuid = await TraitBrowserApp.pick({ traitCategory });
     if (!uuid) return;
-    const currentTraits = Array.from(item.system.traits || []);
-    if (currentTraits.includes(uuid)) {
+    const sourceItem = await fromUuid(uuid);
+    const snapshot = createTraitSnapshot(sourceItem);
+    if (!snapshot) return;
+    const current = await collectTraitSnapshots(item);
+    if (current.some(entry =>
+      entry.item.name === snapshot.item.name
+    )) {
       ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Traits.AlreadyAdded"));
       return;
     }
-    await item.update({ "system.traits": [...currentTraits, uuid] });
+    await item.update({ "system.traitChoices": [...current, snapshot], "system.traits": [] });
   }
 
   _onToggleTraitSummary(event, target) {
@@ -178,14 +191,14 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     this._showTraitContextMenu(event, uuid);
   }
 
-  _showTraitContextMenu(event, uuid) {
+  _showTraitContextMenu(event, key) {
     event.preventDefault();
 
     document.querySelectorAll(".ns-item-ctx-menu").forEach(el => el.remove());
 
     const menuItems = [
-      { action: "edit",   icon: "fas fa-edit",  label: game.i18n.localize("Edit") },
-      { action: "delete", icon: "fas fa-trash",  label: game.i18n.localize("Delete") }
+      { action: "edit", icon: "fas fa-edit", label: game.i18n.localize("Edit") },
+      { action: "delete", icon: "fas fa-trash", label: game.i18n.localize("Delete") }
     ];
 
     const menu = document.createElement("nav");
@@ -211,12 +224,15 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
         e.stopPropagation();
         const action = li.dataset.action;
         if (action === "edit") {
-          const traitItem = await fromUuid(uuid);
-          traitItem?.sheet?.render(true);
+          await this._editTraitCopy(key);
         } else if (action === "delete") {
           const item = this.document;
-          const updated = (item.system.traits || []).filter(u => u !== uuid);
-          await item.update({ "system.traits": updated });
+          const snapshots = await collectTraitSnapshots(item);
+          const updatedSnapshots = snapshots.filter(snapshot => snapshot.id !== key);
+          await item.update({
+            "system.traitChoices": updatedSnapshots,
+            "system.traits": []
+          });
         }
         menu.remove();
       });
@@ -235,9 +251,25 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     }, 0);
   }
 
+  async _editTraitCopy(key) {
+    return openTraitSnapshotItemSheet(this.document, key);
+  }
+
   /** @inheritdoc */
   constructor(options={}) {
     super(options);
+  }
+
+  /**
+   * Synthetic trait copies are complete in-memory Item documents whose writes
+   * are persisted by trait-snapshot-item-editor. Core ItemSheetV2 otherwise
+   * treats them as new documents and rejects form submission.
+   */
+  async _processSubmitData(event, form, submitData) {
+    if (this.document._isTraitSnapshotDraft) {
+      return this.document.update(submitData);
+    }
+    return super._processSubmitData(event, form, submitData);
   }
 
   /** @override */
@@ -507,17 +539,19 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
     if (["origin", "profession"].includes(item.type)) {
       const resolved = [];
-      for (const uuid of (item.system.traits || [])) {
-        if (!uuid) continue;
-        const traitItem = await fromUuid(uuid);
-        if (!traitItem) continue;
-        const enriched = await foundry.applications.ux.TextEditor.enrichHTML(traitItem.system?.description || "", {
-          async: true, secrets: item.isOwner, relativeTo: traitItem
+      for (const snapshot of await collectTraitSnapshots(item)) {
+        const preview = traitSnapshotPreview(snapshot);
+        if (!preview) continue;
+        const enriched = await foundry.applications.ux.TextEditor.enrichHTML(preview.description, {
+          async: true,
+          secrets: item.isOwner,
+          rollData: item.getRollData(),
+          relativeTo: item
         });
         resolved.push({
-          uuid,
-          name: traitItem.name,
-          img: traitItem.img || "systems/neuroshima/assets/Brain.svg",
+          uuid: snapshot.id,
+          name: preview.name,
+          img: preview.img,
           enrichedDescription: enriched
         });
       }
@@ -664,12 +698,20 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       name: game.i18n.localize("NEUROSHIMA.Effects.NewEffect"),
       icon: "icons/svg/aura.svg"
     }]);
-    effect?.sheet.render(true);
+    if (effect) {
+      const effectSheet = effect.sheet;
+      effect._openSheet = effectSheet;
+      effectSheet.render(true);
+    }
   }
 
   async _onEditEffect(event, target) {
     const id = target.dataset.effectId ?? target.closest("[data-effect-id]")?.dataset.effectId;
-    this.document.effects.get(id)?.sheet.render(true);
+    const effect = this.document.effects.get(id);
+    if (!effect) return;
+    const effectSheet = effect.sheet;
+    effect._openSheet = effectSheet;
+    effectSheet.render(true);
   }
 
   async _onDeleteEffect(event, target) {

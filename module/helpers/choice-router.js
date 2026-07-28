@@ -37,10 +37,16 @@ export class NeuroshimaChoiceRouter {
   static async _showTraitChoice(payload) {
     const actor = payload.actorUuid ? await fromUuid(payload.actorUuid) : null;
     const traits = await Promise.all(payload.choices.map(async choice => {
-      const item = await fromUuid(choice.uuid);
+      const item = choice.uuid ? await fromUuid(choice.uuid) : null;
       return {
-        uuid: choice.uuid,
-        item: item ?? { name: choice.name, img: choice.img, system: {} }
+        uuid: choice.id ?? choice.uuid,
+        item: item ?? {
+          name: choice.name,
+          img: choice.img,
+          system: { description: choice.description ?? "" },
+          isOwner: true,
+          getRollData: () => ({})
+        }
       };
     }));
     const value = await TraitChoiceDialog.wait(traits, payload.prompt, actor);
@@ -106,10 +112,23 @@ export class NeuroshimaChoiceRouter {
   static async chooseTrait(actor, resolvedTraits, prompt) {
     const choices = resolvedTraits.map(({ uuid, item }) => ({
       uuid,
+      id: uuid,
       name: item.name,
-      img: item.img || "systems/neuroshima/assets/Brain.svg"
+      img: item.img || "systems/neuroshima/assets/Brain.svg",
+      description: item.system?.description || ""
     }));
-    const allowed = new Set(choices.map(choice => choice.uuid));
+    const allowed = new Set(choices.map(choice => choice.id));
+    return this._route(actor, "choice:trait", { actorUuid: actor.uuid, prompt, choices }, value => allowed.has(value));
+  }
+
+  static async chooseTraitCopies(actor, traitCopies, prompt) {
+    const choices = traitCopies.map(choice => ({
+      id: choice.id,
+      name: choice.name,
+      img: choice.img || "systems/neuroshima/assets/Brain.svg",
+      description: choice.description || ""
+    }));
+    const allowed = new Set(choices.map(choice => choice.id));
     return this._route(actor, "choice:trait", { actorUuid: actor.uuid, prompt, choices }, value => allowed.has(value));
   }
 

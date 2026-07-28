@@ -12,6 +12,11 @@ import { getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveRad
 import { buildItemPreviewTooltip } from "../helpers/item-tooltip.js";
 import { NeuroshimaChoiceRouter } from "../helpers/choice-router.js";
 import {
+  collectTraitSnapshots,
+  itemDataFromTraitSnapshot,
+  traitSnapshotPreview
+} from "../helpers/trait-snapshot.js";
+import {
   buildBreakdownTooltip,
   buildRichTextTooltip,
   collectAttributeEffectSources,
@@ -1555,7 +1560,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     event._nsHandled = true;
     game.neuroshima.log("_onDrop triggered");
     try {
-      const rawData = TextEditor.getDragEventData(event);
+      const rawData = foundry.applications.ux.TextEditor.implementation.getDragEventData(event);
       if (rawData?.fromChatCard) {
         event._fromChatCard = true;
         event._itemCardMessageId = rawData.messageId ?? null;
@@ -1686,7 +1691,15 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
     let created;
     if (sourceItem.parent?.id !== actor.id) {
-      [created] = await actor.createEmbeddedDocuments("Item", [sourceItem.toObject()]);
+      const itemData = sourceItem.toObject();
+      delete itemData._id;
+
+      if (["origin", "profession"].includes(type)) {
+        itemData.system.traitChoices = await collectTraitSnapshots(sourceItem);
+        itemData.system.traits = [];
+      }
+
+      [created] = await actor.createEmbeddedDocuments("Item", [itemData]);
       if (sourceItem.actor && sourceItem.actor.id !== actor.id) await sourceItem.delete();
     } else {
       created = sourceItem;
@@ -1703,14 +1716,19 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     await actor.update(updateData);
     game.neuroshima.log(`[Background] dropped ${type} "${created.name}" onto actor "${actor.name}"`);
 
-    if (["origin", "profession"].includes(type) && actor.type === "character") {
+    if (["origin", "profession"].includes(type)) {
       // The choice dialog must not compete with an Immediate script dialog.
       // Wait for every applyEffect/Immediate script on the newly-created item.
       await created.waitForCreateEffectScripts?.();
 
-      const traits = Array.from(created.system.traits || []);
-      if (traits.length > 0) {
-        await this._showTraitChoiceDialog(traits, created.name, created.id, type, actor, created, fieldPath);
+      const traitChoices = await collectTraitSnapshots(created);
+      if (traitChoices.length > 0) {
+        if ((created.system.traitChoices?.length ?? 0) !== traitChoices.length || (created.system.traits?.length ?? 0) > 0) {
+          await created.update({ "system.traitChoices": traitChoices, "system.traits": [] });
+        }
+        await this._showTraitChoiceDialog(traitChoices, created.name, created.id, type, actor, created, fieldPath);
+      } else {
+        game.neuroshima?.log?.(`[Background] "${created.name}" has no trait snapshots to choose from`);
       }
     }
   }
@@ -1753,18 +1771,20 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     await item.update({ "system.transientPenalty": value });
   }
 
-  async _showTraitChoiceDialog(traitUuids, sourceName, sourceItemId, sourceType, actor, sourceCreatedItem, sourceFieldPath) {
-    const resolved = [];
-    for (const uuid of traitUuids) {
-      const item = await fromUuid(uuid);
-      if (item) resolved.push({ uuid, item });
-    }
-    if (resolved.length === 0) return;
+  async _showTraitChoiceDialog(traitSnapshots, sourceName, sourceItemId, sourceType, actor, sourceCreatedItem, sourceFieldPath) {
+    const choices = traitSnapshots
+      .map(snapshot => ({ snapshot, preview: traitSnapshotPreview(snapshot) }))
+      .filter(choice => choice.preview);
+    if (choices.length === 0) return;
 
     const prompt = game.i18n.format("NEUROSHIMA.Traits.ChooseTraitPrompt", { source: sourceName });
-    const chosenUuid = await NeuroshimaChoiceRouter.chooseTrait(actor, resolved, prompt);
+    const chosenId = await NeuroshimaChoiceRouter.chooseTraitCopies(
+      actor,
+      choices.map(({ preview }) => preview),
+      prompt
+    );
 
-    if (!chosenUuid) {
+    if (!chosenId) {
       if (sourceCreatedItem) {
         await sourceCreatedItem.delete();
         if (sourceFieldPath) await actor.update({ [sourceFieldPath]: "" });
@@ -1773,22 +1793,22 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       return;
     }
 
-    const chosenItem = await fromUuid(chosenUuid);
-    if (!chosenItem) return;
+    const chosenSnapshot = choices.find(({ preview }) => preview.id === chosenId)?.snapshot;
+    const itemData = itemDataFromTraitSnapshot(chosenSnapshot);
+    if (!itemData) return;
 
     const existingLinked = actor.items.filter(i =>
       i.type === "trait" && i.getFlag?.("neuroshima", "traitSource")?.itemId === sourceItemId
     );
     for (const old of existingLinked) await old.delete();
 
-    const itemData = chosenItem.toObject();
     foundry.utils.setProperty(itemData, "flags.neuroshima.traitSource", {
       type: sourceType,
       itemId: sourceItemId,
       name: sourceName
     });
     await actor.createEmbeddedDocuments("Item", [itemData]);
-    game.neuroshima.log(`[Trait] Copied trait "${chosenItem.name}" from "${sourceName}" to actor "${actor.name}" (source tracked)`);
+    game.neuroshima.log(`[Trait] Copied trait "${itemData.name}" from "${sourceName}" to actor "${actor.name}" (embedded snapshot)`);
   }
 
   /**
