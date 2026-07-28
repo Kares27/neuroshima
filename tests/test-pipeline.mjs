@@ -161,6 +161,90 @@ test("test recreates from rollClass", async () => {
   assert.deepEqual(recreated.result.rawResults, [2, 8, 15]);
 });
 
+test("creature synthetic weapon survives recreation and reroll", async () => {
+  const actor = {
+    ...actorFixture(),
+    type: "creature",
+    name: "Bestia",
+    system: {
+      experience: 6,
+      attributeTotals: { dexterity: 12 },
+      skills: {}
+    }
+  };
+  documents.set(actor.uuid, actor);
+  const syntheticWeapon = {
+    id: null,
+    beastItemId: "beast-action",
+    name: "Pazury",
+    img: "pazury.webp",
+    type: "weapon",
+    system: {
+      weaponType: "melee",
+      attribute: "dexterity",
+      skill: "experience",
+      attackBonus: 0,
+      defenseBonus: 0,
+      damageMelee1: "L",
+      damageMelee2: "C",
+      damageMelee3: "K",
+      piercing: 1,
+      jamming: 20
+    }
+  };
+  const original = new MeleeWeaponTest({
+    item: syntheticWeapon,
+    preData: {
+      label: syntheticWeapon.name,
+      stat: 12,
+      skill: 6,
+      fixedDice: [2, 8, 15]
+    },
+    context: { isDebug: true, isMelee: true, meleeAction: "attack" }
+  }, actor);
+  await original.roll({ sendToChat: false });
+  const serialized = original.toData();
+  assert.equal(serialized.preData.itemSnapshot.beastItemId, "beast-action");
+
+  const recreated = await NeuroshimaTestBase.recreate(serialized);
+  assert.equal(recreated.item.name, "Pazury");
+  assert.equal(recreated.item.system.damageMelee2, "C");
+  recreated.sendToChat = async () => null;
+  await recreated.reroll();
+  assert.equal(recreated.result.damageMelee1, "L");
+  assert.equal(recreated.result.damageMelee2, "C");
+  assert.equal(recreated.result.damageMelee3, "K");
+});
+
+test("legacy creature weapon roll recreates a fallback without embedded weapon", async () => {
+  const actor = {
+    ...actorFixture(),
+    type: "creature",
+    name: "Bestia"
+  };
+  documents.set(actor.uuid, actor);
+  const data = {
+    preData: {
+      rollClass: "MeleeWeaponTest",
+      actorUuid: actor.uuid,
+      itemUuid: null,
+      stat: 10,
+      skill: 4
+    },
+    result: {
+      label: "Cios stworzenia",
+      isMelee: true,
+      damageMelee1: "D",
+      damageMelee2: "C",
+      damageMelee3: "K"
+    },
+    context: { isDebug: true, isMelee: true }
+  };
+  const recreated = await NeuroshimaTestBase.recreate(data);
+  assert.equal(recreated.item.isSynthetic, true);
+  assert.equal(recreated.item.system.damageMelee2, "C");
+});
+
 test("weapon triggers follow WFRP order", async () => {
   const actor = actorFixture();
   const weapon = {
@@ -1375,7 +1459,7 @@ function opposedMessage(id, opposed, extra = {}) {
   };
 }
 
-test("attacker roll creates one persistent opposed message", async () => {
+test("attacker roll creates one pending opposed message", async () => {
   const attacker = {
     ...actorFixture(),
     name: "Atakujący",
@@ -1427,13 +1511,26 @@ test("attacker roll creates one persistent opposed message", async () => {
   }
 });
 
-test("defender roll updates the existing opposed message", async () => {
+test("defender roll creates a new duel message after its source roll", async () => {
   const data = {
     id: "opp", status: "awaitingDefender",
-    attackerUuid: "Actor.attacker", defenderUuid: "Actor.defender"
+    attackerUuid: "Actor.attacker", defenderUuid: "Actor.defender",
+    attackerTestMessageId: "attack-test",
+    attackerRevision: "atk-rev",
+    mode: "opposedSuccesses"
   };
-  const message = opposedMessage("duel", data);
-  game.messages.set(message.id, message);
+  const pendingMessage = opposedMessage("pending", data);
+  game.messages.set(pendingMessage.id, pendingMessage);
+  const attackerTest = {
+    message: { id: "attack-test" },
+    context: {
+      opposedLink: {
+        type: "meleeOpposed", opposedId: "opp",
+        duelMessageId: pendingMessage.id, role: "attacker", revision: "atk-rev"
+      }
+    },
+    async updateMessage(message) { return message; }
+  };
   const defenderTest = {
     message: { id: "defense-test" },
     context: { opposedLink: { revision: "def-rev" } },
@@ -1443,23 +1540,44 @@ test("defender roll updates the existing opposed message", async () => {
   const originalRefresh = MeleeOpposedChat.refreshOpposedMessage;
   const originalRemove = MeleeOpposedChat._removePending;
   const originalUnset = MeleeOpposedChat._unsetDefenderFlag;
+  const originalGet = MeleeOpposedChat.getLinkedTest;
+  const originalCreate = ChatMessage.create;
+  const duelMessage = opposedMessage("actual-duel", {});
   let refreshes = 0;
+  let creates = 0;
+  MeleeOpposedChat.getLinkedTest = async () => attackerTest;
+  ChatMessage.create = async createData => {
+    creates++;
+    await duelMessage.update({
+      content: createData.content,
+      "flags.neuroshima.opposedChat": createData.flags.neuroshima.opposedChat
+    });
+    return duelMessage;
+  };
   MeleeOpposedChat.refreshOpposedMessage = async id => {
     refreshes++;
-    assert.equal(id, message.id);
+    assert.equal(id, duelMessage.id);
     return { ok: true, status: "duel" };
   };
   MeleeOpposedChat._removePending = async () => {};
   MeleeOpposedChat._unsetDefenderFlag = async () => {};
   try {
-    await MeleeOpposedChat.attachDefenderTest(message.id, defenderTest);
+    await MeleeOpposedChat.attachDefenderTest(pendingMessage.id, defenderTest);
+    assert.equal(creates, 1);
     assert.equal(refreshes, 1);
-    assert.equal(message.getFlag("neuroshima", "opposedChat").defenderTestMessageId, "defense-test");
+    assert.equal(
+      pendingMessage.getFlag("neuroshima", "opposedChat").resultMessageId,
+      duelMessage.id
+    );
+    assert.equal(attackerTest.context.opposedLink.duelMessageId, duelMessage.id);
+    assert.equal(defenderTest.context.opposedLink.duelMessageId, duelMessage.id);
   } finally {
     MeleeOpposedChat.refreshOpposedMessage = originalRefresh;
     MeleeOpposedChat._removePending = originalRemove;
     MeleeOpposedChat._unsetDefenderFlag = originalUnset;
-    game.messages.delete(message.id);
+    MeleeOpposedChat.getLinkedTest = originalGet;
+    ChatMessage.create = originalCreate;
+    game.messages.delete(pendingMessage.id);
   }
 });
 
@@ -1695,7 +1813,7 @@ test("linked reroll replaces the original test message", async () => {
   assert.ok(targets.every(target => target === originalMessage));
 });
 
-test("Grad Ciosow reuses the handler message", async () => {
+test("Grad Ciosow reuses the created duel result message", async () => {
   const message = opposedMessage("hail-duel", {
     id: "opp", attackerTestMessageId: "a", defenderTestMessageId: "d"
   });
@@ -1725,7 +1843,7 @@ test("Grad Ciosow reuses the handler message", async () => {
   }
 });
 
-test("skill allocation reuses the handler message", async () => {
+test("skill allocation reuses the created duel result message", async () => {
   const message = opposedMessage("allocation-duel", {
     id: "opp", status: "duel"
   });

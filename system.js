@@ -156,6 +156,7 @@ Hooks.once('init', async function() {
     Hooks.on("updateChatMessage", (message) => {
         const opposedData = message.getFlag("neuroshima", "opposedChat");
         if (!opposedData) return;
+
         if (opposedData.status !== "resolved" && opposedData.status !== "cancelled") return;
         const appInstances = Object.values(foundry.applications?.instances ?? ui.windows ?? {});
         appInstances.forEach(app => {
@@ -1821,8 +1822,9 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
             game.neuroshima?.log("Przerzucanie testu", { actor: actor.name, label: rollData.label, type: messageType });
 
             if (messageType === "weapon") {
-                const weapon = actor.items.get(rollData.weaponId);
-                if (!weapon) {
+                // Creature attacks frequently use a serialized synthetic weapon
+                // built from a beast action and therefore have no embedded Item.
+                if (!test.item && actor.type !== "creature") {
                     ui.notifications.error("Nie można znaleźć broni do przerzutu");
                     game.neuroshima?.groupEnd();
                     return;

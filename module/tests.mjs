@@ -173,6 +173,46 @@ function clone(value) {
   return foundry.utils.deepClone(value ?? {});
 }
 
+function serializeSyntheticItem(item) {
+  if (!item || item.uuid) return null;
+  return {
+    id: item.id ?? null,
+    name: item.name ?? "",
+    img: item.img ?? "",
+    type: item.type ?? "weapon",
+    beastItemId: item.beastItemId ?? null,
+    system: clone(item.system ?? {})
+  };
+}
+
+function restoreSyntheticItem(snapshot, actor, result = {}) {
+  const source = snapshot ?? {
+    id: result.weaponId ?? null,
+    name: result.label ?? actor?.name ?? "",
+    img: actor?.img ?? "",
+    type: "weapon",
+    beastItemId: result.beastItemId ?? null,
+    system: {
+      weaponType: result.isMelee ? "melee" : result.weaponType,
+      attribute: result.attributeKey ?? "dexterity",
+      skill: result.skillKey ?? (actor?.type === "creature" ? "experience" : null),
+      attackBonus: 0,
+      defenseBonus: 0,
+      damageMelee1: result.damageMelee1 ?? "D",
+      damageMelee2: result.damageMelee2 ?? result.damageMelee1 ?? "D",
+      damageMelee3: result.damageMelee3 ?? result.damageMelee2 ?? result.damageMelee1 ?? "D",
+      piercing: Number(result.piercing ?? 0),
+      jamming: Number(result.jammingThreshold ?? 20)
+    }
+  };
+  return {
+    ...clone(source),
+    actor,
+    uuid: null,
+    isSynthetic: true
+  };
+}
+
 function escapeTooltip(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({
     "&": "&amp;",
@@ -208,6 +248,7 @@ export class NeuroshimaTestBase {
         rollClass: this.constructor.name,
         actorUuid: this.actor?.uuid ?? null,
         itemUuid: this.item?.uuid ?? null,
+        itemSnapshot: serializeSyntheticItem(this.item),
         targetUuids: this.targets.map(target => target?.uuid ?? target).filter(Boolean),
         cancelled: false,
         annotations: [],
@@ -260,7 +301,18 @@ export class NeuroshimaTestBase {
       throw new Error(`Unknown Neuroshima test class: ${rollClass}`);
     }
     const actor = data.preData.actorUuid ? await fromUuid(data.preData.actorUuid) : null;
-    const item = data.preData.itemUuid ? await fromUuid(data.preData.itemUuid) : null;
+    let item = data.preData.itemUuid ? await fromUuid(data.preData.itemUuid) : null;
+    if (!item && data.preData.itemSnapshot) {
+      item = restoreSyntheticItem(data.preData.itemSnapshot, actor, data.result);
+    } else if (
+      !item
+      && actor?.type === "creature"
+      && ["WeaponTest", "MeleeWeaponTest", "RangedWeaponTest"].includes(rollClass)
+    ) {
+      // Backward compatibility for creature roll cards created before synthetic
+      // item snapshots were stored.
+      item = restoreSyntheticItem(null, actor, data.result);
+    }
     const targets = (await Promise.all(
       (data.preData.targetUuids ?? []).map(uuid => fromUuid(uuid))
     )).filter(Boolean);
@@ -970,6 +1022,9 @@ export class NeuroshimaTestBase {
     this.preData.rollClass = this.rollClass;
     this.preData.actorUuid = this.actor?.uuid ?? this.preData.actorUuid ?? null;
     this.preData.itemUuid = this.item?.uuid ?? this.preData.itemUuid ?? null;
+    this.preData.itemSnapshot = serializeSyntheticItem(this.item)
+      ?? this.preData.itemSnapshot
+      ?? null;
     this.preData.targetUuids = this.targets.map(target => target?.uuid ?? target).filter(Boolean);
     return clone(this.data);
   }
@@ -1483,6 +1538,7 @@ export class WeaponTest extends AttackTest {
       isWeapon: true,
       label: this.preData.label ?? this.item?.name ?? "",
       weaponId: this.item?.id ?? null,
+      beastItemId: this.item?.beastItemId ?? this.preData.beastItemId ?? null,
       weaponType: this.item?.system?.weaponType ?? null,
       isMelee: this.preData.isMelee === true || this.context.isMelee === true,
       meleeAction: this.preData.meleeAction ?? this.context.meleeAction ?? null,

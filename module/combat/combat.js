@@ -1436,8 +1436,8 @@ export class MeleeOpposedChat {
   }
 
   /**
-   * Creates the one persistent message representing the whole opposed exchange.
-   * The two test messages remain authoritative; this message is only their view.
+   * Creates the pending handshake card. After the defender rolls it is closed,
+   * while a new, naturally-last ChatMessage becomes the synchronized duel view.
    */
   static async createOpposedHandler({ attacker, weapon, targetUuid, mode, attackerTest }) {
     const targetDoc = fromUuidSync(targetUuid);
@@ -1502,36 +1502,84 @@ export class MeleeOpposedChat {
     return handlerMessage;
   }
 
-  static async attachDefenderTest(duelMessageId, defenderTest) {
-    const message = game.messages.get(duelMessageId);
-    const data = foundry.utils.deepClone(message?.getFlag("neuroshima", "opposedChat"));
-    if (!message || !data || !this._isAwaitingDefender(data.status) || !defenderTest?.message) {
+  static async attachDefenderTest(pendingMessageId, defenderTest) {
+    const pendingMessage = game.messages.get(pendingMessageId);
+    const data = foundry.utils.deepClone(pendingMessage?.getFlag("neuroshima", "opposedChat"));
+    if (!pendingMessage || !data || !this._isAwaitingDefender(data.status) || !defenderTest?.message) {
       return { ok: false, reason: "opposed-not-awaiting-defender" };
     }
+    const attackerTest = await this.getLinkedTest(data.attackerTestMessageId);
+    if (!attackerTest?.message) {
+      return { ok: false, reason: "attacker-test-missing" };
+    }
     const link = defenderTest.context.opposedLink ?? {};
+    const defenderRevision = link.revision ?? foundry.utils.randomID();
+    const duelData = {
+      ...data,
+      status: "duel",
+      pendingMessageId: pendingMessage.id,
+      defenderTestMessageId: defenderTest.message.id,
+      defenderRevision,
+      defenderManeuver: defenderTest.result.maneuver ?? null
+    };
+    const duelMessage = await ChatMessage.create({
+      content: `<div class="neuroshima melee-opposed-card"><p>${
+        game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.Resolved")
+      }</p></div>`,
+      flags: { neuroshima: { opposedChat: duelData } },
+      speaker: { alias: "⚔" },
+      rollMode: defenderTest.result.rollMode ?? game.settings.get("core", "rollMode")
+    });
+    if (!duelMessage) return { ok: false, reason: "duel-message-create-failed" };
+
+    attackerTest.context.opposedLink = {
+      ...attackerTest.context.opposedLink,
+      type: "meleeOpposed",
+      opposedId: data.id,
+      duelMessageId: duelMessage.id,
+      role: "attacker",
+      revision: data.attackerRevision
+    };
     defenderTest.context.opposedLink = {
       type: "meleeOpposed",
       opposedId: data.id,
-      duelMessageId: message.id,
+      duelMessageId: duelMessage.id,
       role: "defender",
-      revision: link.revision ?? foundry.utils.randomID()
+      revision: defenderRevision
     };
-    data.defenderTestMessageId = defenderTest.message.id;
-    data.defenderRevision = defenderTest.context.opposedLink.revision;
-    data.defenderManeuver = defenderTest.result.maneuver ?? null;
-    await defenderTest.updateMessage(defenderTest.message);
-    await message.update({ "flags.neuroshima.opposedChat": data });
+    await Promise.all([
+      attackerTest.updateMessage(attackerTest.message),
+      defenderTest.updateMessage(defenderTest.message)
+    ]);
+
+    const attackerDoc = fromUuidSync(data.attackerTokenUuid || data.attackerUuid);
+    const defenderDoc = fromUuidSync(data.defenderTokenUuid || data.defenderUuid);
+    const attackerActor = attackerDoc?.actor ?? attackerDoc;
+    const defenderActor = defenderDoc?.actor ?? defenderDoc;
+    await this._updateHandlerToResolved(
+      pendingMessage,
+      { ...data, status: "resolved", resultMessageId: duelMessage.id },
+      attackerActor,
+      defenderActor
+    );
+    await pendingMessage.update({
+      "flags.neuroshima.opposedChat": {
+        ...data,
+        status: "resolved",
+        defenderTestMessageId: defenderTest.message.id,
+        defenderRevision,
+        resultMessageId: duelMessage.id
+      }
+    });
     await this._removePending(data.defenderUuid);
     await this._unsetDefenderFlag(data.defenderUuid);
-    const result = await this.refreshOpposedMessage(message.id, {
+    const result = await this.refreshOpposedMessage(duelMessage.id, {
       reason: "defender-roll",
       resetProgress: false
     });
-    const attackerDoc = fromUuidSync(data.attackerTokenUuid || data.attackerUuid);
-    const defenderDoc = fromUuidSync(data.defenderTokenUuid || data.defenderUuid);
-    (attackerDoc?.actor ?? attackerDoc)?.sheet?.render();
-    (defenderDoc?.actor ?? defenderDoc)?.sheet?.render();
-    return result;
+    attackerActor?.sheet?.render();
+    defenderActor?.sheet?.render();
+    return { ...result, message: duelMessage };
   }
 
   static async getLinkedTest(messageId) {
@@ -2294,7 +2342,7 @@ export class MeleeOpposedChat {
             outcomeLabel
           }
         );
-        await handlerMessage.update({
+    await handlerMessage.update({
           content: hitContent,
           "flags.neuroshima.hailResult": {
             attackerUuid: data.attackerUuid,
