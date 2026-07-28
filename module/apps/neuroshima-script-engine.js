@@ -243,7 +243,7 @@ export class NeuroshimaScript {
 
   /**
    * The DuelContext for the current melee exchange, if available.
-   * Set when the script runs inside onMeleeHit / onMeleeActionHit / onDuelStart / etc.
+   * Set when the script runs inside afterMeleeAction / beforeMeleeDamage / startDuel / etc.
    * @returns {import("../combat/combat-api.js").DuelContext|null}
    */
   get meleeDuel() {
@@ -252,7 +252,7 @@ export class NeuroshimaScript {
 
   /**
    * The DuelSegmentContext for the current segment, if available.
-   * Null for lifecycle triggers that fire outside a segment (onDuelStart, onDuelEnd).
+   * Null for lifecycle triggers that fire outside a segment (startDuel, endDuel).
    * @returns {import("../combat/combat-api.js").DuelSegmentContext|null}
    */
   get meleeSegment() {
@@ -261,7 +261,7 @@ export class NeuroshimaScript {
 
   /**
    * The MeleeAction that is currently the subject of this trigger, if any.
-   * Populated for onMeleeActionHit / onMeleeActionMiss / action-scoped triggers.
+   * Populated for beforeMeleeAction / afterMeleeAction and damage triggers.
    * @returns {import("../combat/combat-api.js").MeleeAction|null}
    */
   get meleeAction() {
@@ -277,13 +277,13 @@ export class NeuroshimaScript {
    * Returns true when the currently firing trigger is scoped to THIS effect's action.
    * Equivalent to `args.action?.sourceEffectUuid === this.effect?.uuid`.
    *
-   * Use in global triggers (onMeleeHit) to guard action-specific logic
+   * Use in afterMeleeAction to guard action-specific logic
    * without duplicating UUID checks:
    * @param {object} args - The trigger args object
    * @returns {boolean}
    *
    * @example
-   * // onMeleeHit — passiv i action-scoped w jednym skrypcie
+   * // afterMeleeAction — passive and action-scoped logic in one script
    * if (this.isSourceAction(args)) {
    *   // ten efekt jest zadeklarowaną akcją tego segmentu
    * }
@@ -3687,29 +3687,6 @@ export class NeuroshimaScript {
  *                      args.actions.push({ ...args.lookupActionDef("PASTE_ACTIONDEF_ID_HERE"),
  *                        successCost: hasPrior ? 2 : 3 });
  *
- * onMeleeHit        — Fires for BOTH participants when a segment resolves to "hit" (attacker wins).
- *                    args: {
- *                      actor, isAttacker,
- *                      attackerActor, defenderActor,
- *                      attackerSuccesses, defenderSuccesses, diceCount,
- *                      outcome,
- *                      action: {               — partial MeleeAction for the current segment
- *                        id, name, damage,
- *                        effectIds, effectTiming, effectTarget, sourceEffectUuid
- *                      } | null,              — null for plain (non-trick) attacks
- *                      context: MeleeActionContext,  — full context object
- *                      hits,                  — all hits accumulated so far (including this one)
- *                      state                  — duel card state (read-only)
- *                    }
- *
- * onMeleeBlock      — Fires for BOTH participants when a segment resolves to "draw" (equal successes,
- *                    each side > 0). Same args shape as onMeleeHit (action/context are for the current
- *                    segment, hitEntry on context is null since no hit was pushed on a draw).
- *
- * onMeleeTakeover   — Fires for BOTH participants when a segment resolves to "takeover" (defender
- *                    wins — initiative changes sides). Same args shape as onMeleeHit.
- *                    Note: for takeover, hitEntry on context is null.
- *
  * afterMeleeAction  — fires for both duel participants immediately after a melee segment
  *                    has been resolved and the outcome trigger has completed.
  *                    args: { actor, duel, segment, isAttacker, attackerActor, defenderActor,
@@ -4069,15 +4046,6 @@ export class NeuroshimaScriptRunner {
     rc.burstLevel ?? 0;
 
   /*
-   * Zapamiętujemy pierwotny Współczynnik.
-   *
-   * Dzięki temu po wykonaniu skryptu możemy rozpoznać,
-   * czy skrypt rzeczywiście zmienił args.attribute.key.
-   */
-  const initialAttributeKey =
-    rc.attribute?.key ?? null;
-
-  /*
    * Przekazujemy skryptowi kopię obiektu Współczynnika.
    *
    * Bez kopii skrypt zmieniałby obiekt rollContext,
@@ -4232,26 +4200,6 @@ export class NeuroshimaScriptRunner {
     await dm._script.execute(args);
   }
 
-  /*
-   * NOWE:
-   *
-   * Obsługujemy dwa sposoby zmiany Współczynnika:
-   *
-   * args.fields.attributeKey = "charisma";
-   *
-   * oraz kompatybilnościowo:
-   *
-   * args.attribute.key = "charisma";
-   */
-  const attributeKey =
-    fields.attributeKey
-    ?? (
-      args.attribute?.key
-      && args.attribute.key !== initialAttributeKey
-        ? args.attribute.key
-        : null
-    );
-
   return {
     modifier:
       fields.modifier,
@@ -4345,176 +4293,13 @@ export class NeuroshimaScriptRunner {
             fields.burstHitStep
           )
         : null,
-    attributeKey,
+    attributeKey: fields.attributeKey || null,
     skillKey:fields.skillKey || null,
     skillLabel:fields.skillLabel || null,
     dieManualBonus:fields.dieManualBonus || 0,
     dieReductionBonus:fields.dieReductionBonus || 0
   };
 }
-
-  /**
-   * @deprecated Replaced by computeDialogFields() + WFRP re-render pattern.
-   * Apply dialog field overrides from active dialog modifiers to the DOM.
-   * @param {HTMLElement} html - Root element of the dialog
-   * @param {string} [difficultySelectName="baseDifficulty"] - Name of the difficulty select element
-   */
-  static applyDialogFieldOverrides(html, difficultySelectName = "baseDifficulty") {
-    let modifierDelta = 0;
-    let attrBonusDelta = 0;
-    let skillBonusDelta = 0;
-    let armorDelta = 0;
-    let woundDelta = 0;
-    let difficultyOverride = null;
-    let hitLocationOverride = null;
-    const modBreakdown = [];
-    const attrBreakdown = [];
-    const skillBreakdown = [];
-
-    html.querySelectorAll('.dm-modifier-item.dm-active, .dm-modifier-item:not(.dm-toggleable)').forEach(li => {
-      const val = parseInt(li.dataset.dmValue) || 0;
-      const ab = parseInt(li.dataset.dmAttrBonus) || 0;
-      const sb = parseInt(li.dataset.dmSkillBonus) || 0;
-      const label = li.querySelector('a')?.textContent?.trim() || '';
-      modifierDelta += val;
-      attrBonusDelta += ab;
-      skillBonusDelta += sb;
-      armorDelta += parseInt(li.dataset.dmArmorDelta) || 0;
-      woundDelta += parseInt(li.dataset.dmWoundDelta) || 0;
-      if (val !== 0) modBreakdown.push({ label, value: val });
-      if (ab !== 0) attrBreakdown.push({ label, value: ab });
-      if (sb !== 0) skillBreakdown.push({ label, value: sb });
-      const diff = li.dataset.dmDifficulty;
-      if (diff) {
-        const NS = game.neuroshima?.config ?? {};
-        if (!difficultyOverride || (NS.difficulties?.[diff]?.mod ?? 0) < (NS.difficulties?.[difficultyOverride]?.mod ?? 0)) {
-          difficultyOverride = diff;
-        }
-      }
-      const hitLoc = li.dataset.dmHitLocation;
-      if (hitLoc) hitLocationOverride = hitLoc;
-    });
-
-    const userLabel = game.i18n.localize("NEUROSHIMA.Roll.UserEntry");
-    const effectLabel = game.i18n.localize("NEUROSHIMA.Roll.EffectBonus");
-    const totalLabel = game.i18n.localize("NEUROSHIMA.Roll.Total");
-
-    const sign = v => v >= 0 ? `+${v}` : `${v}`;
-    const buildTooltip = (userVal, effectDelta, breakdown) => {
-      if (effectDelta === 0) return null;
-      const parts = [`<strong>${userLabel}:</strong> ${sign(userVal)}`];
-      if (breakdown.length) {
-        parts.push(`<strong>${effectLabel}:</strong>`);
-        for (const e of breakdown) {
-          parts.push(`&nbsp;&bull; ${e.label}: ${sign(e.value)}`);
-        }
-      }
-      parts.push(`<strong>${totalLabel}:</strong> ${sign(userVal + effectDelta)}`);
-      return parts.join("<br>");
-    };
-
-    const applyNumericField = (fieldName, hiddenName, effectDelta, breakdown) => {
-      const inp = html.querySelector(`[name="${fieldName}"]`);
-      if (!inp) return;
-
-      const prevEffectDelta = parseInt(inp.dataset.effectDelta) || 0;
-      const currentTotal = parseInt(inp.value) || 0;
-      const userVal = currentTotal - prevEffectDelta;
-
-      inp.dataset.effectDelta = String(effectDelta);
-      inp.value = userVal + effectDelta;
-
-      const tooltip = buildTooltip(userVal, effectDelta, breakdown);
-      if (tooltip) {
-        inp.dataset.tooltip = tooltip;
-      } else {
-        delete inp.dataset.tooltip;
-      }
-
-      const hidden = html.querySelector(`[name="${hiddenName}"]`);
-      if (hidden) hidden.value = 0;
-    };
-
-    applyNumericField("modifier", "dialogModifier", modifierDelta, modBreakdown);
-    applyNumericField("attributeBonus", "dialogAttrBonus", attrBonusDelta, attrBreakdown);
-    applyNumericField("skillBonus", "dialogSkillBonus", skillBonusDelta, skillBreakdown);
-
-    const baseArmor = parseInt(html.querySelector('[name="baseArmorPenalty"]')?.value) || 0;
-    const armorInput = html.querySelector('[name="armorPenalty"]');
-    if (armorInput) {
-      armorInput.value = baseArmor + armorDelta;
-      if (armorDelta !== 0) {
-        armorInput.dataset.tooltip = `<strong>${userLabel}:</strong> ${sign(baseArmor)}<br><strong>${effectLabel}:</strong> ${sign(armorDelta)}<br><strong>${totalLabel}:</strong> ${sign(baseArmor + armorDelta)}`;
-      } else {
-        delete armorInput.dataset.tooltip;
-      }
-    }
-
-    const baseWound = parseInt(html.querySelector('[name="baseWoundPenalty"]')?.value) || 0;
-    const woundInput = html.querySelector('[name="woundPenalty"]');
-    if (woundInput) {
-      woundInput.value = baseWound + woundDelta;
-      if (woundDelta !== 0) {
-        woundInput.dataset.tooltip = `<strong>${userLabel}:</strong> ${sign(baseWound)}<br><strong>${effectLabel}:</strong> ${sign(woundDelta)}<br><strong>${totalLabel}:</strong> ${sign(baseWound + woundDelta)}`;
-      } else {
-        delete woundInput.dataset.tooltip;
-      }
-    }
-
-    const diffSelect = html.querySelector(`[name="${difficultySelectName}"]`);
-    if (diffSelect) {
-      if (!this._dialogDiffListenerInstalled.has(diffSelect)) {
-        this._dialogDiffListenerInstalled.add(diffSelect);
-        diffSelect.dataset.userDifficulty = diffSelect.value;
-        diffSelect.addEventListener('input', function() {
-          this.dataset.userDifficulty = this.value;
-          if (this.dataset.effectDifficultyActive) {
-            this.dataset.userDifficultyOverride = this.value;
-          } else {
-            delete this.dataset.userDifficultyOverride;
-          }
-        }, { capture: true });
-      }
-      if (!diffSelect.dataset.userDifficulty) diffSelect.dataset.userDifficulty = diffSelect.value;
-
-      if (difficultyOverride) {
-        const userManualOverride = diffSelect.dataset.userDifficultyOverride;
-        diffSelect.value = userManualOverride || difficultyOverride;
-        diffSelect.dataset.effectDifficultyActive = difficultyOverride;
-      } else {
-        delete diffSelect.dataset.effectDifficultyActive;
-        delete diffSelect.dataset.userDifficultyOverride;
-        diffSelect.value = diffSelect.dataset.userDifficulty || diffSelect.value;
-      }
-    }
-
-    const hitLocSelect = html.querySelector('[name="hitLocation"]');
-    if (hitLocSelect) {
-      if (!this._dialogHitLocListenerInstalled.has(hitLocSelect)) {
-        this._dialogHitLocListenerInstalled.add(hitLocSelect);
-        hitLocSelect.dataset.userHitLocation = hitLocSelect.value;
-        hitLocSelect.addEventListener('input', function() {
-          this.dataset.userHitLocation = this.value;
-          if (this.dataset.effectHitLocActive) {
-            this.dataset.userHitLocOverride = this.value;
-          } else {
-            delete this.dataset.userHitLocOverride;
-          }
-        }, { capture: true });
-      }
-      if (!hitLocSelect.dataset.userHitLocation) hitLocSelect.dataset.userHitLocation = hitLocSelect.value;
-
-      if (hitLocationOverride) {
-        const userHitLocOverride = hitLocSelect.dataset.userHitLocOverride;
-        hitLocSelect.value = userHitLocOverride || hitLocationOverride;
-        hitLocSelect.dataset.effectHitLocActive = hitLocationOverride;
-      } else {
-        delete hitLocSelect.dataset.effectHitLocActive;
-        delete hitLocSelect.dataset.userHitLocOverride;
-        hitLocSelect.value = hitLocSelect.dataset.userHitLocation || hitLocSelect.value;
-      }
-    }
-  }
 
   /**
    * Resolve `@item.*`, `@effect.*` and `@mod.*` references in a string.
@@ -5130,7 +4915,7 @@ export class NeuroshimaScriptRunner {
 
   /**
    * Compute dialog modifiers (hide/activate/run scripts) and return combined field deltas.
-   * This is the WFRP-pattern replacement for runDialogScripts + applyDialogFieldOverrides.
+   * This is the single WFRP-style dialog modifier pipeline.
    *
    * Sources of dialog modifiers collected into allScriptEntries:
    *  1. Own `dialog` trigger scripts (non-targeter) — active effects on the rolling actor.

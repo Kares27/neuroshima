@@ -272,7 +272,12 @@ export class NeuroshimaTestBase {
         ...clone(data.context)
       }
     };
-    this.context.basePreData ??= clone(this.preData);
+    // A newly-created test has no baseline yet. The first roll captures all
+    // public API changes made after construction (for example forceSuccess).
+    // Recreated tests retain the serialized baseline used by rerolls/edits.
+    this.context.basePreData = data.context?.basePreData
+      ? clone(data.context.basePreData)
+      : null;
   }
 
   static fromData(data, actor = null) {
@@ -337,6 +342,7 @@ export class NeuroshimaTestBase {
   }
 
   restoreBasePreData() {
+    if (!this.context.basePreData) return this.preData;
     const identity = {
       rollClass: this.preData.rollClass,
       actorUuid: this.preData.actorUuid,
@@ -346,6 +352,14 @@ export class NeuroshimaTestBase {
     };
     this.data.preData = { ...clone(this.context.basePreData), ...identity };
     return this.preData;
+  }
+
+  prepareBasePreData() {
+    if (!this.context.basePreData) {
+      this.context.basePreData = clone(this.preData);
+      return this.preData;
+    }
+    return this.restoreBasePreData();
   }
 
   forceSuccess({ mode = "keepRoll", annotation = null } = {}) {
@@ -524,7 +538,7 @@ export class NeuroshimaTestBase {
   async postTest() {}
 
   async roll({ message = null, sendToChat = true, restoreInput = true } = {}) {
-    if (restoreInput) this.restoreBasePreData();
+    if (restoreInput) this.prepareBasePreData();
     await this.runPreEffects();
     if (this.preData.cancelled) return this;
     this.resetResult();
@@ -553,10 +567,10 @@ export class NeuroshimaTestBase {
     this.restoreBasePreData();
     foundry.utils.mergeObject(this.preData, preData, { inplace: true });
     if (Array.isArray(rawResults)) this.preData.fixedDice = [...rawResults];
-    const editAnnotation = "Rzut edytowany przez MG";
+    const editAnnotation = game.i18n.localize("NEUROSHIMA.Roll.Edited");
     this.preData.annotations = [...new Set([...(this.preData.annotations ?? []), editAnnotation])];
     this.context.basePreData = clone(this.preData);
-    const edited = await this.roll({ message, sendToChat: true, restoreInput: false });
+    const edited = await this.roll({ sendToChat: false, restoreInput: false });
     if (Array.isArray(rawResults)) {
       edited.result.diceChanges = rawResults.flatMap((value, index) =>
         Number(value) === Number(previousRaw[index]) ? [] : [{
@@ -570,8 +584,8 @@ export class NeuroshimaTestBase {
           effectUuid: null
         }]
       );
-      if (message) await edited.updateMessage(message);
     }
+    edited.message = await edited.sendToChat({ message });
     return edited;
   }
 
@@ -594,21 +608,74 @@ export class NeuroshimaTestBase {
       .filter(index => Number.isInteger(index) && index >= 0 && index < this.result.rawResults.length)
       .sort((a, b) => a - b);
     if (!unique.length) return this;
-    const previousRaw = [...this.result.rawResults];
+    const oldRaw = [...this.result.rawResults];
+    const nextRaw = [...oldRaw];
     this.context.previousResult = clone(this.result);
     this.context.previousMessageId = previousMessage?.id ?? null;
     this.context.reroll = true;
     this.context.edited = false;
     const rerolled = await new Roll(`${unique.length}d${this.dieSides}`).evaluate();
     unique.forEach((index, offset) => {
-      previousRaw[index] = Number(rerolled.terms[0].results[offset].result);
+      nextRaw[index] = Number(rerolled.terms[0].results[offset].result);
     });
     this.restoreBasePreData();
-    this.preData.fixedDice = previousRaw;
-    return this.roll({
-      message: replaceMessage ? previousMessage : null,
-      sendToChat: true,
+    this.preData.fixedDice = nextRaw;
+    const rerolledTest = await this.roll({
+      sendToChat: false,
       restoreInput: false
+    });
+    rerolledTest.result.diceChanges = unique.map(index => ({
+      type: "reroll",
+      targetIndex: index,
+      sourceIndex: null,
+      oldValue: oldRaw[index],
+      newValue: nextRaw[index],
+      label: game.i18n.localize("NEUROSHIMA.Roll.Reroll"),
+      icon: "fas fa-arrow-rotate-left",
+      effectUuid: null
+    }));
+    rerolledTest.message = await rerolledTest.sendToChat({
+      message: replaceMessage ? previousMessage : null
+    });
+    return rerolledTest;
+  }
+
+  buildDieChangeTooltip(index, changes = []) {
+    const dieLabel = game.i18n.format("NEUROSHIMA.Tooltip.Die", { index: Number(index) + 1 });
+    const history = changes.map(change => {
+      const label = String(change.label ?? "").trim();
+      const transition = `${change.oldValue ?? "?"} \u2192 ${change.newValue ?? "?"}`;
+      return `<div class="ns-die-change-line">`
+        + `<span>${label ? escapeTooltip(label) : escapeTooltip(dieLabel)}</span>`
+        + `<strong>${escapeTooltip(transition)}</strong></div>`;
+    }).join("");
+    return `<div class="ns-die-change-tooltip">`
+      + `<strong class="ns-die-change-title">${escapeTooltip(dieLabel)}</strong>`
+      + history
+      + `</div>`;
+  }
+
+  getDiceDisplayData() {
+    const changes = this.result.diceChanges ?? [];
+    return (this.result.modifiedResults ?? []).map((die, index) => {
+      const dieChanges = changes.filter(change => Number(change.targetIndex) === index);
+      const lastChange = dieChanges.at(-1) ?? null;
+      const rolledOriginal = Number(
+        dieChanges[0]?.oldValue
+        ?? this.result.rolledResults?.[index]
+        ?? die.original
+      );
+      const effectiveOriginal = Number(this.result.rawResults?.[index] ?? die.original);
+      const changed = dieChanges.length > 0 || rolledOriginal !== effectiveOriginal;
+      return {
+        ...die,
+        rolledOriginal,
+        effectiveOriginal,
+        changed,
+        changeIcon: lastChange?.icon ?? "fas fa-pen",
+        changeTooltip: changed ? this.buildDieChangeTooltip(index, dieChanges) : "",
+        showModified: Number(die.modified) !== Number(die.original)
+      };
     });
   }
 
@@ -687,6 +754,7 @@ export class NeuroshimaTestBase {
   async getChatData() {
     return {
       ...clone(this.result),
+      modifiedResults: this.getDiceDisplayData(),
       config: NEUROSHIMA,
       dataTooltip: this.getDataTooltip(),
       showTooltip: this.canShowTooltip(),
@@ -859,19 +927,35 @@ export class HealingTest extends SkillTest {
   }
 
   getTooltipSections() {
+    const healingEffect = this.result.healingEffect ?? {};
     return [
       ...super.getTooltipSections(),
       {
         title: "NEUROSHIMA.Tooltip.HealingSection",
         rows: [
-          { label: "NEUROSHIMA.Tooltip.Wounds", value: this.result.woundName ?? "" },
+          { label: "NEUROSHIMA.Tooltip.Patient", value: this.patient?.name ?? "" },
           {
-            label: "NEUROSHIMA.Tooltip.Modifier",
-            value: this.result.healingEffect?.penaltyChange ?? 0,
+            label: "NEUROSHIMA.Tooltip.HealingMethod",
+            value: game.i18n.localize(`NEUROSHIMA.Skills.${this.preData.healingMethod ?? ""}`)
+          },
+          { label: "NEUROSHIMA.Tooltip.Wounds", value: this.result.woundName ?? "" },
+          { label: "NEUROSHIMA.Tooltip.DamageType", value: this.result.damageType ?? healingEffect.damageType ?? "" },
+          { label: "NEUROSHIMA.Tooltip.OldPenalty", value: healingEffect.oldPenalty ?? 0 },
+          { label: "NEUROSHIMA.Tooltip.NewPenalty", value: healingEffect.newPenalty ?? 0 },
+          {
+            label: "NEUROSHIMA.Tooltip.PenaltyChange",
+            value: healingEffect.penaltyChange ?? 0,
             signed: true,
-            state: Number(this.result.healingEffect?.penaltyChange ?? 0) > 0
+            state: Number(healingEffect.penaltyChange ?? 0) > 0
               ? "penalty"
-              : Number(this.result.healingEffect?.penaltyChange ?? 0) < 0 ? "bonus" : null
+              : Number(healingEffect.penaltyChange ?? 0) < 0 ? "bonus" : null
+          },
+          {
+            label: "NEUROSHIMA.Tooltip.FullyHealed",
+            value: game.i18n.localize(healingEffect.wasFullyHealed
+              ? "NEUROSHIMA.Tooltip.Yes"
+              : "NEUROSHIMA.Tooltip.No"),
+            state: healingEffect.wasFullyHealed ? "success" : null
           }
         ]
       }
@@ -1016,6 +1100,20 @@ export class PercentileTest extends NeuroshimaTestBase {
   getTooltipSections() {
     return [
       {
+        title: "NEUROSHIMA.Tooltip.PercentileSection",
+        rows: [
+          {
+            label: "NEUROSHIMA.Tooltip.Result",
+            value: game.i18n.localize(this.result.success
+              ? "NEUROSHIMA.Tooltip.Success"
+              : "NEUROSHIMA.Tooltip.Failure"),
+            state: this.result.success ? "success" : "failure"
+          },
+          { label: "NEUROSHIMA.Tooltip.Margin", value: this.result.successPoints ?? 0, signed: true },
+          { label: "NEUROSHIMA.Roll.SuccessPoints", value: this.result.successPoints ?? 0 }
+        ]
+      },
+      {
         kind: "threshold",
         rows: [
           {
@@ -1153,8 +1251,27 @@ export class WeaponTest extends AttackTest {
       {
         title: "NEUROSHIMA.Tooltip.WeaponSection",
         rows: [
+          { label: "NEUROSHIMA.Tooltip.WeaponType", value: this.result.weaponType ?? "" },
+          { label: "NEUROSHIMA.Tooltip.BurstLevel", value: this.result.burstLevel ?? 0 },
           { label: "NEUROSHIMA.Roll.BulletsFired", value: this.result.bulletsFired ?? 0 },
-          { label: "NEUROSHIMA.Roll.Jamming", value: this.result.isJamming ? game.i18n.localize("Yes") : game.i18n.localize("No") },
+          { label: "NEUROSHIMA.Tooltip.HitBullets", value: this.result.hitBullets ?? 0 },
+          { label: "NEUROSHIMA.Tooltip.Damage", value: this.result.damage ?? "" },
+          { label: "NEUROSHIMA.Tooltip.Piercing", value: this.result.piercing ?? 0 },
+          { label: "NEUROSHIMA.Tooltip.JammingThreshold", value: this.result.jammingThreshold ?? 0 },
+          {
+            label: "NEUROSHIMA.Tooltip.WouldSucceed",
+            value: game.i18n.localize(this.result.wouldSucceed
+              ? "NEUROSHIMA.Tooltip.Yes"
+              : "NEUROSHIMA.Tooltip.No"),
+            state: this.result.wouldSucceed ? "success" : "failure"
+          },
+          {
+            label: "NEUROSHIMA.Roll.Jamming",
+            value: game.i18n.localize(this.result.isJamming
+              ? "NEUROSHIMA.Tooltip.Yes"
+              : "NEUROSHIMA.Tooltip.No"),
+            state: this.result.isJamming ? "failure" : null
+          },
           { label: "NEUROSHIMA.Tooltip.Location", value: this.result.locationLabel ?? this.result.finalLocation ?? "" },
           { label: "NEUROSHIMA.Tooltip.Distance", value: this.result.distance ?? 0 }
         ]
@@ -1187,6 +1304,10 @@ export class WeaponTest extends AttackTest {
 }
 
 export class RangedWeaponTest extends WeaponTest {
+  static canShiftBurst(result, user = game.user) {
+    return user?.isGM === true || result?.burstShiftGranted === true;
+  }
+
   static bulletsForBurst(weapon, burstLevel = 0) {
     if (weapon?.system?.weaponType === "thrown") return 1;
     const rate = Math.max(1, Number(weapon?.system?.fireRate ?? 1));
@@ -1559,7 +1680,11 @@ export class GrenadeTest extends AttackTest {
         title: "NEUROSHIMA.Tooltip.GrenadeSection",
         rows: [
           { label: "NEUROSHIMA.Tooltip.Distance", value: this.result.distance ?? 0 },
-          { label: "NEUROSHIMA.Tooltip.Location", value: this.result.locationLabel ?? this.result.finalLocation ?? "" }
+          { label: "NEUROSHIMA.Tooltip.DistancePenalty", value: this.result.distancePenalty ?? 0, signed: true },
+          { label: "NEUROSHIMA.Tooltip.Location", value: this.result.locationLabel ?? this.result.finalLocation ?? "" },
+          { label: "NEUROSHIMA.Tooltip.FailureMargin", value: this.result.failureMargin ?? 0 },
+          { label: "NEUROSHIMA.Tooltip.Deviation", value: `${this.result.deviationMetres ?? 0} m` },
+          { label: "NEUROSHIMA.Tooltip.TemplateRadius", value: `${this.result.templateRadius ?? 0} m` }
         ]
       }
     ];

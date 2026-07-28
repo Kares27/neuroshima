@@ -27,8 +27,12 @@ globalThis.foundry = {
 globalThis.Actor = class {};
 globalThis.Item = class {};
 globalThis.ActiveEffect = class {};
+globalThis.ChatMessage = class {};
 globalThis.game = {
   neuroshima: {
+    group() {},
+    groupEnd() {},
+    log() {},
     NeuroshimaScriptRunner: {
       async executeEvent() {},
       executeEventSync() {}
@@ -70,11 +74,16 @@ const {
   HealingTest,
   PercentileTest,
   WeaponTest,
+  GrenadeTest,
   AttackTest,
   RangedWeaponTest,
   MeleeWeaponTest
 } = await import("../module/tests.mjs");
-const { NeuroshimaScript } = await import("../module/apps/neuroshima-script-engine.js");
+const {
+  NeuroshimaScript,
+  NeuroshimaScriptRunner
+} = await import("../module/apps/neuroshima-script-engine.js");
+const { CombatHelper } = await import("../module/helpers/combat-helper.js");
 game.neuroshima.tests = NEUROSHIMA_TESTS;
 
 function actorFixture() {
@@ -184,6 +193,59 @@ test("test supplies chat tooltip", async () => {
   assert.match(context.dataTooltip, /Target|Cel/);
 });
 
+test("sendToChat false does not create a chat card", async () => {
+  const instance = new SkillTest({
+    preData: { stat: 12, skill: 4, fixedDice: [2, 8, 15] },
+    context: { isDebug: true }
+  }, actorFixture());
+  let cards = 0;
+  instance.sendToChat = async () => { cards += 1; };
+  await instance.roll({ sendToChat: false });
+  assert.equal(cards, 0);
+});
+
+test("weapon damage dispatches actors instead of treating ChatMessage as an actor", async () => {
+  const actor = actorFixture();
+  const rollResult = {
+    isWeapon: true,
+    isSuccess: true,
+    isMelee: false,
+    damage: "C",
+    piercing: 1,
+    hitBulletsData: [{ damage: "C", piercing: 1, successPoints: 1 }]
+  };
+  const message = {
+    id: "message",
+    getFlag(_scope, key) {
+      if (key === "test") return { result: rollResult };
+      return undefined;
+    }
+  };
+  const calls = [];
+  const originalApplyDamageToActor = CombatHelper.applyDamageToActor;
+  CombatHelper.applyDamageToActor = async (...args) => calls.push(args);
+  try {
+    await CombatHelper.applyWeaponDamage(message, [actor]);
+  } finally {
+    CombatHelper.applyDamageToActor = originalApplyDamageToActor;
+  }
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0][0], actor);
+  assert.equal(calls[0][1], rollResult);
+  assert.equal(calls[0][2].attackerMessageId, "message");
+});
+
+test("pre-roll API changes survive first roll", async () => {
+  const instance = new SkillTest({
+    preData: { stat: 1, skill: 0, fixedDice: [18, 19, 20] },
+    context: { isDebug: true }
+  }, actorFixture());
+  instance.forceSuccess({ mode: "keepRoll" });
+  await instance.roll({ sendToChat: false });
+  assert.equal(instance.result.success, true);
+  assert.equal(instance.context.basePreData.resultModifiers.forcedSuccess, true);
+});
+
 test("reroll and edit preserve lifecycle state without resource side effects", async () => {
   const instance = new SkillTest({
     preData: { stat: 12, skill: 4, fixedDice: [2, 8, 15] },
@@ -270,6 +332,16 @@ test("partial reroll sets reroll=true and edited=false", async () => {
   assert.equal(instance.context.reroll, true);
   assert.equal(instance.context.edited, false);
   assert.deepEqual(instance.result.rawResults, [2, 7, 15]);
+  assert.deepEqual(instance.result.diceChanges, [{
+    type: "reroll",
+    targetIndex: 1,
+    sourceIndex: null,
+    oldValue: 8,
+    newValue: 7,
+    label: "NEUROSHIMA.Roll.Reroll",
+    icon: "fas fa-arrow-rotate-left",
+    effectUuid: null
+  }]);
 });
 
 test("full reroll clears previous diceChanges", async () => {
@@ -324,7 +396,6 @@ test("jamming threshold helper changes final jam state", async () => {
   const instance = rangedFixture({ threshold: 20 });
   const script = new NeuroshimaScript({}, null);
   assert.equal(script.modifyJammingThreshold({ test: instance }, -10), true);
-  instance.context.basePreData = deepClone(instance.preData);
   await instance.roll({ sendToChat: false });
   assert.equal(instance.result.isJamming, true);
   assert.equal(instance.result.jammingThreshold, 10);
@@ -383,6 +454,160 @@ test("tooltip is compact and keeps the threshold after domain sections", async (
   assert.match(escaped, /&lt;Title&gt;/);
   assert.match(escaped, /&lt;Effect &amp; Test&gt;/);
   assert.doesNotMatch(escaped, /&amp;lt;/);
+});
+
+test("domain tooltips expose weapon, healing, grenade and percentile details", () => {
+  const weapon = new RangedWeaponTest({
+    result: {
+      weaponType: "ranged",
+      burstLevel: 2,
+      bulletsFired: 9,
+      hitBullets: 3,
+      damage: "C",
+      piercing: 1,
+      jammingThreshold: 18,
+      wouldSucceed: true,
+      isJamming: false
+    }
+  });
+  const weaponTooltip = weapon.getDataTooltip();
+  for (const key of [
+    "WeaponType", "BurstLevel", "HitBullets", "Damage",
+    "Piercing", "JammingThreshold", "WouldSucceed"
+  ]) assert.match(weaponTooltip, new RegExp(`Tooltip\\.${key}`));
+
+  const healing = new HealingTest({
+    patient: { name: "Patient" },
+    preData: { healingMethod: "firstAid" },
+    result: {
+      woundName: "Wound",
+      damageType: "C",
+      healingEffect: {
+        oldPenalty: 10,
+        newPenalty: 0,
+        penaltyChange: -10,
+        wasFullyHealed: true
+      }
+    }
+  });
+  const healingTooltip = healing.getDataTooltip();
+  for (const key of [
+    "Patient", "HealingMethod", "DamageType", "OldPenalty",
+    "NewPenalty", "PenaltyChange", "FullyHealed"
+  ]) assert.match(healingTooltip, new RegExp(`Tooltip\\.${key}`));
+
+  const grenade = new GrenadeTest({
+    result: {
+      distance: 20,
+      distancePenalty: 10,
+      failureMargin: 2,
+      deviationMetres: 4,
+      templateRadius: 6
+    }
+  });
+  const grenadeTooltip = grenade.getDataTooltip();
+  for (const key of [
+    "DistancePenalty", "FailureMargin", "Deviation", "TemplateRadius"
+  ]) assert.match(grenadeTooltip, new RegExp(`Tooltip\\.${key}`));
+
+  const percentile = new PercentileTest({
+    result: { success: true, successPoints: 25, target: 60 }
+  });
+  const percentileTooltip = percentile.getDataTooltip();
+  assert.match(percentileTooltip, /Tooltip\.Result/);
+  assert.match(percentileTooltip, /Tooltip\.Margin/);
+  assert.match(percentileTooltip, /Roll\.SuccessPoints/);
+});
+
+test("dice presentation exposes escaped old-to-new history", async () => {
+  const instance = new SkillTest({
+    preData: { stat: 5, skill: 0, fixedDice: [18, 19, 20] },
+    context: { isDebug: true }
+  }, actorFixture());
+  await instance.roll({ sendToChat: false });
+  instance.replaceDie(0, 1, { label: "<Effect & Test>", icon: "fas fa-wand-magic-sparkles" });
+  await instance.recalculate();
+  const data = await instance.getChatData();
+  const die = data.modifiedResults[0];
+  assert.equal(die.changed, true);
+  assert.equal(die.rolledOriginal, 18);
+  assert.equal(die.effectiveOriginal, 1);
+  assert.equal(die.changeIcon, "fas fa-wand-magic-sparkles");
+  assert.equal(die.showModified, false);
+  assert.match(die.changeTooltip, /18 → 1/);
+  assert.match(die.changeTooltip, /&lt;Effect &amp; Test&gt;/);
+  assert.doesNotMatch(die.changeTooltip, /<Effect/);
+});
+
+test("GM edit updates its chat message exactly once", async () => {
+  const instance = new SkillTest({
+    preData: { stat: 12, skill: 4, fixedDice: [2, 8, 15] },
+    context: { isDebug: true }
+  }, actorFixture());
+  await instance.roll({ sendToChat: false });
+  const message = { id: "message" };
+  const calls = [];
+  instance.sendToChat = async options => {
+    calls.push(options);
+    return message;
+  };
+  await instance.edit({ rawResults: [1, 8, 15] }, { message });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].message, message);
+  assert.equal(instance.result.diceChanges[0].oldValue, 2);
+  assert.equal(instance.result.diceChanges[0].newValue, 1);
+  assert.ok(instance.result.annotations.includes("NEUROSHIMA.Roll.Edited"));
+});
+
+test("burst shift permission is read from serialized test result", () => {
+  assert.equal(RangedWeaponTest.canShiftBurst({ burstShiftGranted: true }, { isGM: false }), true);
+  assert.equal(RangedWeaponTest.canShiftBurst({ burstShiftGranted: false }, { isGM: false }), false);
+  assert.equal(RangedWeaponTest.canShiftBurst({}, { isGM: true }), true);
+});
+
+test("dialog script flags survive preview and submission state", async () => {
+  const actor = {
+    ...actorFixture(),
+    name: "Tester",
+    system: { combat: {} }
+  };
+  const flags = {};
+  const script = {
+    effect: { id: "effect", parent: null },
+    label: "Flag script",
+    code: "args.flags.marked = true;",
+    targeter: false,
+    isDialogScript: false,
+    async evalHide(args) {
+      assert.equal(args.flags, flags);
+      return false;
+    },
+    async evalActivate(args) {
+      assert.equal(args.flags, flags);
+      return true;
+    },
+    async execute(args) {
+      assert.equal(args.flags, flags);
+      args.flags.marked = true;
+      args.fields.modifier = 5;
+    }
+  };
+  const originalGetScripts = NeuroshimaScriptRunner.getScripts;
+  NeuroshimaScriptRunner.getScripts = (_actor, trigger) => trigger === "dialog" ? [script] : [];
+  try {
+    const result = await NeuroshimaScriptRunner.computeDialogFields(
+      actor,
+      { rollType: "skill", scriptFlags: flags },
+      new Set(),
+      new Set(),
+      [],
+      { scriptFlags: flags }
+    );
+    assert.equal(result.scriptFields.modifier, 5);
+    assert.equal(flags.marked, true);
+  } finally {
+    NeuroshimaScriptRunner.getScripts = originalGetScripts;
+  }
 });
 
 test("getChatData exposes isReroll and isEdited", async () => {

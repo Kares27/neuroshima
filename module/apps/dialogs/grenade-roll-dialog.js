@@ -326,7 +326,6 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
     });
     if (params.autoSuccess === true) {
       test.forceSuccess({ mode: "keepRoll" });
-      test.context.basePreData = foundry.utils.deepClone(test.preData);
     }
     await test.roll();
     const result = { ...test.result, message: test.message };

@@ -594,7 +594,7 @@ export class CombatHelper {
    * @param {Array<Actor>} actors Array of actors to apply damage to.
    * @returns {Promise<void>}
    */
-  static async applyDamage(message, actors) {
+  static async applyWeaponDamage(message, actors) {
     let flags = message.getFlag("neuroshima", "test")?.result;
     const opposedResult = message.getFlag("neuroshima", "opposedResult");
     const attackMessageId = message.getFlag("neuroshima", "attackMessageId");
@@ -702,6 +702,9 @@ export class CombatHelper {
             }];
         }
     }
+    // The actor-level pipeline reads hitBulletsData from attackData. Persist
+    // the GM fallback/correction packet before dispatching it to each target.
+    flags.hitBulletsData = hitBulletsData;
 
     const isMelee = flags.isMelee;
     
@@ -723,7 +726,7 @@ export class CombatHelper {
     });
 
     for (const actor of actors) {
-        await this.applyDamageToActor(actor, flags, { 
+        await this.applyDamageToActor(actor, flags, {
             attackerMessageId: message.id,
             location: location,
             spDifference: flags.opposedResult?.spDifference,
@@ -786,9 +789,8 @@ export class CombatHelper {
       });
       if (wound.forcePassed === true) {
         test.forceSuccess({ mode: "skipRoll" });
-        test.context.basePreData = foundry.utils.deepClone(test.preData);
       }
-      await test.roll({ commit: false });
+      await test.roll({ sendToChat: false });
       const data = test.result;
       const passed = data.success === true;
       const penalty = Number(woundConfig.penalties?.[passed ? 0 : 1] ?? 0);

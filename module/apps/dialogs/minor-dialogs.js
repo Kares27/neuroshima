@@ -202,11 +202,7 @@ export class EditRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
               wounds: Number(data.penaltyWounds ?? 0),
               armor: Number(data.penaltyArmor ?? 0),
               disease: Number(data.penaltyDisease ?? 0)
-            },
-            annotations: [...new Set([
-              ...(this.test.preData.annotations ?? []),
-              "Rzut edytowany przez MG"
-            ])]
+            }
           }
         }, { message: this.message });
     }

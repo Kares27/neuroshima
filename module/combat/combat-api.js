@@ -73,7 +73,7 @@ export class DuelContext {
   }
 
   /**
-   * Dynamicznie aktywuj efekt (np. z triggera onMeleeHit).
+   * Dynamicznie aktywuj efekt (np. z triggera afterMeleeAction).
    * Mutuje activatedMods (i tym samym activatedMeleePreRollMods).
    * @param {string} effectUuid
    */
@@ -259,7 +259,7 @@ function buildBaseArgs(duel, actor, segment = null) {
 }
 
 /**
- * Args dla onMeleeHit / onMeleeBlock / onMeleeTakeover.
+ * Args dla publicznego triggera afterMeleeAction.
  * @param {DuelContext}        duel
  * @param {Actor}              actor
  * @param {DuelSegmentContext} segment
@@ -299,7 +299,7 @@ function buildSegmentArgs(duel, actor, segment) {
 export class DuelLifecycle {
 
   /**
-   * Odpal onDuelStart dla obu uczestników.
+   * Odpal startDuel dla obu uczestników.
    * Wywoływany raz — po stworzeniu wiadomości duel card.
    *
    * Args dla scriptera:
@@ -330,7 +330,7 @@ export class DuelLifecycle {
   }
 
   /**
-   * Odpal onDuelSegmentStart dla obu uczestników.
+   * Odpal startDuelSegment dla obu uczestników.
    * Wywoływany gdy właściciel inicjatywy commituje kości (przed respondentem).
    *
    * Args dla scriptera:
@@ -362,8 +362,7 @@ export class DuelLifecycle {
   }
 
   /**
-   * Odpal trigger segmentowy (onMeleeHit / onMeleeBlock / onMeleeTakeover)
-   * dla obu uczestników ORAZ action-scoped trigger dla zadeklarowanej akcji.
+   * Przygotuj rozstrzygnięty segment dla publicznego afterMeleeAction.
    *
    * Zastępuje inline hook block w applyDuelBatch (~linie 3205-3247 combat.js).
    *
@@ -625,7 +624,7 @@ export class DuelLifecycle {
   }
 
   /**
-   * Odpal onDuelEnd dla obu uczestników.
+   * Odpal endDuel dla obu uczestników.
    * Wywoływany gdy state.status === "done" (wszystkie kości wyczerpane).
    *
    * Działa obok zakończenia fazy tury w systemie pul.
@@ -1300,15 +1299,14 @@ export class DuelDamageEngine {
    ══════════════════════════════════════════════════════════════════════════
    Implementacja w MeleeAction.executeTrigger() (powyżej).
    DuelLifecycle.segmentResolve() wywołuje:
-     1. Globalny trigger (onMeleeHit) dla obu aktorów, wszystkich efektów
-     2. Action-scoped (onMeleeActionHit) tylko na sourceEffect zadeklarowanej akcji
+     Publiczny afterMeleeAction dla obu aktorów z pełnym segmentem i akcją źródłową.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ══════════════════════════════════════════════════════════════════════════
    SEKCJA 14: PEŁNA LISTA TRIGGERÓW PO MIGRACJI
    ══════════════════════════════════════════════════════════════════════════
    Dodane do NeuroshimaScriptRunner.TRIGGERS w script-engine.js:
-     onDuelStart, onDuelSegmentStart, onDuelEnd
+     startDuel, startDuelSegment, endDuel
      collectMeleeActions
      onMeleeActionHit, onMeleeActionMiss, onMeleeActionQueued, onMeleeActionResolved
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -1582,7 +1580,7 @@ function _duelGetLocation(roll) {
  * Przeniesiony z combat.js do combat-api.js aby DuelSegmentEngine mógł
  * go tworzyć bez cyklicznych zależności.
  *
- * Passed to onMeleeHit / onMeleeBlock / onMeleeTakeover hooks as args.context
+ * Passed to afterMeleeAction as args.context
  * for backward compatibility with existing scripts.
  */
 export class MeleeActionContext {
@@ -1645,7 +1643,7 @@ export class MeleeActionContext {
  *   • fazy rozstrzygnięcia wymiany i przejścia segmentu
  *   • akumulację trick queue
  *   • ustalenie wyniku końcowego i zapis flagi opposedResult
- *   • trigger onDuelEnd przez DuelLifecycle.end
+ *   • trigger endDuel przez DuelLifecycle.end
  *
  * combat.js: applyDuelBatch wywołuje DuelSegmentEngine.processResponder()
  * i obsługuje tylko wyrenderowanie karty i czyszczenie warunków manewrów.

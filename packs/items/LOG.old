@@ -1,5 +1,11 @@
-2026/07/27-15:35:38.818 4460 Log #902: 0 ops saved to Table #903 OK
-2026/07/27-15:35:38.818 4460 Archiving D:\FoundryData\Data\systems\neuroshima\packs\items/000902.log: OK
-2026/07/27-15:35:38.819 4460 Table #883: 307 entries OK
-2026/07/27-15:35:38.821 4460 Archiving D:\FoundryData\Data\systems\neuroshima\packs\items/MANIFEST-000901: OK
-2026/07/27-15:35:38.823 4460 **** Repaired leveldb D:\FoundryData\Data\systems\neuroshima\packs\items; recovered 1 files; 209121 bytes. Some data may have been lost. ****
+2026/07/27-15:35:38.828 4460 Delete type=3 #1
+2026/07/27-16:07:04.549 4ae0 Level-0 table #907: started
+2026/07/27-16:07:04.549 4ae0 Level-0 table #907: 0 bytes OK
+2026/07/27-16:07:04.551 4ae0 Delete type=0 #905
+2026/07/27-16:07:04.558 4ae0 Manual compaction at level-0 from '!folders!2WRdK8G1KJCMWXqI' @ 72057594037927935 : 1 .. '!items.effects!yXe6WaKhxHx7gvu0.ZhipMlM4izdItXqm' @ 0 : 0; will stop at '!items.effects!yXe6WaKhxHx7gvu0.ZhipMlM4izdItXqm' @ 2702 : 1
+2026/07/27-16:07:04.558 4ae0 Compacting 1@0 + 0@1 files
+2026/07/27-16:07:04.563 4ae0 Generated table #908@0: 307 keys, 209121 bytes
+2026/07/27-16:07:04.563 4ae0 Compacted 1@0 + 0@1 files => 209121 bytes
+2026/07/27-16:07:04.565 4ae0 compacted to: files[ 0 1 0 0 0 0 0 ]
+2026/07/27-16:07:04.565 4ae0 Delete type=2 #883
+2026/07/27-16:07:04.568 4ae0 Manual compaction at level-0 from '!items.effects!yXe6WaKhxHx7gvu0.ZhipMlM4izdItXqm' @ 2702 : 1 .. '!items.effects!yXe6WaKhxHx7gvu0.ZhipMlM4izdItXqm' @ 0 : 0; will stop at (end)

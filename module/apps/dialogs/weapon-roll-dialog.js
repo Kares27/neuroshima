@@ -765,7 +765,6 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     });
     if (params.autoSuccess === true) {
       test.forceSuccess({ mode: "keepRoll" });
-      test.context.basePreData = foundry.utils.deepClone(test.preData);
     }
     await test.roll();
     NeuroshimaDice._groupHitsData(test.result);

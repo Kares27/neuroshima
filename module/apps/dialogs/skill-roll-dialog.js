@@ -258,9 +258,12 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
         : this.stat;
 
     /*
-     * Ten obiekt jest przekazywany do skryptu jako:
+     * Ten obiekt jest przekazywany do skryptu jako dane tylko do odczytu:
      *
      * args.attribute
+     *
+     * Zmianę współczynnika skrypt zapisuje wyłącznie przez:
+     * args.fields.attributeKey
      *
      * Reprezentuje Współczynnik używany przed
      * zastosowaniem dialog modifiera.
@@ -1080,7 +1083,6 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
     });
     if (sf.autoSuccess === true) {
       test.forceSuccess({ mode: "keepRoll" });
-      test.context.basePreData = foundry.utils.deepClone(test.preData);
     }
     await test.roll();
     if (this.resultCallback) {

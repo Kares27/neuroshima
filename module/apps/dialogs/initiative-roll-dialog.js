@@ -461,7 +461,6 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
     });
     if (rollData.autoSuccess === true) {
       test.forceSuccess({ mode: "keepRoll" });
-      test.context.basePreData = foundry.utils.deepClone(test.preData);
     }
     await test.roll();
     if (this._onRollCallback) await this._onRollCallback(test.result, test);
