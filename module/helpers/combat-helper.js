@@ -534,13 +534,7 @@ export class CombatHelper {
         dice:          diceResults.join(", "),
         modifiedResults: evalData.modifiedResults,
         target:        durBase,
-        tooltip: new AttributeTest({ result: evalData }).getDataTooltip(),
-        tooltipHtml: game.neuroshima.NeuroshimaDice.buildDiceTooltipHtml({
-          modifiedResults: evalData.modifiedResults,
-          target: durBase,
-          skill: 0,
-          successCount: evalData.successCount
-        })
+        tooltipHtml: durabilityTest.getDataTooltip()
       });
 
       itemsToCreate.push({
@@ -755,7 +749,7 @@ export class CombatHelper {
         const penalty = Number(woundConfig.penalties?.[0] ?? 160);
         results.push({
           name: wound.name, damageType: wound.damageType, isPassed: false,
-          isCritical: true, penalty, modifiedResults: [], annotation: wound.annotation || null
+          isCritical: true, penalty, location, modifiedResults: [], annotation: wound.annotation || null
         });
         processedWounds.push({
           name: wound.name,
@@ -794,6 +788,15 @@ export class CombatHelper {
       const data = test.result;
       const passed = data.success === true;
       const penalty = Number(woundConfig.penalties?.[passed ? 0 : 1] ?? 0);
+      // Keep pain-specific context on the test result so the modern tooltip
+      // can explain the wound and its consequence in addition to roll maths.
+      Object.assign(data, {
+        woundName: wound.name,
+        damageType: wound.damageType,
+        location,
+        painPenalty: penalty,
+        forcePassed: wound.forcePassed === true
+      });
       results.push({
         name: wound.name,
         damageType: wound.damageType,
@@ -811,8 +814,7 @@ export class CombatHelper {
         isCritSuccess: data.isCritSuccess,
         isCritFailure: data.isCritFailure,
         annotation: wound.annotation || null,
-        tooltip: new SkillTest({ result: data }).getDataTooltip(),
-        tooltipHtml: game.neuroshima.NeuroshimaDice.buildDiceTooltipHtml(data)
+        tooltipHtml: test.getDataTooltip()
       });
       processedWounds.push({
         name: wound.name,

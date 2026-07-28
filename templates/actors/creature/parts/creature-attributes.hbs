@@ -66,7 +66,7 @@
                     <td>
                         <input type="number" readonly
                             value="{{lookup ../system.attributeTotals key}}"
-                            {{#if (lookup ../effectTooltips key)}}data-tooltip="{{lookup ../effectTooltips key}}" data-tooltip-direction="UP"{{/if}}/>
+                            {{#if (lookup ../effectTooltips key)}}data-tooltip-html="{{lookup ../effectTooltips key}}" data-tooltip-class="ns-compact-stat-tooltip" data-tooltip-direction="UP"{{/if}}/>
                     </td>
                     {{/each}}
                 </tr>

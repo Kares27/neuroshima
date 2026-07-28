@@ -2,6 +2,7 @@ import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { EffectActionRuntime } from "../effects/effect-action-runtime.js";
 import { HealingTest } from "../tests.mjs";
+import { renderTooltipSections } from "../helpers/tooltip-renderer.js";
 
 /**
  * Extended ChatMessage class with a unified API for rendering chat cards.
@@ -1256,6 +1257,11 @@ export class NeuroshimaChatMessage extends ChatMessage {
     }
 
     if (actorDamages.length > 0) {
+      for (const damage of actorDamages) {
+        const prepared = this._preparePainTooltipData(damage.results, damage.reducedDetails);
+        damage.results = prepared.results;
+        damage.reducedDetails = prepared.reducedDetails;
+      }
       const allWoundIds = actorDamages.flatMap(d => d.woundIds);
       const content = await this._renderTemplate(
         "systems/neuroshima/templates/chat/grenade-blast-pain-report.hbs",
@@ -1348,31 +1354,19 @@ export class NeuroshimaChatMessage extends ChatMessage {
         const idx = results.findIndex(r => r.woundId === woundId);
         if (idx !== -1) {
             serializedTests[idx] = test.toData();
-            results[idx] = newResult;
-            
-            const successCount = results.filter(r => r.isSuccess).length;
-            const failedCount = results.length - successCount;
-
-            const context = {
-                medicActor: medic,
-                patientActor: patient,
-                results,
-                method,
-                successCount,
-                failedCount,
-                annotations: extraData.annotations || [],
-                patientRef: { uuid: patient.uuid },
-                medicRef: { uuid: medic.uuid },
-                config: NEUROSHIMA
-            };
-
-            const template = "systems/neuroshima/templates/chat/healing-roll-card.hbs";
-            const content = await this._renderTemplate(template, context);
-
-            const primaryTest = foundry.utils.deepClone(serializedTests[0]);
-            primaryTest.context ??= {};
-            primaryTest.context.batchTests = serializedTests;
-            await message.update({ content, "flags.neuroshima.test": primaryTest });
+            const batchTests = serializedTests.map(stored => new HealingTest({
+              ...stored,
+              patient,
+              wound: patient.items.get(stored.result?.woundId) ?? null
+            }, medic));
+            await this.renderHealingBatchTests(
+              medic,
+              patient,
+              batchTests,
+              method,
+              extraData,
+              { message }
+            );
         }
     }
   }
@@ -1512,11 +1506,6 @@ export class NeuroshimaChatMessage extends ChatMessage {
     const gmUserIds  = game.users.filter(u => u.isGM).map(u => u.id);
     const whisperIds = [...new Set([medicUserId, ...gmUserIds].filter(Boolean))];
 
-    const serializedTests = tests.map(test => test.toData());
-    const primaryTest = foundry.utils.deepClone(serializedTests[0]);
-    primaryTest.context ??= {};
-    primaryTest.context.batchTests = serializedTests;
-
     return this.create({
       user: game.user.id,
       speaker: ChatMessage.getSpeaker({ actor: patientActor }),
@@ -1563,11 +1552,93 @@ export class NeuroshimaChatMessage extends ChatMessage {
   }
 
   /**
+   * Normalize every pain-report variant to the shared rich tooltip format.
+   * Grenade blast reports reuse this path, so critical, forced and armor-
+   * reduced rows cannot silently fall back to the legacy dice tooltip.
+   */
+  static _preparePainTooltipData(results = [], reducedDetails = []) {
+    const preparedResults = results.map(result => ({
+      ...result,
+      tooltipHtml: result.tooltipHtml || renderTooltipSections([
+        {
+          title: "NEUROSHIMA.Tooltip.PainResistanceSection",
+          rows: [
+            { label: "NEUROSHIMA.Tooltip.Wound", value: result.name ?? "" },
+            { label: "NEUROSHIMA.Tooltip.DamageType", value: result.damageType ?? "" },
+            {
+              label: "NEUROSHIMA.Tooltip.Location",
+              value: game.i18n.localize(
+                NEUROSHIMA.bodyLocations?.[result.location]?.label
+                ?? result.locationLabel
+                ?? result.location
+                ?? ""
+              )
+            },
+            {
+              label: "NEUROSHIMA.Tooltip.Result",
+              value: game.i18n.localize(result.isCritical
+                ? "NEUROSHIMA.PainResistance.Critical"
+                : result.isPassed ? "NEUROSHIMA.Tooltip.Success" : "NEUROSHIMA.Tooltip.Failure"),
+              state: result.isPassed ? "success" : "failure"
+            },
+            {
+              label: "NEUROSHIMA.Tooltip.Consequence",
+              value: game.i18n.localize(result.forcePassed
+                ? "NEUROSHIMA.Tooltip.AutomaticSuccess"
+                : result.isCritical
+                  ? "NEUROSHIMA.PainResistance.Critical"
+                  : result.isPassed
+                    ? "NEUROSHIMA.Tooltip.Success"
+                    : "NEUROSHIMA.Tooltip.Failure"),
+              state: result.isPassed ? "success" : "failure"
+            }
+          ]
+        },
+        {
+          kind: "threshold",
+          rows: [{
+            label: "NEUROSHIMA.Tooltip.PainPenalty",
+            value: Number(result.penalty ?? 0),
+            suffix: "%",
+            emphasis: true,
+            state: Number(result.penalty ?? 0) > 0 ? "penalty" : "success"
+          }]
+        }
+      ])
+    }));
+    const preparedReducedDetails = reducedDetails.map(detail => ({
+      ...detail,
+      tooltipHtml: detail.tooltipHtml || renderTooltipSections([
+        {
+          title: "NEUROSHIMA.Tooltip.ArmorReductionSection",
+          rows: [
+            { label: "NEUROSHIMA.Tooltip.Wound", value: detail.fullName ?? detail.originalDamage ?? "" },
+            { label: "NEUROSHIMA.Tooltip.Location", value: game.i18n.localize(NEUROSHIMA.bodyLocations?.[detail.location]?.label ?? detail.location ?? "") },
+            { label: "NEUROSHIMA.Tooltip.Armor", value: Number(detail.totalArmor ?? 0) },
+            { label: "NEUROSHIMA.Tooltip.Piercing", value: Number(detail.piercing ?? 0) }
+          ]
+        },
+        {
+          kind: "threshold",
+          rows: [{
+            label: "NEUROSHIMA.Tooltip.Consequence",
+            value: game.i18n.localize("NEUROSHIMA.Tooltip.DamageNegated"),
+            emphasis: true,
+            state: "success"
+          }]
+        }
+      ])
+    }));
+    return { results: preparedResults, reducedDetails: preparedReducedDetails };
+  }
+
+  /**
    * Renders a Pain Resistance report.
    */
   static async renderPainResistance(actor, results, woundIds, reducedCount = 0, reducedDetails = [], options = {}) {
     const template = "systems/neuroshima/templates/chat/pain-resistance-report.hbs";
-    
+    ({ results, reducedDetails } = this._preparePainTooltipData(results, reducedDetails));
+
     const normalResults = results.filter(r => !r.isCritical);
     const passedCount = normalResults.filter(r => r.isPassed).length;
     const failedCount = normalResults.filter(r => !r.isPassed).length;
@@ -1657,7 +1728,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
   /**
    * Renderuje raport zbiorczy z leczenia wielu ran.
    */
-  static async renderHealingBatchTests(medicActor, patientActor, tests, method, extraData = {}) {
+  static async renderHealingBatchTests(medicActor, patientActor, tests, method, extraData = {}, { message = null } = {}) {
     const template = "systems/neuroshima/templates/chat/healing-roll-card.hbs";
 
     if (!Array.isArray(tests)) {
@@ -1665,13 +1736,60 @@ export class NeuroshimaChatMessage extends ChatMessage {
         return;
     }
     if (tests.length === 0) return;
-    const results = tests.map(test => test.result);
+    const results = tests.map(test => ({
+      ...test.result,
+      tooltipHtml: test.getDataTooltip()
+    }));
 
     const successCount = results.filter(r => r.isSuccess).length;
     const failedCount = results.filter(r => !r.isSuccess).length;
 
-    const successTooltip = results.filter(r => r.isSuccess).map(r => `<div>${r.woundName} (${r.damageType})</div>`).join("");
-    const failedTooltip = results.filter(r => !r.isSuccess).map(r => `<div>${r.woundName} (${r.damageType})</div>`).join("");
+    const resultRows = results.map(result => ({
+      label: `${result.woundName ?? "?"} (${result.damageType ?? "?"})`,
+      value: game.i18n.localize(result.isSuccess
+        ? "NEUROSHIMA.HealingRequest.Successful"
+        : "NEUROSHIMA.HealingRequest.Failed"),
+      state: result.isSuccess ? "success" : "failure"
+    }));
+    const resultListTooltip = (filtered, title) => filtered.length
+      ? renderTooltipSections([{ title, rows: filtered }])
+      : "";
+    const successTooltip = resultListTooltip(
+      resultRows.filter(row => row.state === "success"),
+      "NEUROSHIMA.HealingRequest.Successful"
+    );
+    const failedTooltip = resultListTooltip(
+      resultRows.filter(row => row.state === "failure"),
+      "NEUROSHIMA.HealingRequest.Failed"
+    );
+    const dataTooltip = renderTooltipSections([
+      {
+        title: "NEUROSHIMA.Tooltip.HealingBatchSection",
+        rows: [
+          { label: "NEUROSHIMA.HealingRequest.Medic", value: medicActor?.name ?? "" },
+          { label: "NEUROSHIMA.Tooltip.Patient", value: patientActor?.name ?? "" },
+          {
+            label: "NEUROSHIMA.Tooltip.HealingMethod",
+            value: game.i18n.localize(`NEUROSHIMA.Skills.${method ?? ""}`)
+          },
+          { label: "NEUROSHIMA.Tooltip.Wounds", value: results.length }
+        ]
+      },
+      { title: "NEUROSHIMA.Tooltip.ResultsSection", rows: resultRows },
+      {
+        kind: "threshold",
+        rows: [{
+          label: "NEUROSHIMA.HealingRequest.Successful",
+          value: `${successCount}/${results.length}`,
+          emphasis: true,
+          state: failedCount ? null : "success"
+        }]
+      }
+    ]);
+    const serializedTests = tests.map(test => test.toData());
+    const primaryTest = foundry.utils.deepClone(serializedTests[0]);
+    primaryTest.context ??= {};
+    primaryTest.context.batchTests = serializedTests;
 
     const context = {
       medicActor,
@@ -1682,7 +1800,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       failedCount,
       successTooltip,
       failedTooltip,
-      dataTooltip: tests.map(test => test.getDataTooltip()).filter(Boolean).join("<hr>"),
+      dataTooltip,
       showTooltip: tests.some(test => test.canShowTooltip()),
       isReroll: tests.some(test => test.context.reroll === true),
       isEdited: tests.some(test => test.context.edited === true),
@@ -1693,6 +1811,16 @@ export class NeuroshimaChatMessage extends ChatMessage {
     };
 
     const content = await this._renderTemplate(template, context);
+
+    if (message) {
+      await message.update({
+        content,
+        "flags.neuroshima.test": primaryTest,
+        "flags.neuroshima.healingMethod": method,
+        "flags.neuroshima.extraData": extraData
+      });
+      return message;
+    }
     
     return this.create({
       user: game.user.id,

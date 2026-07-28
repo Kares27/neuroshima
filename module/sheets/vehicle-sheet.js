@@ -1,6 +1,7 @@
 import { NEUROSHIMA } from "../config.js";
 import { getConditions } from "../apps/config/condition-config.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
+import { buildBreakdownTooltip } from "../helpers/tooltip-renderer.js";
 
 function _collectVehicleArmorBonusByEffect(actor) {
   const byLoc = {};
@@ -406,16 +407,15 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
       const locItems = context.inventory.armor.filter(a => a.system.location === key && a.system.equipped);
       const itemsAP  = locItems.reduce((s, a) => s + (Number(a.system.currentRating ?? a.system.rating) || 0), 0);
 
-      const tooltipParts = [];
-      if (plate > 0) tooltipParts.push(`${foundry.utils.escapeHTML(vPlateLabel)}: <strong>${plate}</strong>`);
-      for (const itm of locItems) {
-        const ap = Number(itm.system.currentRating ?? itm.system.rating) || 0;
-        tooltipParts.push(`${foundry.utils.escapeHTML(itm.name)}: <strong>${ap}</strong>`);
-      }
-      for (const e of [...(vEffBonus.all ?? []), ...(vEffBonus[key] ?? [])]) {
-        const sign = e.value >= 0 ? "+" : "";
-        tooltipParts.push(`${foundry.utils.escapeHTML(e.name)}: <strong>${sign}${e.value}</strong>`);
-      }
+      const armorSources = [
+        ...(plate !== 0 ? [{ label: vPlateLabel, value: plate }] : []),
+        ...locItems.map(item => ({
+          label: item.name,
+          value: Number(item.system.currentRating ?? item.system.rating) || 0
+        })),
+        ...[...(vEffBonus.all ?? []), ...(vEffBonus[key] ?? [])]
+          .map(effect => ({ label: effect.name, value: effect.value }))
+      ];
 
       return {
         key,
@@ -425,7 +425,11 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
         weakPoint:        system.armor?.[key]?.weakPoint  ?? false,
         items:            locItems,
         totalEffectiveAP: plate + itemsAP + bonus,
-        tooltip:          tooltipParts.join("<br>")
+        tooltip:          buildBreakdownTooltip({
+          title: vehicleLocationsConfig[key],
+          sources: armorSources,
+          totalValue: plate + itemsAP + bonus
+        })
       };
     });
 

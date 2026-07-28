@@ -9,7 +9,7 @@
             </div>
             
             <div class="wound-stats-total">
-                <span class="rad-resist-sum" title="{{localize 'NEUROSHIMA.RadiationResistance'}}"{{#if radResistTooltip}} data-tooltip="{{radResistTooltip}}" data-tooltip-direction="UP"{{/if}}><i class="fas fa-radiation-alt"></i><span>{{effectiveRadiationResistance}}</span></span>
+                <span class="rad-resist-sum" title="{{localize 'NEUROSHIMA.RadiationResistance'}}"{{#if radResistTooltip}} data-tooltip-html="{{radResistTooltip}}" data-tooltip-direction="UP"{{/if}}><i class="fas fa-radiation-alt"></i><span>{{effectiveRadiationResistance}}</span></span>
                 <span class="hp-sum" title="{{localize 'NEUROSHIMA.Wound.TotalDamage'}}">
                     <i class="fas fa-heart"></i><span>{{combat.totalDamagePoints}} / {{combat.maxHP}}</span>
                 </span>

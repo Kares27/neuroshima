@@ -125,7 +125,7 @@
                     <td class="wound-healing-percent" data-damage-type="{{this.damageType}}">
                         {{#if (gte this.healingPercent 0)}}+{{/if}}{{this.healingPercent}}%
                     </td>
-                    <td class="wound-modifier-cell" {{#if this.healingTooltip}}data-tooltip="{{this.healingTooltip}}"{{/if}}>
+                    <td class="wound-modifier-cell" {{#if this.healingTooltip}}data-tooltip-html="{{this.healingTooltip}}"{{/if}}>
                         <input type="number"
                                name="woundModifier-{{this.damageType}}"
                                class="wound-modifier"

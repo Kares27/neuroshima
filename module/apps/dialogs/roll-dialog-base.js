@@ -1,3 +1,5 @@
+import { buildBreakdownTooltip } from "../../helpers/tooltip-renderer.js";
+
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
 /**
@@ -63,22 +65,15 @@ export class NeuroshimaRollDialogBase extends HandlebarsApplicationMixin(Applica
    */
   _buildTooltip(userVal, delta, breakdown) {
     if (!delta) return null;
-    const sign = v => v >= 0 ? `+${v}` : `${v}`;
-    const userLabel   = game.i18n.localize("NEUROSHIMA.Roll.UserEntry");
-    const effectLabel = game.i18n.localize("NEUROSHIMA.Roll.EffectBonus");
-    const totalLabel  = game.i18n.localize("NEUROSHIMA.Roll.Total");
-    const td  = (content, style = "") => `<td style="padding:1px 3px;${style}">${content}</td>`;
-    const tdr = (content, style = "") => td(content, `text-align:right;padding-left:8px;${style}`);
-    const rows = [];
-    rows.push(`<tr>${td(`<span style="opacity:.75">${userLabel}:</span>`)}${tdr(`<span style="opacity:.75">${sign(userVal)}</span>`)}</tr>`);
-    if (breakdown.length) {
-      rows.push(`<tr><td colspan="2" style="padding:2px 3px 0"><strong>${effectLabel}:</strong></td></tr>`);
-      for (const e of breakdown) {
-        rows.push(`<tr>${td(`&nbsp;&bull;&nbsp;${e.label}`)}${tdr(`<strong>${sign(e.value)}%</strong>`)}</tr>`);
-      }
-    }
-    rows.push(`<tr style="border-top:1px solid rgba(255,255,255,.2)">${td(`<strong>${totalLabel}:</strong>`)}${tdr(`<strong>${sign(userVal + delta)}</strong>`)}</tr>`);
-    return `<table style="border-collapse:collapse;white-space:nowrap">${rows.join("")}</table>`;
+    const sources = breakdown?.length
+      ? breakdown
+      : [{ label: "NEUROSHIMA.Roll.EffectBonus", value: delta }];
+    return buildBreakdownTooltip({
+      baseLabel: "NEUROSHIMA.Roll.UserEntry",
+      baseValue: Number(userVal ?? 0),
+      sources,
+      totalValue: Number(userVal ?? 0) + Number(delta ?? 0)
+    });
   }
 
   /**
@@ -108,20 +103,15 @@ export class NeuroshimaRollDialogBase extends HandlebarsApplicationMixin(Applica
     set("attributeBonus", this._buildTooltip(uv.attributeBonus, sf.attributeBonus, bd.attr));
     set("skillBonus",     this._buildTooltip(uv.skillBonus,     sf.skillBonus,     bd.skill));
 
-    const sign = v => v >= 0 ? `+${v}` : `${v}`;
     const actorArmor   = this.actor?.system?.combat?.totalArmorPenalty ?? 0;
     const actorWound   = this.actor?.system?.combat?.totalWoundPenalty ?? 0;
     const actorDisease = this._computeActorDiseasePenalty();
-    const userLabel    = game.i18n.localize("NEUROSHIMA.Roll.UserEntry");
-    const effectLabel  = game.i18n.localize("NEUROSHIMA.Roll.EffectBonus");
-    const totalLabel   = game.i18n.localize("NEUROSHIMA.Roll.Total");
-
-    const buildSimple = (base, delta) =>
-      `<table style="border-collapse:collapse;white-space:nowrap">` +
-      `<tr><td style="padding:1px 3px"><span style="opacity:.75">${userLabel}:</span></td><td style="padding:1px 3px;text-align:right;padding-left:8px"><span style="opacity:.75">${sign(base)}</span></td></tr>` +
-      `<tr><td style="padding:1px 3px"><strong>${effectLabel}:</strong></td><td style="padding:1px 3px;text-align:right;padding-left:8px"><strong>${sign(delta)}</strong></td></tr>` +
-      `<tr style="border-top:1px solid rgba(255,255,255,.2)"><td style="padding:1px 3px"><strong>${totalLabel}:</strong></td><td style="padding:1px 3px;text-align:right;padding-left:8px"><strong>${sign(base + delta)}</strong></td></tr>` +
-      `</table>`;
+    const buildSimple = (base, delta) => buildBreakdownTooltip({
+      baseLabel: "NEUROSHIMA.Roll.UserEntry",
+      baseValue: Number(base ?? 0),
+      sources: [{ label: "NEUROSHIMA.Roll.EffectBonus", value: Number(delta ?? 0) }],
+      totalValue: Number(base ?? 0) + Number(delta ?? 0)
+    });
 
     set("armorPenalty",   sf.armorDelta    ? buildSimple(actorArmor,   sf.armorDelta)    : null);
     set("woundPenalty",   sf.woundDelta    ? buildSimple(actorWound,   sf.woundDelta)    : null);

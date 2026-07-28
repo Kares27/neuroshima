@@ -596,7 +596,7 @@
     border-color: transparent;
 }
 
-.neuroshima.sheet.actor .attribute-total-row td input[data-tooltip] {
+.neuroshima.sheet.actor .attribute-total-row td input:is([data-tooltip], [data-tooltip-html]) {
     pointer-events: auto;
     cursor: help;
 }

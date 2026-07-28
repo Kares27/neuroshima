@@ -5,6 +5,10 @@ import { getConditions } from "../apps/config/condition-config.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
 import { getEffectiveArmorRatings, getEffectiveRadiationResistance } from "../helpers/mod-helpers.js";
 import { BeastActivitySheet } from "../apps/beast-activity-sheet.js";
+import {
+  buildBreakdownTooltip,
+  collectAttributeEffectSources
+} from "../helpers/tooltip-renderer.js";
 
 function _collectCreatureArmorBonusByEffect(actor) {
   const byLoc = {};
@@ -1036,15 +1040,12 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       const bonusLoc   = Number(system.armorBonus?.[key]) || 0;
       const bonus      = bonusAll + bonusLoc;
 
-      const tooltipParts = [];
-      if (reduction > 0) tooltipParts.push(`${foundry.utils.escapeHTML(natArmorLabel)}: <strong>${reduction}</strong>`);
-      for (const itm of locItems) {
-        tooltipParts.push(`${foundry.utils.escapeHTML(itm.name)}: <strong>${itm.currentRating}</strong>`);
-      }
-      for (const e of [...(effectBonus.all ?? []), ...(effectBonus[key] ?? [])]) {
-        const sign = e.value >= 0 ? "+" : "";
-        tooltipParts.push(`${foundry.utils.escapeHTML(e.name)}: <strong>${sign}${e.value}</strong>`);
-      }
+      const armorSources = [
+        ...(reduction !== 0 ? [{ label: natArmorLabel, value: reduction }] : []),
+        ...locItems.map(item => ({ label: item.name, value: Number(item.currentRating ?? 0) })),
+        ...[...(effectBonus.all ?? []), ...(effectBonus[key] ?? [])]
+          .map(effect => ({ label: effect.name, value: effect.value }))
+      ];
 
       return {
         key,
@@ -1055,7 +1056,11 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         items:            locItems,
         totalAP:          itemsAP,
         totalEffectiveAP: reduction + itemsAP + bonus,
-        tooltip:          tooltipParts.join("<br>")
+        tooltip:          buildBreakdownTooltip({
+          title: data.label,
+          sources: armorSources,
+          totalValue: reduction + itemsAP + bonus
+        })
       };
     });
 
@@ -1297,24 +1302,20 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
 
   _buildEffectTooltips(actor) {
     const attrKeys = Object.keys(NEUROSHIMA.attributes);
-    const tooltips = {};
-    for (const key of attrKeys) tooltips[key] = "";
-    for (const effect of actor.effects) {
-      if (effect.disabled || effect.isSuppressed) continue;
-      for (const change of (effect.changes ?? [])) {
-        if (!change.key) continue;
-        const attrMatch = change.key.match(/^system\.attributeBonuses\.(\w+)$/);
-        const modMatch  = change.key.match(/^system\.bonuses\.(\w+)$/);
-        const match = attrMatch || modMatch;
-        if (!match) continue;
-        const key = match[1];
-        if (!attrKeys.includes(key)) continue;
-        const val  = Number(change.value) || 0;
-        const part = `${effect.name ?? "?"}: ${val >= 0 ? "+" : ""}${val}`;
-        tooltips[key] = tooltips[key] ? tooltips[key] + "\n" + part : part;
-      }
-    }
-    return tooltips;
+    const changesByKey = collectAttributeEffectSources(actor, attrKeys);
+    return Object.fromEntries(attrKeys.map(key => {
+      const sources = changesByKey[key];
+      const total = Number(actor.system.attributeTotals?.[key] ?? 0);
+      const sourceTotal = sources
+        .filter(source => source.signed !== false)
+        .reduce((sum, source) => sum + Number(source.value ?? 0), 0);
+      return [key, buildBreakdownTooltip({
+        title: NEUROSHIMA.attributes[key]?.label ?? key,
+        baseValue: total - sourceTotal,
+        sources,
+        totalValue: total
+      })];
+    }));
   }
 
   /** @override */

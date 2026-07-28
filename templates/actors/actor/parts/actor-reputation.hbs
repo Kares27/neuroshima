@@ -44,7 +44,7 @@
                                     <span class="rep-relation-badge" {{#if rel.color}}style="color:{{rel.color}}"{{/if}} data-tooltip="{{localize 'NEUROSHIMA.Reputation.Relation'}}: {{rel.name}}">{{rel.name}}</span>
                                     {{/if}}
                                     {{#if ../../repBonusTooltip}}
-                                    <span class="rep-item-value clickable" data-action="adjustRepValue" data-item-id="{{item.id}}" data-tooltip="{{localize 'NEUROSHIMA.Reputation.ValueLabel'}}: {{item.system.value}}<br>{{../../repBonusTooltip}}">{{item.effectiveValue}}</span>
+                                    <span class="rep-item-value clickable" data-action="adjustRepValue" data-item-id="{{item.id}}" data-tooltip-html="{{../../repBonusTooltip}}">{{item.effectiveValue}}</span>
                                     {{else}}
                                     <span class="rep-item-value clickable" data-action="adjustRepValue" data-item-id="{{item.id}}" data-tooltip="{{localize 'NEUROSHIMA.Reputation.ValueLabel'}}: {{item.system.value}}">{{item.effectiveValue}}</span>
                                     {{/if}}
@@ -64,7 +64,7 @@
                                     <span class="rep-relation-badge rep-relation-empty"></span>
                                     {{/if}}
                                     {{#if ../repBonusTooltip}}
-                                    <span class="rep-item-value clickable" data-action="adjustRepValue" data-item-id="{{item.id}}" data-tooltip="{{localize 'NEUROSHIMA.Reputation.ValueLabel'}}: {{item.system.value}}<br>{{../repBonusTooltip}}">{{item.effectiveValue}}</span>
+                                    <span class="rep-item-value clickable" data-action="adjustRepValue" data-item-id="{{item.id}}" data-tooltip-html="{{../repBonusTooltip}}">{{item.effectiveValue}}</span>
                                     {{else}}
                                     <span class="rep-item-value clickable" data-action="adjustRepValue" data-item-id="{{item.id}}" data-tooltip="{{localize 'NEUROSHIMA.Reputation.ValueLabel'}}: {{item.system.value}}">{{item.effectiveValue}}</span>
                                     {{/if}}

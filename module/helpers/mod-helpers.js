@@ -717,7 +717,11 @@ export function getEffectiveRadiationResistance(actor) {
 export function getRadiationResistanceSources(actor) {
   const sources = [];
 
-  const baseRad = actor.system?.radiationResistance ?? 0;
+  // Read the stored base value, not the prepared value after Active Effects;
+  // effect sources are listed separately below and must not be counted twice.
+  const baseRad = actor._source?.system?.radiationResistance
+    ?? actor.system?.radiationResistance
+    ?? 0;
   if (baseRad !== 0) {
     sources.push({ name: game.i18n.localize("NEUROSHIMA.RadiationResistanceBase"), value: baseRad });
   }

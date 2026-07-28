@@ -56,7 +56,7 @@
             {{#each results}}
                 {{#if this.isCritical}}
                 <div class="wound-item critical"
-                     data-tooltip="{{this.tooltip}}"
+                     data-tooltip-html="{{this.tooltipHtml}}"
                      data-tooltip-direction="LEFT">
                     <div class="wound-icon">
                         <i class="fas fa-skull"></i>
@@ -68,7 +68,7 @@
                 </div>
                 {{else}}
                 <div class="wound-item {{#if this.isPassed}}success{{else}}failure{{/if}}{{#if this.forcePassed}} force-passed{{/if}}"
-                     {{#if this.forcePassed}}data-tooltip="{{this.tooltip}}"{{else}}data-tooltip-html="{{this.tooltipHtml}}"{{/if}}
+                     data-tooltip-html="{{this.tooltipHtml}}"
                      data-tooltip-direction="LEFT">
                     <div class="wound-icon">
                         <i class="fas {{#if this.isPassed}}fa-check{{else}}fa-times{{/if}}"></i>
@@ -84,7 +84,7 @@
             {{#if reducedDetails.length}}
             {{#each reducedDetails}}
                 <div class="wound-item reduced"
-                     data-tooltip="{{this.tooltip}}"
+                     data-tooltip-html="{{this.tooltipHtml}}"
                      data-tooltip-direction="LEFT">
                     <div class="wound-icon">
                         <i class="fas fa-shield"></i>
@@ -110,7 +110,7 @@
         <div class="wound-list collapsible-content" style="display: none;">
             {{#each reducedDetails}}
                 <div class="wound-item reduced"
-                     data-tooltip="{{this.tooltip}}"
+                     data-tooltip-html="{{this.tooltipHtml}}"
                      data-tooltip-direction="LEFT">
                     <div class="wound-icon">
                         <i class="fas fa-shield"></i>

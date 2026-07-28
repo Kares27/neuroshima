@@ -3491,6 +3491,9 @@ li.chat-message.message.flexcol > .message-content {
     max-height: min(620px, calc(100vh - 24px));
     padding: 0;
     overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-color: #7d6847 #171419;
+    scrollbar-width: thin;
     border: 1px solid #5b5143;
     border-left: 4px solid #a02e2e;
     border-radius: 3px;
@@ -3508,6 +3511,25 @@ li.chat-message.message.flexcol > .message-content {
         0 12px 28px rgba(0, 0, 0, 0.56),
         inset 0 0 28px rgba(0, 0, 0, 0.22);
     text-align: left;
+}
+
+#tooltip.ns-compact-stat-tooltip:has(.ns-roll-tooltip) {
+    width: 270px;
+    max-width: min(270px, calc(100vw - 24px));
+}
+
+#tooltip:has(.ns-roll-tooltip)::-webkit-scrollbar {
+    width: 8px;
+}
+
+#tooltip:has(.ns-roll-tooltip)::-webkit-scrollbar-track {
+    background: #171419;
+}
+
+#tooltip:has(.ns-roll-tooltip)::-webkit-scrollbar-thumb {
+    border: 2px solid #171419;
+    border-radius: 2px;
+    background: #7d6847;
 }
 
 .ns-roll-tooltip {
@@ -3675,9 +3697,41 @@ li.chat-message.message.flexcol > .message-content {
     padding-left: 18px;
 }
 
+.ns-roll-tooltip__row.is-subrow::before {
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    width: 5px;
+    height: 1px;
+    background: currentColor;
+    content: "";
+    opacity: 0.42;
+}
+
 .ns-roll-tooltip__row.is-subrow .ns-roll-tooltip__label {
     color: #918b80;
     font-size: 11px;
+}
+
+.ns-roll-tooltip__content {
+    color: var(--ns-roll-tooltip-text);
+    overflow-wrap: anywhere;
+}
+
+.ns-roll-tooltip__content > :first-child {
+    margin-top: 0;
+}
+
+.ns-roll-tooltip__content > :last-child {
+    margin-bottom: 0;
+}
+
+.ns-roll-tooltip__content :is(p, ul, ol) {
+    margin-block: 5px;
+}
+
+.ns-roll-tooltip__content :is(ul, ol) {
+    padding-left: 18px;
 }
 
 .ns-roll-tooltip__section--threshold {

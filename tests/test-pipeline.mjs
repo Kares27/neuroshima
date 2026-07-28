@@ -27,7 +27,12 @@ globalThis.foundry = {
 globalThis.Actor = class {};
 globalThis.Item = class {};
 globalThis.ActiveEffect = class {};
-globalThis.ChatMessage = class {};
+globalThis.ChatMessage = class {
+  static getSpeaker({ actor } = {}) {
+    return { actor: actor?.id ?? null };
+  }
+};
+globalThis.CONST = { CHAT_MESSAGE_STYLES: { OTHER: 0 } };
 globalThis.game = {
   neuroshima: {
     group() {},
@@ -50,7 +55,7 @@ globalThis.game = {
       fireCorrection: false
     })[key]
   },
-  user: { role: 4, isGM: true }
+  user: { id: "user", role: 4, isGM: true }
 };
 globalThis.ui = { notifications: { warn() {} } };
 globalThis.fromUuid = async uuid => documents.get(uuid) ?? null;
@@ -84,6 +89,13 @@ const {
   NeuroshimaScriptRunner
 } = await import("../module/apps/neuroshima-script-engine.js");
 const { CombatHelper } = await import("../module/helpers/combat-helper.js");
+const {
+  buildBreakdownTooltip,
+  canViewRollTooltip,
+  collectAttributeEffectSources,
+  collectSkillEffectSources
+} = await import("../module/helpers/tooltip-renderer.js");
+const { NeuroshimaChatMessage } = await import("../module/documents/chat-message.js");
 game.neuroshima.tests = NEUROSHIMA_TESTS;
 
 function actorFixture() {
@@ -517,6 +529,279 @@ test("domain tooltips expose weapon, healing, grenade and percentile details", (
   assert.match(percentileTooltip, /Tooltip\.Result/);
   assert.match(percentileTooltip, /Tooltip\.Margin/);
   assert.match(percentileTooltip, /Roll\.SuccessPoints/);
+});
+
+test("pain resistance tooltip includes wound context and consequence", () => {
+  const pain = new SkillTest({
+    preData: { label: "Pain", stat: 12, skill: 3 },
+    result: {
+      success: false,
+      woundName: "<Severe & painful>",
+      damageType: "C",
+      painPenalty: 40,
+      target: 10
+    },
+    context: {
+      rollType: "painResistance",
+      eventArgs: { location: "head", damageType: "C" }
+    }
+  }, actorFixture());
+  const tooltip = pain.getDataTooltip();
+  assert.match(tooltip, /Tooltip\.PainResistanceSection/);
+  assert.match(tooltip, /Tooltip\.PainPenalty/);
+  assert.match(tooltip, /NEUROSHIMA\.Location\.Head/);
+  assert.match(tooltip, /&lt;Severe &amp; painful&gt;/);
+  assert.doesNotMatch(tooltip, /<Severe/);
+});
+
+test("shared breakdown tooltip escapes effect names and emphasizes total", () => {
+  const tooltip = buildBreakdownTooltip({
+    title: "Attribute",
+    baseValue: 10,
+    sources: [{ label: "<Active & Effect>", value: 2 }],
+    totalValue: 12
+  });
+  assert.match(tooltip, /class="ns-roll-tooltip"/);
+  assert.match(tooltip, /&lt;Active &amp; Effect&gt;/);
+  assert.match(tooltip, /is-subrow/);
+  assert.match(tooltip, /is-bonus/);
+  assert.match(tooltip, /is-emphasized/);
+  assert.doesNotMatch(tooltip, /<Active/);
+});
+
+test("attribute tooltip sources follow Foundry appliedEffects", () => {
+  const actor = {
+    appliedEffects: new Set([
+      {
+        uuid: "Actor.actor.ActiveEffect.direct",
+        name: "Direct bonus",
+        changes: [{
+          key: "system.attributeBonuses.dexterity",
+          value: "2",
+          mode: 2
+        }]
+      },
+      {
+        uuid: "Actor.actor.Item.trait.ActiveEffect.transferred",
+        name: "Transferred trait",
+        changes: [{
+          key: "system.attributes.dexterity",
+          value: "1",
+          mode: 2
+        }]
+      },
+      {
+        uuid: "Actor.actor.ActiveEffect.total",
+        name: "Computed total change",
+        changes: [{
+          key: "system.attributeTotals.dexterity",
+          value: "3",
+          mode: 2
+        }]
+      }
+    ]),
+    effects: [],
+    items: []
+  };
+
+  const sources = collectAttributeEffectSources(actor, ["dexterity"]);
+  assert.deepEqual(
+    sources.dexterity.map(source => [source.label, source.value]),
+    [
+      ["Direct bonus", 2],
+      ["Transferred trait", 1],
+      ["Computed total change", 3]
+    ]
+  );
+});
+
+test("skill tooltip sources include applicable transferred effects", () => {
+  const transferred = {
+    uuid: "Actor.actor.Item.trait.ActiveEffect.skill",
+    name: "Training implant",
+    changes: [{
+      key: "system.skills.pistols.value",
+      value: "2",
+      mode: 2
+    }, {
+      key: "system.skillBonuses.rifles",
+      value: "1",
+      mode: 2
+    }]
+  };
+  const actor = {
+    allApplicableEffects: function* () {
+      yield transferred;
+    },
+    appliedEffects: new Set(),
+    effects: [],
+    items: []
+  };
+
+  const sources = collectSkillEffectSources(actor, ["pistols", "rifles"]);
+  assert.deepEqual(sources.pistols.map(source => source.label), ["Training implant"]);
+  assert.equal(sources.pistols[0].value, 2);
+  assert.equal(sources.rifles[0].value, 1);
+});
+
+test("tooltip permission recognizes direct pain and aggregate grenade actors", () => {
+  const actors = new Map([
+    ["owned", { isOwner: true }],
+    ["other", { isOwner: false }]
+  ]);
+  const player = { role: 1, isGM: false };
+  const settings = {
+    user: player,
+    actors,
+    minRole: 4,
+    ownerVisibility: true
+  };
+
+  assert.equal(canViewRollTooltip({
+    ...settings,
+    message: { flags: { neuroshima: { actorId: "owned" } } }
+  }), true);
+  assert.equal(canViewRollTooltip({
+    ...settings,
+    message: {
+      flags: {
+        neuroshima: {
+          actorDamages: [{ actorId: "other" }, { actorId: "owned" }]
+        }
+      }
+    }
+  }), true);
+  assert.equal(canViewRollTooltip({
+    ...settings,
+    message: { flags: { neuroshima: { actorId: "other" } } }
+  }), false);
+});
+
+test("pain report normalization covers critical and armor-reduced grenade rows", () => {
+  const { results, reducedDetails } = NeuroshimaChatMessage._preparePainTooltipData(
+    [{
+      name: "Critical wound",
+      damageType: "K",
+      location: "head",
+      isCritical: true,
+      isPassed: false,
+      penalty: 160
+    }],
+    [{
+      fullName: "Stopped fragment",
+      location: "torso",
+      totalArmor: 4,
+      piercing: 1
+    }]
+  );
+
+  assert.match(results[0].tooltipHtml, /Tooltip\.PainResistanceSection/);
+  assert.match(results[0].tooltipHtml, /NEUROSHIMA\.Location\.Head/);
+  assert.match(results[0].tooltipHtml, /Tooltip\.Consequence/);
+  assert.match(reducedDetails[0].tooltipHtml, /Tooltip\.ArmorReductionSection/);
+  assert.match(reducedDetails[0].tooltipHtml, /Tooltip\.DamageNegated/);
+});
+
+test("healing batch exposes compact and per-wound tooltips with serialized primary test", async () => {
+  let renderedContext = null;
+  let createdData = null;
+  let updatedData = null;
+  const originalRender = NeuroshimaChatMessage._renderTemplate;
+  const originalCreate = NeuroshimaChatMessage.create;
+  NeuroshimaChatMessage._renderTemplate = async (_template, context) => {
+    renderedContext = context;
+    return "<div>healing</div>";
+  };
+  NeuroshimaChatMessage.create = async data => {
+    createdData = data;
+    return data;
+  };
+
+  const makeTest = (woundId, isSuccess) => ({
+    result: {
+      woundId,
+      woundName: `Wound ${woundId}`,
+      damageType: "C",
+      isSuccess,
+      healingEffect: { penaltyChange: isSuccess ? -10 : 0 }
+    },
+    context: {},
+    getDataTooltip: () => `<div class="ns-roll-tooltip">${woundId}</div>`,
+    canShowTooltip: () => true,
+    toData: () => ({
+      result: { woundId, isSuccess },
+      context: {}
+    })
+  });
+
+  try {
+    const medic = { id: "medic", uuid: "Actor.medic", name: "Medic" };
+    const patient = { id: "patient", uuid: "Actor.patient", name: "Patient" };
+    const batch = [makeTest("one", true), makeTest("two", false)];
+    await NeuroshimaChatMessage.renderHealingBatchTests(
+      medic,
+      patient,
+      batch,
+      "firstAid"
+    );
+    await NeuroshimaChatMessage.renderHealingBatchTests(
+      { id: "medic", uuid: "Actor.medic", name: "Medic" },
+      { id: "patient", uuid: "Actor.patient", name: "Patient" },
+      batch,
+      "firstAid",
+      {},
+      {
+        message: {
+          update: async data => {
+            updatedData = data;
+          }
+        }
+      }
+    );
+  } finally {
+    NeuroshimaChatMessage._renderTemplate = originalRender;
+    NeuroshimaChatMessage.create = originalCreate;
+  }
+
+  assert.equal(renderedContext.results[0].tooltipHtml.includes("one"), true);
+  assert.match(renderedContext.dataTooltip, /Tooltip\.HealingBatchSection/);
+  assert.equal(createdData.flags.neuroshima.test.context.batchTests.length, 2);
+  assert.equal(createdData.flags.neuroshima.test.result.woundId, "one");
+  assert.equal(updatedData["flags.neuroshima.test"].context.batchTests.length, 2);
+});
+
+test("healing request renders without requiring a batch test list", async () => {
+  const originalRender = NeuroshimaChatMessage._renderTemplate;
+  const originalCreate = NeuroshimaChatMessage.create;
+  const originalGeneratePatientCard = CombatHelper.generatePatientCard;
+  const originalGameCombatHelper = game.neuroshima.CombatHelper;
+  const originalUsers = game.users;
+  NeuroshimaChatMessage._renderTemplate = async () => "<div>request</div>";
+  NeuroshimaChatMessage.create = async data => data;
+  CombatHelper.generatePatientCard = () => ({ locations: [] });
+  game.neuroshima.CombatHelper = CombatHelper;
+  game.users = {
+    get: id => ({ id, name: "Requester" }),
+    filter: () => []
+  };
+
+  let created;
+  try {
+    created = await NeuroshimaChatMessage.renderHealingRequest(
+      { id: "patient", uuid: "Actor.patient", name: "Patient" },
+      null,
+      "requester"
+    );
+  } finally {
+    NeuroshimaChatMessage._renderTemplate = originalRender;
+    NeuroshimaChatMessage.create = originalCreate;
+    CombatHelper.generatePatientCard = originalGeneratePatientCard;
+    game.neuroshima.CombatHelper = originalGameCombatHelper;
+    game.users = originalUsers;
+  }
+
+  assert.equal(created.flags.neuroshima.messageType, "healingRequest");
+  assert.equal(created.flags.neuroshima.patientUuid, "Actor.patient");
 });
 
 test("dice presentation exposes escaped old-to-new history", async () => {

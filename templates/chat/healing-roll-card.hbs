@@ -14,13 +14,13 @@
     </header>
 
     <div class="report-summary">
-        <div class="summary-item success" data-tooltip="{{successTooltip}}">
+        <div class="summary-item success" {{#if showTooltip}}{{#if successTooltip}}data-tooltip-html="{{successTooltip}}"{{/if}}{{/if}}>
             <span class="label">{{localize "NEUROSHIMA.HealingRequest.Successful"}}:</span>
             <span class="value"><strong>{{successCount}}</strong></span>
         </div>
         {{#if failedCount}}
         <div class="summary-divider">|</div>
-        <div class="summary-item failed" data-tooltip="{{failedTooltip}}">
+        <div class="summary-item failed" {{#if showTooltip}}{{#if failedTooltip}}data-tooltip-html="{{failedTooltip}}"{{/if}}{{/if}}>
             <span class="label">{{localize "NEUROSHIMA.HealingRequest.Failed"}}:</span>
             <span class="value"><strong>{{failedCount}}</strong></span>
         </div>
@@ -47,8 +47,10 @@
         <div class="wound-list collapsible-content" style="display: none;">
             {{#each results}}
                 <div class="wound-item {{#if this.isSuccess}}success{{else}}failure{{/if}}"
+                     {{#if ../showTooltip}}
                      data-tooltip-html="{{this.tooltipHtml}}"
                      data-tooltip-direction="LEFT"
+                     {{/if}}
                      data-wound-id="{{this.woundId}}">
                     <div class="wound-actions-left">
                         <button class="reroll-healing-btn" 

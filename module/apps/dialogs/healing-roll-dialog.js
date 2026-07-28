@@ -2,6 +2,7 @@ import { NEUROSHIMA } from "../../config.js";
 import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
 import { NeuroshimaRollDialogBase } from "./roll-dialog-base.js";
 import { HealingTest, TestRules } from "../../tests.mjs";
+import { buildBreakdownTooltip } from "../../helpers/tooltip-renderer.js";
 
 /**
  * Helper: Get healing difficulty based on wound damage type from world settings.
@@ -206,13 +207,27 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
       const healPct          = getHealingPercent(healingMethod, group.woundList[0]?.hadFirstAid);
       const scriptHealingMod = sfHealAll + (sfHealDt[dt] || 0);
       const scriptDiffShift  = sfDiffShift + (sfHealDiff[dt] || 0);
-      const tooltipLines = sfBreakdown
+      const healingSources = sfBreakdown
         .map(b => {
           const val = (b.healingModifierAll || 0) + (b.healingModifier[dt] || 0);
-          return val !== 0 ? `${b.label}: ${val > 0 ? "+" : ""}${val}%` : null;
+          return val !== 0 ? { label: b.label, value: val, suffix: "%" } : null;
         })
         .filter(Boolean);
-      const healingTooltip = tooltipLines.length > 0 ? tooltipLines.join("\n") : null;
+      if (!healingSources.length && scriptHealingMod) {
+        healingSources.push({
+          label: "NEUROSHIMA.Roll.EffectBonus",
+          value: scriptHealingMod,
+          suffix: "%"
+        });
+      }
+      const healingTooltip = buildBreakdownTooltip({
+        title: "NEUROSHIMA.Tooltip.HealingSection",
+        baseLabel: "NEUROSHIMA.Roll.UserEntry",
+        baseValue: selWoundMod,
+        sources: healingSources,
+        totalValue: selWoundMod + scriptHealingMod,
+        suffix: "%"
+      }) || null;
       return { ...group, difficulty: selDiff, healingPercent: healPct, woundModifier: selWoundMod + scriptHealingMod, scriptHealingMod, scriptDiffShift, healingTooltip };
     });
 

@@ -1,4 +1,5 @@
 import { NEUROSHIMA } from "./config.js";
+import { renderTooltipSections } from "./helpers/tooltip-renderer.js";
 
 export const DIFFICULTY_ORDER = Object.freeze([
   "easy", "average", "problematic", "hard", "veryHard",
@@ -190,43 +191,7 @@ export class NeuroshimaTestBase {
   static dieSides = 20;
 
   static renderTooltipSections(sections = []) {
-    const allowedStates = new Set(["penalty", "bonus", "success", "failure", "ignored"]);
-    const visibleSections = sections.filter(section => section.rows?.length);
-    const orderedSections = [
-      ...visibleSections.filter(section => section.kind !== "threshold"),
-      ...visibleSections.filter(section => section.kind === "threshold")
-    ];
-    const renderedSections = orderedSections
-      .map((section, sectionIndex) => {
-        const sectionClasses = ["ns-roll-tooltip__section"];
-        if (section.kind === "threshold") sectionClasses.push("ns-roll-tooltip__section--threshold");
-        const rows = section.rows.map(row => {
-          const rowClasses = ["ns-roll-tooltip__row"];
-          if (allowedStates.has(row.state)) rowClasses.push(`is-${row.state}`);
-          if (row.emphasis === true) rowClasses.push("is-emphasized");
-          if (row.indent === true) rowClasses.push("is-subrow");
-          return [
-            `<div class="${rowClasses.join(" ")}">`,
-            `<dt class="ns-roll-tooltip__label">${escapeTooltip(game.i18n.localize(row.label))}</dt>`,
-            `<dd class="ns-roll-tooltip__value">${escapeTooltip(row.signed ? signed(row.value) : row.value)}</dd>`,
-            "</div>"
-          ].join("");
-        }).join("");
-        const header = section.kind === "threshold" ? "" : [
-          '<header class="ns-roll-tooltip__section-header">',
-          `<span class="ns-roll-tooltip__section-number">${String(sectionIndex + 1).padStart(2, "0")}</span>`,
-          `<h3 class="ns-roll-tooltip__section-title">${escapeTooltip(game.i18n.localize(section.title))}</h3>`,
-          "</header>"
-        ].join("");
-        return [
-          `<section class="${sectionClasses.join(" ")}">`,
-          header,
-          `<dl class="ns-roll-tooltip__rows">${rows}</dl>`,
-          "</section>"
-        ].join("");
-      })
-      .join("");
-    return `<div class="ns-roll-tooltip">${renderedSections}</div>`;
+    return renderTooltipSections(sections);
   }
 
   constructor(data = {}, actor = null) {
@@ -861,6 +826,43 @@ export class SkillTest extends NeuroshimaTest {
   constructor(data = {}, actor = null) {
     super(data, actor);
     this.preData.type = "skill";
+  }
+
+  getTooltipSections() {
+    const sections = super.getTooltipSections();
+    if (this.context.rollType !== "painResistance") return sections;
+
+    const eventArgs = this.context.eventArgs ?? {};
+    const location = eventArgs.location ?? this.result.location ?? "";
+    const locationLabel = NEUROSHIMA.bodyLocations?.[location]?.label ?? location;
+    const passed = this.result.success === true;
+    const forcePassed = this.result.forcePassed === true;
+    const consequence = Number(this.result.painPenalty ?? 0);
+    sections.push({
+      title: "NEUROSHIMA.Tooltip.PainResistanceSection",
+      rows: [
+        { label: "NEUROSHIMA.Tooltip.Wound", value: this.result.woundName ?? this.preData.label ?? "" },
+        { label: "NEUROSHIMA.Tooltip.DamageType", value: this.result.damageType ?? eventArgs.damageType ?? "" },
+        { label: "NEUROSHIMA.Tooltip.Location", value: game.i18n.localize(locationLabel) },
+        {
+          label: "NEUROSHIMA.Tooltip.Result",
+          value: game.i18n.localize(passed ? "NEUROSHIMA.Tooltip.Success" : "NEUROSHIMA.Tooltip.Failure"),
+          state: passed ? "success" : "failure"
+        },
+        ...(forcePassed ? [{
+          label: "NEUROSHIMA.Tooltip.Consequence",
+          value: game.i18n.localize("NEUROSHIMA.Tooltip.AutomaticSuccess"),
+          state: "success"
+        }] : []),
+        {
+          label: "NEUROSHIMA.Tooltip.PainPenalty",
+          value: consequence,
+          suffix: "%",
+          state: consequence > 0 ? "penalty" : "success"
+        }
+      ]
+    });
+    return sections;
   }
 }
 

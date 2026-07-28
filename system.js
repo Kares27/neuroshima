@@ -35,6 +35,10 @@ import { NeuroshimaMeleeCombat } from "./module/combat/combat.js";
 import { buildRef, resolveRef } from "./module/helpers/mod-helpers.js";
 import { buildItemPreviewTooltip } from "./module/helpers/item-tooltip.js";
 import { InteractiveItemTooltip } from "./module/helpers/interactive-item-tooltip.js";
+import {
+    buildBreakdownTooltip,
+    canViewRollTooltip
+} from "./module/helpers/tooltip-renderer.js";
 import { EncumbranceConfig } from "./module/apps/config/encumbrance-config.js";
 import { CombatConfig } from "./module/apps/config/combat-config.js";
 import { DistanceConfig, DEFAULT_DISTANCE_PENALTIES } from "./module/apps/config/distance-config.js";
@@ -471,22 +475,25 @@ Hooks.once('init', async function() {
 
     Handlebars.registerHelper('nsModTooltip', (mods, deltaKey, overrideKey) => {
         if (!mods || typeof mods !== 'object') return '';
-        const lines = [];
+        const sources = [];
         for (const [key, snap] of Object.entries(mods)) {
             if (key.startsWith('__') || !snap?.attached) continue;
             if (overrideKey && snap[overrideKey]) {
                 const val = snap[deltaKey];
                 if (val !== undefined && val !== null && val !== '') {
-                    lines.push(`${snap.name}: ${val}`);
+                    sources.push({ label: snap.name ?? "?", value: val });
                 }
             } else {
                 const delta = Number(snap[deltaKey] ?? 0);
                 if (delta !== 0) {
-                    lines.push(`${snap.name}: ${delta > 0 ? '+' : ''}${delta}`);
+                    sources.push({ label: snap.name ?? "?", value: delta });
                 }
             }
         }
-        return lines.join('<br>');
+        return buildBreakdownTooltip({
+            title: "NEUROSHIMA.Tooltip.ItemModificationsSection",
+            sources
+        });
     });
 
     // Register sheets
@@ -2584,21 +2591,21 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
     const rollTooltipOwnerVisibility = game.settings.get("neuroshima", "rollTooltipOwnerVisibility");
     
     // Get actor ID from message flags
-    const actorId = message.flags?.neuroshima?.test?.result?.actorId;
-    let actor = null;
-    if (actorId) {
-        actor = game.actors.get(actorId);
-    }
-    
     // Check if user has permission to view tooltips
-    const canShowTooltip = game.user.role >= rollTooltipMinRole || 
-                          (rollTooltipOwnerVisibility && (actor?.isOwner || game.user.isGM));
+    const canShowTooltip = canViewRollTooltip({
+        message,
+        user: game.user,
+        actors: game.actors,
+        minRole: rollTooltipMinRole,
+        ownerVisibility: rollTooltipOwnerVisibility
+    });
     
     if (!canShowTooltip) {
         // Remove all tooltip attributes from the chat card
-        const tooltipElements = html.querySelectorAll("[data-tooltip]");
+        const tooltipElements = html.querySelectorAll("[data-tooltip], [data-tooltip-html]");
         tooltipElements.forEach(el => {
             el.removeAttribute("data-tooltip");
+            el.removeAttribute("data-tooltip-html");
             el.removeAttribute("data-tooltip-direction");
         });
     }

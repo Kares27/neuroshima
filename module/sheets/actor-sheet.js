@@ -11,6 +11,13 @@ import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
 import { getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveRadiationResistance, getRadiationResistanceSources, installMod } from "../helpers/mod-helpers.js";
 import { buildItemPreviewTooltip } from "../helpers/item-tooltip.js";
 import { NeuroshimaChoiceRouter } from "../helpers/choice-router.js";
+import {
+  buildBreakdownTooltip,
+  buildRichTextTooltip,
+  collectAttributeEffectSources,
+  collectSkillEffectSources,
+  renderTooltipSections
+} from "../helpers/tooltip-renderer.js";
 
 function _collectArmorBonusByEffect(actor) {
   const byLoc = {};
@@ -281,14 +288,22 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       const modState = parentItem.system?.mods?.[modItem.id];
       if (!modState?.attached) continue;
       if (!attachedModsByItemId[parentId]) attachedModsByItemId[parentId] = [];
-      attachedModsByItemId[parentId].push({ name: modItem.name, effectText: modItem.system?.effectText ?? "" });
+      const effectText = modItem.system?.effectText ?? "";
+      attachedModsByItemId[parentId].push({
+        name: modItem.name,
+        effectText,
+        tooltipHtml: buildRichTextTooltip({ title: modItem.name, html: effectText })
+      });
     }
     context.attachedModsByItemId = attachedModsByItemId;
     context.effectiveRadiationResistance = getEffectiveRadiationResistance(actor);
     const radSources = getRadiationResistanceSources(actor);
-    context.radResistTooltip = radSources.length
-      ? radSources.map(s => `${foundry.utils.escapeHTML(s.name)}: <strong>${s.value > 0 ? "+" : ""}${s.value}</strong>`).join("<br>")
-      : null;
+    context.radResistTooltip = buildBreakdownTooltip({
+      title: "NEUROSHIMA.RadiationResistance",
+      sources: radSources,
+      totalLabel: "NEUROSHIMA.Roll.Total",
+      totalValue: context.effectiveRadiationResistance
+    }) || null;
 
     const totalBaseUnits = moneyItems.reduce((sum, i) => sum + (i.system.quantity * i.system.coinValue), 0);
     const moneyDenominations = [];
@@ -326,13 +341,31 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       .reduce((sum, i) => sum + (Number(i.system.transientPenalty) || 0), 0);
     const totalCombatPenalty = totalArmorPenalty + totalWoundPenalty + totalDiseasePenalty;
 
-    const penaltyLines = [];
-    if (totalArmorPenalty) penaltyLines.push(`${game.i18n.localize("NEUROSHIMA.Roll.Armor")}: ${totalArmorPenalty}%`);
-    if (totalWoundPenalty) penaltyLines.push(`${game.i18n.localize("NEUROSHIMA.Roll.Wounds")}: ${totalWoundPenalty}%`);
-    if (totalDiseasePenalty) penaltyLines.push(`${game.i18n.localize("NEUROSHIMA.Roll.Disease")}: ${totalDiseasePenalty}%`);
-    const penaltyTooltip = penaltyLines.length
-      ? penaltyLines.join("<br>")
-      : `${game.i18n.localize("NEUROSHIMA.Wound.TotalPenaltyAbbr")}: 0%`;
+    const penaltyRows = [
+      { label: "NEUROSHIMA.Roll.Armor", value: totalArmorPenalty },
+      { label: "NEUROSHIMA.Roll.Wounds", value: totalWoundPenalty },
+      { label: "NEUROSHIMA.Roll.Disease", value: totalDiseasePenalty }
+    ]
+      .filter(row => row.value)
+      .map(row => ({ ...row, suffix: "%", state: "penalty" }));
+    const penaltyTooltip = renderTooltipSections([
+      {
+        title: "NEUROSHIMA.Wound.TotalPenalty",
+        rows: penaltyRows.length
+          ? penaltyRows
+          : [{ label: "NEUROSHIMA.Wound.TotalPenaltyAbbr", value: 0, suffix: "%" }]
+      },
+      {
+        kind: "threshold",
+        rows: [{
+          label: "NEUROSHIMA.Roll.Total",
+          value: totalCombatPenalty,
+          suffix: "%",
+          emphasis: true,
+          state: totalCombatPenalty > 0 ? "penalty" : null
+        }]
+      }
+    ]);
 
     const healingRate = system.healingRate || 5;
     
@@ -533,16 +566,16 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       const reputationBonus = this.document.system?.reputationBonus ?? 0;
       const fameBonus = this.document.system?.fameBonus ?? 0;
 
-      const repBonusTooltipParts = [];
-      const fameBonusTooltipParts = [];
+      const repBonusSources = [];
+      const fameBonusSources = [];
       for (const effect of (this.document.effects ?? [])) {
         if (effect.disabled || effect.isSuppressed) continue;
         for (const change of (effect.changes ?? [])) {
           const val = Number(change.value) || 0;
           if (change.key === "system.reputationBonus") {
-            repBonusTooltipParts.push(`${effect.name ?? "?"}: ${val >= 0 ? "+" : ""}${val}`);
+            repBonusSources.push({ label: effect.name ?? "?", value: val });
           } else if (change.key === "system.fameBonus") {
-            fameBonusTooltipParts.push(`${effect.name ?? "?"}: ${val >= 0 ? "+" : ""}${val}`);
+            fameBonusSources.push({ label: effect.name ?? "?", value: val });
           }
         }
       }
@@ -550,8 +583,14 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       context.reputationBonus = reputationBonus;
       context.fameBonus = fameBonus;
       context.effectiveFame = (this.document.system?.fame ?? 0) + fameBonus;
-      context.fameBonusTooltip = fameBonusTooltipParts.length ? fameBonusTooltipParts.join("<br>") : null;
-      context.repBonusTooltip = repBonusTooltipParts.length ? repBonusTooltipParts.join("<br>") : null;
+      context.fameBonusTooltip = buildBreakdownTooltip({
+        title: "NEUROSHIMA.Reputation.FameAbbr",
+        sources: fameBonusSources
+      }) || null;
+      context.repBonusTooltip = buildBreakdownTooltip({
+        title: "NEUROSHIMA.Reputation.RepBonus",
+        sources: repBonusSources
+      }) || null;
       context.showRepAsProgressBar = showAsProgressBar;
       context.repMin = repMin;
       context.repMax = repMax;
@@ -883,41 +922,20 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
   _buildEffectTooltips(actor) {
     const attrKeys = Object.keys(NEUROSHIMA.attributes);
-    const tooltips = {};
-    for (const key of attrKeys) tooltips[key] = "";
-
-    const addAttrChanges = (effect) => {
-      if (effect.disabled || effect.isSuppressed) return;
-      for (const change of (effect.changes ?? [])) {
-        if (!change.key) continue;
-        const attrMatch   = change.key.match(/^system\.attributeBonuses\.(\w+)$/);
-        const modMatch    = change.key.match(/^system\.bonuses\.(\w+)$/);
-        const directMatch = change.key.match(/^system\.attributes\.(\w+)$/);
-        const modsMatch   = change.key.match(/^system\.modifiers\.(\w+)$/);
-        const match = attrMatch || modMatch || directMatch || modsMatch;
-        if (!match) continue;
-        const key = match[1];
-        if (!attrKeys.includes(key)) continue;
-        const val = Number(change.value) || 0;
-        if (!val) continue;
-        const part = `${effect.name ?? "?"}: ${val >= 0 ? "+" : ""}${val}`;
-        tooltips[key] = tooltips[key] ? tooltips[key] + "<br>" + part : part;
-      }
-    };
-
-    const actorItemUUIDs = new Set(actor.items.map(i => i.uuid));
-    for (const effect of actor.effects) {
-      const origin = effect.origin ?? "";
-      const isItemCopy = [...actorItemUUIDs].some(uuid => origin.startsWith(uuid));
-      if (isItemCopy) continue;
-      addAttrChanges(effect);
-    }
-    for (const item of actor.items) {
-      for (const effect of item.effects) {
-        addAttrChanges(effect);
-      }
-    }
-    return tooltips;
+    const changesByKey = collectAttributeEffectSources(actor, attrKeys);
+    return Object.fromEntries(attrKeys.map(key => {
+      const sources = changesByKey[key];
+      const total = Number(actor.system.attributeTotals?.[key] ?? 0);
+      const sourceTotal = sources
+        .filter(source => source.signed !== false)
+        .reduce((sum, source) => sum + Number(source.value ?? 0), 0);
+      return [key, buildBreakdownTooltip({
+        title: NEUROSHIMA.attributes[key]?.label ?? key,
+        baseValue: total - sourceTotal,
+        sources,
+        totalValue: total
+      })];
+    }));
   }
 
   /** @override */
@@ -2217,15 +2235,16 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
     const effectBonus = _collectArmorBonusByEffect(actor);
     for (const [key, loc] of Object.entries(locations)) {
-      const parts = [];
-      for (const itm of loc.items) {
-        parts.push(`${foundry.utils.escapeHTML(itm.name)}: <strong>${itm.currentRating}</strong>`);
-      }
-      for (const e of [...(effectBonus.all ?? []), ...(effectBonus[key] ?? [])]) {
-        const sign = e.value >= 0 ? "+" : "";
-        parts.push(`${foundry.utils.escapeHTML(e.name)}: <strong>${sign}${e.value}</strong>`);
-      }
-      loc.tooltip = parts.join("<br>");
+      const sources = [
+        ...loc.items.map(item => ({ label: item.name, value: item.currentRating })),
+        ...[...(effectBonus.all ?? []), ...(effectBonus[key] ?? [])]
+          .map(effect => ({ label: effect.name, value: effect.value }))
+      ];
+      loc.tooltip = buildBreakdownTooltip({
+        title: loc.label,
+        sources,
+        totalValue: loc.totalAP
+      });
     }
 
     return locations;
@@ -2889,32 +2908,12 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     const system = this.document.system;
     const actor = this.document;
 
-    const skillTooltips = {};
-    const addSkillChanges = (effect) => {
-      if (effect.disabled || effect.isSuppressed) return;
-      for (const change of (effect.changes ?? [])) {
-        const mBonus = change.key?.match(/^system\.skillBonuses\.(\w+)$/);
-        const mValue = change.key?.match(/^system\.skills\.(\w+)\.value$/);
-        const m = mBonus ?? mValue;
-        if (!m) continue;
-        const sKey = m[1];
-        const val = Number(change.value) || 0;
-        if (!val) continue;
-        const part = `${effect.name ?? "?"}: ${val >= 0 ? "+" : ""}${val}`;
-        skillTooltips[sKey] = skillTooltips[sKey] ? skillTooltips[sKey] + "<br>" + part : part;
-      }
-    };
-    const _itemUUIDs = new Set((actor.items ?? []).map(i => i.uuid));
-    for (const effect of (actor.effects ?? [])) {
-      const origin = effect.origin ?? "";
-      if ([..._itemUUIDs].some(uuid => origin.startsWith(uuid))) continue;
-      addSkillChanges(effect);
-    }
-    for (const item of (actor.items ?? [])) {
-      for (const effect of item.effects) {
-        addSkillChanges(effect);
-      }
-    }
+    const skillKeys = [...new Set(
+      Object.values(skillConfig)
+        .flatMap(specializations => Object.values(specializations))
+        .flat()
+    )];
+    const skillChanges = collectSkillEffectSources(actor, skillKeys);
 
     for (const [attrKey, specializations] of Object.entries(skillConfig)) {
       const attrConfig = NEUROSHIMA.attributes[attrKey];
@@ -2928,16 +2927,28 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         groups[attrKey].specializations[specKey] = {
           label: `NEUROSHIMA.Specializations.${specKey}`,
           owned: system.specializations[specKey],
-          skills: skills.map(skillKey => ({
-            key: skillKey,
-            label: `NEUROSHIMA.Skills.${skillKey}`,
-            value: system.skills[skillKey].value,
-            total: system.skillTotals?.[skillKey] ?? system.skills[skillKey].value,
-            bonus: system.skillBonuses?.[skillKey] ?? 0,
-            bonusTooltip: skillTooltips[skillKey] ?? "",
-            customLabel: system.skills[skillKey].label,
-            isKnowledge: skillKey.startsWith("knowledge")
-          }))
+          skills: skills.map(skillKey => {
+            const total = Number(system.skillTotals?.[skillKey] ?? system.skills[skillKey].value);
+            const sources = skillChanges[skillKey] ?? [];
+            const sourceTotal = sources
+              .filter(source => source.signed !== false)
+              .reduce((sum, source) => sum + Number(source.value ?? 0), 0);
+            return {
+              key: skillKey,
+              label: `NEUROSHIMA.Skills.${skillKey}`,
+              value: system.skills[skillKey].value,
+              total,
+              bonus: system.skillBonuses?.[skillKey] ?? 0,
+              bonusTooltip: buildBreakdownTooltip({
+                title: `NEUROSHIMA.Skills.${skillKey}`,
+                baseValue: total - sourceTotal,
+                sources,
+                totalValue: total
+              }),
+              customLabel: system.skills[skillKey].label,
+              isKnowledge: skillKey.startsWith("knowledge")
+            };
+          })
         };
       }
     }
