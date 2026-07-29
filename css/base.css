@@ -9470,29 +9470,12 @@ button.jam-toggle-btn.header-control {
     gap: 0.7rem;
 }
 
-.neuroshima.script-editor .ns-actiondef-intro,
 .neuroshima.script-editor .ns-actiondef-section > header {
     display: flex;
     align-items: center;
     gap: 0.65rem;
 }
 
-.neuroshima.script-editor .ns-actiondef-intro {
-    flex: 0 0 auto;
-    padding: 0.65rem 0.75rem;
-    border: 1px solid rgba(178, 151, 92, 0.45);
-    border-radius: 6px;
-    background: linear-gradient(90deg, rgba(178, 151, 92, 0.13), transparent);
-}
-
-.neuroshima.script-editor .ns-actiondef-intro > i {
-    width: 30px;
-    text-align: center;
-    font-size: 1.25rem;
-    color: #c7aa68;
-}
-
-.neuroshima.script-editor .ns-actiondef-intro p,
 .neuroshima.script-editor .ns-actiondef-section header p {
     margin: 2px 0 0;
     font-size: 0.78rem;
@@ -9514,18 +9497,6 @@ button.jam-toggle-btn.header-control {
     margin-bottom: 0.7rem;
     padding-bottom: 0.55rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.neuroshima.script-editor .ns-actiondef-step {
-    display: grid;
-    place-items: center;
-    flex: 0 0 28px;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: rgba(178, 151, 92, 0.22);
-    color: #d5bd82;
-    font-weight: 700;
 }
 
 .neuroshima.script-editor .ns-actiondef-grid {
@@ -9630,6 +9601,14 @@ button.jam-toggle-btn.header-control {
 
 .neuroshima.script-editor .ns-actiondef-section .ns-script-code-group + .ns-script-code-group {
     margin-top: 0.8rem;
+}
+
+.neuroshima.script-editor .ns-actiondef-description {
+    margin: 0 0 0.85rem;
+}
+
+.neuroshima.script-editor .ns-actiondef-description prose-mirror {
+    min-height: 105px;
 }
 
 @media (max-width: 620px) {

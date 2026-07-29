@@ -3,6 +3,7 @@
   {{#each effectActions}}
   <button type="button" class="ns-effect-action {{#if used}}is-used{{/if}}"
           data-action="executeEffectAction" data-instance-id="{{instanceId}}"
+          {{#if tooltipHtml}}data-tooltip-html="{{tooltipHtml}}" data-tooltip-direction="UP"{{/if}}
           {{#if used}}disabled{{/if}}>
     {{#if img}}<img src="{{img}}" alt="">{{else}}<i class="fas fa-bolt"></i>{{/if}}
     <span class="ns-effect-action__name">{{name}}</span>

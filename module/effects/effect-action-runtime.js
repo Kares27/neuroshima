@@ -1,5 +1,6 @@
 import { NeuroshimaScript } from "../apps/neuroshima-script-engine.js";
 import { NeuroshimaTestBase } from "../tests.mjs";
+import { buildRichTextTooltip } from "../helpers/tooltip-renderer.js";
 
 /**
  * Runtime for post-roll actions declared by Active Effects.
@@ -13,20 +14,42 @@ export class EffectActionRuntime {
   static SURFACE_MELEE = "meleePool";
   static _inFlight = new Set();
 
-  static async collect(_actor, _rollData, surface = this.SURFACE_TEST, additions = []) {
+  static async collect(actor, rollData, surface = this.SURFACE_TEST, additions = []) {
     const entries = [];
     for (const addition of additions ?? []) {
       const effect = addition.effectUuid ? await fromUuid(addition.effectUuid) : null;
       const action = effect?.system?.actionDefs?.find(def => def.id === addition.actionId);
       if (!effect || !action || (action.type ?? "melee") !== "result") continue;
-      const ref = await this._reference(effect, action, surface);
+      const ref = await this._reference(effect, action, surface, actor, rollData);
       entries.push(foundry.utils.mergeObject(ref, addition.overrides ?? {}, { inplace: false }));
     }
     return Array.from(new Map(entries.map(entry => [entry.instanceId, entry])).values());
   }
 
-  static async _reference(effect, action, surface) {
+  static async _reference(effect, action, surface, actor = null, rollData = {}) {
     const sourceItem = await this._sourceItem(effect);
+    // `tooltip` is the legacy/shared melee field. Result actions persist their
+    // rich description in the dedicated HTMLField added to the action schema.
+    const description = String(action.description ?? action.tooltip ?? "").trim();
+    let tooltipHtml = "";
+    if (description) {
+      const itemRollData = sourceItem?.getRollData?.() ?? {};
+      const actorRollData = actor?.getRollData?.() ?? {};
+      const enriched = await foundry.applications.ux.TextEditor.enrichHTML(description, {
+        async: true,
+        secrets: false,
+        relativeTo: sourceItem ?? effect,
+        rollData: {
+          ...itemRollData,
+          actor: actorRollData,
+          test: rollData
+        }
+      });
+      tooltipHtml = buildRichTextTooltip({
+        title: action.name || effect.name,
+        html: enriched
+      });
+    }
     return {
       instanceId: `${effect.uuid}::${action.id}::${surface}`,
       sourceEffectUuid: effect.uuid,
@@ -34,6 +57,7 @@ export class EffectActionRuntime {
       surface,
       name: action.name || effect.name,
       img: effect.img || sourceItem?.img || "icons/svg/lightning.svg",
+      tooltipHtml,
       used: false
     };
   }
@@ -205,8 +229,13 @@ export class EffectActionRuntime {
     diceApi = test?.getDiceApi(),
     resultApi = test?.getResultApi()
   }) {
+    // Preserve the original test API methods before decorating the object.
+    // Calling diceApi.replace after assigning the wrapper back onto diceApi
+    // would recurse into the wrapper indefinitely.
+    const baseReplace = diceApi.replace.bind(diceApi);
+    const baseCopy = diceApi.copy.bind(diceApi);
     const replace = (index, value, options = {}) =>
-      diceApi.replace(index, value, {
+      baseReplace(index, value, {
         type: options.type ?? "replace",
         sourceIndex: Number.isInteger(options.sourceIndex) ? options.sourceIndex : null,
         label: options.label ?? action.name ?? effect.name,
@@ -218,14 +247,18 @@ export class EffectActionRuntime {
       effective: this._effectiveDice(rollData),
       replace,
       copy: (source, target, options = {}) =>
-        test.copyDie(source, target, {
+        baseCopy(source, target, {
           ...options,
           type: "copy",
           sourceIndex: Number(source),
           label: options.label ?? action.name ?? effect.name,
           icon: options.icon ?? "fas fa-copy",
           effectUuid: effect.uuid
-        })
+        }),
+      // A result action is already attached to a visible roll card. Reuse the
+      // same die selection used by selective rerolls instead of opening a
+      // second modal picker over the chat.
+      choose: options => this.chooseSelectedDice(message, rollData, options)
     });
     return {
       actor, effect, sourceItem, item: sourceItem, action, message, surface, rollData, test,
@@ -236,6 +269,52 @@ export class EffectActionRuntime {
 
   static chooseDice(rollData, options = {}) {
     return this._chooseDice(rollData, options);
+  }
+
+  /**
+   * Validate and return dice selected directly on a roll card.
+   *
+   * Result-card actions deliberately do not fall back to a modal dialog. This
+   * keeps the interaction consistent with selective rerolls: mark dice first,
+   * then press the action button.
+   */
+  static async chooseSelectedDice(
+    message,
+    rollData,
+    { min = 1, max = 1, filter = null, prompt = "Wybierz kości na karcie rzutu." } = {}
+  ) {
+    const selectionMap = globalThis.window?._nsRerollSelectedMap;
+    const selectedIndices = [...(selectionMap?.get(message?.id) ?? [])]
+      .map(Number)
+      .filter(Number.isInteger);
+    min = Math.max(0, Number(min));
+    max = Math.max(min, Number(max));
+
+    if (selectedIndices.length < min || selectedIndices.length > max) {
+      ui.notifications.warn(
+        selectedIndices.length === 0
+          ? String(prompt)
+          : `Wybierz od ${min} do ${max} kości na karcie rzutu.`
+      );
+      return null;
+    }
+
+    const rolled = this._rolledDice(rollData);
+    const effective = this._effectiveDice(rollData);
+    const dice = rolled.map((value, index) => ({
+      index,
+      rolled: value,
+      effective: effective[index]
+    }));
+    const selectedDice = selectedIndices.map(index => dice[index]).filter(Boolean);
+    if (
+      selectedDice.length !== selectedIndices.length
+      || (typeof filter === "function" && selectedDice.some(die => !filter(die)))
+    ) {
+      ui.notifications.warn("Wybrana kość nie spełnia warunków tej akcji.");
+      return null;
+    }
+    return selectedIndices;
   }
 
   static async _chooseDice(rollData, { min = 1, max = 1, filter = null, prompt = "Wybierz kości." } = {}) {

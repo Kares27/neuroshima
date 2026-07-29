@@ -103,10 +103,29 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
     raw.type ??= "melee";
     raw.mode ??= (Number(raw.successCost ?? 0) > 0 ? "queue" : "standalone");
     raw.executeScript ??= raw.result?.executeScript ?? "";
+    raw.tooltip ??= "";
+    // Result actions use a dedicated rich-text field. Fall back to the former
+    // shared tooltip field so descriptions created before this schema split survive.
+    if (
+      raw.type === "result"
+      && !String(raw.description ?? "").trim()
+      && String(raw.tooltip ?? "").trim()
+    ) {
+      raw.description = raw.tooltip;
+    }
+    raw.description ??= "";
     const { damageCount, damageType } = _parseDamage(raw.damage);
     const actionDef = { ...raw, damageCount, damageType };
     actionDef.onHitScript    = (actionDef.onHitScript ?? "").trimEnd();
     actionDef.immediateOnHit = actionDef.immediateOnHit ?? false;
+    actionDef.enrichedDescription = await foundry.applications.ux.TextEditor.enrichHTML(
+      actionDef.description,
+      {
+        async: true,
+        secrets: this._freshEffect.isOwner,
+        relativeTo: this._freshEffect
+      }
+    );
     const pushSnippet = actionDef.id
       ? `args.actions.push("${actionDef.id}");`
       : "";
@@ -117,7 +136,13 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
       label: `${key} — ${game.i18n.localize(`NEUROSHIMA.Damage.Full.${key}`)}`
     }));
 
-    return { actionDef, index: this.defIndex, damageTypeOptions, pushSnippet };
+    return {
+      actionDef,
+      index: this.defIndex,
+      damageTypeOptions,
+      pushSnippet,
+      effectUuid: this._freshEffect.uuid
+    };
   }
 
   /**
@@ -165,6 +190,10 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
         this._cmSaveTimer = setTimeout(() => this._persist(form), 400);
       });
     }
+    form.querySelector('prose-mirror[name="description"]')?.addEventListener("change", () => {
+      clearTimeout(this._cmSaveTimer);
+      this._cmSaveTimer = setTimeout(() => this._persist(form), 400);
+    });
 
     form.querySelector(".ns-se-save-btn")?.addEventListener("click", async () => {
       clearTimeout(this._cmSaveTimer);
@@ -246,6 +275,7 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
         id: d.id,
         type: "result",
         name: d.name,
+        description: form.querySelector('prose-mirror[name="description"]')?.value ?? d.description ?? "",
         executeScript: form.querySelector('code-mirror[name="executeScript"]')?.value ?? ""
       };
     }

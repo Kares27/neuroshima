@@ -1606,6 +1606,123 @@ test("used result action stays used after card rerender", async () => {
   }
 });
 
+test("result action description becomes a rich chat tooltip with actor roll data", async () => {
+  const previousUx = foundry.applications.ux;
+  let enrichmentOptions = null;
+  foundry.applications.ux = {
+    TextEditor: {
+      async enrichHTML(value, options) {
+        enrichmentOptions = options;
+        return `<p>${value}</p>`;
+      }
+    }
+  };
+
+  try {
+    const effect = {
+      uuid: "Actor.actor.ActiveEffect.effect",
+      name: "Efekt",
+      img: "effect.webp",
+      origin: null,
+      parent: { documentName: "Actor" }
+    };
+    const action = {
+      id: "amen",
+      type: "result",
+      name: "Amen",
+      description: "Zamienia wybraną kość."
+    };
+    const actor = {
+      getRollData: () => ({ attributeTotals: { perception: 12 } })
+    };
+
+    const ref = await EffectActionRuntime._reference(
+      effect,
+      action,
+      EffectActionRuntime.SURFACE_TEST,
+      actor,
+      { successPoints: 2 }
+    );
+
+    assert.match(ref.tooltipHtml, /ns-roll-tooltip/);
+    assert.match(ref.tooltipHtml, /Amen/);
+    assert.match(ref.tooltipHtml, /Zamienia wybraną kość/);
+    assert.equal(enrichmentOptions.rollData.actor.attributeTotals.perception, 12);
+    assert.equal(enrichmentOptions.rollData.test.successPoints, 2);
+  } finally {
+    foundry.applications.ux = previousUx;
+  }
+});
+
+test("result action dice wrapper calls the base replace method once", () => {
+  const replacements = [];
+  const diceApi = {
+    replace(index, value, options) {
+      replacements.push({ index, value, options });
+      return true;
+    },
+    copy() {},
+    rolled: [1, 12, 18],
+    raw: [1, 12, 18],
+    modified: []
+  };
+  const ctx = EffectActionRuntime._context({
+    actor: actorFixture(),
+    effect: { uuid: "ActiveEffect.amen", name: "Amen" },
+    sourceItem: null,
+    action: { id: "amen", name: "Amen" },
+    rollData: {
+      rolledResults: [1, 12, 18],
+      rawResults: [1, 12, 18],
+      modifiedResults: []
+    },
+    surface: EffectActionRuntime.SURFACE_TEST,
+    message: { id: "message" },
+    test: {},
+    diceApi,
+    resultApi: {}
+  });
+
+  ctx.dice.replace(1, 1, { icon: "fas fa-cross" });
+  assert.equal(replacements.length, 1);
+  assert.equal(replacements[0].index, 1);
+  assert.equal(replacements[0].value, 1);
+  assert.equal(replacements[0].options.effectUuid, "ActiveEffect.amen");
+});
+
+test("result action choose uses dice marked on the roll card without a dialog", async () => {
+  const previousWindow = globalThis.window;
+  globalThis.window = {
+    _nsRerollSelectedMap: new Map([
+      ["message", new Set([1])]
+    ])
+  };
+
+  try {
+    const selected = await EffectActionRuntime.chooseSelectedDice(
+      { id: "message" },
+      {
+        rolledResults: [1, 12, 18],
+        rawResults: [1, 12, 18],
+        modifiedResults: [
+          { original: 1, modified: 1, isSuccess: true },
+          { original: 12, modified: 12, isSuccess: false },
+          { original: 18, modified: 18, isSuccess: false }
+        ]
+      },
+      {
+        min: 1,
+        max: 1,
+        filter: die => die.rolled !== 1
+      }
+    );
+    assert.deepEqual(selected, [1]);
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
 test("result action resource is consumed only once", async () => {
   const actor = actorFixture();
   actor.documentName = "Actor";

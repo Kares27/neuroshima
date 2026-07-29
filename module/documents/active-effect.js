@@ -667,6 +667,7 @@ export class NeuroshimaActiveEffectData extends foundry.abstract.TypeDataModel {
           name:                    new fields.StringField({ initial: "",    blank: true }),
           img:                     new fields.StringField({ initial: "",    blank: true }),
           tooltip:                 new fields.StringField({ initial: "",    blank: true }),
+          description:             new fields.HTMLField({ initial: "" }),
           damage:                  new fields.StringField({ initial: "—",   blank: true }),
           mode:                    new fields.StringField({ initial: "",    blank: true }),
           successCost:             new fields.NumberField({ initial: 1, integer: true, min: 0 }),

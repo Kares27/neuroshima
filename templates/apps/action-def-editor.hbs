@@ -1,16 +1,19 @@
 <div class="ns-script-editor-body ns-actiondef-editor">
-    <div class="ns-actiondef-intro">
-        <i class="{{#if (eq actionDef.type "result")}}fa-solid fa-bolt{{else}}fa-solid fa-swords{{/if}}"></i>
-        <div>
-            <strong>Definicja akcji efektu</strong>
-            <p>Akcja walki wręcz jest sztuczką używaną w pojedynku. Akcja wyniku pojawia się na karcie wykonanego rzutu.</p>
-        </div>
-    </div>
-
     <div class="ns-editor-scroll-area">
+        {{#if actionDef.id}}
+        <section class="ns-actiondef-section ns-actiondef-reference">
+            <header>
+                <div><strong>Dodanie do skryptu</strong><p>Skopiuj helper, aby ta akcja pojawiła się w odpowiednim wyzwalaczu.</p></div>
+            </header>
+            <div class="ns-actiondef-snippet-row">
+                <input type="text" readonly value='{{#if (eq actionDef.type "result")}}this.addAction(args, "{{actionDef.id}}");{{else}}args.actions.push("{{actionDef.id}}");{{/if}}'>
+                <button type="button" class="ns-copy-snippet-btn" data-tooltip="Kopiuj odpowiedni fragment kodu"><i class="fa-solid fa-copy"></i></button>
+            </div>
+        </section>
+        {{/if}}
+
         <section class="ns-actiondef-section">
             <header>
-                <span class="ns-actiondef-step">1</span>
                 <div><strong>Podstawowe informacje</strong><p>Nazwa i grafika widoczne dla gracza.</p></div>
             </header>
 
@@ -45,7 +48,6 @@
 
         <section class="ns-actiondef-section" data-action-kind="melee" {{#unless (eq actionDef.type "melee")}}hidden{{/unless}}>
             <header>
-                <span class="ns-actiondef-step">2</span>
                 <div><strong>Parametry sztuczki</strong><p>Warunki pokazania i koszt akcji w pojedynku.</p></div>
             </header>
 
@@ -95,22 +97,8 @@
             </div>
         </section>
 
-        {{#if actionDef.id}}
-        <section class="ns-actiondef-section ns-actiondef-reference">
-            <header>
-                <span class="ns-actiondef-step"><i class="fa-solid fa-link"></i></span>
-                <div><strong>Dodanie ze skryptu</strong><p>Trigger wywołuje ten helper, kiedy przycisk ma pojawić się na karcie.</p></div>
-            </header>
-            <div class="ns-actiondef-snippet-row">
-                <input type="text" readonly value='{{#if (eq actionDef.type "result")}}this.addAction(args, "{{actionDef.id}}");{{else}}args.actions.push("{{actionDef.id}}");{{/if}}'>
-                <button type="button" class="ns-copy-snippet-btn" data-tooltip="Kopiuj odpowiedni fragment kodu"><i class="fa-solid fa-copy"></i></button>
-            </div>
-        </section>
-        {{/if}}
-
         <section class="ns-actiondef-section" data-action-kind="melee" {{#unless (eq actionDef.type "melee")}}hidden{{/unless}}>
             <header>
-                <span class="ns-actiondef-step">3</span>
                 <div><strong>Skrypt trafienia</strong><p>Opcjonalny kod uruchamiany, gdy sztuczka trafi.</p></div>
             </header>
             <div class="form-group stacked ns-script-code-group">
@@ -121,18 +109,26 @@
 
         <section class="ns-actiondef-section" data-action-kind="result" {{#unless (eq actionDef.type "result")}}hidden{{/unless}}>
             <header>
-                <span class="ns-actiondef-step">3</span>
+                <div><strong>Co to robi</strong><p>Opis widoczny po najechaniu na przycisk akcji na karcie rzutu.</p></div>
+            </header>
+            <div class="form-group stacked ns-actiondef-description">
+                <prose-mirror
+                    name="description"
+                    value="{{actionDef.description}}"
+                    document-uuid="{{effectUuid}}"
+                    toggled>
+                    {{{actionDef.enrichedDescription}}}
+                </prose-mirror>
+            </div>
+        </section>
+
+        <section class="ns-actiondef-section" data-action-kind="result" {{#unless (eq actionDef.type "result")}}hidden{{/unless}}>
+            <header>
                 <div><strong>Kod wykonywany po kliknięciu</strong><p>Kod jest pobierany z aktywnego efektu dopiero w chwili użycia.</p></div>
             </header>
             <div class="form-group stacked ns-script-code-group">
                 <label>executeScript <span class="hint">Zwróć <code>false</code>, aby anulować akcję bez przeliczenia i wykorzystania przycisku.</span></label>
                 <code-mirror name="executeScript" language="javascript" indent="4">{{actionDef.executeScript}}</code-mirror>
-                <details class="hint">
-                    <summary>Dostępne API</summary>
-                    <p><strong>Kości:</strong> <code>ctx.dice.rolled</code>, <code>effective</code>, <code>choose(options)</code>, <code>get(index)</code>, <code>replace(index, value, options)</code>, <code>copy(source, target)</code>.</p>
-                    <p><strong>Wynik:</strong> <code>addSuccessPoints(amount)</code>, <code>forceSuccess()</code>, <code>forceFailure()</code>, <code>addAnnotation(text)</code>. <code>addSuccesses()</code> jest tylko przestarzałym aliasem zgodności.</p>
-                    <p><strong>Dokumenty:</strong> <code>ctx.actor</code>, <code>effect</code>, <code>item</code>, <code>message</code>, <code>rollData</code>. Dostępne są też helpery <code>this</code> silnika skryptów.</p>
-                </details>
             </div>
         </section>
     </div>

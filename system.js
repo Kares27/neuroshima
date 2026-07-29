@@ -3644,29 +3644,6 @@ Hooks.on("getItemDirectoryEntryContext", (html, options) => {
     });
 });
 
-Hooks.on("renderItemDirectory", (app, html) => {
-    const el = html instanceof HTMLElement ? html : html[0];
-    if (!el || el.dataset.nsDropSetup) return;
-    el.dataset.nsDropSetup = "1";
-
-    el.addEventListener("drop", async (event) => {
-        let data;
-        try { data = JSON.parse(event.dataTransfer.getData("text/plain")); } catch { return; }
-        if (data.type !== "Item" || !data.uuid) return;
-        if (!data.uuid.includes(".Item.")) return;
-
-        const item = await fromUuid(data.uuid);
-        if (!item || !item.parent) return;
-
-        event.stopPropagation();
-
-        const itemData = item.toObject();
-        delete itemData._id;
-        await Item.create(itemData);
-        ui.notifications.info(game.i18n.format("NEUROSHIMA.Items.ExportedToSidebar", { name: item.name }));
-    });
-});
-
 Hooks.once("item-piles-ready", () => {
     const NEUROSHIMA_IP_STYLE_DEFAULTS = {
         "inactive":              "rgba(144,144,130,1)",
