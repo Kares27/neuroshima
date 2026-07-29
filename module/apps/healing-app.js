@@ -10,14 +10,14 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     /**
      * Calculates healing penalty change based on success, method, and modifiers
-     * @param {number} successCount - Success points from closed test
+     * @param {number} successPoints - Success points from closed test
      * @param {string} healingMethod - "firstAid" or "woundTreatment"
      * @param {boolean} hadFirstAid - Whether wound had First Aid previously
      * @param {number} healingModifier - Per-wound modifier (%)
      * @returns {number} Penalty change (negative=healing, positive=damage)
      */
-    static calculatePenaltyChange(successCount, healingMethod, hadFirstAid = false, healingModifier = 0, scriptHealingModifier = 0) {
-        const isSuccess = successCount >= 2;
+    static calculatePenaltyChange(successPoints, healingMethod, hadFirstAid = false, healingModifier = 0, scriptHealingModifier = 0) {
+        const isSuccess = successPoints >= 2;
         const isFirstAid = healingMethod === "firstAid";
         
         let penaltyChange = 0;
@@ -45,16 +45,16 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Calculates healing effects for wounds without applying them
      * @param {Actor} patientActor - Patient actor
      * @param {Array} woundIds - Wound IDs to process
-     * @param {number} successCount - Success points
+     * @param {number} successPoints - Success points
      * @param {string} healingMethod - "firstAid" or "woundTreatment"
      * @param {boolean} hadFirstAid - Whether wound had First Aid
      * @param {number} healingModifier - Per-wound modifier (%)
      * @returns {Array} Array of healing results with oldPenalty, newPenalty, penaltyChange
      */
-    static calculateHealingResults(patientActor, woundIds, successCount, healingMethod, hadFirstAid = false, healingModifier = 0, scriptHealingModifier = 0) {
+    static calculateHealingResults(patientActor, woundIds, successPoints, healingMethod, hadFirstAid = false, healingModifier = 0, scriptHealingModifier = 0) {
         game.neuroshima?.group("HealingApp | calculateHealingResults");
         
-        const penaltyChange = this.calculatePenaltyChange(successCount, healingMethod, hadFirstAid, healingModifier, scriptHealingModifier);
+        const penaltyChange = this.calculatePenaltyChange(successPoints, healingMethod, hadFirstAid, healingModifier, scriptHealingModifier);
         const healingResults = [];
         
         for (const woundId of woundIds) {
@@ -62,7 +62,7 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (!wound || wound.type !== "wound") continue;
             
             const oldPenalty = wound.system.penalty || 0;
-            const isSuccess = successCount >= 2;
+            const isSuccess = successPoints >= 2;
             const isFirstAidMethod = healingMethod === "firstAid";
             let newPenalty = Math.max(0, oldPenalty + penaltyChange);
 
@@ -104,17 +104,17 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Applies healing effects to wounds (updates actor)
      * @param {Actor} patientActor - Patient actor
      * @param {Array} woundIds - Wound IDs to process
-     * @param {number} successCount - Success points
+     * @param {number} successPoints - Success points
      * @param {string} healingMethod - "firstAid" or "woundTreatment"
      * @param {boolean} hadFirstAid - Whether wound had First Aid
      * @param {number} healingModifier - Per-wound modifier (%)
      * @returns {Promise<Array>} Array of applied healing results
      */
-    static async applyHealingToWounds(patientActor, woundIds, successCount, healingMethod, hadFirstAid = false, healingModifier = 0, scriptHealingModifier = 0) {
+    static async applyHealingToWounds(patientActor, woundIds, successPoints, healingMethod, hadFirstAid = false, healingModifier = 0, scriptHealingModifier = 0) {
         game.neuroshima?.group("HealingApp | applyHealingToWounds");
         
-        const penaltyChange = this.calculatePenaltyChange(successCount, healingMethod, hadFirstAid, healingModifier, scriptHealingModifier);
-        const isSuccess = successCount >= 2;
+        const penaltyChange = this.calculatePenaltyChange(successPoints, healingMethod, hadFirstAid, healingModifier, scriptHealingModifier);
+        const isSuccess = successPoints >= 2;
         const isFirstAid = healingMethod === "firstAid";
         const woundsToUpdate = [];
         const healingResults = [];

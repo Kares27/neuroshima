@@ -1746,7 +1746,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       tooltipHtml: test.getDataTooltip()
     }));
 
-    const successCount = results.filter(r => r.isSuccess).length;
+    const successfulTests = results.filter(r => r.isSuccess).length;
     const failedCount = results.filter(r => !r.isSuccess).length;
 
     const resultRows = results.map(result => ({
@@ -1785,7 +1785,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
         kind: "threshold",
         rows: [{
           label: "NEUROSHIMA.HealingRequest.Successful",
-          value: `${successCount}/${results.length}`,
+          value: `${successfulTests}/${results.length}`,
           emphasis: true,
           state: failedCount ? null : "success"
         }]
@@ -1801,7 +1801,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       patientActor,
       results,
       method,
-      successCount,
+      successfulTests,
       failedCount,
       successTooltip,
       failedTooltip,

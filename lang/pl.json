@@ -226,7 +226,6 @@
             "Location": "Lokacja",
             "Damage": "Obrażenia",
             "DamageAbbr": "Obr.",
-            "SuccessCount": "Liczba sukcesów",
             "FailurePoints": "Punkty Porażki",
             "Penalties": "Kary",
             "PenaltyMod": "Modyfikator",

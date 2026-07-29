@@ -207,7 +207,8 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
     const isEquipTransferSource = !!item
       && this.getFlag("neuroshima", "equipTransfer") === true;
     const isTopologySync = options.neuroshimaEquipTransferSync === true
-      || options.neuroshimaModEffectSync === true;
+      || options.neuroshimaModEffectSync === true
+      || options.neuroshimaSuccessPointsMigration === true;
     if (actor && !isEquipTransferSource && !isModificationSource && !isTopologySync) {
       await NeuroshimaScriptRunner.executeEvent("update", {
         actor, item, effect: this, document: this,

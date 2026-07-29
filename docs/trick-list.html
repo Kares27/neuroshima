@@ -373,8 +373,8 @@ args.actions.push({ ...<span class="var">def</span>, successCost: <span class="n
   <div class="ctx-row"><span class="ctx-name">context.action.effectTiming</span><span class="ctx-type">string</span><span class="ctx-desc">"onHit" | "afterDamage" | "onUse"</span></div>
   <div class="ctx-row"><span class="ctx-name">context.action.effectTarget</span><span class="ctx-type">string</span><span class="ctx-desc">"target" | "self" | "selected" | "manual"</span></div>
   <div class="ctx-row"><span class="ctx-name">context.action.sourceEffectUuid</span><span class="ctx-type">string|null</span><span class="ctx-desc">UUID Active Effect źródłowego</span></div>
-  <div class="ctx-row"><span class="ctx-name">context.attacker</span><span class="ctx-type">object</span><span class="ctx-desc">{ actor, uuid, successes }</span></div>
-  <div class="ctx-row"><span class="ctx-name">context.defender</span><span class="ctx-type">object</span><span class="ctx-desc">{ actor, uuid, successes }</span></div>
+  <div class="ctx-row"><span class="ctx-name">context.attacker</span><span class="ctx-type">object</span><span class="ctx-desc">{ actor, uuid, successPoints }</span></div>
+  <div class="ctx-row"><span class="ctx-name">context.defender</span><span class="ctx-type">object</span><span class="ctx-desc">{ actor, uuid, successPoints }</span></div>
   <div class="ctx-row"><span class="ctx-name">context.diceCount</span><span class="ctx-type">number</span><span class="ctx-desc">Tier segmentu N (1–3)</span></div>
   <div class="ctx-row"><span class="ctx-name">context.outcome</span><span class="ctx-type">string</span><span class="ctx-desc">"hit" | "takeover" | "draw"</span></div>
   <div class="ctx-row"><span class="ctx-name">context.hitEntry</span><span class="ctx-type">object|null</span><span class="ctx-desc">{ tier, damageType, trickId? } — ostatnie trafienie dodane do state.hits, lub null</span></div>

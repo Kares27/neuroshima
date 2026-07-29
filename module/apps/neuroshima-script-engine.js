@@ -167,8 +167,33 @@ export class ResourceHandle {
  * Represents a single executable script attached to an ActiveEffect.
  * Inspired by WFRP4e's script system but adapted for Neuroshima 1.5.
  */
+export function normalizeLegacySuccessScriptData(value) {
+  if (typeof value === "string") {
+    return value
+      .replace(/\bargs\.result\.addSuccesses\s*\(/g, "args.result.addSuccessPoints(")
+      .replace(/\bargs\.test\.addSuccesses\s*\(/g, "args.test.addSuccessPoints(")
+      .replace(/\bargs\.test\.result\.successCount\b/g, "args.test.result.successPoints")
+      .replace(
+        /\b(args(?:\.test)?\.context(?:\.opposedResult)?\.(?:attacker|defender))\.successes\b/g,
+        "$1.successPoints"
+      )
+      .replace(/\bresultModifiers\.successes\b/g, "resultModifiers.successPoints");
+  }
+  if (Array.isArray(value)) return value.map(entry => normalizeLegacySuccessScriptData(entry));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [
+        key,
+        normalizeLegacySuccessScriptData(entry)
+      ])
+    );
+  }
+  return value;
+}
+
 export class NeuroshimaScript {
   constructor(scriptData, effect) {
+    scriptData = normalizeLegacySuccessScriptData(scriptData ?? {});
     this.id = scriptData.id || null;
     this.trigger = scriptData.trigger || "manual";
     this.label = scriptData.label || "";
@@ -3417,7 +3442,7 @@ export class NeuroshimaScript {
  *                    args.test.item                     — item used (if any)
  *                    args.test.result                   — full roll result object
  *                    args.test.result.isSuccess         — boolean (read-only)
- *                    args.test.result.successCount      — number of successes (read-only)
+ *                    args.test.result.successPoints     — canonical success-point total (read-only)
  *                    args.test.diceRoll                 — the Foundry Roll object (read-only)
  *                    args.test.result.annotations       — string[] (push to add annotations)
  *                    args.test.context.label            — roll label

@@ -80,11 +80,11 @@ function evaluateClosed3d20(data, results, rolledResults = results) {
     die.isSuccess = die.modified <= target;
   }
   const byIndex = sorted.sort((a, b) => a.index - b.index);
+  const successPoints = byIndex.filter(die => die.isSuccess).length;
   return {
     modifiedResults: byIndex,
-    successCount: byIndex.filter(die => die.isSuccess).length,
-    success: byIndex.filter(die => die.isSuccess).length >= 2,
-    successPoints: byIndex.filter(die => die.isSuccess).length,
+    successPoints,
+    success: successPoints >= 2,
     skillUsed: skill + reduction - pool,
     remainingSkill: Math.max(0, skill - (skill + reduction - pool)),
     isCritSuccess: byIndex.every(die => die.isSuccess),
@@ -98,14 +98,13 @@ function evaluateDefense3d20(data, results, rolledResults = results) {
     ...die,
     isSuccess: die.original <= target && die.original !== 20
   }));
-  const successCount = modifiedResults.filter(die => die.isSuccess).length;
+  const successPoints = modifiedResults.filter(die => die.isSuccess).length;
   return {
     modifiedResults,
-    successCount,
-    successPoints: successCount,
-    success: successCount >= 2,
-    isCritSuccess: successCount === modifiedResults.length,
-    isCritFailure: successCount === 0 && modifiedResults.some(die => die.isNat20)
+    successPoints,
+    success: successPoints >= 2,
+    isCritSuccess: successPoints === modifiedResults.length,
+    isCritFailure: successPoints === 0 && modifiedResults.some(die => die.isNat20)
   };
 }
 
@@ -126,14 +125,12 @@ function evaluateOpen3d20(data, results, rolledResults = results) {
     die.modified = Math.max(1, die.original - skill - reduction);
     die.isSuccess = die.modified <= target && die.original !== 20;
   }
-  const successCount = active.filter(die => die.isSuccess).length;
   const successPoints = active.reduce((sum, die) =>
     sum + (die.isSuccess ? Math.max(0, target - die.modified + 1) : 0), 0);
   return {
     modifiedResults: dice.sort((a, b) => a.index - b.index),
-    successCount,
     successPoints,
-    success: successCount > 0,
+    success: successPoints > 0,
     isCritSuccess: active.some(die => die.isNat1),
     isCritFailure: active.every(die => die.isNat20)
   };
@@ -160,7 +157,6 @@ function evaluateRangedAttack(data, results, rolledResults = results) {
       };
     }),
     success,
-    successCount: success ? (data.isOpen ? Math.max(1, overflow + 1) : 1) : 0,
     successPoints: success ? Math.max(1, overflow + 1) : 0,
     isCritSuccess: diceObjects(results, rolledResults)
       .some(die => die.original === bestResult && die.isNat1),
@@ -243,6 +239,30 @@ export class NeuroshimaTestBase {
     this.diceRoll = null;
     const attribute = data.attribute ?? {};
     const skill = data.skill ?? {};
+    const preData = clone(data.preData);
+    const resultData = clone(data.result);
+    const contextData = clone(data.context);
+
+    // Backward compatibility for chat cards and saved tests created before
+    // successPoints became the sole aggregate result.
+    if (resultData.successPoints == null && resultData.successCount != null) {
+      resultData.successPoints = Number(resultData.successCount);
+    }
+    delete resultData.successCount;
+    if (preData.resultModifiers?.successPoints == null
+      && preData.resultModifiers?.successes != null) {
+      preData.resultModifiers.successPoints = Number(preData.resultModifiers.successes);
+    }
+    if (preData.resultModifiers) delete preData.resultModifiers.successes;
+    if (contextData.basePreData?.resultModifiers?.successPoints == null
+      && contextData.basePreData?.resultModifiers?.successes != null) {
+      contextData.basePreData.resultModifiers.successPoints =
+        Number(contextData.basePreData.resultModifiers.successes);
+    }
+    if (contextData.basePreData?.resultModifiers) {
+      delete contextData.basePreData.resultModifiers.successes;
+    }
+
     this.data = {
       preData: {
         rollClass: this.constructor.name,
@@ -252,23 +272,22 @@ export class NeuroshimaTestBase {
         targetUuids: this.targets.map(target => target?.uuid ?? target).filter(Boolean),
         cancelled: false,
         annotations: [],
-        stat: Number(attribute.value ?? data.preData?.stat ?? 0),
-        skill: Number(skill.value ?? data.preData?.skill ?? 0),
-        attributeKey: attribute.key ?? data.preData?.attributeKey ?? null,
-        skillKey: skill.key ?? data.preData?.skillKey ?? null,
-        ...clone(data.preData)
+        stat: Number(attribute.value ?? preData.stat ?? 0),
+        skill: Number(skill.value ?? preData.skill ?? 0),
+        attributeKey: attribute.key ?? preData.attributeKey ?? null,
+        skillKey: skill.key ?? preData.skillKey ?? null,
+        ...preData
       },
       result: {
         rawResults: [],
         rolledResults: [],
         modifiedResults: [],
         success: false,
-        successCount: 0,
         successPoints: 0,
         isCritSuccess: false,
         isCritFailure: false,
         annotations: [],
-        ...clone(data.result)
+        ...resultData
       },
       context: {
         rollMode: null,
@@ -277,14 +296,14 @@ export class NeuroshimaTestBase {
         previousResult: null,
         previousMessageId: null,
         dirty: false,
-        ...clone(data.context)
+        ...contextData
       }
     };
     // A newly-created test has no baseline yet. The first roll captures all
     // public API changes made after construction (for example forceSuccess).
     // Recreated tests retain the serialized baseline used by rerolls/edits.
-    this.context.basePreData = data.context?.basePreData
-      ? clone(data.context.basePreData)
+    this.context.basePreData = contextData.basePreData
+      ? clone(contextData.basePreData)
       : null;
   }
 
@@ -396,10 +415,8 @@ export class NeuroshimaTestBase {
   }
 
   addSuccesses(amount) {
-    this.preData.resultModifiers ??= {};
-    this.preData.resultModifiers.successes =
-      Number(this.preData.resultModifiers.successes ?? 0) + Number(amount ?? 0);
-    this.markDirty("addSuccesses");
+    console.warn("Neuroshima | addSuccesses() is deprecated. Use addSuccessPoints().");
+    return this.addSuccessPoints(amount);
   }
 
   addSuccessPoints(amount) {
@@ -455,9 +472,6 @@ export class NeuroshimaTestBase {
 
   applyResultModifiers() {
     const modifiers = this.preData.resultModifiers ?? {};
-    this.result.successCount = Math.max(
-      0, Number(this.result.successCount ?? 0) + Number(modifiers.successes ?? 0)
-    );
     this.result.successPoints = Math.max(
       0, Number(this.result.successPoints ?? 0) + Number(modifiers.successPoints ?? 0)
     );
@@ -470,7 +484,7 @@ export class NeuroshimaTestBase {
   }
 
   evaluateSuccessState() {
-    return Number(this.result.successCount ?? 0) > 0;
+    return Number(this.result.successPoints ?? 0) > 0;
   }
 
   reconcileSuccess() {
@@ -588,7 +602,6 @@ export class NeuroshimaTestBase {
       rolledResults: [],
       modifiedResults: [],
       success: false,
-      successCount: 0,
       successPoints: 0,
       isCritSuccess: false,
       isCritFailure: false,
@@ -1026,6 +1039,11 @@ export class NeuroshimaTestBase {
       ?? this.preData.itemSnapshot
       ?? null;
     this.preData.targetUuids = this.targets.map(target => target?.uuid ?? target).filter(Boolean);
+    delete this.result.successCount;
+    if (this.preData.resultModifiers) delete this.preData.resultModifiers.successes;
+    if (this.context.basePreData?.resultModifiers) {
+      delete this.context.basePreData.resultModifiers.successes;
+    }
     return clone(this.data);
   }
 }
@@ -1035,8 +1053,8 @@ export class NeuroshimaTest extends NeuroshimaTestBase {
   get diceCount() { return 3; }
 
   evaluateSuccessState() {
-    if (this.result.isOpen) return Number(this.result.successCount ?? 0) > 0;
-    return Number(this.result.successCount ?? 0) >= 2;
+    if (this.result.isOpen) return Number(this.result.successPoints ?? 0) > 0;
+    return Number(this.result.successPoints ?? 0) >= 2;
   }
 
   async prepare() {
@@ -1270,12 +1288,12 @@ export class HealingTest extends SkillTest {
       finalStat: this.result.stat,
       skillShift: -TestRules.skillShift(this.result.skill),
       diceShift: TestRules.diceShift(this.result.rawResults),
-      healingEffect: wound ? this.computeHealingResult(wound, this.result.successCount, config) : null
+      healingEffect: wound ? this.computeHealingResult(wound, this.result.successPoints, config) : null
     });
   }
 
-  computeHealingResult(wound, successCount, config = {}) {
-    const success = Number(successCount) >= 2 || this.result.success === true;
+  computeHealingResult(wound, successPoints, config = {}) {
+    const success = Number(successPoints) >= 2 || this.result.success === true;
     const firstAid = this.preData.healingMethod === "firstAid";
     let change = success ? (firstAid ? -5 : (config.hadFirstAid ? -10 : -15)) : 5;
     change += Number(config.healingModifier ?? 0);
@@ -1402,7 +1420,6 @@ export class PercentileTest extends NeuroshimaTestBase {
       }],
       success,
       isSuccess: success,
-      successCount: success ? 1 : 0,
       successPoints: Number(this.result.target ?? 0) - value
     });
     this.applyResultModifiers();
@@ -1618,7 +1635,7 @@ export class WeaponTest extends AttackTest {
 
 export class RangedWeaponTest extends WeaponTest {
   evaluateSuccessState() {
-    return Number(this.result.successCount ?? 0) > 0;
+    return Number(this.result.successPoints ?? 0) > 0;
   }
 
   static canShiftBurst(result, user = game.user) {
@@ -1935,12 +1952,13 @@ export class RangedWeaponTest extends WeaponTest {
 
 export class MeleeWeaponTest extends WeaponTest {
   evaluateSuccessState() {
+    const successPoints = Number(this.result.successPoints ?? 0);
     const doubleSkill = game.settings.get("neuroshima", "doubleSkillAction") === true;
     if (this.result.meleeAction === "defense") {
-      return Number(this.result.successCount ?? 0) >= 2;
+      return successPoints >= 2;
     }
     if (doubleSkill && !this.result.isOpen) {
-      return Number(this.result.successCount ?? 0) > 0;
+      return successPoints > 0;
     }
     return super.evaluateSuccessState();
   }
@@ -1991,7 +2009,6 @@ export class MeleeWeaponTest extends WeaponTest {
   get opposedResult() {
     return {
       success: this.result.success,
-      successes: this.result.successCount,
       successPoints: this.result.successPoints,
       dice: this.result.modifiedResults ?? []
     };
@@ -2028,7 +2045,7 @@ export class GrenadeTest extends AttackTest {
     await super.computeResult();
     const domain = this.preData.grenadeData ?? this.context.grenadeData ?? {};
     const distance = Number(domain.distance ?? this.result.distance ?? 0);
-    const failureMargin = this.result.success ? 0 : Math.max(0, 3 - this.result.successCount);
+    const failureMargin = this.result.success ? 0 : Math.max(0, 3 - this.result.successPoints);
     const zones = [...(domain.blastZones ?? this.result.blastZones ?? [])]
       .sort((a, b) => Number(a.radius) - Number(b.radius));
     Object.assign(this.result, {
@@ -2054,7 +2071,7 @@ export class GrenadeTest extends AttackTest {
 }
 
 export class MeleeOpposedResolver {
-  constructor(attackerTest, defenderTest, { mode = "opposedSuccesses", context = {} } = {}) {
+  constructor(attackerTest, defenderTest, { mode = "opposedSuccessPoints", context = {} } = {}) {
     this.attackerTest = attackerTest;
     this.defenderTest = defenderTest;
     this.mode = mode;
@@ -2064,15 +2081,13 @@ export class MeleeOpposedResolver {
   evaluate() {
     const attacker = this.attackerTest.opposedResult;
     const defender = this.defenderTest.opposedResult;
-    const attackerValue = this.mode === "opposedSuccesses" ? attacker.successes : attacker.successPoints;
-    const defenderValue = this.mode === "opposedSuccesses" ? defender.successes : defender.successPoints;
-    const difference = Number(attackerValue ?? 0) - Number(defenderValue ?? 0);
+    const difference = Number(attacker.successPoints ?? 0) - Number(defender.successPoints ?? 0);
     const result = {
       winner: difference > 0 ? "attacker" : difference < 0 ? "defender" : "draw",
       difference: Math.abs(difference),
       attacker,
       defender,
-      mode: this.mode
+      mode: "opposedSuccessPoints"
     };
     this.attackerTest.context.opposedResult = result;
     this.defenderTest.context.opposedResult = result;

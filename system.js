@@ -13,7 +13,10 @@ import { NeuroshimaVehicleSheet } from "./module/sheets/vehicle-sheet.js";
 import { NeuroshimaHomeBaseSheet } from "./module/sheets/home-base-sheet.js";
 import { NeuroshimaItemSheet } from "./module/sheets/item-sheet.js";
 import { NeuroshimaEffectSheet } from "./module/sheets/neuroshima-effect-sheet.js";
-import { NeuroshimaScriptRunner } from "./module/apps/neuroshima-script-engine.js";
+import {
+    NeuroshimaScriptRunner,
+    normalizeLegacySuccessScriptData
+} from "./module/apps/neuroshima-script-engine.js";
 import { NeuroshimaDice } from "./module/helpers/dice.js";
 import {
     NEUROSHIMA_TESTS,
@@ -1261,12 +1264,24 @@ Hooks.once("ready", async function () {
     if (game.user.isGM) {
         const migrateEffect = async (effect) => {
             const oldScripts = effect.getFlag("neuroshima", "scripts");
-            if (!Array.isArray(oldScripts) || !oldScripts.length) return;
-            if (effect.system?.scriptData?.length) return;
-            await effect.update({
-                "system.scriptData": oldScripts,
-                "flags.neuroshima.-=scripts": null
-            });
+            const currentScripts = effect.system?.scriptData?.length
+                ? foundry.utils.deepClone(effect.system.scriptData)
+                : Array.isArray(oldScripts) ? foundry.utils.deepClone(oldScripts) : [];
+            if (!currentScripts.length) return;
+            const normalizedScripts = normalizeLegacySuccessScriptData(currentScripts);
+            const updateData = {};
+            if (JSON.stringify(normalizedScripts) !== JSON.stringify(currentScripts)
+                || (!effect.system?.scriptData?.length && currentScripts.length)) {
+                updateData["system.scriptData"] = normalizedScripts;
+            }
+            if (Array.isArray(oldScripts) && oldScripts.length) {
+                updateData["flags.neuroshima.-=scripts"] = null;
+            }
+            if (Object.keys(updateData).length) {
+                await effect.update(updateData, {
+                    neuroshimaSuccessPointsMigration: true
+                });
+            }
         };
         for (const actor of game.actors) {
             for (const effect of actor.effects) await migrateEffect(effect);

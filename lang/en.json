@@ -223,7 +223,6 @@
             "Location": "Location",
             "Damage": "Damage",
             "DamageAbbr": "Dmg.",
-            "SuccessCount": "Success Count",
             "FailurePoints": "Failure Points",
             "Penalties": "Penalties",
             "PenaltyMod": "Modifier",

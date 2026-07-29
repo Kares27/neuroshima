@@ -834,7 +834,7 @@ export class DuelActionPipeline {
 
     const uncommittedOwnerDice    = duel.uncommittedOwnerDice;
     const uncommittedDiceCount    = uncommittedOwnerDice.length;
-    const uncommittedSuccessCount = uncommittedOwnerDice.filter(d => d.isSuccess).length;
+    const uncommittedSuccessPoints = uncommittedOwnerDice.filter(d => d.isSuccess).length;
 
     const pastSegs      = (duel.segments ?? []).slice(0, duel.currentSegment ?? 0)
       .filter(s => s.outcome && s.outcome !== "spent");
@@ -853,7 +853,7 @@ export class DuelActionPipeline {
       ownerHadHit,
       ownerPreviousHits,
       uncommittedDice:      uncommittedDiceCount,
-      uncommittedSuccesses: uncommittedSuccessCount,
+      uncommittedSuccesses: uncommittedSuccessPoints,
       lookupActionDef
     };
 
@@ -986,7 +986,7 @@ export class DuelActionPipeline {
       }
     }
 
-    const normalized    = MeleeActionRegistry.normalizeEffectActions(extraActionsArr, uncommittedSuccessCount);
+    const normalized    = MeleeActionRegistry.normalizeEffectActions(extraActionsArr, uncommittedSuccessPoints);
     this.descriptors    = normalized;
     this.available      = normalized.map(d => MeleeAction.fromDescriptor(d, duel));
 
@@ -1618,8 +1618,8 @@ export class MeleeActionContext {
     } : null;
     return new MeleeActionContext({
       action,
-      attacker: { actor: attackerActor, uuid: state.attackerUuid, successes: attackerSuccesses },
-      defender: { actor: defenderActor, uuid: state.defenderUuid, successes: defenderSuccesses },
+      attacker: { actor: attackerActor, uuid: state.attackerUuid, successPoints: attackerSuccesses },
+      defender: { actor: defenderActor, uuid: state.defenderUuid, successPoints: defenderSuccesses },
       diceCount, outcome, hitEntry: hitEntry ?? null, messageId, state
     });
   }
@@ -1729,10 +1729,10 @@ export class DuelSegmentEngine {
         if (diceIndices.length !== N) return false;
       }
 
-      const ownerSuccessCount     = ownerIndices.filter(i => ownerDice[i]?.isSuccess).length;
-      const responderSuccessCount = diceIndices.filter(i => responderDice[i]?.isSuccess).length;
-      const ownerHasSuccess       = ownerSuccessCount > 0;
-      const responderHasSuccess   = responderSuccessCount > 0;
+      const ownerSuccessPoints     = ownerIndices.filter(i => ownerDice[i]?.isSuccess).length;
+      const responderSuccessPoints = diceIndices.filter(i => responderDice[i]?.isSuccess).length;
+      const ownerHasSuccess        = ownerSuccessPoints > 0;
+      const responderHasSuccess    = responderSuccessPoints > 0;
 
       const _segmentTrickId = state.committedTrickId ?? null;
 
@@ -1743,8 +1743,8 @@ export class DuelSegmentEngine {
         N, ownerAction: declaredAction,
         ownerDiceIndices:     ownerIndices,
         responderDiceIndices: diceIndices,
-        ownerSuccesses:       ownerSuccessCount,
-        responderSuccesses:   responderSuccessCount,
+        ownerSuccesses:       ownerSuccessPoints,
+        responderSuccesses:   responderSuccessPoints,
         duel: _preDuel
       });
 
@@ -1763,8 +1763,8 @@ export class DuelSegmentEngine {
       const _preOwner = await DuelLifecycle.preOpposedAttacker(_preDuel, _preSegment, _ownerActorPre);
       const _preResp  = await DuelLifecycle.preOpposedDefender(_preDuel, _preSegment, _respActorPre);
 
-      const ownerEffective     = Math.max(0, ownerSuccessCount + (_preOwner.successMod ?? 0));
-      const responderEffective = Math.max(0, responderSuccessCount + (_preResp.successMod ?? 0));
+      const ownerEffective     = Math.max(0, ownerSuccessPoints + (_preOwner.successMod ?? 0));
+      const responderEffective = Math.max(0, responderSuccessPoints + (_preResp.successMod ?? 0));
       const _preBlockDmgShift  = _preResp.blockDamageShift ?? 0;
 
       await DuelLifecycle.beforeAction(_preDuel, _preSegment, null);
@@ -1777,7 +1777,7 @@ export class DuelSegmentEngine {
 
           const { MeleeActionRunner } = await import("./melee-action-runner.js");
 
-          if (ownerSuccessCount > 0) {
+          if (ownerSuccessPoints > 0) {
             const hitEntry = { tier: N, damageType: hitDmgType };
             if (declaredAction === "trick" && state.committedTrickId) {
               hitEntry.trickId = state.committedTrickId;
@@ -1786,7 +1786,7 @@ export class DuelSegmentEngine {
             await MeleeActionRunner.onHit({ state, hitEntry, isOwnerAttacker });
           }
 
-          if (responderSuccessCount > 0) {
+          if (responderSuccessPoints > 0) {
             state.counterHits = state.counterHits ?? [];
             state.counterHits.push({ tier: N, damageType: state[`defenderDamage${N}`] ?? "D" });
           }

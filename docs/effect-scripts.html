@@ -467,7 +467,7 @@
     <div class="ctx-row"><span class="ctx-name">args.dice.replace(index, value, options?)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Kontrolowana zamiana kości z historią w <code>diceChanges</code>. Wartość ustawiona na 1 nie staje się naturalną jedynką.</span></div>
     <div class="ctx-row"><span class="ctx-name">args.dice.copy(source, target, options?)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Kopiuje aktualną wartość kości i oznacza test do ponownego przeliczenia.</span></div>
     <div class="ctx-row"><span class="ctx-name">await args.dice.choose(options)</span><span class="ctx-type">Promise&lt;number[] | null&gt;</span><span class="ctx-desc">Otwiera kontrolowany wybór indeksów kości; szczególnie użyteczne w akcjach wyniku.</span></div>
-    <div class="ctx-row"><span class="ctx-name">args.result</span><span class="ctx-type">API</span><span class="ctx-desc">Metody <code>addSuccesses</code>, <code>addSuccessPoints</code>, <code>forceSuccess</code>, <code>forceFailure</code> i <code>addAnnotation</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">args.result</span><span class="ctx-type">API</span><span class="ctx-desc">Metody <code>addSuccessPoints</code>, <code>forceSuccess</code>, <code>forceFailure</code> i <code>addAnnotation</code>. Dawne <code>addSuccesses</code> pozostaje wyłącznie aliasem zgodności.</span></div>
     <div class="ctx-row"><span class="ctx-name">args.links.meleePool</span><span class="ctx-type">object | null</span><span class="ctx-desc">Trwały link puli melee: encounter, uczestnik, tura i rewizja. System synchronizuje powiązaną kartę automatycznie.</span></div>
     <div class="ctx-row"><span class="ctx-name">args.links.opposed</span><span class="ctx-type">object | null</span><span class="ctx-desc">Link testu do pojedynku opposed: wspólny identyfikator, wiadomość duelu, rola i rewizja. Skrypt może go odczytać, ale aktualizację jednej trwałej karty wykonuje centralnie system.</span></div>
   </div>
@@ -896,7 +896,7 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
   <!-- preRollTest -->
   <h3 id="trigger-preRollTest">preRollTest / preRollWeaponTest — <em>Pre-Roll Test</em></h3>
   <p><code>preRollTest</code> uruchamia się przed każdym testem. Dla klasy <code>WeaponTest</code> zaraz po nim uruchamia się dodatkowo <code>preRollWeaponTest</code>. Modyfikuj <code>args.test.preData</code>, korzystaj z metod testu i wywołuj <code>args.test.markDirty()</code>, gdy zmiana wymaga ponownego obliczenia.</p>
-  <p>Każdy trigger testowy otrzymuje ten sam obiekt klasy testu w <code>args.test</code> oraz skrót do jego kontekstu w <code>args.context</code>. Dostępne są m.in. <code>cancel()</code>, <code>markDirty()</code>, <code>forceSuccess()</code>, <code>forceFailure()</code>, <code>addSuccesses()</code> i <code>addSuccessPoints()</code>. Broń jest dostępna jako <code>args.test.item</code> lub <code>args.item</code>.</p>
+  <p>Każdy trigger testowy otrzymuje ten sam obiekt klasy testu w <code>args.test</code> oraz skrót do jego kontekstu w <code>args.context</code>. Dostępne są m.in. <code>cancel()</code>, <code>markDirty()</code>, <code>forceSuccess()</code>, <code>forceFailure()</code> i <code>addSuccessPoints()</code>. Broń jest dostępna jako <code>args.test.item</code> lub <code>args.item</code>.</p>
   <div class="callout info">
     <strong>Rozróżnianie kontekstu:</strong><br>
     <code>args.test.rollClass</code> — nazwa konkretnej klasy, np. <code>"WeaponTest"</code> lub <code>"MeleeWeaponTest"</code>.<br>
@@ -983,7 +983,7 @@ args.test.<span class="fn">forceSuccess</span>({ mode: <span class="str">"keepRo
     <tr><td>args.test.skill</td><td>{ key, value, name } | null</td><td>Umiejętność rzutu (read-only)</td></tr>
     <tr><td>args.test.item</td><td>Item | null</td><td>Item użyty do rzutu (jeśli podany)</td></tr>
     <tr><td>args.test.result.isSuccess</td><td>boolean</td><td>Czy rzut był sukcesem (read-only)</td></tr>
-    <tr><td>args.test.result.successCount</td><td>number</td><td>Liczba sukcesów (Punkty Przewagi) — może być ujemna przy porażce (read-only)</td></tr>
+    <tr><td>args.test.result.successPoints</td><td>number</td><td>Kanoniczna liczba punktów sukcesu testu (read-only)</td></tr>
     <tr><td>args.test.result.rawResults</td><td>number[]</td><td>Efektywne wyniki kości. Zmieniaj je wyłącznie przez <code>replaceTestDie</code>/<code>copyTestDie</code> albo metody <code>test.replaceDie()</code>/<code>test.copyDie()</code>.</td></tr>
     <tr><td>args.test.result.rolledResults</td><td>number[]</td><td>Pierwotne wyniki losowania, zachowywane dla historii zmian i prezentacji.</td></tr>
     <tr><td>args.test.result.annotations</td><td>string[]</td><td>Tablica adnotacji wyświetlanych pod wynikiem. <strong>Dodawaj przez helper</strong> <code>this.addAnnotation(text)</code></td></tr>
@@ -1020,7 +1020,7 @@ args.dice.<span class="fn">copy</span>(<span class="var">bestIndex</span>, <span
     <pre><code><span class="cmt">// Submission script: args.options.useSpecialRule = true;</span>
 <span class="cmt">// Trigger: rollTest — sprawdź flagę ustawioną w dialogu</span>
 <span class="kw">if</span> (!args.test.context.options?.useSpecialRule) <span class="kw">return</span>;
-<span class="kw">if</span> (args.test.result.isSuccess &amp;&amp; args.test.result.successCount &gt;= <span class="num">2</span>) {
+<span class="kw">if</span> (args.test.result.isSuccess &amp;&amp; args.test.result.successPoints &gt;= <span class="num">2</span>) {
   <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyWound</span>(<span class="str">"D"</span>, <span class="str">"torso"</span>, args.test.actor);
   <span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">"Specjalna reguła: rana tymczasowa przy dużym sukcesie"</span>);
 }</code></pre>
@@ -4466,9 +4466,9 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
   <span class="kw">const</span> <span class="var">patient</span> = <span class="kw">await</span> fromUuid(<span class="var">patientUuid</span>);
   <span class="kw">if</span> (!<span class="var">patient</span>) <span class="kw">return</span>;
 
-  <span class="kw">const</span> <span class="var">successes</span> = args.test.result.successCount ?? <span class="num">1</span>;
+  <span class="kw">const</span> <span class="var">successPoints</span> = args.test.result.successPoints ?? <span class="num">1</span>;
   <span class="kw">let</span> <span class="var">healed</span> = <span class="num">0</span>;
-  <span class="kw">for</span> (<span class="kw">let</span> <span class="var">i</span> = <span class="num">0</span>; <span class="var">i</span> &lt; <span class="var">successes</span>; <span class="var">i</span>++) {
+  <span class="kw">for</span> (<span class="kw">let</span> <span class="var">i</span> = <span class="num">0</span>; <span class="var">i</span> &lt; <span class="var">successPoints</span>; <span class="var">i</span>++) {
     <span class="kw">const</span> <span class="var">ok</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">reduceWorstWound</span>(<span class="var">patient</span>);
     <span class="kw">if</span> (<span class="var">ok</span>) <span class="var">healed</span>++;
     <span class="kw">else</span> <span class="kw">break</span>;

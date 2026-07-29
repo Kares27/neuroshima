@@ -10,7 +10,6 @@
         <div class="header-details">
             {{#if isDebug}}<span class="debug-tag">[DEBUG]</span> {{/if}}
             {{#if isReroll}}<span class="reroll-tag">[{{localize "NEUROSHIMA.Roll.Reroll"}}]</span> {{/if}}
-            {{#if isEdited}}<span class="edited-tag">[{{localize "NEUROSHIMA.Roll.Edited"}}]</span> {{/if}}
             <div class="test-info">
                 {{localize difficultyLabel}}
                 {{#if isOpen}}
@@ -60,7 +59,7 @@
         </div>
         <div class="outcome-item">
             <span class="label">{{localize "NEUROSHIMA.Roll.SuccessPointsAbbr"}}:</span>
-            <span class="value"><strong>{{#if isOpen}}{{successPoints}}{{else}}{{successCount}}{{/if}}</strong></span>
+            <span class="value"><strong>{{successPoints}}</strong></span>
         </div>
     </footer>
     {{> "systems/neuroshima/templates/chat/parts/effect-actions.hbs"}}

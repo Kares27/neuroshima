@@ -8,7 +8,6 @@
     <header class="roll-header">
         <div class="weapon-title">
             {{#if isReroll}}<span class="reroll-tag">[{{localize "NEUROSHIMA.Roll.Reroll"}}]</span> {{/if}}
-            {{#if isEdited}}<span class="edited-tag">[{{localize "NEUROSHIMA.Roll.Edited"}}]</span> {{/if}}
             {{localize "NEUROSHIMA.HealingRequest.HealingResults"}}: {{patientActor.name}}
         </div>
     </header>
@@ -16,7 +15,7 @@
     <div class="report-summary">
         <div class="summary-item success" {{#if showTooltip}}{{#if successTooltip}}data-tooltip-html="{{successTooltip}}"{{/if}}{{/if}}>
             <span class="label">{{localize "NEUROSHIMA.HealingRequest.Successful"}}:</span>
-            <span class="value"><strong>{{successCount}}</strong></span>
+            <span class="value"><strong>{{successfulTests}}</strong></span>
         </div>
         {{#if failedCount}}
         <div class="summary-divider">|</div>

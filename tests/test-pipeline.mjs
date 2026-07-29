@@ -163,6 +163,21 @@ test("concrete tests inherit from base", () => {
   assert.ok(new MeleeWeaponTest() instanceof AttackTest);
 });
 
+test("legacy Active Effect success API is normalized at runtime", () => {
+  const script = new NeuroshimaScript({
+    code: "args.result.addSuccesses(1); const n = args.test.result.successCount;",
+    submissionScript: "args.context.attacker.successes >= 2;"
+  }, null);
+  assert.equal(
+    script.code,
+    "args.result.addSuccessPoints(1); const n = args.test.result.successPoints;"
+  );
+  assert.equal(
+    script.submissionScript,
+    "args.context.attacker.successPoints >= 2;"
+  );
+});
+
 test("test recreates from rollClass", async () => {
   const actor = actorFixture();
   documents.set(actor.uuid, actor);
@@ -173,6 +188,75 @@ test("test recreates from rollClass", async () => {
   const recreated = await NeuroshimaTestBase.recreate(original.toData());
   assert.ok(recreated instanceof SkillTest);
   assert.deepEqual(recreated.result.rawResults, [2, 8, 15]);
+});
+
+async function rollCanonicalSkill(fixedDice, { isOpen = false } = {}) {
+  const instance = new SkillTest({
+    preData: {
+      stat: 10,
+      skill: 0,
+      fixedDice,
+      isOpen,
+      applySkillDifficultyShift: false,
+      applyDiceDifficultyShift: false
+    },
+    context: { isDebug: true, isOpen }
+  }, actorFixture());
+  await instance.roll({ sendToChat: false });
+  return instance;
+}
+
+test("closed tests expose only one success point per successful die", async () => {
+  const cases = [
+    { dice: [11, 12, 13], points: 0, success: false },
+    { dice: [10, 11, 12], points: 1, success: false },
+    { dice: [9, 10, 11], points: 2, success: true },
+    { dice: [8, 9, 10], points: 3, success: true }
+  ];
+  for (const expected of cases) {
+    const instance = await rollCanonicalSkill(expected.dice);
+    assert.equal(instance.result.successPoints, expected.points);
+    assert.equal(instance.result.success, expected.success);
+    assert.equal("successCount" in instance.result, false);
+  }
+});
+
+test("open tests use quality margin as canonical successPoints", async () => {
+  const onePoint = await rollCanonicalSkill([10, 15], { isOpen: true });
+  const fourPoints = await rollCanonicalSkill([7, 15], { isOpen: true });
+  const failure = await rollCanonicalSkill([11, 12], { isOpen: true });
+  assert.equal(onePoint.result.successPoints, 1);
+  assert.equal(fourPoints.result.successPoints, 4);
+  assert.equal(failure.result.successPoints, 0);
+  assert.equal(failure.result.success, false);
+});
+
+test("legacy successCount is normalized during recreation and omitted from serialization", async () => {
+  const actor = actorFixture();
+  documents.set(actor.uuid, actor);
+  const recreated = await NeuroshimaTestBase.recreate({
+    preData: {
+      rollClass: "SkillTest",
+      actorUuid: actor.uuid,
+      targetUuids: [],
+      resultModifiers: { successes: 1 }
+    },
+    result: { successCount: 2 },
+    context: {
+      basePreData: {
+        resultModifiers: { successes: 3 }
+      }
+    }
+  });
+  assert.equal(recreated.result.successPoints, 2);
+  assert.equal("successCount" in recreated.result, false);
+  assert.equal(recreated.preData.resultModifiers.successPoints, 1);
+  assert.equal("successes" in recreated.preData.resultModifiers, false);
+  assert.equal(recreated.context.basePreData.resultModifiers.successPoints, 3);
+  assert.equal("successes" in recreated.context.basePreData.resultModifiers, false);
+  const serialized = recreated.toData();
+  assert.equal(serialized.result.successPoints, 2);
+  assert.equal("successCount" in serialized.result, false);
 });
 
 test("creature synthetic weapon survives recreation and reroll", async () => {
@@ -497,6 +581,78 @@ test("open ranged test with one die is cancelled", async () => {
   instance.runTrigger = async () => {};
   await instance.roll({ sendToChat: false });
   assert.equal(instance.preData.cancelled, true);
+});
+
+test("closed ranged hit succeeds with canonical successPoints", async () => {
+  const actor = actorFixture();
+  const weapon = {
+    id: "ranged",
+    uuid: "Actor.actor.Item.ranged",
+    name: "Rifle",
+    system: {
+      weaponType: "ranged",
+      skipMagazineCheck: true,
+      fireRate: 1,
+      damage: "L",
+      piercing: 0,
+      jamming: 20
+    },
+    async update() {}
+  };
+  const instance = new RangedWeaponTest({
+    item: weapon,
+    preData: {
+      stat: 10,
+      skill: 0,
+      fixedDice: [10, 15, 18],
+      bulletsFired: 1,
+      applySkillDifficultyShift: false,
+      applyDiceDifficultyShift: false
+    },
+    context: { isDebug: true }
+  }, actor);
+  await instance.roll({ sendToChat: false });
+  assert.equal(instance.result.successPoints, 1);
+  assert.equal(instance.result.success, true);
+  assert.equal("successCount" in instance.result, false);
+});
+
+test("melee defense requires two successPoints", async () => {
+  const actor = actorFixture();
+  const weapon = {
+    id: "melee",
+    uuid: "Actor.actor.Item.melee",
+    name: "Knife",
+    system: {
+      weaponType: "melee",
+      damageMelee1: "D",
+      damageMelee2: "L",
+      damageMelee3: "C",
+      piercing: 0
+    }
+  };
+  const rollDefense = async fixedDice => {
+    const instance = new MeleeWeaponTest({
+      item: weapon,
+      preData: {
+        stat: 10,
+        skill: 0,
+        fixedDice,
+        meleeAction: "defense",
+        applySkillDifficultyShift: false,
+        applyDiceDifficultyShift: false
+      },
+      context: { isDebug: true, isMelee: true, meleeAction: "defense" }
+    }, actor);
+    await instance.roll({ sendToChat: false });
+    return instance;
+  };
+  const onePoint = await rollDefense([10, 11, 12]);
+  const twoPoints = await rollDefense([9, 10, 11]);
+  assert.equal(onePoint.result.successPoints, 1);
+  assert.equal(onePoint.result.success, false);
+  assert.equal(twoPoints.result.successPoints, 2);
+  assert.equal(twoPoints.result.success, true);
 });
 
 test("test supplies chat tooltip", async () => {
@@ -1395,26 +1551,36 @@ test("GM edited one can count as natural result", async () => {
   assert.equal(instance.result.rolledResults[0], 1);
 });
 
-test("addSuccesses reconciles closed test success", async () => {
+test("addSuccessPoints reconciles closed test success", async () => {
   const instance = new SkillTest({
-    preData: { stat: 1, skill: 0, fixedDice: [10, 11, 12] },
+    preData: {
+      stat: 10,
+      skill: 0,
+      fixedDice: [10, 11, 12],
+      applySkillDifficultyShift: false,
+      applyDiceDifficultyShift: false
+    },
     context: { isDebug: true }
   }, actorFixture());
   await instance.roll({ sendToChat: false });
-  instance.addSuccesses(2);
+  assert.equal(instance.result.successPoints, 1);
+  assert.equal(instance.result.success, false);
+  instance.addSuccessPoints(1);
   await instance.recalculate();
+  assert.equal(instance.result.successPoints, 2);
   assert.equal(instance.result.success, true);
   assert.equal(instance.result.isSuccess, true);
 });
 
-test("addSuccesses updates open test result", async () => {
+test("addSuccessPoints updates open test result", async () => {
   const instance = new SkillTest({
     preData: { stat: 1, skill: 0, fixedDice: [10, 11], isOpen: true },
     context: { isDebug: true, isOpen: true }
   }, actorFixture());
   await instance.roll({ sendToChat: false });
-  instance.addSuccesses(1);
+  instance.addSuccessPoints(1);
   await instance.recalculate();
+  assert.equal(instance.result.successPoints, 1);
   assert.equal(instance.result.success, true);
 });
 
@@ -1666,7 +1832,7 @@ test("attacker roll creates one pending opposed message", async () => {
     message: sourceMessage,
     context: {},
     preData: { skill: 3 },
-    result: { modifiedResults: [], successCount: 1, target: 10 },
+    result: { modifiedResults: [], successPoints: 1, target: 10 },
     async updateMessage(message) { sourceUpdates++; return message; }
   };
   const handler = opposedMessage("duel-one", {});
@@ -1798,7 +1964,7 @@ test("attacker edit after defender refreshes same duel message", async () => {
     preData: { skill: 0 },
     context: {},
     get opposedResult() {
-      return { success: true, successes: role === "attack" ? 2 : 1, successPoints: 0, dice: [] };
+      return { success: true, successPoints: role === "attack" ? 2 : 1, dice: [] };
     },
     async runTrigger() {}
   });
@@ -1922,15 +2088,32 @@ test("resolved duel rejects source test mutation", async () => {
 
 test("opposed preview does not run final side effects", async () => {
   const events = [];
-  const fake = successes => ({
+  const fake = successPoints => ({
     context: {},
-    opposedResult: { successes, successPoints: successes, dice: [] },
+    opposedResult: { successPoints, dice: [] },
     async runTrigger(name, metadata) { events.push([name, metadata.preview]); }
   });
   const resolver = new MeleeOpposedResolver(fake(2), fake(1));
   await resolver.resolve({ preview: true });
   assert.deepEqual(events.map(([name]) => name), ["preOpposedAttacker", "preOpposedDefender"]);
   assert.ok(events.every(([, preview]) => preview === true));
+});
+
+test("melee opposed resolver compares only canonical successPoints", () => {
+  const fake = successPoints => ({
+    context: {},
+    opposedResult: { success: successPoints > 0, successPoints, dice: [] }
+  });
+  const result = new MeleeOpposedResolver(
+    fake(3),
+    fake(1),
+    { mode: "opposedSuccesses" }
+  ).evaluate();
+  assert.equal(result.winner, "attacker");
+  assert.equal(result.difference, 2);
+  assert.equal(result.mode, "opposedSuccessPoints");
+  assert.equal("successes" in result.attacker, false);
+  assert.equal("successes" in result.defender, false);
 });
 
 test("opposed finalization runs result triggers once", async () => {
@@ -1940,9 +2123,9 @@ test("opposed finalization runs result triggers once", async () => {
     attackerRevision: "ar", defenderRevision: "dr"
   });
   const events = [];
-  const fake = successes => ({
+  const fake = successPoints => ({
     context: {},
-    opposedResult: { successes, successPoints: successes, dice: [] },
+    opposedResult: { successPoints, dice: [] },
     async runTrigger(name) { events.push(name); }
   });
   const originalGet = MeleeOpposedChat.getLinkedTest;

@@ -12,7 +12,6 @@
         </div>
         <div class="header-details">
             {{#if isReroll}}<span class="reroll-tag">[{{localize "NEUROSHIMA.Roll.Reroll"}}]</span> {{/if}}
-            {{#if isEdited}}<span class="edited-tag">[{{localize "NEUROSHIMA.Roll.Edited"}}]</span> {{/if}}
             <div class="weapon-title">{{label}}</div>
             <div class="test-info">
                 {{localize difficultyLabel}}
@@ -77,7 +76,7 @@
     <footer class="roll-outcome {{#if isSuccess}}success{{else}}failure{{/if}}">
         <div class="outcome-item roll-status">
             <span class="label">{{localize "NEUROSHIMA.Roll.SuccessPointsAbbr"}}:</span>
-            <span class="value"><strong>{{successCount}}</strong></span>
+            <span class="value"><strong>{{successPoints}}</strong></span>
         </div>
         <div class="outcome-item">
             <span class="value {{#if isSuccess}}success{{else}}failure{{/if}}">

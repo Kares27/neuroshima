@@ -1497,7 +1497,7 @@ export class MeleeOpposedChat {
     await attacker.unsetFlag("neuroshima", "_szachistaYield");
     await this._registerPendingOpposed({
       data, attacker, targetActor, targetDoc, weapon, handlerMessage,
-      attackerSuccesses: Number(result.successPoints ?? result.successCount ?? 0)
+      attackerSuccesses: Number(result.successPoints ?? 0)
     });
     return handlerMessage;
   }
@@ -1659,8 +1659,8 @@ export class MeleeOpposedChat {
         defenseDice: opposedResult.defender.dice,
         attackTarget: attackerTest.result.target,
         defenseTarget: defenderTest.result.target,
-        attackSuccesses: opposedResult.attacker.successes,
-        defenseSuccesses: opposedResult.defender.successes,
+        attackSuccesses: opposedResult.attacker.successPoints,
+        defenseSuccesses: opposedResult.defender.successPoints,
         attackerSkillBudget: attackerBudget,
         defenderSkillBudget: defenderBudget
       });
@@ -1687,8 +1687,8 @@ export class MeleeOpposedChat {
   ) {
     const attackDice = opposedResult.attacker.dice ?? [];
     const defenseDice = opposedResult.defender.dice ?? [];
-    const attackSuccesses = Number(opposedResult.attacker.successes ?? 0);
-    const defenseSuccesses = Number(opposedResult.defender.successes ?? 0);
+    const attackSuccesses = Number(opposedResult.attacker.successPoints ?? 0);
+    const defenseSuccesses = Number(opposedResult.defender.successPoints ?? 0);
     const hits = [];
     if (data.mode === "opposedPips") {
       for (let index = 0; index < Math.min(3, attackDice.length); index++) {
@@ -1878,7 +1878,7 @@ export class MeleeOpposedChat {
         damage3: data.damage3,
         attackDice: dice,
         attackerTarget: test.result.target,
-        attackerSuccesses: test.result.successPoints ?? test.result.successCount ?? 0,
+        attackerSuccesses: test.result.successPoints ?? 0,
         defenderName: defenderActor?.name ?? "",
         defenderImg: defenderActor?.img,
         defenderWeapons,
@@ -1963,15 +1963,13 @@ export class MeleeOpposedChat {
       isNat20: r.isNat20 ?? (r.original === 20)
     }));
     const defenseTarget = defenseResult.target;
-    let defenseSuccesses = defenseResult.successPoints
-      ?? defenseDice.filter(r => r.isSuccess).length;
+    let defenseSuccesses = Number(defenseResult.successPoints ?? 0);
 
     const attackerTest = new MeleeWeaponTest({
       actor: attackerActor,
       item: attackerActor?.items?.get(data.weaponId) ?? null,
       result: {
         modifiedResults: attackDice,
-        successCount: attackSuccesses,
         successPoints: attackSuccesses,
         success: attackSuccesses > 0
       }
@@ -1982,7 +1980,6 @@ export class MeleeOpposedChat {
       result: {
         ...defenseResult,
         modifiedResults: defenseDice,
-        successCount: defenseSuccesses,
         successPoints: defenseSuccesses
       }
     });
@@ -1993,8 +1990,8 @@ export class MeleeOpposedChat {
     const opposedResult = await opposed.resolve();
     attackDice = opposedResult.attacker.dice;
     defenseDice = opposedResult.defender.dice;
-    attackSuccesses = opposedResult.attacker.successes;
-    defenseSuccesses = opposedResult.defender.successes;
+    attackSuccesses = opposedResult.attacker.successPoints;
+    defenseSuccesses = opposedResult.defender.successPoints;
 
     const attackerName = attackerActor?.name ?? "Attacker";
     const defenderName = defenderActor.name;
@@ -2313,11 +2310,11 @@ export class MeleeOpposedChat {
     { resetProgress = false } = {}
   ) {
     if (data.isGradCios) {
-      const atkSuccessCount = attackDice.filter(d => d.isSuccess).length;
-      const defSuccessCount = defenseDice.filter(d => d.isSuccess).length;
+      const atkSuccessPoints = attackDice.filter(d => d.isSuccess).length;
+      const defSuccessPoints = defenseDice.filter(d => d.isSuccess).length;
       const rollMode = data.rollMode ?? game.settings.get("core", "rollMode");
       const toChip = d => ({ value: d.modified ?? d.original ?? d.value, isSuccess: d.isSuccess, isNat20: d.isNat20 ?? false });
-      const netSuccesses = atkSuccessCount - defSuccessCount;
+      const netSuccesses = atkSuccessPoints - defSuccessPoints;
 
       if (netSuccesses > 0) {
         const tier = Math.min(netSuccesses, 3);
@@ -2333,7 +2330,7 @@ export class MeleeOpposedChat {
             defenderName:    defenderActor?.name ?? "",
             defenderImg:     defenderActor?.img  ?? "",
             attackDiceChips: attackDice.map(toChip),
-            attackSuccesses: atkSuccessCount,
+            attackSuccesses: atkSuccessPoints,
             isPending:       false,
             isDone:          true,
             defenseDiceChips: defenseDice.map(toChip),
@@ -2375,7 +2372,7 @@ export class MeleeOpposedChat {
             defenderName:    defenderActor?.name ?? "",
             defenderImg:     defenderActor?.img  ?? "",
             attackDiceChips: attackDice.map(toChip),
-            attackSuccesses: atkSuccessCount,
+            attackSuccesses: atkSuccessPoints,
             isPending:       false,
             isDone:          true,
             defenseDiceChips: defenseDice.map(toChip),
@@ -2561,7 +2558,7 @@ export class MeleeOpposedChat {
       };
     });
 
-    const gradCiosAtkSuccessCount = (attackDice || []).filter(d => d.isSuccess).length;
+    const gradCiosAtkSuccessPoints = (attackDice || []).filter(d => d.isSuccess).length;
     const gradCiosVisibleDefenseSet = (isGradCios && ownerPool === "attacker")
       ? isResponderTurn
         ? new Set(
@@ -2574,7 +2571,7 @@ export class MeleeOpposedChat {
             (defenseDice || [])
               .map((d, i) => ({ v: d.modified ?? d.original ?? 0, i }))
               .sort((a, b) => a.v - b.v)
-              .slice(0, gradCiosAtkSuccessCount)
+              .slice(0, gradCiosAtkSuccessPoints)
               .map(({ i }) => i)
           )
       : null;
@@ -2667,12 +2664,12 @@ export class MeleeOpposedChat {
       (responderActorCheck?.statuses?.has("berserker") ?? false);
 
     const ownerDiceArr = isOwnerAttacker ? (attackDice || []) : (defenseDice || []);
-    const committedSuccessCount = committedIndices.filter(i => ownerDiceArr[i]?.isSuccess).length;
+    const committedSuccessPoints = committedIndices.filter(i => ownerDiceArr[i]?.isSuccess).length;
 
     let ownerBeastActions = null;
     if (ownerIsCreature) {
       const ownerBeastItemFilter = state.beastItemId ?? null;
-      const flat = MeleeActionRegistry.collectBeastActions(ownerActor, ownerBeastItemFilter, committedSuccessCount);
+      const flat = MeleeActionRegistry.collectBeastActions(ownerActor, ownerBeastItemFilter, committedSuccessPoints);
       if (flat.length > 0) ownerBeastActions = flat;
     }
 
@@ -2780,7 +2777,7 @@ export class MeleeOpposedChat {
       damageTiers, confirmOwnerLabel, canSwapInit, isGradCios: isGradCios || false,
       ownerDeclaredAttack, ownerDeclaredExit, ownerDeclaredNonCombat, ownerDeclaredTrick, ownerDeclaredAttackOrTrick,
       responderConfirmActionType, responderConfirmLabel, responderExactDice,
-      ownerIsCreature, ownerBeastActions, committedSuccessCount,
+      ownerIsCreature, ownerBeastActions, committedSuccessPoints,
       ownerExtraActions, responderCanCounterAttack,
       isGM:    game.user.isGM,
       canUndo: game.user.isGM && (state.segmentHistory?.length ?? 0) > 0,
@@ -2870,7 +2867,7 @@ export class MeleeOpposedChat {
       const selectedChips = [...root.querySelectorAll("button.die-chip-mvc.mvc-die-selected")];
       const count        = selectedChips.length;
       const hasSuccess   = selectedChips.some(chip => chip.classList.contains("is-success"));
-      const successCount = selectedChips.filter(chip => chip.classList.contains("is-success")).length;
+      const selectedSuccessPoints = selectedChips.filter(chip => chip.classList.contains("is-success")).length;
 
       root.querySelectorAll(".mdc-action-choice").forEach(btn => {
         const noDice      = btn.dataset.noDice === "true";
@@ -2891,7 +2888,7 @@ export class MeleeOpposedChat {
           ok = count >= min && count <= max;
         }
         if (ok && needSuccess && !hasSuccess) ok = false;
-        if (ok && minSuccess !== null && successCount < minSuccess) ok = false;
+        if (ok && minSuccess !== null && selectedSuccessPoints < minSuccess) ok = false;
 
         btn.disabled = !ok;
         btn.classList.toggle("is-disabled", !ok);
@@ -2902,7 +2899,7 @@ export class MeleeOpposedChat {
         if (counterEl) {
           if (minSuccess !== null) {
             // Sztuczki z successCost — pokazuj ile sukcesów wybrano / ile wymaganych
-            counterEl.textContent = `${successCount}/${minSuccess}✦`;
+            counterEl.textContent = `${selectedSuccessPoints}/${minSuccess}✦`;
           } else if (exactDice !== null) {
             counterEl.textContent = `${count}/${exactDice}`;
           } else if (maxDice !== null) {
@@ -3906,8 +3903,7 @@ export class MeleeOpposedChat {
       isNat1: r.isNat1,
       isNat20: r.isNat20
     }));
-    const attackerSuccesses = rawResult.successPoints
-      ?? attackDice.filter(d => d.isSuccess).length;
+    const attackerSuccesses = Number(rawResult.successPoints ?? 0);
 
     if (rawResult.isGradCios && attackerSuccesses === 0) {
       const rollMode = rawResult.rollMode ?? game.settings.get("core", "rollMode");
@@ -4489,9 +4485,9 @@ export class MeleeOpposedChat {
       isNat20:   r.isNat20 ?? false
     }));
 
-    const atkSuccessCount = attackDice.filter(d => d.isSuccess).length;
-    const defSuccessCount = defenseDice.filter(d => d.isSuccess).length;
-    const netSuccesses    = atkSuccessCount - defSuccessCount;
+    const atkSuccessPoints = attackDice.filter(d => d.isSuccess).length;
+    const defSuccessPoints = defenseDice.filter(d => d.isSuccess).length;
+    const netSuccesses     = atkSuccessPoints - defSuccessPoints;
 
     const toChip = d => ({ value: d.modified ?? d.original, isSuccess: d.isSuccess, isNat20: d.isNat20 ?? false });
 
@@ -4528,7 +4524,7 @@ export class MeleeOpposedChat {
           defenderName:    defenderActor.name,
           defenderImg:     defenderActor.img,
           attackDiceChips: attackDice.map(toChip),
-          attackSuccesses: atkSuccessCount,
+          attackSuccesses: atkSuccessPoints,
           isPending:       false,
           isDone:          true,
           defenseDiceChips: defenseDice.map(toChip),
@@ -4550,7 +4546,7 @@ export class MeleeOpposedChat {
           defenderName:    defenderActor.name,
           defenderImg:     defenderActor.img,
           attackDiceChips: attackDice.map(toChip),
-          attackSuccesses: atkSuccessCount,
+          attackSuccesses: atkSuccessPoints,
           isPending:       false,
           isDone:          true,
           defenseDiceChips: defenseDice.map(toChip),
@@ -5168,7 +5164,7 @@ export class MeleeResolution {
     await freeTest.roll({ sendToChat: false });
     const freeData = freeTest.result;
     if (freeTest.preData.cancelled) return;
-    const freeSuccesses = Number(freeData.successCount ?? 0);
+    const freeSuccesses = Number(freeData.successPoints ?? 0);
     const finalDiceCount = Number(freeData.diceCount ?? diceCount);
     const diceHtml = freeData.modifiedResults.map(result =>
       `<span class="die ${result.isSuccess ? "success" : "failure"}">${result.modified}</span>`
@@ -6615,7 +6611,6 @@ export class MeleeTurnService {
       diceChanges: foundry.utils.deepClone(result.diceChanges ?? []),
       target: Number(result.target ?? 0),
       success: result.success === true,
-      successCount: Number(result.successCount ?? 0),
       successPoints: Number(result.successPoints ?? 0)
     };
   }
@@ -7112,7 +7107,7 @@ export class MeleeTurnService {
 
     // Count successes so the GM can see them in chat
     const target = p.attackTargetSnapshot != null ? p.attackTargetSnapshot : (p.targetValue ?? 10);
-    const successCount = selectedDice
+    const spentSuccessPoints = selectedDice
       .filter(i => MeleeResolution._isDieSuccess(p, i, target))
       .length;
 
@@ -7122,7 +7117,7 @@ export class MeleeTurnService {
     const doc = fromUuidSync(p.actorUuid);
     const actor = doc?.actor || doc;
     const content = game.i18n.format("NEUROSHIMA.MeleeDuel.PerformActionMsg", {
-      name: p.name, segments: diceCount, successes: successCount
+      name: p.name, segments: diceCount, successes: spentSuccessPoints
     });
     ChatMessage.create({
       content: `<div class="neuroshima-roll-card"><p>${content}</p></div>`,

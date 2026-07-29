@@ -1086,9 +1086,12 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
     }
     await test.roll();
     if (this.resultCallback) {
+      const successPoints = test.result.successPoints;
       await this.resultCallback({
         isSuccess: test.result.success,
-        successes: test.result.successCount,
+        successPoints,
+        // One-release compatibility for consumers of the old callback key.
+        successes: successPoints,
         test
       });
     }

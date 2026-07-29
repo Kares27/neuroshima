@@ -87,18 +87,18 @@ export class MeleeActionRegistry {
    *
    * @param {Actor}       actor                 - The creature actor owning the beast-action items
    * @param {string|null} beastItemFilter        - When set, only include activities from this item id
-   * @param {number}      committedSuccessCount  - Number of successes the owner has committed so far
+   * @param {number}      committedSuccessPoints - Success points the owner has committed so far
    *                                              (used to set isAffordable on each action)
    * @returns {MeleeAction[]} Sorted ascending by successCost
    */
-  static collectBeastActions(actor, beastItemFilter, committedSuccessCount) {
+  static collectBeastActions(actor, beastItemFilter, committedSuccessPoints) {
     const flat = [];
     for (const item of actor.items.filter(i =>
       i.type === "beast-action" && (!beastItemFilter || i.id === beastItemFilter)
     )) {
       for (const act of (item.system.activities ?? [])) {
         if (act.costType !== "success") continue;
-        flat.push(MeleeActionRegistry._normalizeBeastActivity(item, act, committedSuccessCount));
+        flat.push(MeleeActionRegistry._normalizeBeastActivity(item, act, committedSuccessPoints));
       }
     }
     return flat.sort((a, b) => a.successCost - b.successCost);

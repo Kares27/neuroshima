@@ -448,12 +448,12 @@
     <div class="ctx-row">
       <div class="ctx-name">attacker</div>
       <div class="ctx-type">object</div>
-      <div class="ctx-desc">Obiekt atakującego: <code>{ actor: Actor, uuid: string, successes: number }</code>.</div>
+      <div class="ctx-desc">Obiekt atakującego: <code>{ actor: Actor, uuid: string, successPoints: number }</code>.</div>
     </div>
     <div class="ctx-row">
       <div class="ctx-name">defender</div>
       <div class="ctx-type">object</div>
-      <div class="ctx-desc">Obiekt obrońcy: <code>{ actor: Actor, uuid: string, successes: number }</code>.</div>
+      <div class="ctx-desc">Obiekt obrońcy: <code>{ actor: Actor, uuid: string, successPoints: number }</code>.</div>
     </div>
     <div class="ctx-row">
       <div class="ctx-name">diceCount</div>
@@ -486,8 +486,8 @@
     <div class="example-header">Użycie kontekstu w skrypcie onMeleeHit</div>
     <pre><code><span class="kw">if</span> (<span class="var">args</span>.isAttacker &amp;&amp; <span class="var">args</span>.action?.id === <span class="str">"moja-sztuczka-id"</span>) {
   <span class="kw">const</span> <span class="var">target</span> = <span class="var">args</span>.context.defender.actor;
-  <span class="kw">const</span> <span class="var">successes</span> = <span class="var">args</span>.context.attacker.successes;
-  <span class="kw">if</span> (<span class="var">target</span> &amp;&amp; <span class="var">successes</span> &gt;= <span class="num">2</span>) {
+  <span class="kw">const</span> <span class="var">successPoints</span> = <span class="var">args</span>.context.attacker.successPoints;
+  <span class="kw">if</span> (<span class="var">target</span> &amp;&amp; <span class="var">successPoints</span> &gt;= <span class="num">2</span>) {
     <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"Sztuczka trafia z potężną siłą!"</span>);
   }
 }</code></pre>
