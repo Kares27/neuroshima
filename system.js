@@ -2120,38 +2120,48 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             const actor = game.actors.get(rollData.actorId);
             const canReroll = game.user.isGM || actor?.isOwner;
             if (canReroll) {
-                const isRerolled = message?.getFlag("neuroshima", "rerolled");
                 const rerolledIndices = message?.getFlag("neuroshima", "rerolledIndices") ?? [];
-
                 const dieElements = rollCard.querySelectorAll(".dice-results-grid .die-result");
 
-                if (isRerolled && !game.user.isGM) {
-                    rerolledIndices.forEach(idx => {
-                        const dieEl = rollCard.querySelector(`.die-result[data-die-index="${idx}"]`);
-                        dieEl?.querySelector("[data-reroll-die]")?.classList.add("ns-selected-for-reroll");
-                    });
-                } else {
-                    window._nsRerollSelectedMap ??= new Map();
-                    const selected = new Set();
-                    window._nsRerollSelectedMap.set(message.id, selected);
+                // Historical rerolls and the current card selection are two
+                // independent states. Legacy messages may use rerolledIndices;
+                // new test cards serialize the same information as diceChanges.
+                const historicalRerolls = new Set([
+                    ...rerolledIndices.map(Number),
+                    ...(rollData.diceChanges ?? [])
+                        .filter(change => change?.type === "reroll")
+                        .map(change => Number(change.targetIndex))
+                ].filter(Number.isInteger));
+                historicalRerolls.forEach(index => {
+                    const dieEl = rollCard.querySelector(`.die-result[data-die-index="${index}"]`);
+                    dieEl?.querySelector("[data-reroll-die]")?.classList.add("ns-was-rerolled");
+                });
 
-                    dieElements.forEach(dieEl => {
-                        if (dieEl.classList.contains("ignored")) return;
-                        const square = dieEl.querySelector("[data-reroll-die]");
-                        if (!square) return;
-                        square.classList.add("ns-rerollable");
-                        square.addEventListener("click", () => {
-                            const idx = parseInt(dieEl.dataset.dieIndex);
-                            if (selected.has(idx)) {
-                                selected.delete(idx);
-                                square.classList.remove("ns-selected-for-reroll");
-                            } else {
-                                selected.add(idx);
-                                square.classList.add("ns-selected-for-reroll");
-                            }
-                        });
+                // Always create a fresh live selection, including after a
+                // non-GM player's reroll. Result actions such as Amen consume
+                // this map and must never mistake historical styling for a
+                // currently selected die.
+                window._nsRerollSelectedMap ??= new Map();
+                const selected = new Set();
+                window._nsRerollSelectedMap.set(message.id, selected);
+
+                dieElements.forEach(dieEl => {
+                    if (dieEl.classList.contains("ignored")) return;
+                    const square = dieEl.querySelector("[data-reroll-die]");
+                    if (!square) return;
+                    square.classList.add("ns-rerollable");
+                    square.addEventListener("click", () => {
+                        const index = Number(dieEl.dataset.dieIndex);
+                        if (!Number.isInteger(index)) return;
+                        if (selected.has(index)) {
+                            selected.delete(index);
+                            square.classList.remove("ns-selected-for-reroll");
+                        } else {
+                            selected.add(index);
+                            square.classList.add("ns-selected-for-reroll");
+                        }
                     });
-                }
+                });
             }
         }
     }

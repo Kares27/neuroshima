@@ -1190,6 +1190,16 @@ body.theme-dark {
     box-shadow: 0 0 6px var(--ns-border-focus);
 }
 
+.neuroshima.roll-card .die-square.original.ns-was-rerolled {
+    border-style: dashed;
+    border-color: rgba(181, 154, 98, 0.7);
+}
+
+.neuroshima.roll-card .die-square.original.ns-was-rerolled.ns-selected-for-reroll {
+    border-style: solid;
+    border-color: var(--ns-border-focus);
+}
+
 .ns-reroll-selected-footer {
     margin-top: 6px;
     padding: 4px 0 0;
