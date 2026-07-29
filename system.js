@@ -1226,6 +1226,37 @@ Hooks.once("ready", () => {
 
 registerMigrationHook();
 
+// Reconcile mounted modification effects on startup. This also cleans legacy
+// copies where ordinary (non-equip-transfer) effects were duplicated onto the
+// parent weapon/armor.
+Hooks.once("ready", async () => {
+    if (!game.user.isGM) return;
+    const { syncMountedModEffects } = await import("./module/helpers/mod-helpers.js");
+    for (const actor of game.actors) {
+        // Installed modifications remain embedded on the Actor so their sheets
+        // can be edited, but they are only source definitions. Prevent legacy
+        // effects from applying directly before rebuilding the host copies.
+        for (const modItem of actor.items) {
+            if (modItem.type !== "weapon-mod" && modItem.type !== "armor-mod") continue;
+            for (const effect of modItem.effects) {
+                if (effect.transfer !== false) {
+                    await effect.update(
+                        { transfer: false },
+                        { neuroshimaModEffectSync: true }
+                    );
+                }
+            }
+        }
+        for (const item of actor.items) {
+            if (item.type !== "weapon" && item.type !== "armor") continue;
+            for (const [modId, entry] of Object.entries(item.system.mods ?? {})) {
+                if (modId.startsWith("__")) continue;
+                await syncMountedModEffects(item, modId, entry, entry?.attached === true);
+            }
+        }
+    }
+});
+
 Hooks.once("ready", async function () {
     if (game.user.isGM) {
         const migrateEffect = async (effect) => {

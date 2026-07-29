@@ -607,29 +607,52 @@ export class NeuroshimaActor extends Actor {
    * @returns {Promise<void>}
    */
   async syncEquipTransferEffects(item, equipped) {
-    const equipEffects = item.effects.filter(e => e.getFlag("neuroshima", "equipTransfer") === true);
-    if (!equipEffects.length) return;
-
-    if (equipped) {
-      const alreadyExists = this.effects.some(
-        e => e.origin === item.uuid && e.getFlag("neuroshima", "fromEquipTransfer") === true
-      );
-      if (alreadyExists) return;
-      const toCreate = equipEffects.map(e => {
-        const data = e.toObject();
-        data.transfer = false;
-        data.origin   = item.uuid;
-        foundry.utils.setProperty(data, "flags.neuroshima.fromEquipTransfer", true);
-        foundry.utils.setProperty(data, "flags.neuroshima.sourceEffectId", e.id);
-        return data;
-      });
-      await this.createEmbeddedDocuments("ActiveEffect", toCreate);
-    } else {
-      const toDelete = this.effects
-        .filter(e => e.origin === item.uuid && e.getFlag("neuroshima", "fromEquipTransfer") === true)
-        .map(e => e.id);
-      if (toDelete.length) await this.deleteEmbeddedDocuments("ActiveEffect", toDelete);
+    const desired = equipped
+      ? item.effects.filter(effect =>
+        effect.getFlag("neuroshima", "equipTransfer") === true
+        && effect.disabled !== true
+      )
+      : [];
+    const existing = this.effects.filter(effect =>
+      effect.origin === item.uuid
+      && effect.getFlag("neuroshima", "fromEquipTransfer") === true
+    );
+    const desiredById = new Map(desired.map(effect => [effect.id, effect]));
+    const existingBySource = new Map();
+    const duplicateIds = [];
+    for (const effect of existing) {
+      const sourceId = effect.getFlag("neuroshima", "sourceEffectId");
+      if (sourceId && !existingBySource.has(sourceId)) {
+        existingBySource.set(sourceId, effect);
+      } else {
+        duplicateIds.push(effect.id);
+      }
     }
+
+    const staleIds = [
+      ...duplicateIds,
+      ...existing
+        .filter(effect => !desiredById.has(effect.getFlag("neuroshima", "sourceEffectId")))
+        .map(effect => effect.id)
+    ].filter((id, index, ids) => ids.indexOf(id) === index);
+    if (staleIds.length) await this.deleteEmbeddedDocuments("ActiveEffect", staleIds);
+
+    const toCreate = [];
+    for (const source of desired) {
+      const data = source.toObject();
+      delete data._id;
+      data.transfer = false;
+      data.origin = item.uuid;
+      foundry.utils.setProperty(data, "flags.neuroshima.fromEquipTransfer", true);
+      foundry.utils.setProperty(data, "flags.neuroshima.sourceEffectId", source.id);
+      const mirror = existingBySource.get(source.id);
+      if (mirror && !staleIds.includes(mirror.id)) {
+        await mirror.update(data, { neuroshimaEquipTransferSync: true });
+      } else {
+        toCreate.push(data);
+      }
+    }
+    if (toCreate.length) await this.createEmbeddedDocuments("ActiveEffect", toCreate);
   }
 
   /**

@@ -1,1 +1,5 @@
-2026/07/28-18:27:21.597 398 Delete type=3 #1
+2026/07/29-08:40:07.885 2b4c Log #491: 0 ops saved to Table #492 OK
+2026/07/29-08:40:07.885 2b4c Archiving D:\FoundryData\Data\systems\neuroshima\packs\macros/000491.log: OK
+2026/07/29-08:40:07.885 2b4c Table #482: 6 entries OK
+2026/07/29-08:40:07.887 2b4c Archiving D:\FoundryData\Data\systems\neuroshima\packs\macros/MANIFEST-000490: OK
+2026/07/29-08:40:07.889 2b4c **** Repaired leveldb D:\FoundryData\Data\systems\neuroshima\packs\macros; recovered 1 files; 1187 bytes. Some data may have been lost. ****

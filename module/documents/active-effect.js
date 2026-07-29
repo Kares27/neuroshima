@@ -37,6 +37,34 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
   }
 
   /**
+   * Synchronize an item-scoped equip-transfer effect with its current topology.
+   * Modification effects first mirror onto an attached parent weapon/armor;
+   * regular item effects mirror directly onto the owning actor when equipped.
+   */
+  async _syncItemEquipTransferTopology({ force = false } = {}) {
+    const item = this.parent?.documentName === "Item" ? this.parent : null;
+    const isModification = item?.type === "weapon-mod" || item?.type === "armor-mod";
+    if (!item || (!isModification && !force && this.getFlag("neuroshima", "equipTransfer") !== true)) return;
+    const actor = item.actor;
+    if (!actor) return;
+
+    if (isModification) {
+      const parentId = item.getFlag("neuroshima", "modParentId");
+      const parentItem = parentId ? actor.items.get(parentId) : null;
+      if (!parentItem) return;
+      const entry = parentItem.system.mods?.[item.id];
+      const { syncMountedModEffects } = await import("../helpers/mod-helpers.js");
+      await syncMountedModEffects(parentItem, item.id, entry, entry?.attached === true);
+      return;
+    }
+
+    const active = item.type === "facilities"
+      ? item.system.isBuilt === true
+      : item.system.equipped === true;
+    await actor.syncEquipTransferEffects(item, active);
+  }
+
+  /**
    * Determine whether this effect should automatically transfer to the owning Actor.
    * Only "Owning Document" + "Actor" combination transfers natively via Foundry's
    * embedded-effect transfer mechanism. Everything else is handled via scripts or
@@ -44,6 +72,11 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
    * @returns {boolean}
    */
   determineTransfer() {
+    const parentType = this.parent?.documentName === "Item" ? this.parent.type : null;
+    // A modification is only a source definition. Its effects are copied onto
+    // the host weapon/armor after mounting and must never apply from the
+    // modification item directly.
+    if (parentType === "weapon-mod" || parentType === "armor-mod") return false;
     const transferType = this.getFlag("neuroshima", "transferType") ?? "owningDocument";
     const documentType = this.getFlag("neuroshima", "documentType") ?? "actor";
     const equipTransfer = this.getFlag("neuroshima", "equipTransfer") ?? false;
@@ -79,10 +112,14 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
   /** @override — auto-correct transfer when flags change */
   async _preUpdate(changes, options, user) {
     await super._preUpdate(changes, options, user);
+    const isModificationSource = this.parent?.documentName === "Item"
+      && (this.parent.type === "weapon-mod" || this.parent.type === "armor-mod");
     const flagsChanged = foundry.utils.hasProperty(changes, "flags.neuroshima.transferType")
       || foundry.utils.hasProperty(changes, "flags.neuroshima.documentType")
       || foundry.utils.hasProperty(changes, "flags.neuroshima.equipTransfer");
-    if (flagsChanged && this.parent?.documentName === "Item") {
+    if (isModificationSource) {
+      changes.transfer = false;
+    } else if (flagsChanged && this.parent?.documentName === "Item") {
       const mergedFlags = foundry.utils.mergeObject(
         foundry.utils.deepClone(this.flags?.neuroshima ?? {}),
         changes.flags?.neuroshima ?? {},
@@ -165,25 +202,29 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
     if (game.user.id !== user) return;
     const actor = this.actor;
     const item = this.parent?.documentName === "Item" ? this.parent : null;
-    if (actor) {
+    const isModificationSource = !!item
+      && (item.type === "weapon-mod" || item.type === "armor-mod");
+    const isEquipTransferSource = !!item
+      && this.getFlag("neuroshima", "equipTransfer") === true;
+    const isTopologySync = options.neuroshimaEquipTransferSync === true
+      || options.neuroshimaModEffectSync === true;
+    if (actor && !isEquipTransferSource && !isModificationSource && !isTopologySync) {
       await NeuroshimaScriptRunner.executeEvent("update", {
         actor, item, effect: this, document: this,
         updateData: data, options, userId: user
       }, { metadata: { item, effect: this, document: this, updateData: data } });
     }
     const isItemEffect = this.parent?.documentName === "Item";
-    const isEquipTransfer = this.getFlag("neuroshima", "equipTransfer") === true;
-    if (!isItemEffect || !isEquipTransfer) return;
-    const ownerActor = this.parent.actor;
-    if (!ownerActor) return;
-    const copy = ownerActor.effects.find(
-      e => e.getFlag("neuroshima", "fromEquipTransfer") === true
-        && (e.getFlag("neuroshima", "sourceEffectId") === this.id || e.id === this.id)
-    );
-    if (!copy) return;
-    const syncData = foundry.utils.deepClone(data);
-    delete syncData._id;
-    copy.update(syncData).catch(err => console.error("NS | equipTransfer sync failed:", err));
+    if (!isItemEffect || options.neuroshimaModEffectSync) return;
+    if (isModificationSource) {
+      await this._syncItemEquipTransferTopology({ force: true });
+      return;
+    }
+    const transferFlagChanged = foundry.utils.hasProperty(data, "flags.neuroshima.equipTransfer");
+    const disabledChanged = foundry.utils.hasProperty(data, "disabled");
+    if (this.getFlag("neuroshima", "equipTransfer") === true || transferFlagChanged || disabledChanged) {
+      await this._syncItemEquipTransferTopology({ force: transferFlagChanged || disabledChanged });
+    }
   }
 
   /**
@@ -207,6 +248,17 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
    */
   async _onCreate(data, options, user) {
     await super._onCreate(data, options, user);
+    const isModificationSource = this.parent?.documentName === "Item"
+      && (this.parent.type === "weapon-mod" || this.parent.type === "armor-mod");
+    const isEquipTransferSource = this.parent?.documentName === "Item"
+      && this.getFlag("neuroshima", "equipTransfer") === true;
+    if (
+      game.user.id === user
+      && !options.neuroshimaModEffectSync
+      && (isEquipTransferSource || isModificationSource)
+    ) {
+      await this._syncItemEquipTransferTopology({ force: isModificationSource });
+    }
     const isAuraCopyOnCreate = !!this.getFlag("neuroshima", "fromAura");
     const isAreaCopyOnCreate = !!this.getFlag("neuroshima", "fromArea");
     if ((isAuraCopyOnCreate || isAreaCopyOnCreate) && this.actor && canvas?.interface) {
@@ -221,6 +273,9 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
       }
     }
     if (game.user.id !== user) return;
+    // Equip-transfer sources are configuration documents. Their gameplay
+    // scripts run only on the actor mirror created after equip/mount.
+    if (isEquipTransferSource || isModificationSource) return;
     if (!this.actor) return;
     game.neuroshima?.log("[NeuroshimaActiveEffect._onCreate] running applyEffect + immediate scripts", { effectName: this.name, actorName: this.actor?.name });
     const createScripts = this.scripts.filter(s => s.trigger === "applyEffect");
@@ -270,6 +325,17 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
    */
   async _onDelete(options, user) {
     await super._onDelete(options, user);
+    const wasModificationSource = this.parent?.documentName === "Item"
+      && (this.parent.type === "weapon-mod" || this.parent.type === "armor-mod");
+    const wasEquipTransferSource = this.parent?.documentName === "Item"
+      && this.getFlag("neuroshima", "equipTransfer") === true;
+    if (
+      game.user.id === user
+      && !options.neuroshimaModEffectSync
+      && (wasEquipTransferSource || wasModificationSource)
+    ) {
+      await this._syncItemEquipTransferTopology({ force: true });
+    }
     const isAuraCopy = !!this.getFlag("neuroshima", "fromAura");
     const isAreaCopy = !!this.getFlag("neuroshima", "fromArea");
     if ((isAuraCopy || isAreaCopy) && this.actor && canvas?.interface) {
@@ -284,6 +350,7 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
       }
     }
     if (game.user.id !== user) return;
+    if (wasEquipTransferSource || wasModificationSource) return;
     if (!this.actor) return;
     game.neuroshima?.log("[NeuroshimaActiveEffect._onDelete] running deleteEffect scripts + cleanup", { effectName: this.name, actorName: this.actor?.name, isAuraCopy, isAreaCopy });
 

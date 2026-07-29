@@ -37,6 +37,19 @@ globalThis.foundry = {
     deepClone,
     randomID: () => `revision-${Math.random().toString(36).slice(2)}`,
     escapeHTML: value => String(value),
+    hasProperty(object, path) {
+      return String(path).split(".").every((part, index, parts) => {
+        object = object?.[part];
+        return index === parts.length - 1 ? object !== undefined : object != null;
+      });
+    },
+    setProperty(object, path, value) {
+      const parts = String(path).split(".");
+      let current = object;
+      for (const part of parts.slice(0, -1)) current = current[part] ??= {};
+      current[parts.at(-1)] = value;
+      return true;
+    },
     mergeObject(target, source) {
       for (const [key, value] of Object.entries(source ?? {})) {
         if (value && typeof value === "object" && !Array.isArray(value)) {
@@ -124,6 +137,7 @@ const {
 } = await import("../module/helpers/tooltip-renderer.js");
 const { NeuroshimaChatMessage } = await import("../module/documents/chat-message.js");
 const { EffectActionRuntime } = await import("../module/effects/effect-action-runtime.js");
+const { syncMountedModEffects } = await import("../module/helpers/mod-helpers.js");
 const {
   MeleeResolution,
   MeleeOpposedChat,
@@ -243,6 +257,173 @@ test("legacy creature weapon roll recreates a fallback without embedded weapon",
   const recreated = await NeuroshimaTestBase.recreate(data);
   assert.equal(recreated.item.isSynthetic, true);
   assert.equal(recreated.item.system.damageMelee2, "C");
+});
+
+function effectFixture(id, { equipTransfer = false, fromModId = null, sourceModEffectId = null } = {}) {
+  const flags = {
+    equipTransfer,
+    ...(fromModId ? { fromModId } : {}),
+    ...(sourceModEffectId ? { sourceModEffectId } : {})
+  };
+  return {
+    id,
+    disabled: false,
+    getFlag(_scope, key) { return flags[key]; },
+    toObject() {
+      return {
+        _id: id,
+        name: id,
+        disabled: false,
+        transfer: !equipTransfer,
+        flags: { neuroshima: deepClone(flags) }
+      };
+    },
+    async update(data) {
+      this.updated = deepClone(data);
+    }
+  };
+}
+
+test("mounted modification propagates every effect to the parent item only", async () => {
+  const ordinary = effectFixture("ordinary", { equipTransfer: false });
+  const onEquip = effectFixture("on-equip", { equipTransfer: true });
+  const modItem = { id: "mod", effects: [ordinary, onEquip] };
+  const syncCalls = [];
+  const actor = {
+    items: new Map([["mod", modItem]]),
+    async syncEquipTransferEffects(item, equipped) {
+      syncCalls.push([item.id, equipped]);
+    }
+  };
+  const created = [];
+  const createOptions = [];
+  const parent = {
+    id: "weapon",
+    type: "weapon",
+    actor,
+    system: { equipped: true },
+    effects: [],
+    async createEmbeddedDocuments(_type, entries, options) {
+      created.push(...deepClone(entries));
+      createOptions.push(options);
+    },
+    async deleteEmbeddedDocuments() {}
+  };
+
+  await syncMountedModEffects(parent, modItem.id, null, true);
+
+  assert.equal(created.length, 2);
+  const ordinaryCopy = created.find(effect => effect.name === "ordinary");
+  const equipCopy = created.find(effect => effect.name === "on-equip");
+  assert.equal(ordinaryCopy.flags.neuroshima.fromModId, modItem.id);
+  assert.equal(ordinaryCopy.flags.neuroshima.sourceModEffectId, "ordinary");
+  assert.equal(ordinaryCopy.transfer, true);
+  assert.equal(equipCopy.flags.neuroshima.fromModId, modItem.id);
+  assert.equal(equipCopy.flags.neuroshima.sourceModEffectId, "on-equip");
+  assert.equal(equipCopy.flags.neuroshima.equipTransfer, true);
+  assert.equal(equipCopy.transfer, false);
+  assert.deepEqual(ordinary.updated, { transfer: false });
+  assert.deepEqual(onEquip.updated, { transfer: false });
+  assert.deepEqual(createOptions, [{ neuroshimaModEffectSync: true }]);
+  assert.deepEqual(syncCalls, [["weapon", true]]);
+});
+
+test("detaching modification removes its parent effects and reconciles actor mirrors", async () => {
+  const copied = effectFixture("copy", {
+    equipTransfer: true,
+    fromModId: "mod",
+    sourceModEffectId: "source"
+  });
+  const deleted = [];
+  const deleteOptions = [];
+  const syncCalls = [];
+  const actor = {
+    items: new Map(),
+    async syncEquipTransferEffects(item, equipped) {
+      syncCalls.push([item.id, equipped]);
+    }
+  };
+  const parent = {
+    id: "armor",
+    type: "armor",
+    actor,
+    system: { equipped: true },
+    effects: [copied],
+    async createEmbeddedDocuments() {},
+    async deleteEmbeddedDocuments(_type, ids, options) {
+      deleted.push(...ids);
+      deleteOptions.push(options);
+      this.effects = this.effects.filter(effect => !ids.includes(effect.id));
+    }
+  };
+
+  await syncMountedModEffects(parent, "mod", null, false);
+
+  assert.deepEqual(deleted, ["copy"]);
+  assert.deepEqual(deleteOptions, [{ neuroshimaModEffectSync: true }]);
+  assert.deepEqual(syncCalls, [["armor", true]]);
+});
+
+test("legacy mounted effects are preserved when their source modification is missing", async () => {
+  const ordinaryCopy = effectFixture("ordinary-copy", {
+    equipTransfer: false,
+    fromModId: "missing-mod"
+  });
+  const equipCopy = effectFixture("equip-copy", {
+    equipTransfer: true,
+    fromModId: "missing-mod"
+  });
+  const deleted = [];
+  const actor = {
+    items: new Map(),
+    async syncEquipTransferEffects() {}
+  };
+  const parent = {
+    id: "weapon",
+    actor,
+    system: { equipped: false },
+    effects: [ordinaryCopy, equipCopy],
+    async deleteEmbeddedDocuments(_type, ids) {
+      deleted.push(...ids);
+    }
+  };
+
+  await syncMountedModEffects(parent, "missing-mod", null, true);
+  assert.deepEqual(deleted, []);
+});
+
+test("mounted modification reconciliation removes duplicate host copies", async () => {
+  const source = effectFixture("source", { equipTransfer: true });
+  const firstCopy = effectFixture("copy-1", {
+    equipTransfer: true,
+    fromModId: "mod",
+    sourceModEffectId: "source"
+  });
+  const duplicateCopy = effectFixture("copy-2", {
+    equipTransfer: true,
+    fromModId: "mod",
+    sourceModEffectId: "source"
+  });
+  const deleted = [];
+  const actor = {
+    items: new Map([["mod", { id: "mod", effects: [source] }]]),
+    async syncEquipTransferEffects() {}
+  };
+  const parent = {
+    id: "weapon",
+    actor,
+    system: { equipped: true },
+    effects: [firstCopy, duplicateCopy],
+    async createEmbeddedDocuments() {},
+    async deleteEmbeddedDocuments(_type, ids) {
+      deleted.push(...ids);
+    }
+  };
+
+  await syncMountedModEffects(parent, "mod", null, true);
+
+  assert.deepEqual(deleted, ["copy-2"]);
+  assert.equal(firstCopy.updated.flags.neuroshima.sourceModEffectId, "source");
 });
 
 test("weapon triggers follow WFRP order", async () => {

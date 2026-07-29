@@ -508,7 +508,7 @@ export class NeuroshimaItem extends Item {
     const equippedChanged = foundry.utils.hasProperty(data, "system.equipped");
     if (equippedChanged) {
       const equipped = data.system.equipped;
-      actor.syncEquipTransferEffects(this, equipped);
+      await actor.syncEquipTransferEffects(this, equipped);
       import("../apps/neuroshima-script-engine.js").then(({ NeuroshimaScriptRunner }) => {
         game.neuroshima?.log("[item._onUpdate] firing equipToggle scripts", { itemName: this.name, actorName: actor.name, equipped });
         NeuroshimaScriptRunner.execute("equipToggle", { actor, item: this, equipped });
@@ -517,7 +517,7 @@ export class NeuroshimaItem extends Item {
 
     const isBuiltChanged = this.type === "facilities" && foundry.utils.hasProperty(data, "system.isBuilt");
     if (isBuiltChanged) {
-      actor.syncEquipTransferEffects(this, data.system.isBuilt);
+      await actor.syncEquipTransferEffects(this, data.system.isBuilt);
     }
 
     const specChanged = this.type === "specialization" && foundry.utils.hasProperty(data, "system.skillSpecializations");
@@ -585,11 +585,9 @@ export class NeuroshimaItem extends Item {
       actor.update(updateData);
     }
 
-    if (this.type === "facilities") {
-      const toDelete = actor.effects
-        .filter(e => e.origin === this.uuid && e.getFlag("neuroshima", "fromEquipTransfer") === true)
-        .map(e => e.id);
-      if (toDelete.length) actor.deleteEmbeddedDocuments("ActiveEffect", toDelete);
-    }
+    // Any item can own equip-transfer effects (including parent weapons/armor
+    // receiving them from mounted modifications). Remove actor mirrors before
+    // the source item disappears.
+    await actor.syncEquipTransferEffects(this, false);
   }
 }

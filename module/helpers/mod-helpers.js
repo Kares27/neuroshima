@@ -418,6 +418,18 @@ export async function installMod(item, mod) {
   if (actor) {
     let modActorItem = (mod.actor === actor) ? mod : null;
 
+    if (modActorItem && Number(modActorItem.system.quantity ?? 1) > 1) {
+      const modData = modActorItem.toObject();
+      delete modData._id;
+      modData.system = modData.system ?? {};
+      modData.system.quantity = 1;
+      const [created] = await actor.createEmbeddedDocuments("Item", [modData]);
+      await modActorItem.update({
+        "system.quantity": Number(modActorItem.system.quantity ?? 1) - 1
+      });
+      modActorItem = created;
+    }
+
     if (!modActorItem) {
       const modData = mod.toObject();
       delete modData._id;
@@ -491,7 +503,7 @@ export async function attachMod(item, modId) {
   await item.update(updateData);
 
   const snapshot = buildInstalledMap(item)[modId] ?? entry;
-  await _propagateModEffects(item, modId, snapshot, true);
+  await syncMountedModEffects(item, modId, snapshot, true);
   await _propagateModResources(item, modId, snapshot, true);
 }
 
@@ -528,7 +540,7 @@ export async function detachMod(item, modId) {
 
   await item.update(updateData);
 
-  await _propagateModEffects(item, modId, entry, false);
+  await syncMountedModEffects(item, modId, entry, false);
   await _propagateModResources(item, modId, entry, false);
 }
 
@@ -625,26 +637,93 @@ export async function uninstallMod(item, modId) {
  * Copy / delete AEs from the original mod item onto the parent weapon/armor.
  * Tagged with flags.neuroshima.fromModId so they can be identified and removed later.
  */
-async function _propagateModEffects(item, modId, snapshot, attach) {
-  if (attach) {
-    let modItem = item.actor?.items.get(modId) ?? null;
-    if (!modItem && snapshot?.uuid) {
-      try { modItem = await fromUuid(snapshot.uuid); } catch (_) {}
-    }
-    if (!modItem) modItem = game.items?.get(modId);
-    if (!modItem || !modItem.effects?.size) return;
+export async function syncMountedModEffects(item, modId, snapshot = null, attached = true) {
+  let modItem = item.actor?.items.get(modId) ?? null;
+  if (!modItem && snapshot?.uuid) {
+    try { modItem = await fromUuid(snapshot.uuid); } catch (_) {}
+  }
+  if (!modItem) modItem = game.items?.get(modId) ?? null;
 
-    const toCreate = modItem.effects.map(e => {
-      const data = e.toObject();
-      foundry.utils.setProperty(data, "flags.neuroshima.fromModId", modId);
-      return data;
-    });
-    if (toCreate.length) await item.createEmbeddedDocuments("ActiveEffect", toCreate);
-  } else {
-    const toDelete = item.effects
-      .filter(e => e.getFlag("neuroshima", "fromModId") === modId)
-      .map(e => e.id);
-    if (toDelete.length) await item.deleteEmbeddedDocuments("ActiveEffect", toDelete);
+  if (attached && !modItem) {
+    // Legacy installed entries may no longer have their source modification.
+    // Preserve the copies already present on the host because they are the
+    // only remaining representation of the mounted modification's effects.
+    if (item.actor) {
+      await item.actor.syncEquipTransferEffects(item, item.system.equipped === true);
+    }
+    return;
+  }
+
+  if (modItem) {
+    for (const effect of modItem.effects ?? []) {
+      if (effect.transfer !== false) {
+        await effect.update(
+          { transfer: false },
+          { neuroshimaModEffectSync: true }
+        );
+      }
+    }
+  }
+
+  const desired = attached && modItem
+    ? Array.from(modItem.effects ?? [])
+    : [];
+  const existing = item.effects.filter(effect =>
+    effect.getFlag("neuroshima", "fromModId") === modId
+  );
+  const desiredIds = new Set(desired.map(effect => effect.id));
+  const existingBySource = new Map();
+  const duplicateIds = [];
+  for (const effect of existing) {
+    const sourceId = effect.getFlag("neuroshima", "sourceModEffectId");
+    if (sourceId && !existingBySource.has(sourceId)) {
+      existingBySource.set(sourceId, effect);
+    } else {
+      duplicateIds.push(effect.id);
+    }
+  }
+
+  const staleIds = [
+    ...duplicateIds,
+    ...existing
+      .filter(effect => !desiredIds.has(effect.getFlag("neuroshima", "sourceModEffectId")))
+      .map(effect => effect.id)
+  ].filter((id, index, ids) => ids.indexOf(id) === index);
+  if (staleIds.length) {
+    await item.deleteEmbeddedDocuments(
+      "ActiveEffect",
+      staleIds,
+      { neuroshimaModEffectSync: true }
+    );
+  }
+
+  const toCreate = [];
+  for (const source of desired) {
+    const data = source.toObject();
+    delete data._id;
+    // The source modification never transfers directly. The host copy keeps
+    // the source effect's transfer-on-equip mode and becomes the sole effect
+    // that can reach the owning actor.
+    data.transfer = source.getFlag("neuroshima", "equipTransfer") !== true;
+    foundry.utils.setProperty(data, "flags.neuroshima.fromModId", modId);
+    foundry.utils.setProperty(data, "flags.neuroshima.sourceModEffectId", source.id);
+    const copy = existingBySource.get(source.id);
+    if (copy && !staleIds.includes(copy.id)) {
+      await copy.update(data, { neuroshimaModEffectSync: true });
+    } else {
+      toCreate.push(data);
+    }
+  }
+  if (toCreate.length) {
+    await item.createEmbeddedDocuments(
+      "ActiveEffect",
+      toCreate,
+      { neuroshimaModEffectSync: true }
+    );
+  }
+
+  if (item.actor) {
+    await item.actor.syncEquipTransferEffects(item, item.system.equipped === true);
   }
 }
 

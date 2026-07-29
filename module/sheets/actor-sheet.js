@@ -723,6 +723,14 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     for (const e of actor.effects) {
       if (e.getFlag("neuroshima", "fromEquipTransfer")) {
         const originItem = e.origin ? actor.items.find(i => i.uuid === e.origin) : null;
+        const sourceEffectId = e.getFlag("neuroshima", "sourceEffectId");
+        const sourceEffect = originItem?.effects?.get?.(sourceEffectId)
+          ?? originItem?.effects?.find?.(effect => effect.id === sourceEffectId)
+          ?? null;
+        // A mounted modification is represented by its host-item copy in the
+        // dedicated "effects from modifications" section. Its actor mirror is
+        // the runtime application of the same effect, not a second passive row.
+        if (sourceEffect?.getFlag?.("neuroshima", "fromModId")) continue;
         const srcName = originItem?.name ?? actor.name;
         const srcIcon = originItem?.img  ?? actor.img ?? "icons/svg/mystery-man.svg";
         pushEffect(e, originItem?.id ?? null, srcName, srcIcon, !!originItem);
@@ -1604,9 +1612,6 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         );
         if (isValidTarget && sourceItem.actor?.id === this.document.id) {
           await installMod(dropTargetItem, sourceItem);
-          const qty = sourceItem.system.quantity ?? 1;
-          if (qty <= 1) await sourceItem.delete();
-          else await sourceItem.update({ "system.quantity": qty - 1 });
           return;
         }
         return super._onDropItem(event, item);
