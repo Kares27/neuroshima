@@ -1,4 +1,9 @@
 import { NeuroshimaScript, NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
+import {
+  LEGACY_EFFECT_PENALTY_KEY,
+  EFFECT_PENALTY_KEY,
+  normalizeEffectPenaltyChanges
+} from "../helpers/effect-penalty.js";
 
 export class NeuroshimaActiveEffect extends ActiveEffect {
   /**
@@ -102,6 +107,10 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
   /** @override — auto-correct transfer before creation */
   async _preCreate(data, options, user) {
     await super._preCreate(data, options, user);
+    const normalizedChanges = normalizeEffectPenaltyChanges(this.changes ?? []);
+    if (normalizedChanges.changed) {
+      this.updateSource({ changes: normalizedChanges.changes });
+    }
     if (this.parent?.documentName === "Item") {
       this.updateSource({ transfer: this.determineTransfer() });
     }
@@ -126,6 +135,10 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
 
   /** @override — auto-correct transfer when flags change */
   async _preUpdate(changes, options, user) {
+    if (Array.isArray(changes.changes)) {
+      const normalizedChanges = normalizeEffectPenaltyChanges(changes.changes);
+      if (normalizedChanges.changed) changes.changes = normalizedChanges.changes;
+    }
     await super._preUpdate(changes, options, user);
     const isModificationSource = this.parent?.documentName === "Item"
       && (this.parent.type === "weapon-mod" || this.parent.type === "armor-mod");
@@ -157,6 +170,17 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
       });
       if (args.cancel) return false;
     }
+  }
+
+  /**
+   * Keep imported legacy effects functional until their stored change key is
+   * rewritten by the world migration.
+   */
+  apply(actor, change) {
+    const normalizedChange = change?.key === LEGACY_EFFECT_PENALTY_KEY
+      ? { ...change, key: EFFECT_PENALTY_KEY }
+      : change;
+    return super.apply(actor, normalizedChange);
   }
 
   /**

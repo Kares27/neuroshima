@@ -147,6 +147,7 @@ const {
   NeuroshimaTestBase,
   SkillTest,
   HealingTest,
+  InitiativeTest,
   PercentileTest,
   WeaponTest,
   GrenadeTest,
@@ -187,6 +188,11 @@ const {
 const { ReputationRollDialog } = await import("../module/apps/dialogs/reputation-roll-dialog.js");
 const { NeuroshimaRollDialogBase } = await import("../module/apps/dialogs/roll-dialog-base.js");
 const { syncMountedModEffects } = await import("../module/helpers/mod-helpers.js");
+const {
+  EFFECT_PENALTY_KEY,
+  LEGACY_EFFECT_PENALTY_KEY,
+  normalizeEffectPenaltyChanges
+} = await import("../module/helpers/effect-penalty.js");
 const {
   MeleeResolution,
   MeleeOpposedChat,
@@ -433,7 +439,7 @@ test("reputation and fame changes support numeric Active Effect modes", () => {
   assert.equal(data._applyPostDerivedActiveEffectValue("system.reputationBonus", 1), 7);
 });
 
-test("general Active Effect penalty remains separate from prepared armor penalty", () => {
+test("effect Active Effect penalty remains separate from prepared armor penalty", () => {
   const data = Object.assign(Object.create(NeuroshimaActorData.prototype), {
     attributes: {},
     attributeBonuses: {},
@@ -442,7 +448,7 @@ test("general Active Effect penalty remains separate from prepared armor penalty
     skillBonuses: {},
     combat: {
       armorPenaltyBonus: 3,
-      generalPenalty: 40
+      effectPenalty: 40
     },
     size: "normal"
   });
@@ -461,7 +467,25 @@ test("general Active Effect penalty remains separate from prepared armor penalty
   }
 
   assert.equal(data.combat.totalArmorPenalty, 10);
-  assert.equal(data.combat.generalPenalty, 40);
+  assert.equal(data.combat.effectPenalty, 40);
+});
+
+test("effect penalty change key is canonical and legacy changes normalize safely", () => {
+  const combatKeys = NS_CHANGE_KEYS
+    .flatMap(group => group.keys)
+    .map(entry => entry.key);
+  assert.ok(combatKeys.includes(EFFECT_PENALTY_KEY));
+  assert.ok(!combatKeys.includes(LEGACY_EFFECT_PENALTY_KEY));
+
+  const source = [
+    { key: LEGACY_EFFECT_PENALTY_KEY, mode: 2, value: "20" },
+    { key: "system.combat.armorPenaltyBonus", mode: 2, value: "5" }
+  ];
+  const normalized = normalizeEffectPenaltyChanges(source);
+  assert.equal(normalized.changed, true);
+  assert.equal(normalized.changes[0].key, EFFECT_PENALTY_KEY);
+  assert.equal(normalized.changes[1], source[1]);
+  assert.equal(source[0].key, LEGACY_EFFECT_PENALTY_KEY);
 });
 
 test("manual spent XP adjustments log both expenses and restorations", () => {
@@ -1415,6 +1439,65 @@ test("pre-roll API changes survive first roll", async () => {
   assert.equal(instance.context.basePreData.resultModifiers.forcedSuccess, true);
 });
 
+test("forceInitiative persists the override and updates chat data and Combat Tracker", async () => {
+  const updates = [];
+  const combatant = {
+    async update(data) {
+      updates.push(data);
+    }
+  };
+  const instance = new InitiativeTest({
+    preData: { stat: 12, skill: 4, fixedDice: [2, 8, 15] },
+    context: { isDebug: true },
+    combatant
+  }, actorFixture());
+  const script = new NeuroshimaScript({}, null);
+  script._currentArgs = { test: instance, eventContext: { phase: "pre" } };
+
+  assert.equal(script.forceInitiative(17), true);
+  await instance.roll({ sendToChat: false });
+
+  assert.equal(instance.result.initiative, 17);
+  assert.equal(instance.result.initiativeForced, true);
+  assert.equal(instance.toData().preData.resultModifiers.forcedInitiative, 17);
+  assert.equal((await instance.getChatData()).initiative, 17);
+  assert.deepEqual(updates, [{ initiative: 17 }]);
+});
+
+test("forceInitiative rejects invalid values and non-initiative tests", () => {
+  const script = new NeuroshimaScript({}, null);
+  const skill = new SkillTest({}, actorFixture());
+  script._currentArgs = { test: skill, eventContext: { phase: "pre" } };
+  assert.equal(script.forceInitiative(10), false);
+
+  const initiative = new InitiativeTest({}, actorFixture());
+  script._currentArgs = { test: initiative, eventContext: { phase: "pre" } };
+  assert.equal(script.forceInitiative("not-a-number"), false);
+  assert.equal(script.forceInitiative(""), false);
+  assert.equal(script.forceInitiative(null), false);
+  assert.equal(initiative.preData.resultModifiers?.forcedInitiative, undefined);
+});
+
+test("forceInitiative from rollTest recalculates before updating the Combat Tracker", async () => {
+  const updates = [];
+  const instance = new InitiativeTest({
+    preData: { stat: 12, skill: 0, fixedDice: [2, 8, 15] },
+    context: { isDebug: true },
+    combatant: { async update(data) { updates.push(data); } }
+  }, actorFixture());
+  const script = new NeuroshimaScript({}, null);
+  instance.runPostEffects = async () => {
+    script._currentArgs = { test: instance, eventContext: { phase: "result" } };
+    assert.equal(script.forceInitiative(23), true);
+  };
+
+  await instance.roll({ sendToChat: false });
+
+  assert.equal(instance.context.dirty, false);
+  assert.equal(instance.result.initiative, 23);
+  assert.deepEqual(updates, [{ initiative: 23 }]);
+});
+
 test("reroll and edit preserve lifecycle state without resource side effects", async () => {
   const instance = new SkillTest({
     preData: { stat: 12, skill: 4, fixedDice: [2, 8, 15] },
@@ -1844,14 +1927,14 @@ test("reputation and fame tooltips collect exact Actor and Item effect paths", (
 
 test("effect penalty tooltip uses applicable sources but the prepared value as total", () => {
   const actor = {
-    system: { combat: { generalPenalty: -15 } },
+    system: { combat: { effectPenalty: -15 } },
     items: [],
     allApplicableEffects() {
       return [
         {
           uuid: "Actor.actor.Item.trait.ActiveEffect.enabled",
           name: "Odporność chemiczna",
-          changes: [{ key: "system.combat.generalPenalty", value: "-10", mode: 2 }]
+          changes: [{ key: "system.combat.effectPenalty", value: "-10", mode: 2 }]
         },
         {
           uuid: "Actor.actor.ActiveEffect.disabled",
@@ -2162,7 +2245,7 @@ test("dialog scripts add and subtract the dedicated effect penalty with source b
   const actor = {
     ...actorFixture(),
     name: "Effect penalty tester",
-    system: { combat: { generalPenalty: 10 } }
+    system: { combat: { effectPenalty: 10 } }
   };
   const script = {
     effect: { id: "effect-penalty", parent: null },

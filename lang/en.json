@@ -787,7 +787,6 @@
             "Segment": "Seg.",
             "MeleeInitiative": "Melee Initiative",
             "ArmorPenalty": "Armor Penalty",
-            "GeneralPenalty": "General Penalty",
             "EffectPenalty": "Effects (%)",
             "PiercingAbbr": "AP"
         },

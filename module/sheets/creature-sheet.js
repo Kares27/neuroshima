@@ -6,6 +6,10 @@ import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
 import { getEffectiveArmorRatings, getEffectiveRadiationResistance } from "../helpers/mod-helpers.js";
 import { BeastActivitySheet } from "../apps/beast-activity-sheet.js";
 import {
+  EFFECT_PENALTY_KEY,
+  LEGACY_EFFECT_PENALTY_KEY
+} from "../helpers/effect-penalty.js";
+import {
   buildBreakdownTooltip,
   collectAttributeEffectSources,
   collectDocumentEffectSources,
@@ -108,7 +112,9 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         const dialog = new NeuroshimaInitiativeRollDialog({ actor: this.document });
         const result = await dialog.render(true);
         if (!result) return;
-        await this.document.update({ "system.combat.meleeInitiative": Number(result.successPoints) });
+        await this.document.update({
+          "system.combat.meleeInitiative": Number(result.initiative ?? result.successPoints)
+        });
       },
 
       rollWeapon: async function(event, target) {
@@ -219,7 +225,11 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
               targets: [targetUuid],
               onRoll: async (result) => {
                 const { NeuroshimaMeleeCombat } = await import("../combat/combat.js");
-                await NeuroshimaMeleeCombat.respondToMeleePending(existingPending.id, result.successPoints, item.id);
+                await NeuroshimaMeleeCombat.respondToMeleePending(
+                  existingPending.id,
+                  Number(result.initiative ?? result.successPoints),
+                  item.id
+                );
                 return result;
               }
             });
@@ -1039,11 +1049,15 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
     const totalDiseasePenalty = actor.items
       .filter(i => i.type === "disease" && (i.system.diseaseType ?? "chronic") === "transient")
       .reduce((sum, i) => sum + (Number(i.system.transientPenalty) || 0), 0);
-    const totalEffectPenalty = Number(system.combat?.generalPenalty ?? 0) || 0;
-    const effectPenaltySources = collectDocumentEffectSources(
+    const totalEffectPenalty = Number(system.combat?.effectPenalty ?? 0) || 0;
+    const effectPenaltySourceMap = collectDocumentEffectSources(
       actor,
-      ["system.combat.generalPenalty"]
-    )["system.combat.generalPenalty"] ?? [];
+      [EFFECT_PENALTY_KEY, LEGACY_EFFECT_PENALTY_KEY]
+    );
+    const effectPenaltySources = [
+      ...(effectPenaltySourceMap[EFFECT_PENALTY_KEY] ?? []),
+      ...(effectPenaltySourceMap[LEGACY_EFFECT_PENALTY_KEY] ?? [])
+    ];
     const totalCombatPenalty = totalArmorPenalty + totalWoundPenalty
       + totalDiseasePenalty + totalEffectPenalty;
     const penaltyTooltip = renderTooltipSections([

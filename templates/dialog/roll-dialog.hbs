@@ -15,28 +15,26 @@
                 <input type="number" name="weaponModifier" value="{{weaponModifier}}" placeholder="0"/>
             </div>
             {{/if}}
-            {{#if showEffectPenalty}}
             <div class="form-group">
                 <div class="checkbox-wrapper">
                     <input type="checkbox" name="useEffectPenalty" {{checked useEffectPenalty}}/>
                     <label>{{localize "NEUROSHIMA.Roll.Effects"}} (%)</label>
                 </div>
-                <input type="number" name="effectPenalty" value="{{#if useEffectPenalty}}{{effectPenalty}}{{else}}0{{/if}}" placeholder="0" disabled/>
+                <input type="number" name="effectPenalty" value="{{effectPenalty}}" placeholder="0" disabled/>
             </div>
-            {{/if}}
             <div class="form-group">
                 <div class="checkbox-wrapper">
                     <input type="checkbox" name="useArmorPenalty" {{checked useArmorPenalty}}/>
                     <label>{{localize "NEUROSHIMA.Roll.Armor"}} (%)</label>
                 </div>
-                <input type="number" name="armorPenalty" value="{{#if useArmorPenalty}}{{armorPenalty}}{{else}}0{{/if}}" placeholder="0" disabled/>
+                <input type="number" name="armorPenalty" value="{{armorPenalty}}" placeholder="0" disabled/>
             </div>
             <div class="form-group">
                 <div class="checkbox-wrapper">
                     <input type="checkbox" name="useWoundPenalty" {{checked useWoundPenalty}}/>
                     <label>{{localize "NEUROSHIMA.Roll.Wounds"}} (%)</label>
                 </div>
-                <input type="number" name="woundPenalty" value="{{#if useWoundPenalty}}{{woundPenalty}}{{else}}0{{/if}}" placeholder="0" disabled/>
+                <input type="number" name="woundPenalty" value="{{woundPenalty}}" placeholder="0" disabled/>
             </div>
             {{#if showDiseasePenalty}}
             <div class="form-group">
@@ -44,7 +42,7 @@
                     <input type="checkbox" name="useDiseasePenalty" {{checked useDiseasePenalty}}/>
                     <label>{{localize "NEUROSHIMA.Roll.Disease"}} (%)</label>
                 </div>
-                <input type="number" name="diseasePenalty" value="{{#if useDiseasePenalty}}{{diseasePenalty}}{{else}}0{{/if}}" placeholder="0" disabled/>
+                <input type="number" name="diseasePenalty" value="{{diseasePenalty}}" placeholder="0" disabled/>
             </div>
             {{/if}}
             <div class="form-group">

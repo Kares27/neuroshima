@@ -1,4 +1,5 @@
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
+import { EFFECT_PENALTY_KEY } from "../helpers/effect-penalty.js";
 
 const BaseEffectSheet = foundry.applications.sheets.ActiveEffectConfig;
 
@@ -22,7 +23,7 @@ export const NS_CHANGE_KEYS = [
   { group: "NEUROSHIMA.Effects.Keys.Group.Combat", actorTypes: ["character", "npc", "creature"], keys: [
     { key: "system.movement",                label: "NEUROSHIMA.Movement.Label" },
     { key: "system.combat.armorPenaltyBonus", label: "NEUROSHIMA.Combat.ArmorPenalty" },
-    { key: "system.combat.generalPenalty",    label: "NEUROSHIMA.Combat.EffectPenalty" },
+    { key: EFFECT_PENALTY_KEY,                label: "NEUROSHIMA.Combat.EffectPenalty" },
     { key: "system.combat.meleeInitiative",   label: "NEUROSHIMA.Combat.MeleeInitiative" },
     { key: "system.healingRate",              label: "NEUROSHIMA.Effects.Keys.HealingRate" },
     { key: "system.radiationResistance",      label: "NEUROSHIMA.RadiationResistance" }

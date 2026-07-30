@@ -294,6 +294,7 @@
     <div class="ctx-row"><span class="ctx-name">this.token</span><span class="ctx-type">TokenDocument | null</span><span class="ctx-desc">Pierwszy token aktora na aktywnej scenie (null jeśli brak)</span></div>
     <div class="ctx-row"><span class="ctx-name">this.notification(msg, type?)</span><span class="ctx-type">void</span><span class="ctx-desc">Pokazuje powiadomienie UI. type: "info" | "warn" | "error"</span></div>
     <div class="ctx-row"><span class="ctx-name">this.addAnnotation(text)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Dodaje krótką adnotację wyświetlaną pod wynikiem rzutu na karcie czatu. Zwraca <code>true</code>, gdy bieżący wyzwalacz udostępnia test. Działa w <code>dialog</code> oraz wszystkich fazach testu, w tym <code>afterRollDice</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.forceInitiative(value)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Wymusza liczbowy wynik bieżącego <code>InitiativeTest</code>. Wartość trafia na kartę czatu i do powiązanego wpisu w Combat Trackerze. Zwraca <code>false</code> poza wyzwalaczem testu inicjatywy albo dla nieprawidłowej wartości.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.roll(formula, data?, options?)</span><span class="ctx-type">Promise&lt;Roll&gt;</span><span class="ctx-desc">Rzut kością. <code>options: { flavor, rollMode, toMessage, speaker }</code> — gdy <code>flavor</code> lub <code>toMessage:true</code>, wynik trafia do chatu z flavorem i speakerem aktora. <strong>Tylko w triggerach ASYNC.</strong></span></div>
     <div class="ctx-row"><span class="ctx-name">this.rollToChat(count, sides, options?)</span><span class="ctx-type">number[] | Promise&lt;Roll&gt;</span><span class="ctx-desc"><strong>Ujednolicony rzut kością — działa w SYNC i ASYNC.</strong> W triggerze SYNC (<code>APCalc</code>) zachowuje się jak <code>deferRollToChat</code>: wykonuje rzut natychmiast i zwraca <code>number[]</code>, wpis na czat jest odroczony. W triggerze ASYNC działa jak <code>this.roll</code> i zwraca <code>Promise&lt;Roll&gt;</code>. Możesz bezpiecznie pisać <code>await this.rollToChat(...)</code> w obu kontekstach. Opcje: <code>{ flavor, rollMode, speaker }</code>.</span></div>
     <div class="ctx-row"><span class="ctx-name">this.deferRollToChat(count, sides, options?)</span><span class="ctx-type">number[]</span><span class="ctx-desc">Rzut synchroniczny — wynik dostępny natychmiast jako <code>number[]</code>. Wpis na czat z flavorem odroczony do momentu zakończenia wszystkich kalkulacji. <strong>Tylko w triggerach SYNC</strong> (<code>APCalc</code>). Opcje: <code>{ flavor, rollMode, speaker }</code>.</span></div>
@@ -467,7 +468,7 @@
     <div class="ctx-row"><span class="ctx-name">args.dice.replace(index, value, options?)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Kontrolowana zamiana kości z historią w <code>diceChanges</code>. Wartość ustawiona na 1 nie staje się naturalną jedynką.</span></div>
     <div class="ctx-row"><span class="ctx-name">args.dice.copy(source, target, options?)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Kopiuje aktualną wartość kości i oznacza test do ponownego przeliczenia.</span></div>
     <div class="ctx-row"><span class="ctx-name">await args.dice.choose(options)</span><span class="ctx-type">Promise&lt;number[] | null&gt;</span><span class="ctx-desc">Otwiera kontrolowany wybór indeksów kości; szczególnie użyteczne w akcjach wyniku.</span></div>
-    <div class="ctx-row"><span class="ctx-name">args.result</span><span class="ctx-type">API</span><span class="ctx-desc">Metody <code>addSuccessPoints</code>, <code>forceSuccess</code>, <code>forceFailure</code> i <code>addAnnotation</code>. Dawne <code>addSuccesses</code> pozostaje wyłącznie aliasem zgodności.</span></div>
+    <div class="ctx-row"><span class="ctx-name">args.result</span><span class="ctx-type">API</span><span class="ctx-desc">Metody <code>addSuccessPoints</code>, <code>forceSuccess</code>, <code>forceFailure</code>, <code>forceInitiative</code> i <code>addAnnotation</code>. Dawne <code>addSuccesses</code> pozostaje wyłącznie aliasem zgodności.</span></div>
     <div class="ctx-row"><span class="ctx-name">args.links.meleePool</span><span class="ctx-type">object | null</span><span class="ctx-desc">Trwały link puli melee: encounter, uczestnik, tura i rewizja. System synchronizuje powiązaną kartę automatycznie.</span></div>
     <div class="ctx-row"><span class="ctx-name">args.links.opposed</span><span class="ctx-type">object | null</span><span class="ctx-desc">Link testu do pojedynku opposed: wspólny identyfikator, wiadomość duelu, rola i rewizja. Skrypt może go odczytać, ale aktualizację jednej trwałej karty wykonuje centralnie system.</span></div>
   </div>
@@ -594,7 +595,7 @@
       <tr><td><code>args.fields.armorPenalty</code></td><td>number</td><td>Kara za pancerz dodawana do ogólnych kar rzutu (np. <code>args.fields.armorPenalty += 10</code>).</td></tr>
       <tr><td><code>args.fields.woundPenalty</code></td><td>number</td><td>Kara za rany dodawana do ogólnych kar rzutu.</td></tr>
       <tr><td><code>args.fields.diseasePenalty</code></td><td>number</td><td>Dodatkowa kara za chorobę przejściową doliczana do rzutu (np. <code>args.fields.diseasePenalty += 20</code>). Kumuluje się z karą wyliczoną automatycznie z itemów chorób przejściowych aktora. Dostępne w skryptach typu <code>dialog</code>.</td></tr>
-      <tr><td><code>args.fields.effectPenalty</code></td><td>number</td><td>Tymczasowa zmiana kategorii „Efekty (%)” dla bieżącego rzutu. Wartość dodatnia zwiększa karę, a ujemna ją zmniejsza lub tworzy bonus. Kumuluje się z przygotowaną wartością <code>system.combat.generalPenalty</code>, pojawia się w podglądzie i tooltipie, ale nie zapisuje pola na aktorze.</td></tr>
+      <tr><td><code>args.fields.effectPenalty</code></td><td>number</td><td>Tymczasowa zmiana kategorii „Efekty (%)” dla bieżącego rzutu. Wartość dodatnia zwiększa karę, a ujemna ją zmniejsza lub tworzy bonus. Kumuluje się z przygotowaną wartością <code>system.combat.effectPenalty</code>, pojawia się w podglądzie i tooltipie, ale nie zapisuje pola na aktorze.</td></tr>
       <tr><td><code>args.fields.distance</code></td><td>number</td><td>Dystans do celu (testy broni dystansowej).</td></tr>
       <tr><td><code>args.fields.distanceModifier</code></td><td>number</td><td>Modyfikator kary za dystans.</td></tr>
       <tr><td><code>args.fields.hitLocation</code></td><td>string</td><td>Docelowa lokacja trafienia (np. <code>"random"</code>, <code>"head"</code>).</td></tr>
@@ -631,7 +632,7 @@ args.fields.effectPenalty -= <span class="num">10</span>;</code></pre>
   <div class="callout info">
     Skrypty <code>dialog</code> są reaktywne i nietrwałe. Jeśli kara ma obowiązywać aktora przez cały
     czas działania Active Effectu, użyj zamiast tego zakładki <strong>Changes</strong> i klucza
-    <code>system.combat.generalPenalty</code>.
+    <code>system.combat.effectPenalty</code>.
   </div>
 
   <p><strong>Wartości klucza <code>args.fields.difficulty</code></strong> — dostępne klucze trudności:</p>
@@ -941,7 +942,7 @@ args.reputation.<span class="fn">modifyCost</span>(-<span class="num">10</span>)
   <!-- preRollTest -->
   <h3 id="trigger-preRollTest">preRollTest / preRollWeaponTest — <em>Pre-Roll Test</em></h3>
   <p><code>preRollTest</code> uruchamia się przed każdym testem. Dla klasy <code>WeaponTest</code> zaraz po nim uruchamia się dodatkowo <code>preRollWeaponTest</code>. Modyfikuj <code>args.test.preData</code>, korzystaj z metod testu i wywołuj <code>args.test.markDirty()</code>, gdy zmiana wymaga ponownego obliczenia.</p>
-  <p>Każdy trigger testowy otrzymuje ten sam obiekt klasy testu w <code>args.test</code> oraz skrót do jego kontekstu w <code>args.context</code>. Dostępne są m.in. <code>cancel()</code>, <code>markDirty()</code>, <code>forceSuccess()</code>, <code>forceFailure()</code> i <code>addSuccessPoints()</code>. Broń jest dostępna jako <code>args.test.item</code> lub <code>args.item</code>.</p>
+  <p>Każdy trigger testowy otrzymuje ten sam obiekt klasy testu w <code>args.test</code> oraz skrót do jego kontekstu w <code>args.context</code>. Dostępne są m.in. <code>cancel()</code>, <code>markDirty()</code>, <code>forceSuccess()</code>, <code>forceFailure()</code>, <code>forceInitiative()</code> i <code>addSuccessPoints()</code>. Broń jest dostępna jako <code>args.test.item</code> lub <code>args.item</code>.</p>
   <div class="callout info">
     <strong>Rozróżnianie kontekstu:</strong><br>
     <code>args.test.rollClass</code> — nazwa konkretnej klasy, np. <code>"WeaponTest"</code> lub <code>"MeleeWeaponTest"</code>.<br>
@@ -962,6 +963,7 @@ args.reputation.<span class="fn">modifyCost</span>(-<span class="num">10</span>)
     <tr><td>args.test.preData.attributeBonus</td><td>number</td><td>Bonus do atrybutu — modyfikuj bezpośrednio (działa dla obu typów)</td></tr>
     <tr><td>args.test.preData.label</td><td>string</td><td>Etykieta rzutu (read-only, tylko testy umiejętności)</td></tr>
     <tr><td>args.test.forceSuccess()</td><td>method</td><td><code>forceSuccess({ mode: "keepRoll", annotation })</code> zachowuje normalny rzut i wymusza sukces; tryb <code>"skipRoll"</code> pomija losowanie.</td></tr>
+    <tr><td>args.test.forceInitiative(value)</td><td>method</td><td>W <code>InitiativeTest</code> zapisuje wymuszoną wartość inicjatywy. Preferowany skrót w skrypcie: <code>this.forceInitiative(value)</code>.</td></tr>
     <tr><td>args.test.cancel()</td><td>method</td><td><code>cancel(reason)</code> bezpiecznie anuluje test i zapisuje przyczynę w kontekście.</td></tr>
     <tr><td>args.test.preData.annotations</td><td>string[]</td><td>Tablica adnotacji wyświetlanych pod wynikiem rzutu. <strong>Dodawaj przez helper</strong> <code>this.addAnnotation(text)</code></td></tr>
     <tr><td>args.test.preData.dieManualBonus</td><td>number</td><td>Liczba oczek do rozdysponowania przez gracza w UI czatu. Modyfikuj bezpośrednio: <code>args.test.preData.dieManualBonus = 2</code></td></tr>
@@ -1073,15 +1075,16 @@ args.dice.<span class="fn">copy</span>(<span class="var">bestIndex</span>, <span
 
   <!-- getInitiativeFormula -->
   <h3 id="trigger-getInitiativeFormula">getInitiativeFormula — <em>Get Initiative Formula</em></h3>
-  <p>Uruchamiany synchronicznie podczas obliczania wyniku <code>InitiativeTest</code>, przed zapisaniem wartości do trackera walki. Pozwala zmodyfikować wartość <code>args.initiative</code>.</p>
+  <p>Uruchamiany synchronicznie podczas obliczania wyniku <code>InitiativeTest</code>, przed zapisaniem wartości do trackera walki. Pozwala zmodyfikować wartość <code>args.initiative</code> albo wymusić ją przez <code>this.forceInitiative(value)</code>.</p>
   <div class="callout info">
-    <strong>Kolejność:</strong> rzut kośćmi → <code>rollTest</code> → <code>getInitiativeFormula</code> → zapis do Combat trackera.<br>
-    Zmieniaj <code>args.initiative</code> zamiast próbować modyfikować wynik bezpośrednio na Combat.
+    <strong>Kolejność:</strong> rzut kośćmi → <code>getInitiativeFormula</code> → <code>rollTest</code> → ewentualne przeliczenie → karta czatu i zapis do Combat Trackera.<br>
+    Użyj <code>args.initiative += n</code> dla bonusu lub kary. Użyj <code>this.forceInitiative(value)</code>, gdy konkretna wartość ma mieć pierwszeństwo przed wszystkimi modyfikatorami. Helper działa również w <code>preRollTest</code>, <code>afterRollDice</code> i <code>rollTest</code>.
   </div>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Rzucający aktor</td></tr>
     <tr><td>args.initiative</td><td>number</td><td>Wynik inicjatywy — <strong>modyfikuj bezpośrednio</strong> (<code>args.initiative += 3</code>).</td></tr>
+    <tr><td>this.forceInitiative(value)</td><td>boolean</td><td>Trwale wymusza wynik testu inicjatywy; aktualizuje kartę czatu i powiązanego Combatanta.</td></tr>
     <tr><td>args.test</td><td>InitiativeTest</td><td>Aktualny obiekt testu z <code>preData</code>, <code>result</code> i <code>context</code>.</td></tr>
     <tr><td>args.test.result</td><td>object</td><td>Obliczony wynik, w tym <code>successPoints</code> oraz kości.</td></tr>
     <tr><td>args.test.attributeKey</td><td>string | null</td><td>Klucz współczynnika użytego w teście inicjatywy.</td></tr>
@@ -1095,6 +1098,14 @@ args.dice.<span class="fn">copy</span>(<span class="var">bestIndex</span>, <span
 <span class="kw">if</span> (<span class="var">reflex</span> &gt; <span class="num">0</span>) {
   args.initiative += <span class="var">reflex</span>;
   <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Błyskawiczny refleks: +${<span class="var">reflex</span>} do inicjatywy`</span>, <span class="str">"info"</span>);
+}</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">preRollTest / afterRollDice / rollTest / getInitiativeFormula</span> Wymuszona inicjatywa</div>
+    <pre><code><span class="cmt">// Działa wyłącznie dla InitiativeTest; w innych testach zwróci false.</span>
+<span class="kw">if</span> (args.test.rollType === <span class="str">"initiative"</span>) {
+  <span class="kw">this</span>.<span class="fn">forceInitiative</span>(<span class="num">12</span>);
 }</code></pre>
   </div>
 
@@ -4597,14 +4608,14 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
   <table>
     <tbody><tr><th>Klucz</th><th>Opis</th></tr>
     <tr><td>system.combat.armorPenaltyBonus</td><td>Dodatkowa kara od pancerza</td></tr>
-    <tr><td>system.combat.generalPenalty</td><td>Kara efektów (%) — osobna od pancerza, ran i choroby</td></tr>
+    <tr><td>system.combat.effectPenalty</td><td>Kara efektów (%) — osobna od pancerza, ran i choroby</td></tr>
     <tr><td>system.combat.meleeInitiative</td><td>Inicjatywa w walce wręcz</td></tr>
     <tr><td>system.healingRate</td><td>Tempo Leczenia</td></tr>
   </tbody></table>
 
   <h4>Kara efektów — trwała zmiana przez Changes</h4>
   <p>
-    Wybierz klucz <code>system.combat.generalPenalty</code> i tryb <strong>Add</strong>.
+    Wybierz klucz <code>system.combat.effectPenalty</code> i tryb <strong>Add</strong>.
     Wartości wielu aktywnych efektów sumują się w przygotowanych danych aktora:
   </p>
   <table>
@@ -4614,9 +4625,14 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
   </tbody></table>
   <div class="callout info">
     Changes nie zapisuje bazowej wartości formularza aktora. Foundry wylicza
-    <code>system.combat.generalPenalty</code> ponownie z aktywnych efektów podczas przygotowania danych.
+    <code>system.combat.effectPenalty</code> ponownie z aktywnych efektów podczas przygotowania danych.
     Suma jest widoczna w nagłówku aktora, dialogach rzutu i tooltipie ze źródłami. Na karcie testu trafia
     do <code>preData.penalties.effects</code>.
+  </div>
+  <div class="callout info">
+    Starszy klucz <code>system.combat.generalPenalty</code> został zastąpiony przez
+    <code>system.combat.effectPenalty</code>. Migracja schematu 1.7 automatycznie aktualizuje zapisane
+    Active Effects, a warstwa kompatybilności obsługuje także starsze efekty importowane później.
   </div>
 
   <h4>Naturalna Zbroja (Bestia)</h4>

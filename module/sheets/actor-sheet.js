@@ -12,6 +12,10 @@ import { getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveRad
 import { buildItemPreviewTooltip } from "../helpers/item-tooltip.js";
 import { NeuroshimaChoiceRouter } from "../helpers/choice-router.js";
 import {
+  EFFECT_PENALTY_KEY,
+  LEGACY_EFFECT_PENALTY_KEY
+} from "../helpers/effect-penalty.js";
+import {
   collectTraitSnapshots,
   itemDataFromTraitSnapshot,
   traitSnapshotPreview
@@ -344,11 +348,15 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     const totalDiseasePenalty = actor.items
       .filter(i => i.type === "disease" && (i.system.diseaseType ?? "chronic") === "transient")
       .reduce((sum, i) => sum + (Number(i.system.transientPenalty) || 0), 0);
-    const totalEffectPenalty = Number(system.combat.generalPenalty ?? 0) || 0;
-    const effectPenaltySources = collectDocumentEffectSources(
+    const totalEffectPenalty = Number(system.combat.effectPenalty ?? 0) || 0;
+    const effectPenaltySourceMap = collectDocumentEffectSources(
       actor,
-      ["system.combat.generalPenalty"]
-    )["system.combat.generalPenalty"] ?? [];
+      [EFFECT_PENALTY_KEY, LEGACY_EFFECT_PENALTY_KEY]
+    );
+    const effectPenaltySources = [
+      ...(effectPenaltySourceMap[EFFECT_PENALTY_KEY] ?? []),
+      ...(effectPenaltySourceMap[LEGACY_EFFECT_PENALTY_KEY] ?? [])
+    ];
     const totalCombatPenalty = totalArmorPenalty + totalWoundPenalty
       + totalDiseasePenalty + totalEffectPenalty;
 
@@ -3208,7 +3216,10 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
           onRoll: async (result) => {
               
               const { NeuroshimaMeleeCombat } = await import("../combat/combat.js");
-              await NeuroshimaMeleeCombat.respondToMeleePending(pendingId, result.successPoints);
+              await NeuroshimaMeleeCombat.respondToMeleePending(
+                  pendingId,
+                  Number(result.initiative ?? result.successPoints)
+              );
               
               this._isRolling = false;
               return result;

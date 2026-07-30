@@ -36,8 +36,9 @@
  */
 
 import { collectTraitSnapshots } from "./trait-snapshot.js";
+import { normalizeEffectPenaltyChanges } from "./effect-penalty.js";
 
-const CURRENT_SCHEMA_VERSION = "1.6";
+const CURRENT_SCHEMA_VERSION = "1.7";
 
 export function registerMigrationHook() {
     Hooks.once("ready", async () => {
@@ -64,6 +65,7 @@ export function registerMigrationHook() {
             if (!_versionGte(stored, "1.4")) await _migrate_1_3_to_1_4();
             if (!_versionGte(stored, "1.5")) await _migrate_1_4_to_1_5();
             if (!_versionGte(stored, "1.6")) await _migrate_1_5_to_1_6();
+            if (!_versionGte(stored, "1.7")) await _migrate_1_6_to_1_7();
 
             await game.settings.set("neuroshima", "schemaVersion", CURRENT_SCHEMA_VERSION);
             ui.notifications.info(game.i18n.localize("NEUROSHIMA.Migration.Done"));
@@ -383,6 +385,52 @@ async function _migrate_1_5_to_1_6() {
             if (wasLocked) await pack.configure({ locked: false });
             for (const item of await pack.getDocuments()) {
                 await _materializeBackgroundTraitCopies(item);
+            }
+        } finally {
+            if (wasLocked) await pack.configure({ locked: true });
+        }
+    }
+}
+
+async function _migrateEffectPenaltyChanges(document) {
+    for (const effect of document?.effects ?? []) {
+        const normalized = normalizeEffectPenaltyChanges(
+            effect._source?.changes ?? effect.changes ?? []
+        );
+        if (!normalized.changed) continue;
+        await effect.update(
+            { changes: normalized.changes },
+            { neuroshimaEffectPenaltyMigration: true }
+        );
+    }
+}
+
+async function _migrateEffectPenaltyDocument(document) {
+    await _migrateEffectPenaltyChanges(document);
+    for (const item of document?.items ?? []) {
+        await _migrateEffectPenaltyChanges(item);
+    }
+}
+
+async function _migrate_1_6_to_1_7() {
+    console.log("Neuroshima | Running migration 1.6 -> 1.7 (effect penalty key)");
+
+    for (const actor of _allActors()) await _migrateEffectPenaltyDocument(actor);
+    for (const item of _allWorldItems()) await _migrateEffectPenaltyChanges(item);
+
+    // World compendia belong to the current world and may contain reusable
+    // Actor or Item definitions. System/module packs are left untouched; any
+    // legacy document imported from them is normalized in ActiveEffect#_preCreate.
+    const packs = game.packs?.contents ?? Array.from(game.packs ?? []);
+    for (const pack of packs.filter(pack =>
+        pack.metadata?.packageType === "world"
+        && ["Actor", "Item"].includes(pack.metadata?.type ?? pack.documentName)
+    )) {
+        const wasLocked = pack.locked;
+        try {
+            if (wasLocked) await pack.configure({ locked: false });
+            for (const document of await pack.getDocuments()) {
+                await _migrateEffectPenaltyDocument(document);
             }
         } finally {
             if (wasLocked) await pack.configure({ locked: true });

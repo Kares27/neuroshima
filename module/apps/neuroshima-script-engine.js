@@ -1284,6 +1284,28 @@ export class NeuroshimaScript {
   }
 
   /**
+   * Force the numeric result of the current initiative test.
+   * The value is persisted on the test and is later used by both its chat card
+   * and the linked Combatant in the Combat Tracker.
+   *
+   * @param {number} value Initiative value to set.
+   * @returns {boolean} Whether the current trigger exposes an initiative test.
+   */
+  forceInitiative(value) {
+    if (value === null || (typeof value === "string" && value.trim() === "")) return false;
+    const initiative = Number(value);
+    const test = this._currentArgs?.test;
+    if (!Number.isFinite(initiative)
+      || test?.rollType !== "initiative"
+      || typeof test.forceInitiative !== "function") return false;
+    const forced = test.forceInitiative(initiative);
+    if (forced && Object.hasOwn(this._currentArgs ?? {}, "initiative")) {
+      this._currentArgs.initiative = initiative;
+    }
+    return forced;
+  }
+
+  /**
    * Add a declarative result action to the current roll without copying its
    * executable script into chat flags. The runtime resolves `id` from this
    * script's current ActiveEffect when the player presses the button.
@@ -3402,6 +3424,7 @@ export class NeuroshimaScript {
  *                    args.test.preData.skillBonus   — extra skill bonus (mutable)
  *                    args.test.preData.attributeBonus — extra attribute bonus (mutable)
  *                    args.test.forceSuccess({mode}) — keepRoll or skipRoll
+ *                    args.test.forceInitiative(value) — override InitiativeTest value
  *                    args.test.preData.cancelled    — set true → abort the roll entirely
  *                    args.test.preData.annotations  — string[] shown in chat
  *                    args.test.context.attributeKey — raw attribute key string
@@ -3409,6 +3432,7 @@ export class NeuroshimaScript {
  *                    Use: args.test.forceSuccess({ mode: "skipRoll" }) → skip roll, count as success
  *                         args.test.preData.cancelled = true     → abort the roll entirely
  *                         this.addAnnotation("text")             → custom annotation shown in chat
+ *                         this.forceInitiative(12)                → chat card and Combat Tracker use 12
  *                         args.test.preData.penalties.mod -= 20  → reduce total penalty by 20%
  *                         args.test.preData.stat += 2            → boost attribute value
  *                         args.test.preData.skill += 1           → boost skill rank

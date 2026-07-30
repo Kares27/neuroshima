@@ -119,7 +119,7 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
       combat: new fields.SchemaField({
         meleeInitiative:   new fields.NumberField({ integer: true, initial: 0 }),
         armorPenaltyBonus: new fields.NumberField({ integer: true, initial: 0 }),
-        generalPenalty:    new fields.NumberField({ integer: true, initial: 0 })
+        effectPenalty:     new fields.NumberField({ integer: true, initial: 0 })
       }),
       movement: new fields.NumberField({ integer: true, initial: 2, min: 0 }),
       healingRate: new fields.NumberField({ integer: true, initial: 5, min: 1, max: 100 }),
@@ -176,7 +176,7 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
     }
     if (this.combat) {
       this.combat.armorPenaltyBonus = 0;
-      this.combat.generalPenalty = 0;
+      this.combat.effectPenalty = 0;
     }
     this.reputationBonus = 0;
     this.fameBonus = 0;

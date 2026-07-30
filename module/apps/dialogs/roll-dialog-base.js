@@ -2,6 +2,10 @@ import {
   buildBreakdownTooltip,
   collectDocumentEffectSources
 } from "../../helpers/tooltip-renderer.js";
+import {
+  EFFECT_PENALTY_KEY,
+  LEGACY_EFFECT_PENALTY_KEY
+} from "../../helpers/effect-penalty.js";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
@@ -64,7 +68,7 @@ export class NeuroshimaRollDialogBase extends HandlebarsApplicationMixin(Applica
    * summed to produce the roll penalty.
    */
   _computeActorEffectPenalty() {
-    return Number(this.actor?.system?.combat?.generalPenalty ?? 0) || 0;
+    return Number(this.actor?.system?.combat?.effectPenalty ?? 0) || 0;
   }
 
   /**
@@ -77,10 +81,14 @@ export class NeuroshimaRollDialogBase extends HandlebarsApplicationMixin(Applica
   }
 
   _getActorEffectPenaltySources() {
-    return collectDocumentEffectSources(
+    const sources = collectDocumentEffectSources(
       this.actor,
-      ["system.combat.generalPenalty"]
-    )["system.combat.generalPenalty"] ?? [];
+      [EFFECT_PENALTY_KEY, LEGACY_EFFECT_PENALTY_KEY]
+    );
+    return [
+      ...(sources[EFFECT_PENALTY_KEY] ?? []),
+      ...(sources[LEGACY_EFFECT_PENALTY_KEY] ?? [])
+    ];
   }
 
   _prepareEffectPenaltyContext(context, useEffectPenalty = true) {

@@ -408,13 +408,15 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
             await MeleeEncounter.join(activeEncounterId, {
               id: this.actor.uuid, actorUuid: this.actor.uuid, tokenUuid: this.actor.token?.uuid,
               actorId: this.actor.id, name: this.actor.name, img: this.actor.img,
-              weaponId: this.weaponId, initiative: result.successPoints, chargeLevel: rollData.chargeLevel
+              weaponId: this.weaponId,
+              initiative: Number(result.initiative ?? result.successPoints),
+              chargeLevel: rollData.chargeLevel
             }, "A");
           } else {
             if (activeEncounterId) await targetActor.unsetFlag("neuroshima", "activeMeleeEncounter");
             const { NeuroshimaMeleeCombat } = await import("../../combat/combat.js");
             await NeuroshimaMeleeCombat.initiateMeleePending(
-              this.actor.uuid, targetActor.uuid, result.successPoints,
+              this.actor.uuid, targetActor.uuid, Number(result.initiative ?? result.successPoints),
               this.weaponId, rollData.maneuver, rollData.chargeLevel
             );
           }

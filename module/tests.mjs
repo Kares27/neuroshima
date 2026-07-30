@@ -414,6 +414,20 @@ export class NeuroshimaTestBase {
     this.markDirty("forceFailure");
   }
 
+  forceInitiative(value) {
+    if (value === null || (typeof value === "string" && value.trim() === "")) return false;
+    const initiative = Number(value);
+    if (this.rollType !== "initiative" || !Number.isFinite(initiative)) return false;
+    this.preData.resultModifiers ??= {};
+    this.preData.resultModifiers.forcedInitiative = initiative;
+    if (this.result?.isInitiative === true) {
+      this.result.initiative = initiative;
+      this.result.initiativeForced = true;
+      this.markDirty("forceInitiative");
+    }
+    return true;
+  }
+
   addSuccesses(amount) {
     console.warn("Neuroshima | addSuccesses() is deprecated. Use addSuccessPoints().");
     return this.addSuccessPoints(amount);
@@ -524,6 +538,7 @@ export class NeuroshimaTestBase {
       addSuccessPoints: amount => this.addSuccessPoints(amount),
       forceSuccess: options => this.forceSuccess(options),
       forceFailure: () => this.forceFailure(),
+      forceInitiative: value => this.forceInitiative(value),
       addAnnotation: (text, options) => this.addAnnotation(text, options)
     };
   }
@@ -1336,16 +1351,26 @@ export class InitiativeTest extends NeuroshimaTest {
   async computeResult() {
     await super.computeResult();
     const args = this.triggerArgs();
-    args.initiative = Number(this.result.successPoints ?? 0);
+    const baseInitiative = Number(this.result.successPoints ?? 0);
+    args.initiative = baseInitiative;
     this.runSyncTrigger("getInitiativeFormula", { phase: "calculate" }, args);
-    this.result.initiative = Number(args.initiative ?? this.result.successPoints ?? 0);
+    const forcedInitiative = this.preData.resultModifiers?.forcedInitiative;
+    const isForced = forcedInitiative !== undefined
+      && forcedInitiative !== null
+      && Number.isFinite(Number(forcedInitiative));
+    this.result.initiativeBase = baseInitiative;
+    this.result.initiative = isForced
+      ? Number(forcedInitiative)
+      : Number(args.initiative ?? baseInitiative);
+    this.result.initiativeForced = isForced;
     this.result.isInitiative = true;
     return this;
   }
 
   async postTest() {
-    if (!this.combatant || this.context.reroll || this.context.edited
-      || this.preData.subtype === "melee") return;
+    const isRecalculation = this.context.reroll || this.context.edited;
+    if (!this.combatant || this.preData.subtype === "melee"
+      || (isRecalculation && this.result.initiativeForced !== true)) return;
     await this.combatant.update({ initiative: this.result.initiative });
   }
 
