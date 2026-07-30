@@ -1,9 +1,13 @@
 /**
- * Interactive, scrollable rich-item preview controller.
+ * Interactive, scrollable rich-tooltip controller.
  *
  * Foundry's transient data-tooltip closes when the pointer leaves its trigger.
  * This controller keeps the preview alive while the pointer moves between the
- * item image and tooltip, allowing long enriched descriptions to be scrolled.
+ * trigger and tooltip, allowing long enriched descriptions to be scrolled.
+ *
+ * Supported triggers:
+ * - data-item-preview-html: inventory item preview;
+ * - data-interactive-tooltip-html: generic rich tooltip, including trait choices.
  */
 export class InteractiveItemTooltip {
   static #initialized = false;
@@ -35,7 +39,9 @@ export class InteractiveItemTooltip {
   }
 
   static #onPointerOver(event) {
-    const trigger = event.target instanceof Element ? event.target.closest("[data-item-preview-html]") : null;
+    const trigger = event.target instanceof Element
+      ? event.target.closest("[data-item-preview-html], [data-interactive-tooltip-html]")
+      : null;
     if (trigger) {
       this.#cancelClose();
       if (trigger !== this.#trigger) this.#show(trigger);
@@ -43,7 +49,9 @@ export class InteractiveItemTooltip {
   }
 
   static #onPointerOut(event) {
-    const fromTrigger = event.target instanceof Element ? event.target.closest("[data-item-preview-html]") : null;
+    const fromTrigger = event.target instanceof Element
+      ? event.target.closest("[data-item-preview-html], [data-interactive-tooltip-html]")
+      : null;
     const fromTooltip = this.#element?.contains(event.target);
     if (!fromTrigger && !fromTooltip) return;
     const destination = event.relatedTarget;
@@ -57,7 +65,10 @@ export class InteractiveItemTooltip {
   }
 
   static #onClick(event) {
-    if (event.target instanceof Element && event.target.closest("[data-item-preview-html]")) {
+    if (
+      event.target instanceof Element
+      && event.target.closest("[data-item-preview-html], [data-interactive-tooltip-html]")
+    ) {
       this.#hide();
     }
   }
@@ -72,15 +83,24 @@ export class InteractiveItemTooltip {
   }
 
   static #show(trigger) {
-    const html = trigger.dataset.itemPreviewHtml;
+    const isGeneric = trigger.hasAttribute("data-interactive-tooltip-html");
+    const html = isGeneric
+      ? trigger.dataset.interactiveTooltipHtml
+      : trigger.dataset.itemPreviewHtml;
     if (!html) return this.#hide();
     this.#cancelClose();
     this.#trigger = trigger;
     const tooltip = this.#getElement();
     tooltip.innerHTML = html;
+    tooltip.classList.toggle("is-choice-tooltip", isGeneric);
     tooltip.classList.add("active");
     tooltip.setAttribute("aria-hidden", "false");
-    this.#position(trigger, trigger.dataset.itemPreviewDirection ?? "RIGHT");
+    this.#position(
+      trigger,
+      trigger.dataset.interactiveTooltipDirection
+        ?? trigger.dataset.itemPreviewDirection
+        ?? "RIGHT"
+    );
   }
 
   static #position(trigger, preferredDirection) {
@@ -94,7 +114,9 @@ export class InteractiveItemTooltip {
 
     tooltip.classList.remove("is-vertically-constrained");
     tooltip.style.removeProperty("max-height");
-    tooltip.querySelector(".ns-item-preview-description")?.style.removeProperty("max-height");
+    tooltip.querySelector(
+      ".ns-item-preview-description, .trait-choice-tooltip-description"
+    )?.style.removeProperty("max-height");
     let panel = tooltip.getBoundingClientRect();
 
     const right = anchor.right + gap;
@@ -128,7 +150,9 @@ export class InteractiveItemTooltip {
 
   static #constrainHeight(availableHeight) {
     const tooltip = this.#getElement();
-    const description = tooltip.querySelector(".ns-item-preview-description");
+    const description = tooltip.querySelector(
+      ".ns-item-preview-description, .trait-choice-tooltip-description"
+    );
     const panelHeight = tooltip.getBoundingClientRect().height;
     // This is strictly a shrink operation. Keeping the natural CSS sizing when
     // it already fits preserves the established 260px description maximum.

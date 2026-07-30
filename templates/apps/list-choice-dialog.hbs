@@ -23,8 +23,8 @@
              role="radio"
              aria-checked="{{#if item.isSelected}}true{{else}}false{{/if}}"
              {{#if item.tooltipHtml}}
-             data-tooltip-html="{{item.tooltipHtml}}"
-             data-tooltip-class="list-choice-tooltip"
+             data-interactive-tooltip-html="{{item.tooltipHtml}}"
+             data-interactive-tooltip-direction="RIGHT"
              {{/if}}>
             <span class="list-choice-cb {{#if item.isSelected}}checked{{/if}}">
                 <span class="list-choice-mark"></span>

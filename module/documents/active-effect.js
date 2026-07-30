@@ -2,6 +2,21 @@ import { NeuroshimaScript, NeuroshimaScriptRunner } from "../apps/neuroshima-scr
 
 export class NeuroshimaActiveEffect extends ActiveEffect {
   /**
+   * ActiveEffect changes re-prepare their actor without producing Actor#_onUpdate.
+   * Defer reconciliation until the current effect lifecycle callback has yielded,
+   * then let the actor coalesce any concurrent automatic-condition checks.
+   */
+  _scheduleAutoConditionCheck(userId) {
+    const actor = this.actor;
+    if (userId !== game.user.id || !actor || (!game.user.isGM && !actor.isOwner)) return;
+    setTimeout(() => {
+      Promise.resolve(actor._checkAutoConditions?.()).catch(error => {
+        console.error("Neuroshima | Automatic condition reconciliation failed:", error);
+      });
+    }, 0);
+  }
+
+  /**
    * The Actor that owns this ActiveEffect.
    * In FVTT v13, ActiveEffect no longer exposes an `actor` getter — only `target`.
    * We add our own so that _onCreate / _onDelete lifecycle scripts can always
@@ -199,6 +214,7 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
   async _onUpdate(data, options, user) {
     await super._onUpdate(data, options, user);
     this._scripts = null;
+    this._scheduleAutoConditionCheck(user);
     if (game.user.id !== user) return;
     const actor = this.actor;
     const item = this.parent?.documentName === "Item" ? this.parent : null;
@@ -249,6 +265,7 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
    */
   async _onCreate(data, options, user) {
     await super._onCreate(data, options, user);
+    this._scheduleAutoConditionCheck(user);
     const isModificationSource = this.parent?.documentName === "Item"
       && (this.parent.type === "weapon-mod" || this.parent.type === "armor-mod");
     const isEquipTransferSource = this.parent?.documentName === "Item"
@@ -326,6 +343,7 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
    */
   async _onDelete(options, user) {
     await super._onDelete(options, user);
+    this._scheduleAutoConditionCheck(user);
     const wasModificationSource = this.parent?.documentName === "Item"
       && (this.parent.type === "weapon-mod" || this.parent.type === "armor-mod");
     const wasEquipTransferSource = this.parent?.documentName === "Item"

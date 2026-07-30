@@ -80,6 +80,7 @@
         },
         "XP": {
             "Label": "Experience",
+            "Unit": "XP",
             "Current": "Current",
             "Spent": "Spent",
             "Total": "Total",
@@ -89,8 +90,11 @@
                 "Available": "Available",
                 "CostLabel": "Cost",
                 "NotEnough": "Not enough XP!",
+                "AfterTransaction": "After transaction",
+                "DebtWarning": "Warning! Cost is greater than available XP",
                 "Spend": "Spend XP",
                 "Free": "Free (0 XP)",
+                "FreeButton": "Free",
                 "TrickDescription": "Trick: {name}"
             },
             "Grant": {
@@ -110,9 +114,19 @@
                 "DefaultReason": "XP Deducted",
                 "ExceedsTotal": "Spent XP cannot exceed total XP pool!"
             },
+            "Adjustment": {
+                "SpendTitle": "Add XP Expense",
+                "RestoreTitle": "Restore Spent XP",
+                "SpendAmount": "New expense: {amount} XP",
+                "RestoreAmount": "Amount restored: {amount} XP",
+                "Reason": "Reason for change",
+                "ReasonPlaceholder": "Restoration",
+                "Confirm": "Confirm"
+            },
             "Refund": {
                 "Skill": "XP Refund: {skill} ({from} → {to})",
                 "Attribute": "XP Refund: {attribute} ({from} → {to})",
+                "Reputation": "XP Refund: reputation “{name}” ({from} → {to})",
                 "DialogTitle": "Experience Refund",
                 "Label": "Refund",
                 "Apply": "Refund XP",
@@ -128,6 +142,9 @@
                 "AttributeRaise": "{attr}: {from} → {to}",
                 "SkillRaise": "{skill}: {from} → {to}",
                 "TrickLearned": "Trick: {name}",
+                "ReputationPurchase": "Reputation “{name}”: {from} → {to} (+{points})",
+                "ReputationFree": "Free reputation award “{name}”: {from} → {to} (+{points})",
+                "SourceMissing": "This entry cannot be reverted because its linked document no longer exists.",
                 "Col": {
                     "Date": "Date",
                     "Description": "Description",
@@ -431,7 +448,7 @@
             "ReputationConfig": {
                 "Title": "Reputation Settings",
                 "Label": "Configure Reputation",
-                "Hint": "Opens the reputation system configuration menu: test modes, value ranges, and relation tables.",
+                "Hint": "Opens the reputation system configuration menu: RP purchase cost, test modes, value ranges, and relation tables.",
                 "Saved": "Reputation settings have been saved.",
                 "MinMaxError": "Minimum reputation value cannot be higher than the maximum."
             },
@@ -446,6 +463,10 @@
             },
             "ReputationMax": {
                 "Name": "Maximum reputation value"
+            },
+            "ReputationXpCost": {
+                "Name": "Base cost of 1 reputation point",
+                "Hint": "XP spent by a player to purchase 1 RP. Active Effects may subsequently modify this value in the actor's prepared data."
             },
             "ReputationUseColors": {
                 "Name": "Use colors for relations",
@@ -1511,7 +1532,9 @@
             "RepBonus": "Rep. Bonus",
             "RepBonusHint": "Additional bonus added directly to reputation value for this roll.",
             "SortByValue": "Sort by reputation value (descending)",
-            "DragToReorder": "Drag to reorder"
+            "DragToReorder": "Drag to reorder",
+            "PurchaseCost": "Purchase cost: 1 RP = {cost} XP",
+            "ChangeStateChanged": "The reputation value changed while the dialog was open. Try again."
         },
         "Armor": {
             "TotalPenalty": "Total Penalty",
@@ -1983,11 +2006,15 @@
                     "SkillsCharisma": "Skills: Charisma",
                     "SkillsCleverness": "Skills: Cleverness",
                     "SkillsConstitution": "Skills: Constitution",
-                    "Reputation": "Reputation"
+                    "Reputation": "Actor Reputation and Fame",
+                    "ReputationItem": "Reputation — Item Value"
                 },
                 "MaxLoad": "Max Load",
                 "HealingRate": "Healing Rate",
+                "Reputation": "Reputation",
                 "ReputationBonus": "Global Reputation Bonus",
+                "ReputationItemValue": "Reputation Value",
+                "Fame": "Fame",
                 "FameBonus": "Fame Bonus",
                 "ArmorBonus": {
                     "All": "All Locations Bonus",

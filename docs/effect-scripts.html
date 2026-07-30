@@ -558,7 +558,9 @@
       <tr><td><code>args.rollingActor</code></td><td>Actor</td><td>Aktor <em>wykonujący</em> rzut — zawsze ten sam co rzucający, niezależnie od Targeted/Defending. Przydatne gdy <code>args.actor</code> to cel a nie rzucający.</td></tr>
       <tr><td><code>args.skill</code></td><td>Object | null</td><td>Obiekt umiejętności: <code>{ name, value, key }</code> lub <code>null</code>.</td></tr>
       <tr><td><code>args.attribute</code></td><td>Object | null</td><td>Obiekt atrybutu: <code>{ name, value, key }</code>.</td></tr>
-      <tr><td><code>args.rollType</code></td><td>string</td><td>Typ rzutu: <code>"skill"</code>, <code>"attribute"</code>, <code>"ranged"</code>, <code>"melee"</code>, <code>"initiative"</code>, <code>"healing"</code>.</td></tr>
+      <tr><td><code>args.rollType</code></td><td>string</td><td>Typ rzutu: <code>"skill"</code>, <code>"attribute"</code>, <code>"reputation"</code>, <code>"ranged"</code>, <code>"melee"</code>, <code>"initiative"</code>, <code>"healing"</code>.</td></tr>
+      <tr><td><code>args.subtype</code></td><td>string | null</td><td>Podtyp rzutu. Dla reputacji: <code>"skill"</code> albo <code>"simple"</code>.</td></tr>
+      <tr><td><code>args.reputation</code></td><td>Object</td><td>Dane bazowe dialogu reputacji (read-only): <code>{ bonus, value, fame }</code>. Dostępne przy <code>args.rollType === "reputation"</code>.</td></tr>
       <tr><td><code>args.difficulty</code></td><td>string</td><td>Klucz bazowej trudności (np. <code>"average"</code>, <code>"hard"</code>).</td></tr>
       <tr><td><code>args.weapon</code></td><td>Item | null</td><td>Broń (dostępna gdy <code>rollType</code> to <code>"ranged"</code> lub <code>"melee"</code>).</td></tr>
       <tr><td><code>args.healingMethod</code></td><td>string | undefined</td><td>Metoda leczenia — <code>"firstAid"</code> (Pierwsza Pomoc) lub <code>"woundTreatment"</code> (Leczenie Ran). Dostępne gdy <code>rollType === "healing"</code>.</td></tr>
@@ -586,6 +588,9 @@
       <tr><td><code>args.fields.difficulty</code></td><td>string</td><td>Klucz trudności (np. <code>"average"</code>, <code>"hard"</code>).</td></tr>
       <tr><td><code>args.fields.attributeBonus</code></td><td>number</td><td>Bonus dodawany do wartości atrybutu.</td></tr>
       <tr><td><code>args.fields.skillBonus</code></td><td>number</td><td>Bonus dodawany do wartości umiejętności.</td></tr>
+      <tr><td><code>args.fields.repBonus</code></td><td>number</td><td>Zmiana pola „Bon. do Rep.” w dialogu reputacji. Wartość jest modyfikatorem, np. <code>args.fields.repBonus += 2</code>.</td></tr>
+      <tr><td><code>args.fields.repValue</code></td><td>number</td><td>Zmiana bazowej wartości PR w dialogu reputacji, np. <code>args.fields.repValue += 3</code>.</td></tr>
+      <tr><td><code>args.fields.fame</code></td><td>number</td><td>Zmiana Sławy używanej w bieżącym dialogu reputacji, np. <code>args.fields.fame += 1</code>.</td></tr>
       <tr><td><code>args.fields.armorPenalty</code></td><td>number</td><td>Kara za pancerz dodawana do ogólnych kar rzutu (np. <code>args.fields.armorPenalty += 10</code>).</td></tr>
       <tr><td><code>args.fields.woundPenalty</code></td><td>number</td><td>Kara za rany dodawana do ogólnych kar rzutu.</td></tr>
       <tr><td><code>args.fields.diseasePenalty</code></td><td>number</td><td>Dodatkowa kara za chorobę przejściową doliczana do rzutu (np. <code>args.fields.diseasePenalty += 20</code>). Kumuluje się z karą wyliczoną automatycznie z itemów chorób przejściowych aktora. Dostępne w skryptach typu <code>dialog</code>.</td></tr>
@@ -881,6 +886,14 @@ args.fields.hitLocation = <span class="str">"head"</span>;
 <span class="cmt">// Dialog Script — dodaj bonus do atrybutu</span>
 args.fields.attributeBonus++;</code></pre>
 
+  <pre><code><span class="cmt">// Hide Script — pokaż modyfikator wyłącznie w teście reputacji</span>
+<span class="kw">return</span> args.rollType !== <span class="str">"reputation"</span>;
+
+<span class="cmt">// Dialog Script — zmień trzy wartości bieżącego testu reputacji</span>
+args.fields.repBonus += <span class="num">2</span>;
+args.fields.repValue += <span class="num">3</span>;
+args.fields.fame += <span class="num">1</span>;</code></pre>
+
   <pre><code><span class="cmt">// Submission Script — ustaw flagę dla wyzwalacza rollTest</span>
 args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
 
@@ -890,8 +903,21 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Aktor — modyfikuj <code>args.actor.system.*</code> bezpośrednio</td></tr>
+    <tr><td>args.preparedData</td><td>object</td><td>Przygotowywane dane aktora; jest to ten sam obiekt co <code>args.actor.system</code>.</td></tr>
+    <tr><td>args.reputation.cost</td><td>number</td><td>Przygotowany koszt zakupu 1 PR w PD. Odczyt i zapis, np. <code>args.reputation.cost = 15</code>.</td></tr>
+    <tr><td>args.reputation.setCost(value)</td><td>method</td><td>Ustawia pełny koszt zakupu 1 PR.</td></tr>
+    <tr><td>args.reputation.modifyCost(delta)</td><td>method</td><td>Dodaje modyfikator do bieżącego kosztu, np. <code>args.reputation.modifyCost(-5)</code>.</td></tr>
   </tbody></table>
+  <div class="callout info">Bazowy koszt reputacji jest pobierany z ustawień świata (domyślnie <code>25 PD</code>) przy każdym przygotowaniu danych. Stałe zniżki i podwyżki kosztu zapisuj w skrypcie Active Effect z wyzwalaczem <code>prepareData</code>. API jest również obsługiwane we wcześniejszym <code>prePrepareData</code>; ustawiony tam koszt zostanie bezpiecznie przeniesiony przez reset danych bazowych.</div>
   <div class="callout warning">Nie używaj <code>await</code>. Nie wywołuj <code>actor.update()</code> — to spowoduje pętlę. Modyfikuj dane tymczasowe bezpośrednio na obiekcie.</div>
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">prepareData</span> Zniżka 10 PD na zakup każdego punktu reputacji</div>
+    <pre><code><span class="cmt">// Przy domyślnym koszcie 25 PD aktor otrzyma koszt 15 PD.</span>
+args.reputation.<span class="fn">modifyCost</span>(-<span class="num">10</span>);
+
+<span class="cmt">// Aby narzucić konkretny koszt niezależnie od wcześniejszych efektów:</span>
+<span class="cmt">// args.reputation.setCost(15);</span></code></pre>
+  </div>
 
   <!-- preRollTest -->
   <h3 id="trigger-preRollTest">preRollTest / preRollWeaponTest — <em>Pre-Roll Test</em></h3>

@@ -46,6 +46,7 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
         const testMode = s?.testMode ?? game.settings.get("neuroshima", "reputationTestMode");
         const repMin = s?.repMin !== undefined ? s.repMin : game.settings.get("neuroshima", "reputationMin");
         const repMax = s?.repMax !== undefined ? s.repMax : game.settings.get("neuroshima", "reputationMax");
+        const xpCost = s?.xpCost !== undefined ? s.xpCost : (game.settings.get("neuroshima", "reputationXpCost") ?? 25);
         const useColors = s ? !!s.useColors : game.settings.get("neuroshima", "reputationUseColors");
         const colorNames = s ? !!s.colorNames : (game.settings.get("neuroshima", "reputationColorNames") ?? false);
         const showAsProgressBar = s ? !!s.showAsProgressBar : (game.settings.get("neuroshima", "reputationShowAsProgressBar") ?? false);
@@ -59,6 +60,7 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
                 testMode,
                 repMin,
                 repMax,
+                xpCost,
                 useColors,
                 colorNames,
                 showAsProgressBar,
@@ -84,6 +86,10 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
 
         const repMin = Number(data.repMin ?? 0);
         const repMax = Number(data.repMax ?? 20);
+        const rawXpCost = Number(data.xpCost ?? 25);
+        const xpCost = Number.isFinite(rawXpCost)
+            ? Math.max(0, Math.round(rawXpCost))
+            : 25;
 
         if (repMin > repMax) {
             ui.notifications.error(game.i18n.localize("NEUROSHIMA.Settings.ReputationConfig.MinMaxError"));
@@ -100,6 +106,7 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
             game.settings.set("neuroshima", "reputationTestMode", data.testMode ?? "skill"),
             game.settings.set("neuroshima", "reputationMin", repMin),
             game.settings.set("neuroshima", "reputationMax", repMax),
+            game.settings.set("neuroshima", "reputationXpCost", xpCost),
             game.settings.set("neuroshima", "reputationUseColors", !!data.useColors),
             game.settings.set("neuroshima", "reputationColorNames", !!data.colorNames),
             game.settings.set("neuroshima", "reputationShowAsProgressBar", !!data.showAsProgressBar),
@@ -172,6 +179,9 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
             testMode: data.testMode ?? "skill",
             repMin: data.repMin !== undefined ? Number(data.repMin) : 0,
             repMax: data.repMax !== undefined ? Number(data.repMax) : 20,
+            xpCost: Number.isFinite(Number(data.xpCost))
+                ? Math.max(0, Math.round(Number(data.xpCost)))
+                : 25,
             useColors: !!data.useColors,
             colorNames: !!data.colorNames,
             showAsProgressBar: !!data.showAsProgressBar,

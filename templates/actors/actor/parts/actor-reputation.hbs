@@ -10,10 +10,22 @@
                         <span class="rep-fame-label">{{localize "NEUROSHIMA.Reputation.Fame"}}</span>
                         <span class="rep-fame-value clickable"
                               data-action="adjustFame"
-                              data-tooltip="{{localize 'NEUROSHIMA.Reputation.FameHint'}}">{{actor.system.fame}}</span>
+                              {{#if fameBonusTooltip}}
+                              data-tooltip-html="{{fameBonusTooltip}}" data-tooltip-class="ns-compact-stat-tooltip"
+                              {{else}}
+                              data-tooltip="{{localize 'NEUROSHIMA.Reputation.FameHint'}}"
+                              {{/if}}>{{effectiveFame}}</span>
                     </div>
                     <div class="section-header inv-section-header rep-items-list-header">
-                        <span class="rep-col-name">{{localize "NEUROSHIMA.Reputation.Title"}}</span>
+                        <span class="rep-col-name">
+                            {{localize "NEUROSHIMA.Reputation.Title"}}
+                            {{#if isCharacter}}
+                            <span class="rep-purchase-cost" data-tooltip="{{localize 'NEUROSHIMA.Reputation.PurchaseCost' cost=system.reputationCost}}">
+                                <i class="fas fa-coins"></i>
+                                1 PR = {{system.reputationCost}} PD
+                            </span>
+                            {{/if}}
+                        </span>
                         <span class="rep-col-badge"></span>
                         <span class="rep-col-value"></span>
                         <a class="item-control rep-col-sort" data-action="sortReputationItems" data-tooltip="{{localize 'NEUROSHIMA.Reputation.SortByValue'}}">{{#if repSortAsc}}<i class="fas fa-sort-amount-up"></i>{{else}}<i class="fas fa-sort-amount-down"></i>{{/if}}</a>
@@ -43,10 +55,16 @@
                                     {{else}}
                                     <span class="rep-relation-badge" {{#if rel.color}}style="color:{{rel.color}}"{{/if}} data-tooltip="{{localize 'NEUROSHIMA.Reputation.Relation'}}: {{rel.name}}">{{rel.name}}</span>
                                     {{/if}}
-                                    {{#if ../../repBonusTooltip}}
-                                    <span class="rep-item-value clickable" data-action="adjustRepValue" data-item-id="{{item.id}}" data-tooltip-html="{{../../repBonusTooltip}}">{{item.effectiveValue}}</span>
+                                    {{#if item.reputationEffectTooltip}}
+                                    <input class="rep-item-value rep-item-value-input" type="number"
+                                           name="items.{{item.id}}.system.value" data-item-id="{{item.id}}"
+                                           value="{{item.system.value}}" min="{{@root.repMin}}" max="{{@root.repMax}}" step="1"
+                                           data-tooltip-html="{{item.reputationEffectTooltip}}" data-tooltip-class="ns-compact-stat-tooltip" {{#unless @root.editable}}disabled{{/unless}}>
                                     {{else}}
-                                    <span class="rep-item-value clickable" data-action="adjustRepValue" data-item-id="{{item.id}}" data-tooltip="{{localize 'NEUROSHIMA.Reputation.ValueLabel'}}: {{item.system.value}}">{{item.effectiveValue}}</span>
+                                    <input class="rep-item-value rep-item-value-input" type="number"
+                                           name="items.{{item.id}}.system.value" data-item-id="{{item.id}}"
+                                           value="{{item.system.value}}" min="{{@root.repMin}}" max="{{@root.repMax}}" step="1"
+                                           data-tooltip="{{localize 'NEUROSHIMA.Reputation.ValueLabel'}}: {{item.system.value}}" {{#unless @root.editable}}disabled{{/unless}}>
                                     {{/if}}
                                 </div>
                                 {{else}}
@@ -63,10 +81,16 @@
                                     {{else}}
                                     <span class="rep-relation-badge rep-relation-empty"></span>
                                     {{/if}}
-                                    {{#if ../repBonusTooltip}}
-                                    <span class="rep-item-value clickable" data-action="adjustRepValue" data-item-id="{{item.id}}" data-tooltip-html="{{../repBonusTooltip}}">{{item.effectiveValue}}</span>
+                                    {{#if item.reputationEffectTooltip}}
+                                    <input class="rep-item-value rep-item-value-input" type="number"
+                                           name="items.{{item.id}}.system.value" data-item-id="{{item.id}}"
+                                           value="{{item.system.value}}" min="{{@root.repMin}}" max="{{@root.repMax}}" step="1"
+                                           data-tooltip-html="{{item.reputationEffectTooltip}}" data-tooltip-class="ns-compact-stat-tooltip" {{#unless @root.editable}}disabled{{/unless}}>
                                     {{else}}
-                                    <span class="rep-item-value clickable" data-action="adjustRepValue" data-item-id="{{item.id}}" data-tooltip="{{localize 'NEUROSHIMA.Reputation.ValueLabel'}}: {{item.system.value}}">{{item.effectiveValue}}</span>
+                                    <input class="rep-item-value rep-item-value-input" type="number"
+                                           name="items.{{item.id}}.system.value" data-item-id="{{item.id}}"
+                                           value="{{item.system.value}}" min="{{@root.repMin}}" max="{{@root.repMax}}" step="1"
+                                           data-tooltip="{{localize 'NEUROSHIMA.Reputation.ValueLabel'}}: {{item.system.value}}" {{#unless @root.editable}}disabled{{/unless}}>
                                     {{/if}}
                                 </div>
                                 {{/with}}

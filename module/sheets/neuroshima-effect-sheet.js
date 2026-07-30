@@ -2,7 +2,7 @@ import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 
 const BaseEffectSheet = foundry.applications.sheets.ActiveEffectConfig;
 
-const NS_CHANGE_KEYS = [
+export const NS_CHANGE_KEYS = [
   { group: "NEUROSHIMA.Effects.Keys.Group.Attributes", actorTypes: ["character", "npc", "creature"], keys: [
     { key: "system.attributes.dexterity",          label: "NEUROSHIMA.Attributes.Dexterity" },
     { key: "system.attributeBonuses.dexterity",    label: "NEUROSHIMA.Attributes.Dexterity",    prefix: "Bonus" },
@@ -201,10 +201,25 @@ const NS_CHANGE_KEYS = [
     { key: "system.skillBonuses.taming",            label: "NEUROSHIMA.Skills.taming",           prefix: "Bonus" }
   ]},
   { group: "NEUROSHIMA.Effects.Keys.Group.Reputation", actorTypes: ["character", "npc", "creature"], keys: [
+    // Expose both stored values and prepared bonuses. Every numeric Foundry
+    // mode (ADD, MULTIPLY, DOWNGRADE, UPGRADE, OVERRIDE) can be used with them.
+    { key: "system.reputation",      label: "NEUROSHIMA.Effects.Keys.Reputation" },
     { key: "system.reputationBonus", label: "NEUROSHIMA.Effects.Keys.ReputationBonus" },
+    { key: "system.fame",            label: "NEUROSHIMA.Effects.Keys.Fame" },
     { key: "system.fameBonus",       label: "NEUROSHIMA.Effects.Keys.FameBonus" }
+  ]},
+  { group: "NEUROSHIMA.Effects.Keys.Group.ReputationItem", itemTypes: ["reputation"], keys: [
+    // Reputation is stored in its own embedded Item. Effects configured to
+    // modify the owning Item therefore need access to its numeric value too.
+    { key: "system.value", label: "NEUROSHIMA.Effects.Keys.ReputationItemValue" }
   ]}
 ];
+
+export function isChangeGroupAvailable(group, actorType = null, itemType = null) {
+  const actorAllowed = !group.actorTypes || !actorType || group.actorTypes.includes(actorType);
+  const itemAllowed = !group.itemTypes || (itemType && group.itemTypes.includes(itemType));
+  return Boolean(actorAllowed && itemAllowed);
+}
 
 export class NeuroshimaEffectSheet extends BaseEffectSheet {
   static DEFAULT_OPTIONS = foundry.utils.mergeObject(
@@ -292,8 +307,9 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
 
       if (!isManual) {
         const actorType = this._getActorType();
+        const itemType = this._getItemType();
         for (const input of changesSection.querySelectorAll(".key input")) {
-          input.replaceWith(this._buildKeySelect(input.name, input.value, actorType));
+          input.replaceWith(this._buildKeySelect(input.name, input.value, actorType, itemType));
         }
       }
     }
@@ -306,7 +322,12 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
     return actor?.type ?? null;
   }
 
-  _buildKeySelect(name, currentValue, actorType = null) {
+  _getItemType() {
+    const parent = this.document.parent;
+    return parent?.documentName === "Item" ? parent.type : null;
+  }
+
+  _buildKeySelect(name, currentValue, actorType = null, itemType = null) {
     const select = document.createElement("select");
     select.name = name;
     const blank = document.createElement("option");
@@ -316,7 +337,7 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
     select.appendChild(blank);
 
     for (const group of NS_CHANGE_KEYS) {
-      const allowed = !group.actorTypes || !actorType || group.actorTypes.includes(actorType);
+      const allowed = isChangeGroupAvailable(group, actorType, itemType);
       if (!allowed) {
         if (!currentValue || !group.keys.some(k => k.key === currentValue)) continue;
       }

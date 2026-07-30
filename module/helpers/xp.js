@@ -11,6 +11,54 @@ export const ATTR_COST = {
 };
 
 export const TRICK_COST = 200;
+export const REPUTATION_XP_COST = 25;
+
+/** Clamp a prepared reputation cost to a usable non-negative integer. */
+export function normalizeReputationCost(value, fallback = REPUTATION_XP_COST) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return Math.max(0, Math.round(Number(fallback) || 0));
+  return Math.max(0, Math.round(numeric));
+}
+
+/** Read the world-configured base price, falling back safely during initialization. */
+export function getBaseReputationCost() {
+  try {
+    return normalizeReputationCost(
+      game.settings?.get?.("neuroshima", "reputationXpCost"),
+      REPUTATION_XP_COST
+    );
+  } catch (_error) {
+    return REPUTATION_XP_COST;
+  }
+}
+
+/**
+ * Mutable synchronous API exposed to prepareData Active Effect scripts.
+ *
+ * @example
+ * args.reputation.cost = 15;
+ * args.reputation.setCost(10);
+ * args.reputation.modifyCost(-5);
+ */
+export function createReputationCostApi(preparedData) {
+  const api = {
+    get cost() {
+      return normalizeReputationCost(preparedData?.reputationCost);
+    },
+    set cost(value) {
+      if (preparedData) preparedData.reputationCost = normalizeReputationCost(value);
+    },
+    setCost(value) {
+      this.cost = value;
+      return this.cost;
+    },
+    modifyCost(delta) {
+      this.cost = this.cost + Number(delta ?? 0);
+      return this.cost;
+    }
+  };
+  return api;
+}
 
 /**
  * Get the XP cost to raise a skill from (newLevel-1) to newLevel.
@@ -64,6 +112,102 @@ function _isSkillSpecialized(skillKey, actor) {
   return false;
 }
 
+function _escapeDialogText(value) {
+  return foundry.utils.escapeHTML(String(value ?? ""));
+}
+
+function _xpDialogFrame({ icon = "fa-receipt", summary = "", body = "" } = {}) {
+  return `
+    <div class="xp-dialog xp-transaction">
+      <div class="xp-transaction__heading">
+        <span class="xp-transaction__icon"><i class="fas ${icon}"></i></span>
+        <p class="xp-transaction__summary">${_escapeDialogText(summary)}</p>
+      </div>
+      ${body}
+    </div>
+  `;
+}
+
+function _xpBalanceStrip({
+  currentXp,
+  inputId,
+  inputLabel,
+  inputValue,
+  inputMin = null,
+  inputMax = null
+}) {
+  const current = Number(currentXp) || 0;
+  const value = Number(inputValue) || 0;
+  const projected = current - value;
+  const debt = projected < 0;
+  const unit = game.i18n.localize("NEUROSHIMA.XP.Unit");
+  const constraints = [
+    inputMin !== null ? `min="${Number(inputMin)}"` : "",
+    inputMax !== null ? `max="${Number(inputMax)}"` : ""
+  ].filter(Boolean).join(" ");
+  return `
+    <div class="xp-ledger${debt ? " is-debt" : ""}" data-xp-ledger>
+      <div class="xp-ledger__entry">
+        <span class="xp-ledger__label">${game.i18n.localize("NEUROSHIMA.XP.Dialog.Available")}</span>
+        <strong class="xp-ledger__value">${current} <small>${unit}</small></strong>
+      </div>
+      <label class="xp-ledger__entry xp-ledger__entry--editable" for="${inputId}">
+        <span class="xp-ledger__label">${inputLabel}</span>
+        <span class="xp-ledger__input">
+          <input id="${inputId}" type="number" ${constraints} value="${value}">
+          <small>${unit}</small>
+        </span>
+      </label>
+      <hr class="xp-ledger__total-separator">
+      <div class="xp-ledger__entry xp-ledger__entry--projected">
+        <span class="xp-ledger__label">${game.i18n.localize("NEUROSHIMA.XP.Dialog.AfterTransaction")}</span>
+        <strong class="xp-ledger__value" data-xp-projected aria-live="polite">${projected} <small>${unit}</small></strong>
+      </div>
+    </div>
+    <div class="xp-debt-warning" data-xp-debt-warning role="status" aria-live="polite"${debt ? "" : " hidden"}>
+      <i class="fas fa-triangle-exclamation"></i>
+      <span>${game.i18n.localize("NEUROSHIMA.XP.Dialog.DebtWarning")}</span>
+    </div>
+  `;
+}
+
+function _bindXpProjection(inputSelector, currentXp) {
+  return (_event, html) => {
+    const HTMLElementClass = globalThis.HTMLElement;
+    const root = html?.querySelector
+      ? html
+      : HTMLElementClass && html instanceof HTMLElementClass
+        ? html
+        : html?.[0] ?? html?.element ?? null;
+    const input = root?.querySelector?.(inputSelector);
+    const ledger = root?.querySelector?.("[data-xp-ledger]");
+    const projectedElement = root?.querySelector?.("[data-xp-projected]");
+    const warning = root?.querySelector?.("[data-xp-debt-warning]");
+    if (!input || !projectedElement) return;
+
+    const update = () => {
+      const cost = Number(input.value) || 0;
+      const projected = (Number(currentXp) || 0) - cost;
+      const unit = game.i18n.localize("NEUROSHIMA.XP.Unit");
+      projectedElement.innerHTML = `${projected} <small>${unit}</small>`;
+      ledger?.classList.toggle("is-debt", projected < 0);
+      if (warning) warning.hidden = projected >= 0;
+    };
+    input.addEventListener("input", update);
+    update();
+  };
+}
+
+function _xpReasonField({ id, label, placeholder, required = false }) {
+  return `
+    <label class="xp-reason-field" for="${id}">
+      <span>${_escapeDialogText(label)}</span>
+      <input id="${id}" type="text" ${required ? "required" : ""}
+        placeholder="${_escapeDialogText(placeholder)}">
+    </label>
+  `;
+}
+
 /**
  * Show a dialog asking the user to spend XP or mark it free.
  * Returns { free: boolean } or null if cancelled.
@@ -74,40 +218,41 @@ function _isSkillSpecialized(skillKey, actor) {
  */
 export async function showXpDialog(costXp, description, currentXp) {
   const i18n = game.i18n;
-  const hasEnough = currentXp >= costXp;
-  const content = `
-    <div class="neuroshima xp-dialog" style="padding: 8px;">
-      <p><strong>${description}</strong></p>
-      <p style="margin-bottom:6px;">${i18n.localize("NEUROSHIMA.XP.Dialog.Available")}: <strong>${currentXp}</strong> PD</p>
-      ${!hasEnough ? `<p style="color:var(--color-level-warning);margin-bottom:6px;">${i18n.localize("NEUROSHIMA.XP.Dialog.NotEnough")}</p>` : ""}
-      <div style="display:flex;align-items:center;gap:8px;">
-        <label for="xp-cost-input" style="white-space:nowrap;"><strong>${i18n.localize("NEUROSHIMA.XP.Dialog.CostLabel")}</strong></label>
-        <input id="xp-cost-input" type="number" min="0" value="${costXp}" style="width:90px;text-align:center;"/>
-        <span>PD</span>
-      </div>
-    </div>
-  `;
+  const normalizedCost = Math.max(0, Number(costXp) || 0);
+  const content = _xpDialogFrame({
+    icon: "fa-coins",
+    summary: description,
+    body: _xpBalanceStrip({
+      currentXp,
+      inputId: "xp-cost-input",
+      inputLabel: i18n.localize("NEUROSHIMA.XP.Dialog.CostLabel"),
+      inputValue: normalizedCost,
+      inputMin: 0
+    })
+  });
   return foundry.applications.api.DialogV2.wait({
     window: { title: i18n.localize("NEUROSHIMA.XP.Dialog.Title") },
     content,
+    render: _bindXpProjection("#xp-cost-input", currentXp),
     buttons: [
       {
         action: "spend",
         label: i18n.localize("NEUROSHIMA.XP.Dialog.Spend"),
-        default: hasEnough,
+        icon: "fas fa-coins",
+        default: true,
         callback: (event, button, dialog) => {
           const val = Number(dialog.element.querySelector("#xp-cost-input")?.value) || 0;
-          return { free: false, cost: val };
+          return { free: false, cost: Math.max(0, val) };
         }
       },
       {
         action: "free",
-        label: i18n.localize("NEUROSHIMA.XP.Dialog.Free"),
-        default: !hasEnough,
+        label: i18n.localize("NEUROSHIMA.XP.Dialog.FreeButton"),
+        icon: "fas fa-gift",
         callback: () => ({ free: true, cost: 0 })
       }
     ],
-    classes: ["neuroshima", "dialog-vertical"],
+    classes: ["neuroshima", "dialog-vertical", "xp-spend-dialog"],
     rejectClose: false
   });
 }
@@ -120,16 +265,15 @@ export async function showXpDialog(costXp, description, currentXp) {
  */
 export async function showXpGrantDialog(amount) {
   const i18n = game.i18n;
-  const content = `
-    <div class="neuroshima xp-dialog" style="padding: 8px;">
-      <p>${i18n.format("NEUROSHIMA.XP.Grant.Amount", { amount })}</p>
-      <div style="margin-top: 8px;">
-        <label for="xp-grant-reason"><strong>${i18n.localize("NEUROSHIMA.XP.Grant.Reason")}</strong></label>
-        <input id="xp-grant-reason" type="text" style="width: 100%; margin-top: 4px;"
-          placeholder="${i18n.localize("NEUROSHIMA.XP.Grant.ReasonPlaceholder")}"/>
-      </div>
-    </div>
-  `;
+  const content = _xpDialogFrame({
+    icon: "fa-award",
+    summary: i18n.format("NEUROSHIMA.XP.Grant.Amount", { amount }),
+    body: _xpReasonField({
+      id: "xp-grant-reason",
+      label: i18n.localize("NEUROSHIMA.XP.Grant.Reason"),
+      placeholder: i18n.localize("NEUROSHIMA.XP.Grant.ReasonPlaceholder")
+    })
+  });
   return foundry.applications.api.DialogV2.wait({
     window: { title: i18n.localize("NEUROSHIMA.XP.Grant.Title") },
     content,
@@ -158,16 +302,15 @@ export async function showXpGrantDialog(amount) {
  */
 export async function showXpDeductDialog(amount) {
   const i18n = game.i18n;
-  const content = `
-    <div class="neuroshima xp-dialog" style="padding: 8px;">
-      <p>${i18n.format("NEUROSHIMA.XP.Deduct.Amount", { amount })}</p>
-      <div style="margin-top: 8px;">
-        <label for="xp-deduct-reason"><strong>${i18n.localize("NEUROSHIMA.XP.Deduct.Reason")}</strong></label>
-        <input id="xp-deduct-reason" type="text" style="width: 100%; margin-top: 4px;"
-          placeholder="${i18n.localize("NEUROSHIMA.XP.Deduct.ReasonPlaceholder")}"/>
-      </div>
-    </div>
-  `;
+  const content = _xpDialogFrame({
+    icon: "fa-file-invoice-dollar",
+    summary: i18n.format("NEUROSHIMA.XP.Deduct.Amount", { amount }),
+    body: _xpReasonField({
+      id: "xp-deduct-reason",
+      label: i18n.localize("NEUROSHIMA.XP.Deduct.Reason"),
+      placeholder: i18n.localize("NEUROSHIMA.XP.Deduct.ReasonPlaceholder")
+    })
+  });
   return foundry.applications.api.DialogV2.wait({
     window: { title: i18n.localize("NEUROSHIMA.XP.Deduct.Title") },
     content,
@@ -189,7 +332,52 @@ export async function showXpDeductDialog(amount) {
 }
 
 /**
- * Show a dialog confirming XP refund when a skill or attribute is decreased.
+ * Ask for a mandatory reason when system.xp.spent is changed directly.
+ * Positive delta spends XP; negative delta restores previously spent XP.
+ */
+export async function showXpSpentAdjustmentDialog(delta) {
+  const i18n = game.i18n;
+  const isSpend = delta > 0;
+  const amount = Math.abs(delta);
+  const content = _xpDialogFrame({
+    icon: isSpend ? "fa-receipt" : "fa-rotate-left",
+    summary: i18n.format(
+        isSpend ? "NEUROSHIMA.XP.Adjustment.SpendAmount" : "NEUROSHIMA.XP.Adjustment.RestoreAmount",
+        { amount }
+      ),
+    body: _xpReasonField({
+      id: "xp-adjustment-reason",
+      label: i18n.localize("NEUROSHIMA.XP.Adjustment.Reason"),
+      placeholder: i18n.localize("NEUROSHIMA.XP.Adjustment.ReasonPlaceholder")
+    })
+  });
+  const result = await foundry.applications.api.DialogV2.wait({
+    window: {
+      title: i18n.localize(
+        isSpend ? "NEUROSHIMA.XP.Adjustment.SpendTitle" : "NEUROSHIMA.XP.Adjustment.RestoreTitle"
+      )
+    },
+    content,
+    buttons: [{
+      action: "confirm",
+      label: i18n.localize("NEUROSHIMA.XP.Adjustment.Confirm"),
+      default: true,
+      callback: (event, button, dialog) => {
+        const reason = dialog.element.querySelector("#xp-adjustment-reason")?.value?.trim();
+        return {
+          reason: reason || i18n.localize("NEUROSHIMA.XP.Adjustment.ReasonPlaceholder")
+        };
+      }
+    }],
+    classes: ["neuroshima", "dialog-vertical"],
+    rejectClose: false
+  });
+  if (result === null) return null;
+  return result;
+}
+
+/**
+ * Show the shared XP refund dialog for a decreased skill, attribute, or reputation.
  * @param {number} refundAmount  - positive amount being refunded
  * @param {string} description
  * @param {number} currentXp    - current available XP (for display)
@@ -197,20 +385,22 @@ export async function showXpDeductDialog(amount) {
  */
 export async function showXpRefundDialog(refundAmount, description, currentXp) {
   const i18n = game.i18n;
-  const content = `
-    <div class="neuroshima xp-dialog" style="padding: 8px;">
-      <p><strong>${description}</strong></p>
-      <p style="margin-bottom:6px;">${i18n.localize("NEUROSHIMA.XP.Dialog.Available")}: <strong>${currentXp}</strong> PD</p>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <label for="xp-refund-input" style="white-space:nowrap;"><strong>${i18n.localize("NEUROSHIMA.XP.Refund.Label")}</strong></label>
-        <input id="xp-refund-input" type="number" max="0" value="${-refundAmount}" style="width:90px;text-align:center;"/>
-        <span>PD</span>
-      </div>
-    </div>
-  `;
+  const normalizedRefund = -Math.max(0, Number(refundAmount) || 0);
+  const content = _xpDialogFrame({
+    icon: "fa-rotate-left",
+    summary: description,
+    body: _xpBalanceStrip({
+      currentXp,
+      inputId: "xp-refund-input",
+      inputLabel: i18n.localize("NEUROSHIMA.XP.Refund.Label"),
+      inputValue: normalizedRefund,
+      inputMax: 0
+    })
+  });
   return foundry.applications.api.DialogV2.wait({
     window: { title: i18n.localize("NEUROSHIMA.XP.Refund.DialogTitle") },
     content,
+    render: _bindXpProjection("#xp-refund-input", currentXp),
     buttons: [
       {
         action: "refund",
@@ -239,7 +429,15 @@ export async function showXpRefundDialog(refundAmount, description, currentXp) {
  * @param {*}      previousValue - The old field value (for revert)
  * @param {string} fieldPath     - dot-notation path e.g. "system.attributes.dexterity"
  */
-export function applyXpEntry(actor, changed, costXp, description, previousValue, fieldPath) {
+export function applyXpEntry(
+  actor,
+  changed,
+  costXp,
+  description,
+  previousValue,
+  fieldPath,
+  { operation = "spend", documentUuid = "" } = {}
+) {
   const sys     = actor.system;
   const total   = foundry.utils.getProperty(changed, "system.xp.total")  ?? sys.xp?.total  ?? 0;
   const spent   = foundry.utils.getProperty(changed, "system.xp.spent")  ?? sys.xp?.spent  ?? 0;
@@ -253,7 +451,9 @@ export function applyXpEntry(actor, changed, costXp, description, previousValue,
     xpBefore:      current,
     xpAfter:       current - costXp,
     previousValue,
-    fieldPath
+    fieldPath,
+    operation,
+    documentUuid
   };
 
   const log = foundry.utils.deepClone(sys.xpLog ?? []);
@@ -289,12 +489,41 @@ export function applyXpGrantEntry(actor, changed, amount, reason) {
     xpBefore:      oldTotal - spent,
     xpAfter:       oldTotal - spent + amount,
     previousValue: oldTotal,
-    fieldPath:     "system.xp.total"
+    fieldPath:     "system.xp.total",
+    operation:     "grant",
+    documentUuid:  ""
   };
 
   const log = foundry.utils.deepClone(sys.xpLog ?? []);
   log.push(entry);
   foundry.utils.setProperty(changed, "system.xpLog", log);
+}
+
+/** Apply an exact manual change to system.xp.spent and append its reason to the XP log. */
+export function applyXpSpentAdjustment(actor, changed, newSpent, reason) {
+  const oldSpent = Number(actor.system.xp?.spent) || 0;
+  const total = Number(actor.system.xp?.total) || 0;
+  const nextSpent = Math.max(0, Math.round(Number(newSpent) || 0));
+  const delta = nextSpent - oldSpent;
+  if (delta === 0) return null;
+
+  const entry = {
+    id: foundry.utils.randomID(),
+    date: new Date().toLocaleDateString("pl-PL"),
+    description: String(reason ?? "").trim(),
+    cost: delta,
+    xpBefore: total - oldSpent,
+    xpAfter: total - nextSpent,
+    previousValue: oldSpent,
+    fieldPath: "system.xp.spent",
+    operation: "manualSpent",
+    documentUuid: ""
+  };
+  const log = foundry.utils.deepClone(actor.system.xpLog ?? []);
+  log.push(entry);
+  foundry.utils.setProperty(changed, "system.xp.spent", nextSpent);
+  foundry.utils.setProperty(changed, "system.xpLog", log);
+  return entry;
 }
 
 /**
@@ -312,6 +541,8 @@ export async function revertXpEntry(actor, entryId) {
 
   const entry      = log[idx];
   const updateData = {};
+  let targetDocument = null;
+  let targetCurrentValue;
 
   if (entry.fieldPath && entry.previousValue !== undefined && entry.previousValue !== null) {
     let storedValue = entry.previousValue;
@@ -328,20 +559,41 @@ export async function revertXpEntry(actor, entryId) {
       }
       storedValue = Math.max(0, entry.previousValue - aeBonus);
     }
-    foundry.utils.setProperty(updateData, entry.fieldPath, storedValue);
+    if (entry.documentUuid) {
+      targetDocument = await fromUuid(entry.documentUuid);
+      if (!targetDocument) {
+        ui.notifications?.warn(game.i18n.localize("NEUROSHIMA.XP.Log.SourceMissing"));
+        return;
+      }
+      targetCurrentValue = foundry.utils.getProperty(targetDocument, entry.fieldPath);
+      await targetDocument.update({ [entry.fieldPath]: storedValue });
+    } else {
+      foundry.utils.setProperty(updateData, entry.fieldPath, storedValue);
+    }
   }
 
   const cost = entry.cost ?? 0;
   const spentXp = sys.xp?.spent ?? 0;
-  if (cost > 0) {
-    updateData["system.xp.spent"] = Math.max(0, spentXp - cost);
-  } else if (cost < 0) {
-    updateData["system.xp.spent"] = spentXp + (-cost);
+  const spentHandledByField = entry.fieldPath === "system.xp.spent" && !entry.documentUuid;
+  const isGrant = entry.operation === "grant" || entry.fieldPath === "system.xp.total";
+  if (!spentHandledByField && !isGrant) {
+    if (cost > 0) {
+      updateData["system.xp.spent"] = Math.max(0, spentXp - cost);
+    } else if (cost < 0) {
+      updateData["system.xp.spent"] = spentXp + (-cost);
+    }
   }
 
   log.splice(idx, 1);
   updateData["system.xpLog"] = log;
 
-  await actor.update(updateData);
+  try {
+    await actor.update(updateData, { ns_skip_xp: true });
+  } catch (error) {
+    if (targetDocument && targetCurrentValue !== undefined) {
+      await targetDocument.update({ [entry.fieldPath]: targetCurrentValue });
+    }
+    throw error;
+  }
   game.neuroshima?.log(`XP reverted: ${entry.description}`);
 }

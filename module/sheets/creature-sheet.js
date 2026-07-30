@@ -772,39 +772,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         let val = parseInt(target.value, 10);
         if (isNaN(val)) val = 0;
         if (!allowNegative) val = Math.max(0, val);
-        const existing = actor.effects.find(
-          e => e.statuses?.has(key) && e.getFlag("neuroshima", "conditionNumbered")
-        );
-        if (val === 0 && !allowNegative) {
-          if (existing) await existing.delete();
-          return;
-        }
-        if (existing) {
-          await existing.setFlag("neuroshima", "conditionValue", val);
-        } else if (val !== 0) {
-          const condDef = getConditions().find(c => c.key === key);
-          if (!condDef) return;
-          await actor.createEmbeddedDocuments("ActiveEffect", [{
-            name:        condDef.name,
-            img:         condDef.img          ?? "icons/svg/aura.svg",
-            tint:        condDef._tint        ?? null,
-            description: condDef._description ?? "",
-            disabled:    condDef._disabled    ?? false,
-            statuses:    [key],
-            changes:     foundry.utils.deepClone(condDef.changes   ?? []),
-            duration:    foundry.utils.deepClone(condDef._duration ?? {}),
-            flags: {
-              neuroshima: {
-                conditionNumbered: true,
-                conditionValue:    val,
-                scripts:           foundry.utils.deepClone(condDef.scripts      ?? []),
-                transferType:      condDef._transferType  ?? "owningDocument",
-                documentType:      condDef._documentType  ?? "actor",
-                equipTransfer:     condDef._equipTransfer ?? false
-              }
-            }
-          }]);
-        }
+        await actor.setConditionValue(key, val);
       },
 
       dismissOpposed: async function(event, target) {
@@ -1492,40 +1460,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
     let val = parseInt(target.dataset.value ?? target.textContent, 10);
     if (isNaN(val)) val = 0;
     if (!allowNegative) val = Math.max(0, val);
-
-    const existing = actor.effects.find(
-      e => e.statuses?.has(key) && e.getFlag("neuroshima", "conditionNumbered")
-    );
-    if (val === 0 && !allowNegative) {
-      if (existing) await existing.delete();
-      return;
-    }
-    if (existing) {
-      await existing.setFlag("neuroshima", "conditionValue", val);
-    } else if (val !== 0) {
-      const condDef = getConditions().find(c => c.key === key);
-      if (!condDef) return;
-      await actor.createEmbeddedDocuments("ActiveEffect", [{
-        name:        condDef.name,
-        img:         condDef.img          ?? "icons/svg/aura.svg",
-        tint:        condDef._tint        ?? null,
-        description: condDef._description ?? "",
-        disabled:    condDef._disabled    ?? false,
-        statuses:    [key],
-        changes:     foundry.utils.deepClone(condDef.changes   ?? []),
-        duration:    foundry.utils.deepClone(condDef._duration ?? {}),
-        flags: {
-          neuroshima: {
-            conditionNumbered: true,
-            conditionValue:    val,
-            scripts:           foundry.utils.deepClone(condDef.scripts      ?? []),
-            transferType:      condDef._transferType  ?? "owningDocument",
-            documentType:      condDef._documentType  ?? "actor",
-            equipTransfer:     condDef._equipTransfer ?? false
-          }
-        }
-      }]);
-    }
+    await actor.setConditionValue(key, val);
   }
 
   _showItemContextMenu(event, itemId) {

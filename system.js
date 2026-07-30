@@ -934,6 +934,15 @@ Hooks.once('init', async function() {
         default: 20
     });
 
+    game.settings.register("neuroshima", "reputationXpCost", {
+        name: "NEUROSHIMA.Settings.ReputationXpCost.Name",
+        hint: "NEUROSHIMA.Settings.ReputationXpCost.Hint",
+        scope: "world",
+        config: false,
+        type: Number,
+        default: 25
+    });
+
     game.settings.register("neuroshima", "reputationUseColors", {
         name: "NEUROSHIMA.Settings.ReputationUseColors.Name",
         hint: "NEUROSHIMA.Settings.ReputationUseColors.Hint",
@@ -1257,6 +1266,10 @@ Hooks.once("ready", async () => {
                 await syncMountedModEffects(item, modId, entry, entry?.attached === true);
             }
         }
+        // Reconcile built-in and custom automatic conditions against fully
+        // prepared actor/item data. This also removes stale conditions left by
+        // worlds created before item lifecycle checks were added.
+        await actor._checkAutoConditions?.();
     }
 });
 
@@ -3846,7 +3859,7 @@ Hooks.once("item-piles-ready", () => {
     });
 
     Hooks.on("createItem", async (item, _options, userId) => {
-        if (userId !== game.userId) return;
+        if (userId !== game.user.id) return;
 
         if (item.type === "gear") {
             const gearType = item.system?.gearType ?? "misc";
@@ -3854,34 +3867,16 @@ Hooks.once("item-piles-ready", () => {
             const label = "\u200A" + (i18nKey ? game.i18n.localize(i18nKey) : game.i18n.localize("NEUROSHIMA.GearType.misc"));
             await item.setFlag("item-piles", "item.customCategory", label);
         }
-
-        const actor = item.parent;
-        if (actor instanceof Actor && game.user.isGM) {
-            await actor._checkAutoConditions?.();
-        }
     });
 
     Hooks.on("updateItem", async (item, changes, _options, userId) => {
-        if (userId !== game.userId) return;
+        if (userId !== game.user.id) return;
 
         if (item.type === "gear" && foundry.utils.hasProperty(changes, "system.gearType")) {
             const gearType = changes.system?.gearType ?? "misc";
             const i18nKey = NEUROSHIMA.gearTypes[gearType];
             const label = "\u200A" + (i18nKey ? game.i18n.localize(i18nKey) : game.i18n.localize("NEUROSHIMA.GearType.misc"));
             await item.setFlag("item-piles", "item.customCategory", label);
-        }
-
-        const actor = item.parent;
-        if (actor instanceof Actor && game.user.isGM) {
-            await actor._checkAutoConditions?.();
-        }
-    });
-
-    Hooks.on("deleteItem", async (item, _options, userId) => {
-        if (userId !== game.userId) return;
-        const actor = item.parent;
-        if (actor instanceof Actor && game.user.isGM) {
-            await actor._checkAutoConditions?.();
         }
     });
 });

@@ -23,6 +23,12 @@
             </div>
         </div>
 
+        <h3 class="rep-settings-header">{{localize "NEUROSHIMA.Settings.ReputationXpCost.Name"}}</h3>
+        <div class="form-group">
+            <input type="number" name="xpCost" value="{{config.xpCost}}" data-dtype="Number" min="0" step="1"/>
+            <p class="notes">{{localize "NEUROSHIMA.Settings.ReputationXpCost.Hint"}}</p>
+        </div>
+
         <div class="rep-settings-minmax">
             <div class="rep-settings-minmax-block">
                 <h3 class="rep-settings-header">{{localize "NEUROSHIMA.Settings.ReputationFameThreshold.Name"}}</h3>

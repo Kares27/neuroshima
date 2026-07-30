@@ -172,30 +172,29 @@ export function canViewRollTooltip({
 }
 
 /**
- * Collect attribute changes from the effects Foundry actually applied to an
- * Actor. `actor.appliedEffects` is authoritative for transferred item effects;
- * the older actor/item collections are retained only as a compatibility
- * fallback for documents created before Foundry exposes that collection.
+ * Collect changes from the effects Foundry actually applied to a Document.
+ * `appliedEffects` is authoritative for transferred effects; the older
+ * embedded collections remain a compatibility fallback.
  */
-function getActorEffectCandidates(actor) {
-  const applicable = typeof actor?.allApplicableEffects === "function"
-    ? Array.from(actor.allApplicableEffects())
+function getDocumentEffectCandidates(document) {
+  const applicable = typeof document?.allApplicableEffects === "function"
+    ? Array.from(document.allApplicableEffects())
     : [];
   if (applicable.length) return applicable;
 
-  const applied = Array.from(actor?.appliedEffects ?? []);
+  const applied = Array.from(document?.appliedEffects ?? []);
   if (applied.length) return applied;
 
   return [
-    ...Array.from(actor?.effects ?? []),
-    ...Array.from(actor?.items ?? []).flatMap(item => Array.from(item?.effects ?? []))
+    ...Array.from(document?.effects ?? []),
+    ...Array.from(document?.items ?? []).flatMap(item => Array.from(item?.effects ?? []))
   ];
 }
 
-function collectEffectSources(actor, targetKeys, matchChange) {
+function collectEffectSources(document, targetKeys, matchChange) {
   const keys = new Set(targetKeys);
   const result = Object.fromEntries(targetKeys.map(key => [key, []]));
-  const candidates = getActorEffectCandidates(actor);
+  const candidates = getDocumentEffectCandidates(document);
   const seen = new Set();
   const addMode = globalThis.CONST?.ACTIVE_EFFECT_MODES?.ADD ?? 2;
 
@@ -238,4 +237,17 @@ export function collectSkillEffectSources(actor, skillKeys = []) {
     ?? path.match(/^system\.skills\.(\w+)\.value$/)?.[1]
     ?? path.match(/^system\.skillTotals\.(\w+)$/)?.[1]
   ));
+}
+
+/**
+ * Collect Active Effect changes for exact document paths. This is used by
+ * fields which do not belong to the attribute/skill key families, including
+ * Actor fame bonuses and the value of an embedded reputation Item.
+ */
+export function collectDocumentEffectSources(document, fieldPaths = []) {
+  return collectEffectSources(
+    document,
+    fieldPaths,
+    path => fieldPaths.includes(path) ? path : null
+  );
 }

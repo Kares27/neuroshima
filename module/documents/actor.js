@@ -6,7 +6,16 @@ import {
   MeleeWeaponTest
 } from "../tests.mjs";
 
-import { getConditions } from "../apps/config/condition-config.js";
+import {
+  getConditions,
+  isDefeatedByDamage,
+  isOverweightEncumbrance
+} from "../apps/config/condition-config.js";
+import {
+  createReputationCostApi,
+  getBaseReputationCost,
+  normalizeReputationCost
+} from "../helpers/xp.js";
 
 /**
  * Build ActiveEffect create-data from a condition definition.
@@ -33,6 +42,7 @@ function _condDefToEffectData(condDef, extraFlags = {}) {
         transferType: condDef._transferType  ?? "owningDocument",
         documentType: condDef._documentType  ?? "actor",
         equipTransfer:condDef._equipTransfer ?? false,
+        manualChangeKeys: condDef._manualChangeKeys ?? false,
         ...extraFlags
       }
     }
@@ -43,7 +53,7 @@ function _condDefToEffectData(condDef, extraFlags = {}) {
  * Execution context for condition auto-check scripts.
  * Bound as `this` when running a condition's conditionCheckCode inside _checkAutoConditions.
  */
-class NeuroshimaConditionCheckContext {
+export class NeuroshimaConditionCheckContext {
   constructor(actor, condDef) {
     this._actor   = actor;
     this._condDef = condDef;
@@ -60,13 +70,26 @@ class NeuroshimaConditionCheckContext {
   get totalDamagePoints() { return this._actor.system.combat?.totalDamagePoints ?? 0; }
   get totalWoundPenalty() { return this._actor.system.combat?.totalWoundPenalty ?? 0; }
   get encumbrance()       { return this._actor.system.encumbrance; }
+  get isOverweight()      { return isOverweightEncumbrance(this.encumbrance); }
+  get usesAutomaticDefeat() { return ["npc", "creature"].includes(this._actor.type); }
+  get isDefeated() {
+    return isDefeatedByDamage({
+      actorType: this._actor.type,
+      totalDamagePoints: this.totalDamagePoints,
+      maxHP: this.maxHP
+    });
+  }
   get hp()                { return this._actor.system.hp ?? null; }
 
   get maxHP() {
     if (this._actor.type === "creature") {
-      return this._actor.getFlag("neuroshima", "creatureMaxHP") || this._actor.system.combat?.maxHP || 27;
+      const flagged = this._actor.getFlag("neuroshima", "creatureMaxHP");
+      if (flagged !== undefined && flagged !== null && flagged !== "") return Number(flagged);
+      const prepared = this._actor.system.combat?.maxHP;
+      if (prepared !== undefined && prepared !== null && prepared !== "") return Number(prepared);
+      return 27;
     }
-    return this._actor.system.hp?.max ?? 27;
+    return Number(this._actor.system.hp?.max ?? 27);
   }
 
   // ── Wound helpers ─────────────────────────────────────────────────────────
@@ -85,42 +108,26 @@ class NeuroshimaConditionCheckContext {
   // ── Condition helpers ─────────────────────────────────────────────────────
   hasCondition(key)              { return this._actor.hasCondition(key); }
   getConditionValue(key)         { return this._actor.getConditionValue(key); }
-  async addCondition(key, value) { return this._actor.addCondition(key, value); }
-  async removeCondition(key)     { return this._actor.removeCondition(key); }
+  async addCondition(key, value) {
+    return this._actor.addCondition(key, value, { automatic: true });
+  }
+
+  async removeCondition(key) {
+    return this._actor.removeCondition(key, { automaticOnly: true });
+  }
 
   async setConditionValue(key, value) {
-    const existing = this._actor.effects.find(
-      e => e.statuses?.has(key) && e.getFlag("neuroshima", "conditionNumbered")
-    );
-    if (value <= 0) {
-      if (existing) await existing.delete();
-      return;
-    }
-    if (existing) {
-      await existing.setFlag("neuroshima", "conditionValue", value);
-      this._actor._refreshTokenHUD?.();
-    } else {
-      await this._actor.addCondition(key);
-      const created = this._actor.effects.find(
-        e => e.statuses?.has(key) && e.getFlag("neuroshima", "conditionNumbered")
-      );
-      if (created && value !== 1) {
-        await created.setFlag("neuroshima", "conditionValue", value);
-        this._actor._refreshTokenHUD?.();
-      }
-    }
+    return this._actor.setConditionValue(key, value, { automatic: true });
   }
 
   async apply() {
     if (!this._actor.hasCondition(this._condDef.key)) {
-      return this._actor.addCondition(this._condDef.key);
+      return this._actor.addCondition(this._condDef.key, 1, { automatic: true });
     }
   }
 
   async remove() {
-    if (this._actor.hasCondition(this._condDef.key)) {
-      return this._actor.removeCondition(this._condDef.key);
-    }
+    return this._actor.removeCondition(this._condDef.key, { automaticOnly: true });
   }
 
   // ── Actor stat helpers ────────────────────────────────────────────────────
@@ -188,11 +195,23 @@ export class NeuroshimaActor extends Actor {
    * deliberately unsupported in this lifecycle.
    */
   prepareBaseData() {
+    // prePrepareData runs before the data model restores prepared defaults.
+    // Collect the reputation price in a short-lived holder and copy it back
+    // after super.prepareBaseData(), otherwise the default 25 would overwrite
+    // a script calling args.reputation.setCost().
+    const preparationOverrides = { reputationCost: getBaseReputationCost() };
+    const supportsReputation = ["character", "npc", "creature"].includes(this.type);
     NeuroshimaScriptRunner.executeEventSync("prePrepareData", {
       actor: this,
-      preparedData: this.system
+      preparedData: this.system,
+      reputation: supportsReputation
+        ? createReputationCostApi(preparationOverrides)
+        : undefined
     });
     super.prepareBaseData();
+    if (supportsReputation) {
+      this.system.reputationCost = normalizeReputationCost(preparationOverrides.reputationCost);
+    }
   }
 
   /**
@@ -239,16 +258,23 @@ export class NeuroshimaActor extends Actor {
    * @override
    */
   prepareDerivedData() {
+    const supportsReputation = ["character", "npc", "creature"].includes(this.type);
     NeuroshimaScriptRunner.executeEventSync("prePrepareItems", {
       actor: this,
       items: this.items,
-      preparedData: this.system
+      preparedData: this.system,
+      reputation: supportsReputation
+        ? createReputationCostApi(this.system)
+        : undefined
     });
     super.prepareDerivedData();
     this.system._preparePostEffects?.();
     const args = {
       actor: this,
       preparedData: this.system,
+      reputation: supportsReputation
+        ? createReputationCostApi(this.system)
+        : undefined,
       characteristics: this.system.attributeTotals ?? this.system.attributes,
       encumbrance: this.system.encumbrance,
       wounds: this.system.combat,
@@ -272,6 +298,12 @@ export class NeuroshimaActor extends Actor {
       NeuroshimaScriptRunner.executeEventSync("APCalc", args);
     }
     NeuroshimaScriptRunner.executeEventSync("prepareData", args);
+    // Scripts and ordinary Active Effect changes may both touch the prepared
+    // field. Normalize once at the end so the purchase UI always receives a
+    // finite, non-negative integer cost.
+    if (supportsReputation) {
+      this.system.reputationCost = normalizeReputationCost(this.system.reputationCost);
+    }
   }
 
   /**
@@ -669,6 +701,41 @@ export class NeuroshimaActor extends Actor {
   }
 
   /**
+   * Set an int condition to an exact value through the same creation path used
+   * by addCondition(), ensuring Changes and system.scriptData are preserved.
+   */
+  async setConditionValue(key, value, { automatic = false } = {}) {
+    const condDef = getConditions().find(c => c.key === key);
+    if (!condDef || condDef.type !== "int") return;
+
+    let next = Number(value);
+    if (!Number.isFinite(next)) return;
+    if (!condDef.allowNegative) next = Math.max(0, next);
+
+    const existing = this.effects.find(
+      e => e.statuses?.has(key) && e.getFlag("neuroshima", "conditionNumbered")
+    );
+    if (next === 0) {
+      if (existing && (!automatic || existing.getFlag("neuroshima", "autoCondition") === true)) {
+        await existing.delete();
+      }
+      return;
+    }
+    if (existing) {
+      if (automatic && existing.getFlag("neuroshima", "autoCondition") !== true) {
+        return existing;
+      }
+      if (!automatic && existing.getFlag("neuroshima", "autoCondition") === true) {
+        await existing.unsetFlag("neuroshima", "autoCondition");
+      }
+      await existing.setFlag("neuroshima", "conditionValue", next);
+      this._refreshTokenHUD();
+      return existing;
+    }
+    return this.addCondition(key, next, { automatic });
+  }
+
+  /**
    * Return true if the actor has the given condition active (boolean present OR int > 0).
    * @param {string} key
    * @returns {boolean}
@@ -684,9 +751,12 @@ export class NeuroshimaActor extends Actor {
    * - Int conditions: increment the stored value by `value`, creating the effect if needed.
    * @param {string} key
    * @param {number} [value=1]  Amount to increment numeric conditions by.
+   * @param {object} [options]
+   * @param {boolean} [options.automatic=false] Mark an effect created by an
+   * automatic condition check. Only such effects may later be auto-removed.
    * @returns {Promise<void>}
    */
-  async addCondition(key, value = 1) {
+  async addCondition(key, value = 1, { automatic = false } = {}) {
     let condDef = getConditions().find(c => c.key === key);
     game.neuroshima?.log(`[addCondition] key="${key}" condDef:`, condDef ? { type: condDef.type, scriptsCount: condDef.scripts?.length ?? 0, scripts: condDef.scripts } : "NOT FOUND");
     if (!condDef) return;
@@ -710,20 +780,42 @@ export class NeuroshimaActor extends Actor {
 
     let result;
     if (condDef.type !== "int") {
-      result = await this.toggleStatusEffect(key, { active: true });
+      result = await this.toggleStatusEffect(key, { active: true, automatic });
     } else {
+      if (!Number.isFinite(value)) return;
       const existing = this.effects.find(
         e => e.statuses?.has(key) && e.getFlag("neuroshima", "conditionNumbered")
       );
       if (existing) {
-        const current = existing.getFlag("neuroshima", "conditionValue") ?? 0;
-        await existing.setFlag("neuroshima", "conditionValue", current + value);
-        this._refreshTokenHUD();
-        result = existing;
+        if (automatic && existing.getFlag("neuroshima", "autoCondition") !== true) {
+          result = existing;
+        } else {
+          if (!automatic && existing.getFlag("neuroshima", "autoCondition") === true) {
+            await existing.unsetFlag("neuroshima", "autoCondition");
+          }
+          const current = Number(existing.getFlag("neuroshima", "conditionValue") ?? 0);
+          const next = condDef.allowNegative
+            ? current + value
+            : Math.max(0, current + value);
+          if (next === 0) {
+            result = await existing.delete();
+          } else {
+            await existing.setFlag("neuroshima", "conditionValue", next);
+            this._refreshTokenHUD();
+            result = existing;
+          }
+        }
       } else {
+        const initial = condDef.allowNegative ? value : Math.max(0, value);
+        if (initial === 0) return;
         result = await this.createEmbeddedDocuments("ActiveEffect", [
-          _condDefToEffectData(condDef, { conditionNumbered: true, conditionValue: value })
+          _condDefToEffectData(condDef, {
+            conditionNumbered: true,
+            conditionValue: initial,
+            ...(automatic ? { autoCondition: true } : {})
+          })
         ]);
+        this._refreshTokenHUD();
       }
     }
 
@@ -746,20 +838,24 @@ export class NeuroshimaActor extends Actor {
    * - Boolean conditions: disable via toggleStatusEffect.
    * - Int conditions: decrement; deletes the effect when value reaches 0 (unless allowNegative).
    * @param {string} key
+   * @param {object} [options]
+   * @param {boolean} [options.automaticOnly=false] Remove only an effect
+   * previously created by an automatic condition check.
    * @returns {Promise<void>}
    */
-  async removeCondition(key) {
+  async removeCondition(key, { automaticOnly = false } = {}) {
     const condDef = getConditions().find(c => c.key === key);
     if (!condDef) return;
 
     if (condDef.type !== "int") {
-      return this.toggleStatusEffect(key, { active: false });
+      return this.toggleStatusEffect(key, { active: false, automaticOnly });
     }
 
     const existing = this.effects.find(
       e => e.statuses?.has(key) && e.getFlag("neuroshima", "conditionNumbered")
     );
     if (!existing) return;
+    if (automaticOnly && existing.getFlag("neuroshima", "autoCondition") !== true) return;
 
     const current = existing.getFlag("neuroshima", "conditionValue") ?? 0;
     const min = condDef.allowNegative ? -Infinity : 0;
@@ -778,7 +874,12 @@ export class NeuroshimaActor extends Actor {
    * that to distinguish increment (LMB) from decrement (RMB), matching WFRP4e's approach.
    * @override
    */
-  async toggleStatusEffect(effectId, { active, overlay = false } = {}) {
+  async toggleStatusEffect(effectId, {
+    active,
+    overlay = false,
+    automatic = false,
+    automaticOnly = false
+  } = {}) {
     const condDef = getConditions().find(c => c.key === effectId);
     if (condDef?.key?.startsWith("maneuver-") && active === undefined) return;
     if (condDef?.type === "int") {
@@ -790,14 +891,39 @@ export class NeuroshimaActor extends Actor {
     // (Foundry's super.toggleStatusEffect may not copy flags from CONFIG.statusEffects).
     if (condDef) {
       game.neuroshima?.log(`[toggleStatusEffect boolean] key="${effectId}" scriptsCount:`, condDef.scripts?.length ?? 0, condDef.scripts);
-      const existing = this.effects.find(e => e.statuses?.has(effectId));
-      if (existing) {
-        if (active === true) return;
-        return existing.delete();
+      const existing = this.effects.filter(e => e.statuses?.has(effectId));
+      const enabled = existing.find(e => !e.disabled);
+      if (existing.length) {
+        if (active === true) {
+          if (enabled) {
+            // An explicit/manual application claims an automatically-created
+            // condition, so subsequent reconciliation cannot remove it.
+            if (!automatic && enabled.getFlag("neuroshima", "autoCondition") === true) {
+              await enabled.unsetFlag("neuroshima", "autoCondition");
+            }
+            return enabled;
+          }
+          if (!automatic) {
+            const effect = existing[0];
+            if (effect.getFlag("neuroshima", "autoCondition") === true) {
+              await effect.unsetFlag("neuroshima", "autoCondition");
+            }
+            return effect.update({ disabled: false });
+          }
+          // Do not reactivate a manually disabled effect on behalf of the
+          // automatic rule. Create a separate managed effect below instead.
+        }
+        if (active === false || active === undefined) {
+          const removable = automaticOnly
+            ? existing.filter(effect => effect.getFlag("neuroshima", "autoCondition") === true)
+            : existing;
+          if (!removable.length) return;
+          return this.deleteEmbeddedDocuments("ActiveEffect", removable.map(effect => effect.id));
+        }
       }
       if (active === false) return;
       return this.createEmbeddedDocuments("ActiveEffect", [
-        _condDefToEffectData(condDef)
+        _condDefToEffectData(condDef, automatic ? { autoCondition: true } : {})
       ]);
     }
 
@@ -821,13 +947,14 @@ export class NeuroshimaActor extends Actor {
 
   /**
    * Trigger automatic condition evaluation after every actor update.
-   * `_checkAutoConditions` is only called on the GM client to avoid redundant
-   * concurrent executions across multiple connected players.
+   * Only the client which initiated the update evaluates conditions, avoiding
+   * duplicate writes while still allowing an owning player to keep automatic
+   * conditions synchronized when no GM performs the edit.
    * @override
    */
   async _onUpdate(changed, options, userId) {
     await super._onUpdate(changed, options, userId);
-    if (userId === game.userId) {
+    if (userId === game.user.id) {
       await NeuroshimaScriptRunner.executeEvent("update", {
         actor: this,
         document: this,
@@ -836,7 +963,7 @@ export class NeuroshimaActor extends Actor {
         userId
       }, { metadata: { document: this, updateData: changed } });
     }
-    if (userId === game.userId && game.user.isGM) {
+    if (userId === game.user.id && (game.user.isGM || this.isOwner)) {
       await this._checkAutoConditions();
     }
   }
@@ -849,24 +976,35 @@ export class NeuroshimaActor extends Actor {
    * @returns {Promise<void>}
    */
   async _checkAutoConditions() {
-    if (this._checkingAutoConditions) return;
-    this._checkingAutoConditions = true;
-    try {
-      const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
-      const conditions = getConditions();
-      for (const condDef of conditions) {
-        const code = condDef.conditionCheckCode?.trim();
-        if (!code) continue;
-        try {
-          const ctx = new NeuroshimaConditionCheckContext(this, condDef);
-          await new AsyncFunction(code).call(ctx);
-        } catch (err) {
-          console.error(`[Neuroshima] conditionCheckCode error for "${condDef.key}":`, err);
-        }
-      }
-    } finally {
-      this._checkingAutoConditions = false;
+    if (this._checkingAutoConditions) {
+      this._autoConditionCheckPending = true;
+      return this._autoConditionCheckPromise;
     }
+    this._checkingAutoConditions = true;
+    this._autoConditionCheckPromise = (async () => {
+      try {
+        do {
+          this._autoConditionCheckPending = false;
+          const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
+          const conditions = getConditions();
+          for (const condDef of conditions) {
+            const code = condDef.conditionCheckCode?.trim();
+            if (!code) continue;
+            try {
+              const ctx = new NeuroshimaConditionCheckContext(this, condDef);
+              await new AsyncFunction(code).call(ctx);
+            } catch (err) {
+              console.error(`[Neuroshima] conditionCheckCode error for "${condDef.key}":`, err);
+            }
+          }
+        } while (this._autoConditionCheckPending);
+      } finally {
+        this._checkingAutoConditions = false;
+        this._autoConditionCheckPromise = null;
+        this._autoConditionCheckPending = false;
+      }
+    })();
+    return this._autoConditionCheckPromise;
   }
 
   /**

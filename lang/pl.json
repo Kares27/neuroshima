@@ -83,6 +83,7 @@
         },
         "XP": {
             "Label": "Doświadczenie",
+            "Unit": "PD",
             "Current": "Obecne",
             "Spent": "Wydane",
             "Total": "Razem",
@@ -92,8 +93,11 @@
                 "Available": "Dostępne",
                 "CostLabel": "Koszt",
                 "NotEnough": "Niewystarczająca ilość PD!",
+                "AfterTransaction": "Po operacji",
+                "DebtWarning": "Uwaga! Koszt większy od posiadanych PD",
                 "Spend": "Wydaj PD",
                 "Free": "Za Darmo (0 PD)",
+                "FreeButton": "Za Darmo",
                 "TrickDescription": "Sztuczka: {name}"
             },
             "Grant": {
@@ -113,9 +117,19 @@
                 "DefaultReason": "Odejmowane PD",
                 "ExceedsTotal": "Wydane PD nie mogą przekroczyć łącznej puli PD!"
             },
+            "Adjustment": {
+                "SpendTitle": "Dodaj wydatek PD",
+                "RestoreTitle": "Przywróć wydane PD",
+                "SpendAmount": "Nowy wydatek: {amount} PD",
+                "RestoreAmount": "Przywracana ilość: {amount} PD",
+                "Reason": "Powód zmiany",
+                "ReasonPlaceholder": "Przywrócenie",
+                "Confirm": "Zatwierdź"
+            },
             "Refund": {
                 "Skill": "Zwrot PD: {skill} ({from} → {to})",
                 "Attribute": "Zwrot PD: {attribute} ({from} → {to})",
+                "Reputation": "Zwrot PD: reputacja „{name}” ({from} → {to})",
                 "DialogTitle": "Zwrot Doświadczenia",
                 "Label": "Zwrot",
                 "Apply": "Zwróć PD",
@@ -131,6 +145,9 @@
                 "AttributeRaise": "{attr}: {from} → {to}",
                 "SkillRaise": "{skill}: {from} → {to}",
                 "TrickLearned": "Sztuczka: {name}",
+                "ReputationPurchase": "Reputacja „{name}”: {from} → {to} (+{points})",
+                "ReputationFree": "Darmowe nadanie reputacji „{name}”: {from} → {to} (+{points})",
+                "SourceMissing": "Nie można cofnąć wpisu, ponieważ powiązany dokument już nie istnieje.",
                 "Col": {
                     "Date": "Data",
                     "Description": "Opis",
@@ -434,7 +451,7 @@
             "ReputationConfig": {
                 "Title": "Ustawienia Reputacji",
                 "Label": "Skonfiguruj Reputację",
-                "Hint": "Otwiera menu konfiguracji systemu reputacji, trybów testowania i tabel relacji.",
+                "Hint": "Otwiera menu konfiguracji systemu reputacji, kosztu zakupu PR, trybów testowania i tabel relacji.",
                 "Saved": "Ustawienia reputacji zostały zapisane.",
                 "MinMaxError": "Minimalna wartość reputacji nie może być wyższa od maksymalnej."
             },
@@ -449,6 +466,10 @@
             },
             "ReputationMax": {
                 "Name": "Maksymalna wartość reputacji"
+            },
+            "ReputationXpCost": {
+                "Name": "Bazowy koszt 1 punktu reputacji",
+                "Hint": "Liczba PD wydawana przez gracza na zakup 1 PR. Active Effecty mogą następnie zmieniać tę wartość w przygotowanych danych aktora."
             },
             "ReputationUseColors": {
                 "Name": "Używaj kolorów dla relacji",
@@ -1539,7 +1560,9 @@
             "RepBonus": "Bon. do Rep.",
             "RepBonusHint": "Dodatkowy bonus dodawany bezpośrednio do wartości reputacji przy tym rzucie.",
             "SortByValue": "Sortuj według wartości reputacji (malejąco)",
-            "DragToReorder": "Przeciągnij aby zmienić kolejność"
+            "DragToReorder": "Przeciągnij aby zmienić kolejność",
+            "PurchaseCost": "Koszt zakupu: 1 PR = {cost} PD",
+            "ChangeStateChanged": "Wartość reputacji zmieniła się podczas otwartego dialogu. Spróbuj ponownie."
         },
         "Armor": {
             "TotalPenalty": "Kara",
@@ -2021,11 +2044,15 @@
                     "SkillsCharisma": "Umiejętności: Charyzma",
                     "SkillsCleverness": "Umiejętności: Spryt",
                     "SkillsConstitution": "Umiejętności: Kondycja",
-                    "Reputation": "Reputacja"
+                    "Reputation": "Reputacja i sława Aktora",
+                    "ReputationItem": "Reputacja — wartość Itemu"
                 },
                 "MaxLoad": "Maks. Udźwig",
                 "HealingRate": "Tempo Leczenia",
+                "Reputation": "Reputacja",
                 "ReputationBonus": "Globalny Bonus do Reputacji",
+                "ReputationItemValue": "Wartość Reputacji",
+                "Fame": "Sława",
                 "FameBonus": "Bonus do Sławy",
                 "ArmorBonus": {
                     "All": "Bonus do Wszystkich Lokacji",

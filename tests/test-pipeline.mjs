@@ -22,7 +22,17 @@ globalThis.foundry = {
     api: {
       ApplicationV2: class {},
       HandlebarsApplicationMixin: Base => class extends Base {}
+    },
+    sheets: {
+      ActiveEffectConfig: class {
+        static DEFAULT_OPTIONS = {};
+        static PARTS = {};
+        static TABS = {};
+      }
     }
+  },
+  abstract: {
+    TypeDataModel: class {}
   },
   canvas: {
     placeables: {
@@ -37,6 +47,9 @@ globalThis.foundry = {
     deepClone,
     randomID: () => `revision-${Math.random().toString(36).slice(2)}`,
     escapeHTML: value => String(value),
+    getProperty(object, path) {
+      return String(path).split(".").reduce((value, part) => value?.[part], object);
+    },
     hasProperty(object, path) {
       return String(path).split(".").every((part, index, parts) => {
         object = object?.[part];
@@ -70,7 +83,17 @@ globalThis.ChatMessage = class {
   }
   static applyRollMode() {}
 };
-globalThis.CONST = { CHAT_MESSAGE_STYLES: { OTHER: 0 } };
+globalThis.CONST = {
+  CHAT_MESSAGE_STYLES: { OTHER: 0 },
+  ACTIVE_EFFECT_MODES: {
+    CUSTOM: 0,
+    MULTIPLY: 1,
+    ADD: 2,
+    DOWNGRADE: 3,
+    UPGRADE: 4,
+    OVERRIDE: 5
+  }
+};
 globalThis.game = {
   neuroshima: {
     group() {},
@@ -133,10 +156,28 @@ const {
   buildBreakdownTooltip,
   canViewRollTooltip,
   collectAttributeEffectSources,
+  collectDocumentEffectSources,
   collectSkillEffectSources
 } = await import("../module/helpers/tooltip-renderer.js");
 const { NeuroshimaChatMessage } = await import("../module/documents/chat-message.js");
 const { EffectActionRuntime } = await import("../module/effects/effect-action-runtime.js");
+const {
+  DEFAULT_CONDITIONS,
+  getConditions,
+  isDefeatedByDamage,
+  isOverweightEncumbrance
+} = await import("../module/apps/config/condition-config.js");
+const {
+  NeuroshimaActor,
+  NeuroshimaConditionCheckContext
+} = await import("../module/documents/actor.js");
+const { NeuroshimaActorData } = await import("../module/data/actor-data.js");
+const {
+  NS_CHANGE_KEYS,
+  isChangeGroupAvailable
+} = await import("../module/sheets/neuroshima-effect-sheet.js");
+const { ReputationRollDialog } = await import("../module/apps/dialogs/reputation-roll-dialog.js");
+const { NeuroshimaRollDialogBase } = await import("../module/apps/dialogs/roll-dialog-base.js");
 const { syncMountedModEffects } = await import("../module/helpers/mod-helpers.js");
 const {
   MeleeResolution,
@@ -145,6 +186,18 @@ const {
   MeleeTurnService
 } = await import("../module/combat/combat.js");
 const { MeleeOpposedResolver } = await import("../module/tests.mjs");
+const {
+  REPUTATION_XP_COST,
+  applyXpEntry,
+  applyXpGrantEntry,
+  applyXpSpentAdjustment,
+  createReputationCostApi,
+  getBaseReputationCost,
+  normalizeReputationCost,
+  revertXpEntry,
+  showXpDialog,
+  showXpSpentAdjustmentDialog
+} = await import("../module/helpers/xp.js");
 game.neuroshima.tests = NEUROSHIMA_TESTS;
 
 function actorFixture() {
@@ -161,6 +214,526 @@ test("concrete tests inherit from base", () => {
   assert.ok(new SkillTest() instanceof NeuroshimaTestBase);
   assert.ok(new RangedWeaponTest() instanceof WeaponTest);
   assert.ok(new MeleeWeaponTest() instanceof AttackTest);
+});
+
+test("prepared reputation cost API starts at 25 and supports passive modifiers", () => {
+  const preparedData = { reputationCost: REPUTATION_XP_COST };
+  const reputation = createReputationCostApi(preparedData);
+
+  assert.equal(reputation.modifyCost(-10), 15);
+  assert.equal(preparedData.reputationCost, 15);
+  assert.equal(reputation.setCost(8.6), 9);
+  assert.equal(reputation.cost, 9);
+  reputation.cost = -50;
+  assert.equal(reputation.cost, 0);
+  assert.equal(normalizeReputationCost("invalid"), 25);
+});
+
+test("base reputation cost follows the world setting", () => {
+  settingOverrides.reputationXpCost = 30;
+  try {
+    assert.equal(getBaseReputationCost(), 30);
+  } finally {
+    delete settingOverrides.reputationXpCost;
+  }
+});
+
+test("reputation dialog uses the shared roll-dialog modifier infrastructure", () => {
+  const dialog = Object.create(ReputationRollDialog.prototype);
+  dialog._scriptFields = {
+    modifier: 10,
+    attributeBonus: 2,
+    difficultyShift: 1
+  };
+  dialog._userValues = {
+    modifier: 5,
+    attributeBonus: 3
+  };
+  dialog.userEntry = {};
+  dialog.rollOptions = {
+    baseDifficulty: "average",
+    isOpen: false,
+    rollMode: "publicroll",
+    repValue: 4,
+    fame: 1
+  };
+
+  assert.ok(dialog instanceof NeuroshimaRollDialogBase);
+  assert.deepEqual(dialog._resolveValues(), {
+    fields: dialog._scriptFields,
+    modifier: 15,
+    repBonus: 5,
+    baseDifficulty: NeuroshimaScriptRunner.shiftDifficultyKey("average", 1),
+    isOpen: false,
+    rollMode: "publicroll",
+    repValue: 4,
+    fame: 1
+  });
+});
+
+test("prePrepareData reputation cost survives the base-data reset", () => {
+  const actor = Object.create(NeuroshimaActor.prototype);
+  actor.type = "character";
+  actor.system = { reputationCost: 25 };
+  const originalExecute = NeuroshimaScriptRunner.executeEventSync;
+  const originalBasePrepare = Actor.prototype.prepareBaseData;
+  Actor.prototype.prepareBaseData = function () {
+    this.system.reputationCost = 25;
+  };
+  NeuroshimaScriptRunner.executeEventSync = (trigger, args) => {
+    if (trigger === "prePrepareData") args.reputation.setCost(20);
+  };
+
+  try {
+    actor.prepareBaseData();
+    assert.equal(actor.system.reputationCost, 20);
+  } finally {
+    NeuroshimaScriptRunner.executeEventSync = originalExecute;
+    if (originalBasePrepare) Actor.prototype.prepareBaseData = originalBasePrepare;
+    else delete Actor.prototype.prepareBaseData;
+  }
+});
+
+test("Active Effect changes expose reputation and fame values and bonuses", () => {
+  const reputationKeys = NS_CHANGE_KEYS
+    .find(group => group.group === "NEUROSHIMA.Effects.Keys.Group.Reputation")
+    ?.keys.map(entry => entry.key);
+
+  assert.deepEqual(reputationKeys, [
+    "system.reputation",
+    "system.reputationBonus",
+    "system.fame",
+    "system.fameBonus"
+  ]);
+  const reputationItemGroup = NS_CHANGE_KEYS
+    .find(group => group.group === "NEUROSHIMA.Effects.Keys.Group.ReputationItem");
+  assert.deepEqual(
+    reputationItemGroup,
+    {
+      group: "NEUROSHIMA.Effects.Keys.Group.ReputationItem",
+      itemTypes: ["reputation"],
+      keys: [{ key: "system.value", label: "NEUROSHIMA.Effects.Keys.ReputationItemValue" }]
+    }
+  );
+  assert.equal(isChangeGroupAvailable(reputationItemGroup, "character", null), false);
+  assert.equal(isChangeGroupAvailable(reputationItemGroup, "character", "trait"), false);
+  assert.equal(isChangeGroupAvailable(reputationItemGroup, "character", "reputation"), true);
+});
+
+test("reputation and fame changes support numeric Active Effect modes", () => {
+  const data = Object.create(NeuroshimaActorData.prototype);
+  data.parent = {
+    appliedEffects: [{
+      active: true,
+      isSuppressed: false,
+      changes: [
+        { key: "system.reputation", mode: CONST.ACTIVE_EFFECT_MODES.ADD, value: "3" },
+        { key: "system.reputation", mode: CONST.ACTIVE_EFFECT_MODES.UPGRADE, value: "10" },
+        { key: "system.fame", mode: CONST.ACTIVE_EFFECT_MODES.DOWNGRADE, value: "2" },
+        { key: "system.fameBonus", mode: CONST.ACTIVE_EFFECT_MODES.MULTIPLY, value: "2" },
+        { key: "system.reputationBonus", mode: CONST.ACTIVE_EFFECT_MODES.OVERRIDE, value: "7" }
+      ]
+    }]
+  };
+
+  assert.equal(data._applyPostDerivedActiveEffectValue("system.reputation", 5), 10);
+  assert.equal(data._applyPostDerivedActiveEffectValue("system.fame", 4), 2);
+  assert.equal(data._applyPostDerivedActiveEffectValue("system.fameBonus", 3), 6);
+  assert.equal(data._applyPostDerivedActiveEffectValue("system.reputationBonus", 1), 7);
+});
+
+test("manual spent XP adjustments log both expenses and restorations", () => {
+  const actor = {
+    system: {
+      xp: { total: 100, spent: 20 },
+      xpLog: []
+    }
+  };
+  const expense = {};
+  const expenseEntry = applyXpSpentAdjustment(actor, expense, 35, "Nietypowy zakup");
+
+  assert.equal(expense.system.xp.spent, 35);
+  assert.equal(expenseEntry.cost, 15);
+  assert.equal(expenseEntry.xpBefore, 80);
+  assert.equal(expenseEntry.xpAfter, 65);
+  assert.equal(expenseEntry.operation, "manualSpent");
+
+  actor.system.xp.spent = 35;
+  actor.system.xpLog = expense.system.xpLog;
+  const restoration = {};
+  const restorationEntry = applyXpSpentAdjustment(actor, restoration, 10, "Zwrot za zakup");
+
+  assert.equal(restoration.system.xp.spent, 10);
+  assert.equal(restorationEntry.cost, -25);
+  assert.equal(restorationEntry.xpBefore, 65);
+  assert.equal(restorationEntry.xpAfter, 90);
+});
+
+test("manual spent XP uses the placeholder as the log reason when left empty", async () => {
+  const originalDialog = foundry.applications.api.DialogV2;
+  let dialogConfig;
+  foundry.applications.api.DialogV2 = {
+    async wait(config) {
+      dialogConfig = config;
+      return config.buttons[0].callback(
+        null,
+        null,
+        { element: { querySelector: () => ({ value: "" }) } }
+      );
+    }
+  };
+
+  try {
+    const result = await showXpSpentAdjustmentDialog(-10);
+    assert.deepEqual(result, { reason: "NEUROSHIMA.XP.Adjustment.ReasonPlaceholder" });
+    assert.match(dialogConfig.content, /placeholder="NEUROSHIMA\.XP\.Adjustment\.ReasonPlaceholder"/);
+    assert.doesNotMatch(dialogConfig.content, /\srequired(?:\s|>)/);
+  } finally {
+    if (originalDialog) foundry.applications.api.DialogV2 = originalDialog;
+    else delete foundry.applications.api.DialogV2;
+  }
+});
+
+test("XP spending dialog warns about debt without disabling spending", async () => {
+  const originalDialog = foundry.applications.api.DialogV2;
+  let dialogConfig;
+  foundry.applications.api.DialogV2 = {
+    async wait(config) {
+      dialogConfig = config;
+      return config.buttons.find(button => button.action === "spend").callback(
+        null,
+        null,
+        { element: { querySelector: () => ({ value: "25" }) } }
+      );
+    }
+  };
+
+  try {
+    const result = await showXpDialog(25, "Reputacja <Posterunek>", 10);
+    const spend = dialogConfig.buttons.find(button => button.action === "spend");
+    assert.equal(spend.default, true);
+    assert.notEqual(spend.disabled, true);
+    assert.ok(dialogConfig.classes.includes("xp-spend-dialog"));
+    assert.match(
+      dialogConfig.content,
+      /<\/label>\s*<hr class="xp-ledger__total-separator">\s*<div class="xp-ledger__entry xp-ledger__entry--projected">/
+    );
+    assert.equal((dialogConfig.content.match(/<hr\b/g) ?? []).length, 1);
+    assert.match(dialogConfig.content, /data-xp-projected aria-live="polite">-15/);
+    assert.match(dialogConfig.content, /data-xp-debt-warning role="status"/);
+    assert.deepEqual(result, { free: false, cost: 25 });
+  } finally {
+    if (originalDialog) foundry.applications.api.DialogV2 = originalDialog;
+    else delete foundry.applications.api.DialogV2;
+  }
+});
+
+test("XP entries preserve an intentionally negative available balance", () => {
+  const actor = {
+    system: {
+      xp: { total: 10, spent: 0 },
+      xpLog: []
+    }
+  };
+  const changed = {};
+  applyXpEntry(actor, changed, 25, "Wydatek ponad stan", 0, "system.attributes.dexterity");
+
+  assert.equal(changed.system.xp.spent, 25);
+  assert.equal(changed.system.xpLog[0].xpAfter, -15);
+});
+
+test("reputation purchases spend XP and retain the linked item for reversal", () => {
+  const actor = {
+    system: {
+      xp: { total: 100, spent: 10 },
+      xpLog: []
+    }
+  };
+  const changed = {};
+  applyXpEntry(
+    actor,
+    changed,
+    50,
+    "Zakup reputacji",
+    2,
+    "system.value",
+    { operation: "reputation", documentUuid: "Actor.actor.Item.reputation" }
+  );
+
+  assert.equal(changed.system.xp.spent, 60);
+  assert.equal(changed.system.xpLog[0].cost, 50);
+  assert.equal(changed.system.xpLog[0].xpBefore, 90);
+  assert.equal(changed.system.xpLog[0].xpAfter, 40);
+  assert.equal(changed.system.xpLog[0].operation, "reputation");
+  assert.equal(changed.system.xpLog[0].documentUuid, "Actor.actor.Item.reputation");
+});
+
+test("reverting a reputation purchase restores its item and spent XP", async () => {
+  const item = {
+    system: { value: 4 },
+    async update(changed) {
+      foundry.utils.setProperty(this, "system.value", changed["system.value"]);
+    }
+  };
+  const uuid = "Actor.actor.Item.reputation-revert";
+  documents.set(uuid, item);
+  const actor = {
+    system: {
+      xp: { total: 100, spent: 45 },
+      xpLog: [{
+        id: "purchase",
+        cost: 25,
+        previousValue: 3,
+        fieldPath: "system.value",
+        operation: "reputation",
+        documentUuid: uuid
+      }]
+    },
+    async update(changed) {
+      if ("system.xp.spent" in changed) this.system.xp.spent = changed["system.xp.spent"];
+      if ("system.xpLog" in changed) this.system.xpLog = changed["system.xpLog"];
+    }
+  };
+
+  try {
+    await revertXpEntry(actor, "purchase");
+    assert.equal(item.system.value, 3);
+    assert.equal(actor.system.xp.spent, 20);
+    assert.deepEqual(actor.system.xpLog, []);
+  } finally {
+    documents.delete(uuid);
+  }
+});
+
+test("reverting a reputation refund restores its item and spent XP", async () => {
+  const item = {
+    system: { value: 2 },
+    async update(changed) {
+      foundry.utils.setProperty(this, "system.value", changed["system.value"]);
+    }
+  };
+  const uuid = "Actor.actor.Item.reputation-refund-revert";
+  documents.set(uuid, item);
+  const actor = {
+    system: {
+      xp: { total: 100, spent: 25 },
+      xpLog: [{
+        id: "refund",
+        cost: -25,
+        previousValue: 3,
+        fieldPath: "system.value",
+        operation: "reputationRefund",
+        documentUuid: uuid
+      }]
+    },
+    async update(changed) {
+      if ("system.xp.spent" in changed) this.system.xp.spent = changed["system.xp.spent"];
+      if ("system.xpLog" in changed) this.system.xpLog = changed["system.xpLog"];
+    }
+  };
+
+  try {
+    await revertXpEntry(actor, "refund");
+    assert.equal(item.system.value, 3);
+    assert.equal(actor.system.xp.spent, 50);
+    assert.deepEqual(actor.system.xpLog, []);
+  } finally {
+    documents.delete(uuid);
+  }
+});
+
+test("reverting an XP grant does not also alter spent XP", async () => {
+  const actor = {
+    system: {
+      xp: { total: 100, spent: 20 },
+      xpLog: []
+    },
+    async update(changed) {
+      const changedTotal = foundry.utils.getProperty(changed, "system.xp.total");
+      if (changedTotal !== undefined) this.system.xp.total = changedTotal;
+      if ("system.xp.spent" in changed) this.system.xp.spent = changed["system.xp.spent"];
+      if ("system.xpLog" in changed) this.system.xpLog = changed["system.xpLog"];
+    }
+  };
+  const changed = {};
+  foundry.utils.setProperty(changed, "system.xp.total", 150);
+  applyXpGrantEntry(actor, changed, 50, "Nagroda sesyjna");
+  actor.system.xp.total = changed.system.xp.total;
+  actor.system.xpLog = changed.system.xpLog;
+
+  await revertXpEntry(actor, actor.system.xpLog[0].id);
+  assert.equal(actor.system.xp.total, 100);
+  assert.equal(actor.system.xp.spent, 20);
+  assert.deepEqual(actor.system.xpLog, []);
+});
+
+test("built-in overweight condition is symmetric around the encumbrance limit", () => {
+  assert.equal(isOverweightEncumbrance({ enabled: true, value: 19.99, max: 20 }), false);
+  assert.equal(isOverweightEncumbrance({ enabled: true, value: 20, max: 20 }), false);
+  assert.equal(isOverweightEncumbrance({ enabled: true, value: 20.01, max: 20 }), true);
+  assert.equal(isOverweightEncumbrance({ enabled: true, value: 25, max: 20 }), true);
+  assert.equal(isOverweightEncumbrance({ enabled: false, value: 25, max: 20 }), false);
+  assert.equal(isOverweightEncumbrance({ enabled: true, value: 25, max: 0 }), false);
+
+  const code = DEFAULT_CONDITIONS.find(condition => condition.key === "overweight")
+    ?.conditionCheckCode;
+  assert.match(code, /this\.isOverweight/);
+  assert.match(code, /this\.remove\(\)/);
+});
+
+test("automatic condition checks mark their own effects and never remove manual ones", async () => {
+  const calls = [];
+  const contextActor = {
+    hasCondition: () => false,
+    async addCondition(key, value, options) {
+      calls.push(["add", key, value, options]);
+    },
+    async removeCondition(key, options) {
+      calls.push(["remove", key, options]);
+    }
+  };
+  const context = new NeuroshimaConditionCheckContext(contextActor, {
+    key: "overweight",
+    name: "Przeciążony"
+  });
+
+  await context.apply();
+  await context.remove();
+  assert.deepEqual(calls, [
+    ["add", "overweight", 1, { automatic: true }],
+    ["remove", "overweight", { automaticOnly: true }]
+  ]);
+
+  let createdData;
+  const createActor = {
+    effects: [],
+    async createEmbeddedDocuments(_type, data) {
+      createdData = data;
+      return data;
+    }
+  };
+  await NeuroshimaActor.prototype.toggleStatusEffect.call(
+    createActor,
+    "overweight",
+    { active: true, automatic: true }
+  );
+  assert.equal(createdData[0].flags.neuroshima.autoCondition, true);
+
+  const deletedIds = [];
+  const effect = (id, automatic) => ({
+    id,
+    disabled: false,
+    statuses: new Set(["overweight"]),
+    getFlag: (_scope, key) => key === "autoCondition" ? automatic : undefined
+  });
+  const removeActor = {
+    effects: [effect("manual", false), effect("automatic", true)],
+    async deleteEmbeddedDocuments(_type, ids) {
+      deletedIds.push(...ids);
+    }
+  };
+  await NeuroshimaActor.prototype.toggleStatusEffect.call(
+    removeActor,
+    "overweight",
+    { active: false, automaticOnly: true }
+  );
+  assert.deepEqual(deletedIds, ["automatic"]);
+});
+
+test("saved legacy overweight template is upgraded without replacing custom checks", () => {
+  const legacyCode = `const enc = this.encumbrance;
+if (!enc || enc.enabled === false || enc.max <= 0) return;
+if (enc.value >= enc.max) await this.apply();
+else await this.remove();`;
+  settingOverrides.conditions = [{
+    id: "overweight",
+    key: "overweight",
+    name: "Przeciążony",
+    type: "boolean",
+    conditionCheckCode: legacyCode
+  }];
+
+  try {
+    const migrated = getConditions().find(condition => condition.key === "overweight");
+    assert.match(migrated.conditionCheckCode, /this\.isOverweight/);
+
+    settingOverrides.conditions[0].conditionCheckCode = "if (customRule) await this.apply();";
+    const customized = getConditions().find(condition => condition.key === "overweight");
+    assert.equal(customized.conditionCheckCode, "if (customRule) await this.apply();");
+  } finally {
+    delete settingOverrides.conditions;
+  }
+});
+
+test("built-in NPC and creature defeat conditions apply and remove symmetrically", () => {
+  assert.equal(isDefeatedByDamage({ actorType: "npc", totalDamagePoints: 26, maxHP: 27 }), false);
+  assert.equal(isDefeatedByDamage({ actorType: "npc", totalDamagePoints: 27, maxHP: 27 }), true);
+  assert.equal(isDefeatedByDamage({ actorType: "creature", totalDamagePoints: 30, maxHP: 27 }), true);
+  assert.equal(isDefeatedByDamage({ actorType: "character", totalDamagePoints: 30, maxHP: 27 }), false);
+  assert.equal(isDefeatedByDamage({ actorType: "creature", totalDamagePoints: 30, maxHP: 0 }), false);
+
+  for (const key of ["dead", "prone"]) {
+    const code = DEFAULT_CONDITIONS.find(condition => condition.key === key)?.conditionCheckCode;
+    assert.match(code, /this\.usesAutomaticDefeat/);
+    assert.match(code, /this\.isDefeated/);
+    assert.match(code, /this\.remove\(\)/);
+  }
+});
+
+test("saved legacy defeat templates are upgraded without replacing custom checks", () => {
+  const legacyCode = `if (!["npc", "creature"].includes(this.actor.type)) return;
+const maxHP = this.actor.type === "creature"
+  ? (this.actor.getFlag("neuroshima", "creatureMaxHP") || this.actor.system.combat?.maxHP || 27)
+  : (this.actor.system.hp?.max ?? 27);
+if (maxHP > 0 && this.totalDamagePoints >= maxHP) await this.apply();`;
+  settingOverrides.conditions = [{
+    id: "dead",
+    key: "dead",
+    name: "Martwy",
+    type: "boolean",
+    conditionCheckCode: legacyCode
+  }, {
+    id: "prone",
+    key: "prone",
+    name: "Leżący",
+    type: "boolean",
+    conditionCheckCode: "if (customRule) await this.apply();"
+  }];
+
+  try {
+    assert.match(
+      getConditions().find(condition => condition.key === "dead").conditionCheckCode,
+      /this\.isDefeated/
+    );
+    assert.equal(
+      getConditions().find(condition => condition.key === "prone").conditionCheckCode,
+      "if (customRule) await this.apply();"
+    );
+  } finally {
+    delete settingOverrides.conditions;
+  }
+});
+
+test("exact numeric condition values use the canonical effect schema", async () => {
+  let createdData = null;
+  const actor = {
+    effects: [],
+    addCondition(key, value) {
+      return NeuroshimaActor.prototype.addCondition.call(this, key, value);
+    },
+    async createEmbeddedDocuments(type, data) {
+      assert.equal(type, "ActiveEffect");
+      createdData = data;
+      return [];
+    },
+    _refreshTokenHUD() {}
+  };
+
+  await NeuroshimaActor.prototype.setConditionValue.call(actor, "bleeding", 2);
+  assert.equal(createdData[0].flags.neuroshima.conditionValue, 2);
+  assert.ok(Array.isArray(createdData[0].system.scriptData));
+  assert.equal(createdData[0].system.scriptData[0].trigger, "startTurn");
+  assert.equal("scripts" in createdData[0].flags.neuroshima, false);
 });
 
 test("legacy Active Effect success API is normalized at runtime", () => {
@@ -1106,6 +1679,47 @@ test("skill tooltip sources include applicable transferred effects", () => {
   assert.equal(sources.rifles[0].value, 1);
 });
 
+test("reputation and fame tooltips collect exact Actor and Item effect paths", () => {
+  const actor = {
+    appliedEffects: new Set([{
+      uuid: "Actor.actor.ActiveEffect.reputation",
+      name: "Znana twarz",
+      changes: [
+        { key: "system.reputationBonus", value: "2", mode: 2 },
+        { key: "system.fameBonus", value: "1", mode: 2 }
+      ]
+    }]),
+    effects: [],
+    items: []
+  };
+  const reputation = {
+    effects: [{
+      uuid: "Actor.actor.Item.rep.ActiveEffect.value",
+      name: "Wróg Posterunku",
+      changes: [{ key: "system.value", value: "-3", mode: 2 }]
+    }]
+  };
+
+  const actorSources = collectDocumentEffectSources(actor, [
+    "system.reputationBonus",
+    "system.fameBonus"
+  ]);
+  const itemSources = collectDocumentEffectSources(reputation, ["system.value"]);
+
+  assert.deepEqual(
+    actorSources["system.reputationBonus"].map(source => [source.label, source.value]),
+    [["Znana twarz", 2]]
+  );
+  assert.deepEqual(
+    actorSources["system.fameBonus"].map(source => [source.label, source.value]),
+    [["Znana twarz", 1]]
+  );
+  assert.deepEqual(
+    itemSources["system.value"].map(source => [source.label, source.value]),
+    [["Wróg Posterunku", -3]]
+  );
+});
+
 test("tooltip permission recognizes direct pain and aggregate grenade actors", () => {
   const actors = new Map([
     ["owned", { isOwner: true }],
@@ -1352,6 +1966,62 @@ test("dialog script flags survive preview and submission state", async () => {
     );
     assert.equal(result.scriptFields.modifier, 5);
     assert.equal(flags.marked, true);
+  } finally {
+    NeuroshimaScriptRunner.getScripts = originalGetScripts;
+  }
+});
+
+test("reputation dialog scripts receive roll context and dedicated value fields", async () => {
+  const actor = {
+    ...actorFixture(),
+    name: "Reputation Tester",
+    system: { combat: {} }
+  };
+  const script = {
+    effect: { id: "reputation-effect", parent: null },
+    label: "Reputation modifier",
+    code: "reputation",
+    targeter: false,
+    isDialogScript: false,
+    async evalHide(args) {
+      assert.equal(args.rollType, "reputation");
+      assert.equal(args.subtype, "skill");
+      assert.deepEqual(args.reputation, { bonus: 1, value: 4, fame: 2 });
+      return false;
+    },
+    async evalActivate() {
+      return true;
+    },
+    async execute(args) {
+      assert.equal(args.rollType, "reputation");
+      assert.equal(args.subtype, "skill");
+      assert.deepEqual(args.reputation, { bonus: 1, value: 4, fame: 2 });
+      args.fields.repBonus += 2;
+      args.fields.repValue += 3;
+      args.fields.fame += 1;
+    }
+  };
+  const originalGetScripts = NeuroshimaScriptRunner.getScripts;
+  NeuroshimaScriptRunner.getScripts = (_actor, trigger) => trigger === "dialog" ? [script] : [];
+  try {
+    const result = await NeuroshimaScriptRunner.computeDialogFields(
+      actor,
+      {
+        rollType: "reputation",
+        subtype: "skill",
+        repBonus: 1,
+        repValue: 4,
+        fame: 2,
+        reputation: { bonus: 1, value: 4, fame: 2 },
+        difficulty: "average"
+      }
+    );
+    assert.equal(result.scriptFields.repBonus, 2);
+    assert.equal(result.scriptFields.repValue, 3);
+    assert.equal(result.scriptFields.fame, 1);
+    assert.equal(result.reputationBreakdown.repBonus[0].value, 2);
+    assert.equal(result.reputationBreakdown.repValue[0].value, 3);
+    assert.equal(result.reputationBreakdown.fame[0].value, 1);
   } finally {
     NeuroshimaScriptRunner.getScripts = originalGetScripts;
   }

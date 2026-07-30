@@ -1776,27 +1776,7 @@ export class NeuroshimaScript {
    */
   async setConditionValue(key, value, actor) {
     const target = actor ?? this.actor;
-    if (!target) return;
-    const existing = target.effects.find(
-      e => e.statuses?.has(key) && e.getFlag("neuroshima", "conditionNumbered")
-    );
-    if (value <= 0) {
-      if (existing) await existing.delete();
-      return;
-    }
-    if (existing) {
-      await existing.setFlag("neuroshima", "conditionValue", value);
-      target._refreshTokenHUD?.();
-    } else {
-      await target.addCondition(key);
-      const created = target.effects.find(
-        e => e.statuses?.has(key) && e.getFlag("neuroshima", "conditionNumbered")
-      );
-      if (created && value !== 1) {
-        await created.setFlag("neuroshima", "conditionValue", value);
-        target._refreshTokenHUD?.();
-      }
-    }
+    return target?.setConditionValue(key, value);
   }
 
   /**
@@ -3402,8 +3382,15 @@ export class NeuroshimaScript {
  *                    args: { actor, data, options }
  *
  * prepareData      — Prepare Data: runs during actor.prepareDerivedData() [SYNC, no await]
- *                    args: { actor }
+ *                    args.actor                     — actor being prepared
+ *                    args.preparedData              — the mutable actor.system object
+ *                    args.reputation.cost           — prepared XP cost of 1 reputation point
+ *                    args.reputation.setCost(value) — replace the reputation cost
+ *                    args.reputation.modifyCost(n)  — add a passive cost modifier
  *                    Use: directly modify actor.system.* values
+ *                         args.reputation.modifyCost(-10) → lower the configured base cost by 10
+ *                    The same reputation API is available in prePrepareData;
+ *                    its value is deferred until base-data defaults have been restored.
  *
  * preRollTest      — Pre-Roll Test: runs BEFORE any skill/attribute roll, can cancel or auto-succeed it
  *                    args.test                      — the entire test object
@@ -4001,6 +3988,9 @@ export class NeuroshimaScriptRunner {
       modifier: 0,
       attributeBonus: 0,
       skillBonus: 0,
+      repBonus: 0,
+      repValue: 0,
+      fame: 0,
       armorDelta: 0,
       woundDelta: 0,
       diseasePenalty: 0,
@@ -4098,6 +4088,10 @@ export class NeuroshimaScriptRunner {
     modifier: 0,
     attributeBonus: 0,
     skillBonus: 0,
+    // Reputation-only deltas. Base values are exposed through args.reputation.
+    repBonus: 0,
+    repValue: 0,
+    fame: 0,
 
     armorPenalty: 0,
     woundPenalty: 0,
@@ -4136,6 +4130,7 @@ export class NeuroshimaScriptRunner {
     dieReductionBonus: 0,
 
     rollType: rc.rollType ?? null,
+    subtype: rc.subtype ?? null,
     healingMethod: rc.healingMethod ?? null,
     weapon: rc.weapon ?? null,
     wounds: rc.wounds ?? [],
@@ -4173,6 +4168,15 @@ export class NeuroshimaScriptRunner {
 
     rollType:
       rc.rollType ?? null,
+
+    subtype:
+      rc.subtype ?? null,
+
+    reputation: Object.freeze({
+      bonus: Number(rc.repBonus ?? 0),
+      value: Number(rc.repValue ?? 0),
+      fame: Number(rc.fame ?? 0)
+    }),
 
     healingMethod:
       rc.healingMethod ?? null,
@@ -4247,6 +4251,15 @@ export class NeuroshimaScriptRunner {
 
     skillBonus:
       fields.skillBonus,
+
+    repBonus:
+      Number(fields.repBonus ?? 0),
+
+    repValue:
+      Number(fields.repValue ?? 0),
+
+    fame:
+      Number(fields.fame ?? 0),
 
     armorDelta:
       fields.armorPenalty,
@@ -4968,13 +4981,17 @@ export class NeuroshimaScriptRunner {
    * @param {Set<string>}    selectedModifierIds    - Effect IDs user manually toggled ON
    * @param {Set<string>}    unselectedModifierIds  - Effect IDs user manually toggled OFF
    * @param {Actor[]}        [targetActors=[]]      - Target actors for targeter/defendingAgainst scripts
-   * @returns {Promise<{dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown}>}
+   * @returns {Promise<{dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown, reputationBreakdown}>}
    */
   static async computeDialogFields(actor, rollContext = {}, selectedModifierIds = new Set(), unselectedModifierIds = new Set(), targetActors = [], options = {}) {
     if (!actor) return {
       dialogModifiers: [],
-      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, attributeKey: null, skillKey: null, skillLabel: null, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, finalDifficultyShift: 0, maximumDifficulty: null, autoSuccess: false, annotations: [], damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], dieManualBonus: 0, dieReductionBonus: 0 },
-      modBreakdown: [], attrBreakdown: [], skillBreakdown: [], preRollModifiers: []
+      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, repBonus: 0, repValue: 0, fame: 0, attributeKey: null, skillKey: null, skillLabel: null, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, finalDifficultyShift: 0, maximumDifficulty: null, autoSuccess: false, annotations: [], damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], dieManualBonus: 0, dieReductionBonus: 0 },
+      modBreakdown: [],
+      attrBreakdown: [],
+      skillBreakdown: [],
+      reputationBreakdown: { repBonus: [], repValue: [], fame: [] },
+      preRollModifiers: []
     };
     game.neuroshima?.log?.(`[dialog] fired`, { _actor: actor.name, ...rollContext, _targets: targetActors.map(a => a?.name) });
 
@@ -5076,8 +5093,9 @@ export class NeuroshimaScriptRunner {
       ? foundry.utils.deepClone(options.preRollModifiers)
       : [];
 
-    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, finalDifficultyShift: 0, maximumDifficulty: null, autoSuccess: false, annotations: [], damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], attributeKey: null, skillKey: null, skillLabel: null, dieManualBonus: 0, dieReductionBonus: 0 };
+    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, repBonus: 0, repValue: 0, fame: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, finalDifficultyShift: 0, maximumDifficulty: null, autoSuccess: false, annotations: [], damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], attributeKey: null, skillKey: null, skillLabel: null, dieManualBonus: 0, dieReductionBonus: 0 };
     const modBreakdown = [], attrBreakdown = [], skillBreakdown = [];
+    const reputationBreakdown = { repBonus: [], repValue: [], fame: [] };
 
     for (const dm of dialogModifiers) {
       // For isMeleePreRoll entries prefer dialogCode; fall back to code if dialogCode empty.
@@ -5103,6 +5121,9 @@ export class NeuroshimaScriptRunner {
       scriptFields.modifier += result.modifier || 0;
       scriptFields.attributeBonus += result.attributeBonus || 0;
       scriptFields.skillBonus += result.skillBonus || 0;
+      scriptFields.repBonus += result.repBonus || 0;
+      scriptFields.repValue += result.repValue || 0;
+      scriptFields.fame += result.fame || 0;
       scriptFields.armorDelta += result.armorDelta || 0;
       scriptFields.woundDelta += result.woundDelta || 0;
       scriptFields.diseasePenalty += result.diseasePenalty || 0;
@@ -5138,6 +5159,9 @@ export class NeuroshimaScriptRunner {
       if (result.modifier) modBreakdown.push({ label, value: result.modifier });
       if (result.attributeBonus) attrBreakdown.push({ label, value: result.attributeBonus });
       if (result.skillBonus) skillBreakdown.push({ label, value: result.skillBonus });
+      if (result.repBonus) reputationBreakdown.repBonus.push({ label, value: result.repBonus });
+      if (result.repValue) reputationBreakdown.repValue.push({ label, value: result.repValue });
+      if (result.fame) reputationBreakdown.fame.push({ label, value: result.fame });
       if (result.healingModifierAll || Object.keys(result.healingModifier || {}).length > 0) {
         scriptFields.healingModBreakdown.push({ label, healingModifierAll: result.healingModifierAll || 0, healingModifier: result.healingModifier || {} });
       }
@@ -5153,7 +5177,15 @@ export class NeuroshimaScriptRunner {
       if (prt.value) modBreakdown.push({ label: prt.label, value: prt.value });
     }
 
-    const result = { dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown, preRollModifiers };
+    const result = {
+      dialogModifiers,
+      scriptFields,
+      modBreakdown,
+      attrBreakdown,
+      skillBreakdown,
+      reputationBreakdown,
+      preRollModifiers
+    };
     const resolveFinalContext = options.resolveFinalContext;
 
     if (typeof resolveFinalContext === "function") {

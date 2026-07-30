@@ -446,6 +446,7 @@ export class NeuroshimaItem extends Item {
     // for their dialogs and other asynchronous operations to finish.
     this._createEffectScriptsPromise = this._executeCreateEffectScripts(actor, data, options);
     await this._createEffectScriptsPromise;
+    if (game.user.isGM || actor.isOwner) await actor._checkAutoConditions?.();
   }
 
   async _executeCreateEffectScripts(actor, data, options) {
@@ -531,8 +532,13 @@ export class NeuroshimaItem extends Item {
           if (enabled) updateData[`system.specializations.${key}`] = true;
         }
       }
-      actor.update(updateData);
+      await actor.update(updateData);
     }
+
+    // Item weight, quantity, containment and equipped state all influence
+    // derived actor data without producing Actor#_onUpdate. Reconcile automatic
+    // conditions explicitly after every owned embedded-item update.
+    if (game.user.isGM || actor.isOwner) await actor._checkAutoConditions?.();
   }
 
   /**
@@ -582,12 +588,13 @@ export class NeuroshimaItem extends Item {
           if (enabled) updateData[`system.specializations.${key}`] = true;
         }
       }
-      actor.update(updateData);
+      await actor.update(updateData);
     }
 
     // Any item can own equip-transfer effects (including parent weapons/armor
     // receiving them from mounted modifications). Remove actor mirrors before
     // the source item disappears.
     await actor.syncEquipTransferEffects(this, false);
+    if (game.user.isGM || actor.isOwner) await actor._checkAutoConditions?.();
   }
 }

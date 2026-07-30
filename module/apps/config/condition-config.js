@@ -1,5 +1,45 @@
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
+const LEGACY_OVERWEIGHT_CHECK_CODE = `const enc = this.encumbrance;
+if (!enc || enc.enabled === false || enc.max <= 0) return;
+if (enc.value >= enc.max) await this.apply();
+else await this.remove();`;
+
+const OVERWEIGHT_CHECK_CODE = `if (this.isOverweight) await this.apply();
+else await this.remove();`;
+
+const LEGACY_DEFEATED_CHECK_CODE = `if (!["npc", "creature"].includes(this.actor.type)) return;
+const maxHP = this.actor.type === "creature"
+  ? (this.actor.getFlag("neuroshima", "creatureMaxHP") || this.actor.system.combat?.maxHP || 27)
+  : (this.actor.system.hp?.max ?? 27);
+if (maxHP > 0 && this.totalDamagePoints >= maxHP) await this.apply();`;
+
+const DEFEATED_CHECK_CODE = `if (!this.usesAutomaticDefeat) return;
+if (this.isDefeated) await this.apply();
+else await this.remove();`;
+
+/**
+ * Canonical overload predicate shared by the built-in condition and tests.
+ * Disabled or invalid encumbrance can never keep the automatic condition active.
+ */
+export function isOverweightEncumbrance(encumbrance) {
+  if (!encumbrance || encumbrance.enabled === false) return false;
+  const value = Number(encumbrance.value);
+  const maximum = Number(encumbrance.max);
+  return Number.isFinite(value) && Number.isFinite(maximum) && maximum > 0 && value > maximum;
+}
+
+/**
+ * NPCs and creatures are automatically defeated at their damage limit.
+ * Player characters keep manual control of the Dead/Prone conditions.
+ */
+export function isDefeatedByDamage({ actorType, totalDamagePoints, maxHP } = {}) {
+  if (!["npc", "creature"].includes(actorType)) return false;
+  const damage = Number(totalDamagePoints);
+  const maximum = Number(maxHP);
+  return Number.isFinite(damage) && Number.isFinite(maximum) && maximum > 0 && damage >= maximum;
+}
+
 /**
  * Default system conditions.
  * Stored as plain objects — name is a display string (user-editable for custom conditions).
@@ -8,11 +48,7 @@ export const DEFAULT_CONDITIONS = [
   {
     id: "dead", name: "Martwy", key: "dead", img: "icons/svg/skull.svg",
     type: "boolean", allowNegative: false, builtin: true, booleanOnly: true, scripts: [],
-    conditionCheckCode: `if (!["npc", "creature"].includes(this.actor.type)) return;
-const maxHP = this.actor.type === "creature"
-  ? (this.actor.getFlag("neuroshima", "creatureMaxHP") || this.actor.system.combat?.maxHP || 27)
-  : (this.actor.system.hp?.max ?? 27);
-if (maxHP > 0 && this.totalDamagePoints >= maxHP) await this.apply();`
+    conditionCheckCode: DEFEATED_CHECK_CODE
   },
   { id: "asleep",      name: "Śpiący",        key: "asleep",      img: "icons/svg/sleep.svg",       type: "boolean", allowNegative: false, builtin: true, booleanOnly: true,  scripts: [], conditionCheckCode: "" },
   { id: "unconscious", name: "Nieprzytomny",  key: "unconscious", img: "icons/svg/unconscious.svg", type: "boolean", allowNegative: false, builtin: true, booleanOnly: true,  scripts: [], conditionCheckCode: "" },
@@ -20,11 +56,7 @@ if (maxHP > 0 && this.totalDamagePoints >= maxHP) await this.apply();`
   {
     id: "prone", name: "Leżący", key: "prone", img: "icons/svg/falling.svg",
     type: "boolean", allowNegative: false, builtin: true, booleanOnly: true, scripts: [],
-    conditionCheckCode: `if (!["npc", "creature"].includes(this.actor.type)) return;
-const maxHP = this.actor.type === "creature"
-  ? (this.actor.getFlag("neuroshima", "creatureMaxHP") || this.actor.system.combat?.maxHP || 27)
-  : (this.actor.system.hp?.max ?? 27);
-if (maxHP > 0 && this.totalDamagePoints >= maxHP) await this.apply();`
+    conditionCheckCode: DEFEATED_CHECK_CODE
   },
   { id: "restrained",  name: "Unieruchomiony", key: "restrained",  img: "icons/svg/net.svg",        type: "int",     allowNegative: false, builtin: true, booleanOnly: false, intOnly: true, scripts: [], conditionCheckCode: "" },
   { id: "paralyzed",   name: "Sparaliżowany",  key: "paralyzed",   img: "icons/svg/paralysis.svg",  type: "boolean", allowNegative: false, builtin: true, booleanOnly: true,  scripts: [], conditionCheckCode: "" },
@@ -73,10 +105,7 @@ await this.sendMessage(\`<strong>Zatrucie (\${stacks}×)</strong>: kara \${stack
     id: "overweight", name: "Przeciążony", key: "overweight",
     img: "systems/neuroshima/assets/effects/weight.svg",
     type: "boolean", allowNegative: false, builtin: true, booleanOnly: true, scripts: [],
-    conditionCheckCode: `const enc = this.encumbrance;
-if (!enc || enc.enabled === false || enc.max <= 0) return;
-if (enc.value >= enc.max) await this.apply();
-else await this.remove();`
+    conditionCheckCode: OVERWEIGHT_CHECK_CODE
   },
   // ── Combat Maneuver conditions ─────────────────────────────────────────────────────────────
   // These 4 conditions are applied automatically by MeleeTurnService during melee encounters.
@@ -135,6 +164,22 @@ export function getConditions() {
 
     return allEntries.map(saved => {
       const def = DEFAULT_CONDITIONS.find(d => d.key === saved.key);
+      let conditionCheckCode = saved.conditionCheckCode ?? def?.conditionCheckCode ?? "";
+      // Worlds which saved the former built-in template should receive the
+      // corrected symmetric apply/remove check. Deliberately customized code
+      // is left untouched.
+      if (
+        saved.key === "overweight"
+        && conditionCheckCode.trim() === LEGACY_OVERWEIGHT_CHECK_CODE.trim()
+      ) {
+        conditionCheckCode = def?.conditionCheckCode ?? conditionCheckCode;
+      }
+      if (
+        (saved.key === "dead" || saved.key === "prone")
+        && conditionCheckCode.trim() === LEGACY_DEFEATED_CHECK_CODE.trim()
+      ) {
+        conditionCheckCode = def?.conditionCheckCode ?? conditionCheckCode;
+      }
       return {
         ...saved,
         builtin:            def?.builtin            ?? false,
@@ -142,7 +187,7 @@ export function getConditions() {
         intOnly:            def?.intOnly            ?? false,
         scripts:            saved.scripts            ?? def?.scripts            ?? [],
         changes:            saved.changes            ?? def?.changes            ?? [],
-        conditionCheckCode: saved.conditionCheckCode ?? def?.conditionCheckCode ?? ""
+        conditionCheckCode
       };
     });
   } catch {
@@ -571,7 +616,8 @@ export class ConditionConfig extends HandlebarsApplicationMixin(ApplicationV2) {
         _duration:     c._duration     ?? {},
         _transferType: c._transferType ?? "owningDocument",
         _documentType: c._documentType ?? "actor",
-        _equipTransfer:c._equipTransfer ?? false
+        _equipTransfer:c._equipTransfer ?? false,
+        _manualChangeKeys: c._manualChangeKeys ?? false
       }));
 
     game.neuroshima?.log("[ConditionConfig] _onSubmit — saving conditions:", conditions.map(c => ({ key: c.key, scriptsCount: c.scripts?.length ?? 0, changesCount: c.changes?.length ?? 0 })));

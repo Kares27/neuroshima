@@ -20,6 +20,7 @@ import {
   buildBreakdownTooltip,
   buildRichTextTooltip,
   collectAttributeEffectSources,
+  collectDocumentEffectSources,
   collectSkillEffectSources,
   renderTooltipSections
 } from "../helpers/tooltip-renderer.js";
@@ -123,7 +124,6 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       adjustFame: this.prototype._onAdjustFame,
       rollReputation: this.prototype._onRollReputation,
       rollReputationItem: this.prototype._onRollReputationItem,
-      adjustRepValue: this.prototype._onAdjustRepValue,
       sortReputationItems: this.prototype._onSortReputationItems,
       adjustDiseaseState: this.prototype._onAdjustDiseaseState,
       adjustTransientPenalty: this.prototype._onAdjustTransientPenalty,
@@ -570,31 +570,28 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       const repMax = game.settings.get("neuroshima", "reputationMax") ?? 20;
       const reputationBonus = this.document.system?.reputationBonus ?? 0;
       const fameBonus = this.document.system?.fameBonus ?? 0;
-
-      const repBonusSources = [];
-      const fameBonusSources = [];
-      for (const effect of (this.document.effects ?? [])) {
-        if (effect.disabled || effect.isSuppressed) continue;
-        for (const change of (effect.changes ?? [])) {
-          const val = Number(change.value) || 0;
-          if (change.key === "system.reputationBonus") {
-            repBonusSources.push({ label: effect.name ?? "?", value: val });
-          } else if (change.key === "system.fameBonus") {
-            fameBonusSources.push({ label: effect.name ?? "?", value: val });
-          }
-        }
-      }
+      const actorEffectSources = collectDocumentEffectSources(this.document, [
+        "system.reputationBonus",
+        "system.fame",
+        "system.fameBonus"
+      ]);
+      const repBonusSources = actorEffectSources["system.reputationBonus"];
+      const fameSources = [
+        ...actorEffectSources["system.fame"],
+        ...actorEffectSources["system.fameBonus"]
+      ];
+      const additiveTotal = sources => sources
+        .filter(source => source.signed !== false)
+        .reduce((sum, source) => sum + Number(source.value ?? 0), 0);
 
       context.reputationBonus = reputationBonus;
       context.fameBonus = fameBonus;
       context.effectiveFame = (this.document.system?.fame ?? 0) + fameBonus;
       context.fameBonusTooltip = buildBreakdownTooltip({
-        title: "NEUROSHIMA.Reputation.FameAbbr",
-        sources: fameBonusSources
-      }) || null;
-      context.repBonusTooltip = buildBreakdownTooltip({
-        title: "NEUROSHIMA.Reputation.RepBonus",
-        sources: repBonusSources
+        title: "NEUROSHIMA.Reputation.Fame",
+        baseValue: context.effectiveFame - additiveTotal(fameSources),
+        sources: fameSources,
+        totalValue: context.effectiveFame
       }) || null;
       context.showRepAsProgressBar = showAsProgressBar;
       context.repMin = repMin;
@@ -623,6 +620,14 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       for (const item of context.reputationItems) {
         const baseVal = item.system?.value ?? 0;
         const effectiveVal = baseVal + reputationBonus;
+        const itemSources = collectDocumentEffectSources(item, ["system.value"])["system.value"];
+        const reputationSources = [...itemSources, ...repBonusSources];
+        item.reputationEffectTooltip = buildBreakdownTooltip({
+          title: item.name,
+          baseValue: effectiveVal - additiveTotal(reputationSources),
+          sources: reputationSources,
+          totalValue: effectiveVal
+        }) || null;
         const activeTable = (item.system?.overrideRelations && item.system?.relationTable?.length)
           ? item.system.relationTable
           : globalRelTable;
@@ -1000,6 +1005,12 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       const item = this.document.items.get(itemId);
       if (!item) return;
 
+      // Reputation is an embedded Item, but on character sheets its value
+      // participates in the same XP purchase/refund flow as attributes/skills.
+      if (item.type === "reputation" && propertyPath === "system.value") {
+        return this._onChangeRepValue(event, input, item);
+      }
+
       let value;
       if (input.type === "checkbox") {
         value = input.checked;
@@ -1150,37 +1161,24 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
     if (name === "system.xp.spent") {
       if (!isCharacter) return super._onChangeForm(formConfig, event);
-      const newVal = Number(input.value);
+      const newVal = Math.round(Number(input.value));
       const oldVal = Number(this.document.system.xp?.spent) || 0;
-      if (newVal < 0) { input.value = oldVal; return; }
-      if (newVal > oldVal) {
-        const total = Number(this.document.system.xp?.total) || 0;
-        if (newVal > total) {
-          ui.notifications?.warn(game.i18n.localize("NEUROSHIMA.XP.Deduct.ExceedsTotal"));
-          input.value = oldVal;
-          return;
-        }
-        const amount = newVal - oldVal;
-        const { showXpDeductDialog } = await import("../helpers/xp.js");
-        const result = await showXpDeductDialog(amount);
-        if (result === null) { input.value = oldVal; return; }
-        const current = total - oldVal;
-        const entry = {
-          id:            foundry.utils.randomID(),
-          date:          new Date().toLocaleDateString("pl-PL"),
-          description:   result.reason,
-          cost:          amount,
-          xpBefore:      current,
-          xpAfter:       current - amount,
-          previousValue: oldVal,
-          fieldPath:     "system.xp.spent"
-        };
-        const log = foundry.utils.deepClone(this.document.system.xpLog ?? []);
-        log.push(entry);
-        await this.document.update({ "system.xp.spent": newVal, "system.xpLog": log }, { ns_skip_xp: true });
+      if (!Number.isFinite(newVal) || newVal < 0) { input.value = oldVal; return; }
+      if (newVal === oldVal) return;
+
+      const delta = newVal - oldVal;
+      const {
+        applyXpSpentAdjustment,
+        showXpSpentAdjustmentDialog
+      } = await import("../helpers/xp.js");
+      const result = await showXpSpentAdjustmentDialog(delta);
+      if (result === null) {
+        input.value = oldVal;
         return;
       }
-      input.value = oldVal;
+      const updateData = {};
+      applyXpSpentAdjustment(this.document, updateData, newVal, result.reason);
+      await this.document.update(updateData, { ns_skip_xp: true });
       return;
     }
 
@@ -1199,14 +1197,6 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         event.preventDefault();
         event.stopPropagation();
         this._onAdjustFame(event, event.currentTarget);
-      });
-    });
-
-    html.querySelectorAll('[data-action="adjustRepValue"]').forEach(el => {
-      el.addEventListener('contextmenu', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        this._onAdjustRepValue(event, event.currentTarget);
       });
     });
 
@@ -2780,7 +2770,9 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
   async _onAdjustFame(event, target) {
     event.preventDefault();
     const direction = event.button === 2 ? -1 : 1;
-    const current = this.document.system.fame ?? 0;
+    // Adjust the stored value, not the prepared value after Active Effects;
+    // otherwise clicking Fame would permanently bake an AE bonus into data.
+    const current = this.document._source?.system?.fame ?? this.document.system.fame ?? 0;
     const newValue = Math.max(-40, Math.min(40, current + direction));
     return this.document.update({ "system.fame": newValue });
   }
@@ -2803,24 +2795,121 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     dialog.render(true);
   }
 
-  async _onAdjustRepValue(event, target) {
-    event.preventDefault();
-    const itemId = target.dataset.itemId;
-    const item = this.document.items.get(itemId);
+  /**
+   * Change the stored value of an embedded reputation Item.
+   *
+   * Character reputation uses the shared attribute/skill XP dialogs. The Item
+   * and actor XP log are updated as one logical operation and the Item is
+   * rolled back if the actor update fails.
+   */
+  async _onChangeRepValue(event, input, item = null) {
+    const itemId = item?.id ?? input?.dataset?.itemId;
+    item ??= this.document.items.get(itemId);
     if (!item || item.type !== "reputation") return;
 
-    const direction = event.button === 2 ? -1 : 1;
-
-    let amount = 1;
-    if ((event.shiftKey) && (event.ctrlKey || event.metaKey)) amount = 100;
-    else if (event.ctrlKey || event.metaKey) amount = 10;
-    else if (event.shiftKey) amount = 5;
-
-    const repMin = game.settings.get("neuroshima", "reputationMin") ?? -20;
+    const repMin = game.settings.get("neuroshima", "reputationMin") ?? 0;
     const repMax = game.settings.get("neuroshima", "reputationMax") ?? 20;
-    const current = item.system.value ?? 0;
-    const newValue = Math.max(repMin, Math.min(repMax, current + direction * amount));
-    return item.update({ "system.value": newValue });
+    const current = Number(item._source?.system?.value ?? item.system.value) || 0;
+    const requested = Number(input?.value);
+    if (!Number.isFinite(requested)) {
+      if (input) input.value = current;
+      return;
+    }
+    const newValue = Math.max(repMin, Math.min(repMax, Math.round(requested)));
+    if (input) input.value = newValue;
+    const points = newValue - current;
+    if (points === 0) return;
+
+    // Outside character sheets reputation remains an ordinary embedded Item.
+    if (this.document.type !== "character") {
+      return item.update({ "system.value": newValue });
+    }
+
+    if (this._reputationChangePending) {
+      if (input) input.value = current;
+      return;
+    }
+    this._reputationChangePending = true;
+
+    try {
+      const {
+        applyXpEntry,
+        normalizeReputationCost,
+        showXpDialog,
+        showXpRefundDialog
+      } = await import("../helpers/xp.js");
+      const unitCost = normalizeReputationCost(this.document.system.reputationCost);
+      const total = Number(this.document.system.xp?.total) || 0;
+      const spent = Number(this.document.system.xp?.spent) || 0;
+      const currentXp = total - spent;
+      const descriptionKey = points > 0
+        ? "NEUROSHIMA.XP.Log.ReputationPurchase"
+        : "NEUROSHIMA.XP.Refund.Reputation";
+      const description = game.i18n.format(descriptionKey, {
+        name: item.name,
+        from: current,
+        to: newValue,
+        points: Math.abs(points)
+      });
+      const defaultCost = unitCost * Math.abs(points);
+      const choice = points > 0
+        ? await showXpDialog(defaultCost, description, currentXp)
+        : await showXpRefundDialog(defaultCost, description, currentXp);
+      if (choice === null) {
+        if (input) input.value = current;
+        return;
+      }
+
+      // The value may have changed while the confirmation dialog was open.
+      const liveItem = this.document.items.get(item.id);
+      const liveValue = Number(liveItem?._source?.system?.value ?? liveItem?.system.value) || 0;
+      const enteredCost = Number(choice.cost) || 0;
+      const cost = choice.free
+        ? 0
+        : points > 0
+          ? Math.max(0, enteredCost)
+          : Math.min(0, enteredCost);
+      if (!liveItem || liveValue !== current) {
+        if (input) input.value = liveValue;
+        ui.notifications?.warn(game.i18n.localize("NEUROSHIMA.Reputation.ChangeStateChanged"));
+        return;
+      }
+      const logDescription = choice.free && points > 0
+        ? game.i18n.format("NEUROSHIMA.XP.Log.ReputationFree", {
+          name: item.name,
+          from: current,
+          to: newValue,
+          points: Math.abs(points)
+        })
+        : description;
+      const actorUpdate = {};
+      applyXpEntry(
+        this.document,
+        actorUpdate,
+        cost,
+        logDescription,
+        current,
+        "system.value",
+        {
+          operation: choice.free
+            ? "reputationFree"
+            : points > 0
+              ? "reputation"
+              : "reputationRefund",
+          documentUuid: item.uuid
+        }
+      );
+
+      await liveItem.update({ "system.value": newValue });
+      try {
+        await this.document.update(actorUpdate, { ns_skip_xp: true });
+      } catch (error) {
+        await liveItem.update({ "system.value": current });
+        throw error;
+      }
+    } finally {
+      this._reputationChangePending = false;
+    }
   }
 
   async _onSortReputationItems(event, target) {
@@ -3552,41 +3641,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     let val = parseInt(target.dataset.value ?? target.textContent, 10);
     if (isNaN(val)) val = 0;
     if (!allowNegative) val = Math.max(0, val);
-
-    const existing = actor.effects.find(
-      e => e.statuses?.has(key) && e.getFlag("neuroshima", "conditionNumbered")
-    );
-    if (val === 0 && !allowNegative) {
-      if (existing) await existing.delete();
-      return;
-    }
-    if (existing) {
-      await existing.setFlag("neuroshima", "conditionValue", val);
-    } else if (val !== 0) {
-      const condDef = getConditions().find(c => c.key === key);
-      game.neuroshima?.log(`[_onAdjustConditionValue] creating AE for "${key}" scripts:`, condDef?.scripts);
-      if (!condDef) return;
-      await actor.createEmbeddedDocuments("ActiveEffect", [{
-        name:        condDef.name,
-        img:         condDef.img          ?? "icons/svg/aura.svg",
-        tint:        condDef._tint        ?? null,
-        description: condDef._description ?? "",
-        disabled:    condDef._disabled    ?? false,
-        statuses:    [key],
-        changes:     foundry.utils.deepClone(condDef.changes   ?? []),
-        duration:    foundry.utils.deepClone(condDef._duration ?? {}),
-        flags: {
-          neuroshima: {
-            conditionNumbered: true,
-            conditionValue:    val,
-            scripts:           foundry.utils.deepClone(condDef.scripts      ?? []),
-            transferType:      condDef._transferType  ?? "owningDocument",
-            documentType:      condDef._documentType  ?? "actor",
-            equipTransfer:     condDef._equipTransfer ?? false
-          }
-        }
-      }]);
-    }
+    await actor.setConditionValue(key, val);
   }
 
   _prepareItemManualScripts(actor) {

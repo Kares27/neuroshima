@@ -1,5 +1,6 @@
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
+import { getBaseReputationCost } from "../helpers/xp.js";
 
 /**
  * Data model for Neuroshima Actors.
@@ -49,7 +50,9 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
       origin: new fields.StringField({ initial: "" }),
       profession: new fields.StringField({ initial: "" }),
       xp: new fields.SchemaField({
-        current: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+        // Prepared balance may be negative when a character deliberately
+        // spends more XP than is currently available.
+        current: new fields.NumberField({ integer: true, initial: 0 }),
         spent: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
         total: new fields.NumberField({ integer: true, initial: 0, min: 0 })
       }),
@@ -99,10 +102,16 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
         isOpen: new fields.BooleanField({ initial: false })
       }),
       notes: new fields.HTMLField({ initial: "" }),
-      reputation: new fields.NumberField({ required: true, integer: true, initial: 0, min: 0 }),
-      fame: new fields.NumberField({ required: true, integer: true, initial: 0, min: 0 }),
+      // Reputation relations and fame can be negative. Keeping the source
+      // fields signed also lets every numeric Active Effect mode operate
+      // without schema validation fighting the prepared value.
+      reputation: new fields.NumberField({ required: true, integer: true, initial: 0 }),
+      fame: new fields.NumberField({ required: true, integer: true, initial: 0, min: -40, max: 40 }),
       reputationBonus: new fields.NumberField({ required: true, integer: true, initial: 0 }),
       fameBonus: new fields.NumberField({ required: true, integer: true, initial: 0 }),
+      // Prepared-only purchase price. Reset from the world setting on every
+      // preparation, then modified by Active Effect scripts through args.reputation.
+      reputationCost: new fields.NumberField({ required: true, integer: true, initial: 25, min: 0 }),
       hp: new fields.SchemaField({
         value: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
         max: new fields.NumberField({ integer: true, initial: 27, min: 1 })
@@ -140,7 +149,9 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
         xpBefore:      new fields.NumberField({ integer: true, initial: 0 }),
         xpAfter:       new fields.NumberField({ integer: true, initial: 0 }),
         previousValue: new fields.NumberField({ nullable: true, initial: null }),
-        fieldPath:     new fields.StringField({ initial: "" })
+        fieldPath:     new fields.StringField({ initial: "" }),
+        operation:     new fields.StringField({ initial: "" }),
+        documentUuid:  new fields.StringField({ initial: "" })
       }), { initial: [] })
     };
   }
@@ -169,6 +180,7 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
     }
     this.reputationBonus = 0;
     this.fameBonus = 0;
+    this.reputationCost = getBaseReputationCost();
   }
 
   /**
