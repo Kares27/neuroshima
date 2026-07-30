@@ -294,7 +294,7 @@
     <div class="ctx-row"><span class="ctx-name">this.token</span><span class="ctx-type">TokenDocument | null</span><span class="ctx-desc">Pierwszy token aktora na aktywnej scenie (null jeśli brak)</span></div>
     <div class="ctx-row"><span class="ctx-name">this.notification(msg, type?)</span><span class="ctx-type">void</span><span class="ctx-desc">Pokazuje powiadomienie UI. type: "info" | "warn" | "error"</span></div>
     <div class="ctx-row"><span class="ctx-name">this.addAnnotation(text)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Dodaje krótką adnotację wyświetlaną pod wynikiem rzutu na karcie czatu. Zwraca <code>true</code>, gdy bieżący wyzwalacz udostępnia test. Działa w <code>dialog</code> oraz wszystkich fazach testu, w tym <code>afterRollDice</code>.</span></div>
-    <div class="ctx-row"><span class="ctx-name">this.forceInitiative(value)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Wymusza liczbowy wynik bieżącego <code>InitiativeTest</code>. Wartość trafia na kartę czatu i do powiązanego wpisu w Combat Trackerze. Zwraca <code>false</code> poza wyzwalaczem testu inicjatywy albo dla nieprawidłowej wartości.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.forceInitiative(value)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Wymusza liczbę Punktów sukcesu bieżącego <code>InitiativeTest</code>. Działa także w <strong>Submission Script</strong> aktywnego wyzwalacza <code>dialog</code> przy rzucie inicjatywy. Ta sama wartość trafia do powiązanego wpisu w Combat Trackerze. Zwraca <code>false</code> poza kontekstem inicjatywy albo dla nieprawidłowej wartości.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.roll(formula, data?, options?)</span><span class="ctx-type">Promise&lt;Roll&gt;</span><span class="ctx-desc">Rzut kością. <code>options: { flavor, rollMode, toMessage, speaker }</code> — gdy <code>flavor</code> lub <code>toMessage:true</code>, wynik trafia do chatu z flavorem i speakerem aktora. <strong>Tylko w triggerach ASYNC.</strong></span></div>
     <div class="ctx-row"><span class="ctx-name">this.rollToChat(count, sides, options?)</span><span class="ctx-type">number[] | Promise&lt;Roll&gt;</span><span class="ctx-desc"><strong>Ujednolicony rzut kością — działa w SYNC i ASYNC.</strong> W triggerze SYNC (<code>APCalc</code>) zachowuje się jak <code>deferRollToChat</code>: wykonuje rzut natychmiast i zwraca <code>number[]</code>, wpis na czat jest odroczony. W triggerze ASYNC działa jak <code>this.roll</code> i zwraca <code>Promise&lt;Roll&gt;</code>. Możesz bezpiecznie pisać <code>await this.rollToChat(...)</code> w obu kontekstach. Opcje: <code>{ flavor, rollMode, speaker }</code>.</span></div>
     <div class="ctx-row"><span class="ctx-name">this.deferRollToChat(count, sides, options?)</span><span class="ctx-type">number[]</span><span class="ctx-desc">Rzut synchroniczny — wynik dostępny natychmiast jako <code>number[]</code>. Wpis na czat z flavorem odroczony do momentu zakończenia wszystkich kalkulacji. <strong>Tylko w triggerach SYNC</strong> (<code>APCalc</code>). Opcje: <code>{ flavor, rollMode, speaker }</code>.</span></div>
@@ -548,7 +548,7 @@
       <li><strong>Dialog Script</strong> — główny skrypt; modyfikuje <code>args.fields</code> gdy modyfikator jest aktywny.</li>
       <li><strong>Hide Script</strong> — zwróć <code>true</code>, aby ukryć modyfikator w panelu. Gdy puste — modyfikator jest <strong>zawsze widoczny</strong>.</li>
       <li><strong>Activate Script</strong> — zwróć <code>true</code>, aby modyfikator był automatycznie aktywowany.</li>
-      <li><strong>Submission Script</strong> — uruchamiany gdy modyfikator jest aktywny i użytkownik zatwierdza dialog. Służy do ustawiania flag dla innych wyzwalaczy.</li>
+      <li><strong>Submission Script</strong> — uruchamiany gdy modyfikator jest aktywny i użytkownik zatwierdza dialog. Służy do ustawiania flag dla innych wyzwalaczy. W dialogu inicjatywy może również wywołać <code>this.forceInitiative(value)</code>.</li>
     </ul>
   </div>
 
@@ -580,6 +580,14 @@
 
     </tbody>
   </table>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">dialog — Submission Script</span> Wymuszenie inicjatywy po zatwierdzeniu dialogu</div>
+    <pre><code><span class="cmt">// Wykona się tylko, gdy ten modyfikator dialogowy jest aktywny.</span>
+<span class="kw">if</span> (args.rollType === <span class="str">"initiative"</span>) {
+  <span class="kw">this</span>.<span class="fn">forceInitiative</span>(<span class="num">12</span>);
+}</code></pre>
+  </div>
 
   <p><strong>Obiekt <code>args.fields</code></strong> (dostępny wyłącznie w Dialog Script):</p>
   <table>
@@ -963,7 +971,7 @@ args.reputation.<span class="fn">modifyCost</span>(-<span class="num">10</span>)
     <tr><td>args.test.preData.attributeBonus</td><td>number</td><td>Bonus do atrybutu — modyfikuj bezpośrednio (działa dla obu typów)</td></tr>
     <tr><td>args.test.preData.label</td><td>string</td><td>Etykieta rzutu (read-only, tylko testy umiejętności)</td></tr>
     <tr><td>args.test.forceSuccess()</td><td>method</td><td><code>forceSuccess({ mode: "keepRoll", annotation })</code> zachowuje normalny rzut i wymusza sukces; tryb <code>"skipRoll"</code> pomija losowanie.</td></tr>
-    <tr><td>args.test.forceInitiative(value)</td><td>method</td><td>W <code>InitiativeTest</code> zapisuje wymuszoną wartość inicjatywy. Preferowany skrót w skrypcie: <code>this.forceInitiative(value)</code>.</td></tr>
+    <tr><td>args.test.forceInitiative(value)</td><td>method</td><td>W <code>InitiativeTest</code> zastępuje Punkty sukcesu podaną wartością i przekazuje ją do Combat Trackera. Preferowany skrót w skrypcie: <code>this.forceInitiative(value)</code>.</td></tr>
     <tr><td>args.test.cancel()</td><td>method</td><td><code>cancel(reason)</code> bezpiecznie anuluje test i zapisuje przyczynę w kontekście.</td></tr>
     <tr><td>args.test.preData.annotations</td><td>string[]</td><td>Tablica adnotacji wyświetlanych pod wynikiem rzutu. <strong>Dodawaj przez helper</strong> <code>this.addAnnotation(text)</code></td></tr>
     <tr><td>args.test.preData.dieManualBonus</td><td>number</td><td>Liczba oczek do rozdysponowania przez gracza w UI czatu. Modyfikuj bezpośrednio: <code>args.test.preData.dieManualBonus = 2</code></td></tr>
@@ -1084,7 +1092,7 @@ args.dice.<span class="fn">copy</span>(<span class="var">bestIndex</span>, <span
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Rzucający aktor</td></tr>
     <tr><td>args.initiative</td><td>number</td><td>Wynik inicjatywy — <strong>modyfikuj bezpośrednio</strong> (<code>args.initiative += 3</code>).</td></tr>
-    <tr><td>this.forceInitiative(value)</td><td>boolean</td><td>Trwale wymusza wynik testu inicjatywy; aktualizuje kartę czatu i powiązanego Combatanta.</td></tr>
+    <tr><td>this.forceInitiative(value)</td><td>boolean</td><td>Trwale zastępuje Punkty sukcesu testu inicjatywy i aktualizuje powiązanego Combatanta tą samą wartością.</td></tr>
     <tr><td>args.test</td><td>InitiativeTest</td><td>Aktualny obiekt testu z <code>preData</code>, <code>result</code> i <code>context</code>.</td></tr>
     <tr><td>args.test.result</td><td>object</td><td>Obliczony wynik, w tym <code>successPoints</code> oraz kości.</td></tr>
     <tr><td>args.test.attributeKey</td><td>string | null</td><td>Klucz współczynnika użytego w teście inicjatywy.</td></tr>

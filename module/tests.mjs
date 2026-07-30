@@ -421,8 +421,10 @@ export class NeuroshimaTestBase {
     this.preData.resultModifiers ??= {};
     this.preData.resultModifiers.forcedInitiative = initiative;
     if (this.result?.isInitiative === true) {
+      this.result.successPoints = initiative;
       this.result.initiative = initiative;
       this.result.initiativeForced = true;
+      this.reconcileSuccess();
       this.markDirty("forceInitiative");
     }
     return true;
@@ -1363,6 +1365,10 @@ export class InitiativeTest extends NeuroshimaTest {
       ? Number(forcedInitiative)
       : Number(args.initiative ?? baseInitiative);
     this.result.initiativeForced = isForced;
+    if (isForced) {
+      this.result.successPoints = Number(forcedInitiative);
+      this.reconcileSuccess();
+    }
     this.result.isInitiative = true;
     return this;
   }

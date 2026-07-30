@@ -343,6 +343,9 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
       await dm._script.runSubmission({
         actor: this.actor,
         item: this.item ?? null,
+        rollType: "initiative",
+        isMelee: this.isMelee === true,
+        eventContext: { trigger: "dialog", phase: "submission" },
         options: submissionOptions,
         fields: this._scriptFields,
         flags: this._scriptFlags
@@ -476,6 +479,9 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
     });
     if (rollData.autoSuccess === true) {
       test.forceSuccess({ mode: "keepRoll" });
+    }
+    if (Object.hasOwn(rollData.options ?? {}, "forcedInitiative")) {
+      test.forceInitiative(rollData.options.forcedInitiative);
     }
     await test.roll();
     if (this._onRollCallback) await this._onRollCallback(test.result, test);

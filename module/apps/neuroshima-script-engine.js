@@ -1294,13 +1294,18 @@ export class NeuroshimaScript {
   forceInitiative(value) {
     if (value === null || (typeof value === "string" && value.trim() === "")) return false;
     const initiative = Number(value);
-    const test = this._currentArgs?.test;
-    if (!Number.isFinite(initiative)
-      || test?.rollType !== "initiative"
+    if (!Number.isFinite(initiative)) return false;
+    const args = this._currentArgs;
+    const test = args?.test;
+    if (!test && args?.rollType === "initiative" && args.options) {
+      args.options.forcedInitiative = initiative;
+      return true;
+    }
+    if (test?.rollType !== "initiative"
       || typeof test.forceInitiative !== "function") return false;
     const forced = test.forceInitiative(initiative);
-    if (forced && Object.hasOwn(this._currentArgs ?? {}, "initiative")) {
-      this._currentArgs.initiative = initiative;
+    if (forced && Object.hasOwn(args ?? {}, "initiative")) {
+      args.initiative = initiative;
     }
     return forced;
   }

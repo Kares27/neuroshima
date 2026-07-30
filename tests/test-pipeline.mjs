@@ -1458,9 +1458,12 @@ test("forceInitiative persists the override and updates chat data and Combat Tra
   await instance.roll({ sendToChat: false });
 
   assert.equal(instance.result.initiative, 17);
+  assert.equal(instance.result.successPoints, 17);
   assert.equal(instance.result.initiativeForced, true);
   assert.equal(instance.toData().preData.resultModifiers.forcedInitiative, 17);
-  assert.equal((await instance.getChatData()).initiative, 17);
+  const chatData = await instance.getChatData();
+  assert.equal(chatData.initiative, 17);
+  assert.equal(chatData.successPoints, 17);
   assert.deepEqual(updates, [{ initiative: 17 }]);
 });
 
@@ -1476,6 +1479,26 @@ test("forceInitiative rejects invalid values and non-initiative tests", () => {
   assert.equal(script.forceInitiative(""), false);
   assert.equal(script.forceInitiative(null), false);
   assert.equal(initiative.preData.resultModifiers?.forcedInitiative, undefined);
+});
+
+test("forceInitiative is available to initiative dialog submissionScript", async () => {
+  const options = {};
+  const script = new NeuroshimaScript({
+    trigger: "dialog",
+    submissionScript: "return this.forceInitiative(14);"
+  }, null);
+
+  const result = await script.runSubmission({
+    actor: actorFixture(),
+    rollType: "initiative",
+    eventContext: { trigger: "dialog", phase: "submission" },
+    options,
+    fields: {},
+    flags: {}
+  });
+
+  assert.equal(result, true);
+  assert.equal(options.forcedInitiative, 14);
 });
 
 test("forceInitiative from rollTest recalculates before updating the Combat Tracker", async () => {
@@ -1495,6 +1518,7 @@ test("forceInitiative from rollTest recalculates before updating the Combat Trac
 
   assert.equal(instance.context.dirty, false);
   assert.equal(instance.result.initiative, 23);
+  assert.equal(instance.result.successPoints, 23);
   assert.deepEqual(updates, [{ initiative: 23 }]);
 });
 
