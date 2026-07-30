@@ -191,6 +191,7 @@
             "Armor": "Pancerz",
             "Wounds": "Rany",
             "Disease": "Choroba",
+            "Effects": "Efekty",
             "Weapon": "Broń",
             "Location": "Lokacja",
             "Distance": "Dystans",
@@ -274,6 +275,8 @@
             "Armor": "Pancerz",
             "Wounds": "Rany",
             "Disease": "Choroba",
+            "Effects": "Efekty",
+            "DialogEffects": "Skrypty dialogowe",
             "Summary": "Podsumowanie",
             "TotalModifier": "Suma modyfikatorów",
             "DialogModifiers": "Modyfikatory Dialogu",
@@ -792,6 +795,7 @@
             "MeleeInitiative": "Inicjatywa Wręcz",
             "ArmorPenalty": "Kara od Pancerza",
             "GeneralPenalty": "Ogólna Kara",
+            "EffectPenalty": "Efekty (%)",
             "PiercingAbbr": "PP"
         },
         "MeleeOpposed": {

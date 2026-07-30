@@ -29,6 +29,15 @@
                 <input type="number" name="diseasePenalty" value="{{diseasePenalty}}" placeholder="0" disabled/>
             </div>
             {{/if}}
+            {{#if showEffectPenalty}}
+            <div class="form-group">
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" name="useEffectPenalty" {{checked useEffectPenalty}}/>
+                    <label>{{localize "NEUROSHIMA.Roll.Effects"}} (%)</label>
+                </div>
+                <input type="number" name="effectPenalty" value="{{#if useEffectPenalty}}{{effectPenalty}}{{else}}0{{/if}}" placeholder="0" disabled/>
+            </div>
+            {{/if}}
             <div class="form-group">
                 <label title="{{localize 'NEUROSHIMA.Roll.SkillBonus'}}">{{localize "NEUROSHIMA.Roll.SkillBonusAbbr"}}</label>
                 <input type="number" name="skillBonus" value="{{skillBonus}}" placeholder="0"/>

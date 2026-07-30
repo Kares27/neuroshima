@@ -271,8 +271,7 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
           return total + (item.system.armor?.penalty || 0);
         }
         return total;
-      }, 0) + (Number(system.combat?.armorPenaltyBonus) || 0)
-        + (Number(system.combat?.generalPenalty) || 0);
+      }, 0) + (Number(system.combat?.armorPenaltyBonus) || 0);
       NeuroshimaScriptRunner.executeEventSync("APCalc", {
         ...armorArgs,
         combat: this.combat

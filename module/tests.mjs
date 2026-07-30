@@ -944,6 +944,7 @@ export class NeuroshimaTestBase {
       armor: "NEUROSHIMA.Tooltip.Armor",
       wounds: "NEUROSHIMA.Tooltip.Wounds",
       disease: "NEUROSHIMA.Tooltip.Disease",
+      effects: "NEUROSHIMA.Roll.Effects",
       weapon: "NEUROSHIMA.Tooltip.Weapon",
       location: "NEUROSHIMA.Tooltip.Location",
       distance: "NEUROSHIMA.Tooltip.Distance",
@@ -1211,7 +1212,10 @@ export class HealingTest extends SkillTest {
         woundUuid: wound?.uuid ?? null,
         healingMethod,
         woundConfig: clone(woundConfig),
-        penalties: { mod: Number(difficulty.min ?? 0) + Number(woundConfig.modifier ?? 0) },
+        penalties: {
+          mod: Number(difficulty.min ?? 0) + Number(woundConfig.modifier ?? 0),
+          effects: Number(woundConfig.effectPenalty ?? 0)
+        },
         skillBonus,
         attributeBonus,
         finalDifficultyShift: Number(woundConfig.failedAttempts ?? 0)

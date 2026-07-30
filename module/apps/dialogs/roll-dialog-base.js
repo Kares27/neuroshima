@@ -1,4 +1,7 @@
-import { buildBreakdownTooltip } from "../../helpers/tooltip-renderer.js";
+import {
+  buildBreakdownTooltip,
+  collectDocumentEffectSources
+} from "../../helpers/tooltip-renderer.js";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
@@ -31,11 +34,11 @@ export class NeuroshimaRollDialogBase extends HandlebarsApplicationMixin(Applica
     this._scriptFlags          = {};
     this._scriptFields         = {
       modifier: 0, attributeBonus: 0, skillBonus: 0,
-      armorDelta: 0, woundDelta: 0, diseasePenalty: 0,
+      armorDelta: 0, woundDelta: 0, diseasePenalty: 0, effectPenalty: 0,
       weaponModifier: 0, difficulty: null, hitLocation: null,
       autoSuccess: false, annotations: []
     };
-    this._breakdown  = { mod: [], attr: [], skill: [] };
+    this._breakdown  = { mod: [], attr: [], skill: [], effect: [] };
     this._userValues = { modifier: 0, attributeBonus: 0, skillBonus: 0 };
   }
 
@@ -53,6 +56,43 @@ export class NeuroshimaRollDialogBase extends HandlebarsApplicationMixin(Applica
     return (this.actor?.items ?? [])
       .filter(i => i.type === "disease" && (i.system.diseaseType ?? "chronic") === "transient")
       .reduce((sum, i) => sum + (Number(i.system.transientPenalty) || 0), 0);
+  }
+
+  /**
+   * Return the final prepared Active Effect penalty. Foundry has already
+   * resolved all AE modes into this value, so source rows must never be
+   * summed to produce the roll penalty.
+   */
+  _computeActorEffectPenalty() {
+    return Number(this.actor?.system?.combat?.generalPenalty ?? 0) || 0;
+  }
+
+  /**
+   * Combine the actor's prepared Active Effect penalty with transient
+   * contributions made by active dialog scripts through args.fields.
+   */
+  _computeDialogEffectPenalty(scriptFields = this._scriptFields) {
+    return this._computeActorEffectPenalty()
+      + (Number(scriptFields?.effectPenalty ?? 0) || 0);
+  }
+
+  _getActorEffectPenaltySources() {
+    return collectDocumentEffectSources(
+      this.actor,
+      ["system.combat.generalPenalty"]
+    )["system.combat.generalPenalty"] ?? [];
+  }
+
+  _prepareEffectPenaltyContext(context, useEffectPenalty = true) {
+    const sources = this._getActorEffectPenaltySources();
+    const scriptSources = this._breakdown?.effect ?? [];
+    const effectPenalty = this._computeDialogEffectPenalty();
+    context.effectPenalty = effectPenalty;
+    context.showEffectPenalty = effectPenalty !== 0
+      || sources.length > 0
+      || scriptSources.length > 0;
+    context.useEffectPenalty = useEffectPenalty;
+    return context;
   }
 
   /**
@@ -116,6 +156,35 @@ export class NeuroshimaRollDialogBase extends HandlebarsApplicationMixin(Applica
     set("armorPenalty",   sf.armorDelta    ? buildSimple(actorArmor,   sf.armorDelta)    : null);
     set("woundPenalty",   sf.woundDelta    ? buildSimple(actorWound,   sf.woundDelta)    : null);
     set("diseasePenalty", sf.diseasePenalty? buildSimple(actorDisease, sf.diseasePenalty): null);
+
+    const effectPenalty = this._computeDialogEffectPenalty();
+    const effectSources = this._getActorEffectPenaltySources();
+    const scriptEffectSources = (bd.effect?.length
+      ? bd.effect
+      : (Number(sf.effectPenalty ?? 0)
+        ? [{ label: "NEUROSHIMA.Roll.DialogEffects", value: Number(sf.effectPenalty) }]
+        : []));
+    const allEffectSources = [...effectSources, ...scriptEffectSources];
+    set("effectPenalty", effectPenalty !== 0 || allEffectSources.length
+      ? buildBreakdownTooltip({
+          title: "NEUROSHIMA.Roll.Effects",
+          sources: allEffectSources.length
+            ? allEffectSources.map(source => ({
+                ...source,
+                state: Number(source.value) > 0 ? "penalty"
+                  : Number(source.value) < 0 ? "bonus" : null
+              }))
+            : [{
+                label: "NEUROSHIMA.Roll.Effects",
+                value: effectPenalty,
+                signed: true,
+                state: effectPenalty > 0 ? "penalty"
+                  : effectPenalty < 0 ? "bonus" : null
+              }],
+          totalValue: effectPenalty,
+          suffix: "%"
+        })
+      : null);
   }
 
   /**

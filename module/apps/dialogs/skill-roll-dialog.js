@@ -46,6 +46,10 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
         lastRoll.useDiseasePenalty
         ?? true,
 
+      useEffectPenalty:
+        lastRoll.useEffectPenalty
+        ?? true,
+
       isOpen:
         lastRoll.isOpen
         ?? true,
@@ -183,6 +187,9 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
     const actorDiseasePenalty =
       this._computeActorDiseasePenalty();
 
+    const actorEffectPenalty =
+      this._computeActorEffectPenalty();
+
     const userModifier =
       this.userEntry.modifier
       ?? this.rollOptions.modifier
@@ -223,6 +230,11 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
     const useDiseasePenalty =
       this.userEntry.useDiseasePenalty
       ?? this.rollOptions.useDiseasePenalty
+      ?? true;
+
+    const useEffectPenalty =
+      this.userEntry.useEffectPenalty
+      ?? this.rollOptions.useEffectPenalty
       ?? true;
 
     const rollMode =
@@ -286,6 +298,7 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
       modBreakdown,
       attrBreakdown,
       skillBreakdown,
+      effectPenaltyBreakdown,
       preRollModifiers
     } = await NeuroshimaScriptRunner.computeDialogFields(
       this.actor,
@@ -335,7 +348,8 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
                 userModifier + (sf.modifier || 0),
                 useArmorPenalty ? actorArmorPenalty + (sf.armorDelta || 0) : 0,
                 useWoundPenalty ? actorWoundPenalty + (sf.woundDelta || 0) : 0,
-                useDiseasePenalty ? actorDiseasePenalty + (sf.diseasePenalty || 0) : 0
+                useDiseasePenalty ? actorDiseasePenalty + (sf.diseasePenalty || 0) : 0,
+                useEffectPenalty ? actorEffectPenalty + (sf.effectPenalty || 0) : 0
               ],
               skillShift: TestRules.skillShift(totalSkill)
             })
@@ -368,7 +382,8 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
     this._breakdown = {
       mod: modBreakdown,
       attr: attrBreakdown,
-      skill: skillBreakdown
+      skill: skillBreakdown,
+      effect: effectPenaltyBreakdown
     };
 
     this._userValues = {
@@ -477,6 +492,8 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
 
     context.useDiseasePenalty =
       useDiseasePenalty;
+
+    this._prepareEffectPenaltyContext(context, useEffectPenalty);
 
     context.rollMode =
       rollMode;
@@ -702,6 +719,11 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
       ?? this.rollOptions.useDiseasePenalty
       ?? true;
 
+    const useEffectPenalty =
+      this.userEntry.useEffectPenalty
+      ?? this.rollOptions.useEffectPenalty
+      ?? true;
+
     /*
      * ZMIANA:
      *
@@ -756,6 +778,11 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
           )
         : 0;
 
+    const effectPenalty =
+      useEffectPenalty
+        ? this._computeDialogEffectPenalty()
+        : 0;
+
     const totalSkill =
       (
         currentSkill.value
@@ -799,7 +826,8 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
       + modifier
       + armorPenalty
       + woundPenalty
-      + diseasePenalty;
+      + diseasePenalty
+      + effectPenalty;
 
     const penaltyDiff =
       TestRules.difficultyFromPercent(
@@ -935,6 +963,11 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
       ?? this.rollOptions.useDiseasePenalty
       ?? true;
 
+    const useEffects =
+      this.userEntry.useEffectPenalty
+      ?? this.rollOptions.useEffectPenalty
+      ?? true;
+
     const rollMode =
       this.userEntry.rollMode
       ?? this.rollOptions.rollMode;
@@ -986,6 +1019,11 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
               || 0
             )
           )
+        : 0;
+
+    const effectPenalty =
+      useEffects
+        ? this._computeDialogEffectPenalty()
         : 0;
 
     const submissionOptions = {};
@@ -1043,6 +1081,9 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
         useDiseasePenalty:
           useDisease,
 
+        useEffectPenalty:
+          useEffects,
+
         isOpen:
           isOpen === true
           || isOpen === "true",
@@ -1071,7 +1112,8 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
           base: NEUROSHIMA.difficulties[baseDiffKey]?.min || 0,
           armor: armorPenalty,
           wounds: woundPenalty,
-          disease: diseasePenalty
+          disease: diseasePenalty,
+          effects: effectPenalty
         }
       },
       context: {

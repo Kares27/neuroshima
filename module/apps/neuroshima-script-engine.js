@@ -3994,6 +3994,7 @@ export class NeuroshimaScriptRunner {
       armorDelta: 0,
       woundDelta: 0,
       diseasePenalty: 0,
+      effectPenalty: 0,
       weaponModifier: 0,
       distanceDelta: 0,
       distanceModifierDelta: 0,
@@ -4096,6 +4097,7 @@ export class NeuroshimaScriptRunner {
     armorPenalty: 0,
     woundPenalty: 0,
     diseasePenalty: 0,
+    effectPenalty: 0,
 
     weaponModifier: 0,
     distance: 0,
@@ -4269,6 +4271,9 @@ export class NeuroshimaScriptRunner {
 
     diseasePenalty:
       fields.diseasePenalty,
+
+    effectPenalty:
+      Number(fields.effectPenalty ?? 0),
 
     weaponModifier:
       fields.weaponModifier,
@@ -4981,15 +4986,16 @@ export class NeuroshimaScriptRunner {
    * @param {Set<string>}    selectedModifierIds    - Effect IDs user manually toggled ON
    * @param {Set<string>}    unselectedModifierIds  - Effect IDs user manually toggled OFF
    * @param {Actor[]}        [targetActors=[]]      - Target actors for targeter/defendingAgainst scripts
-   * @returns {Promise<{dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown, reputationBreakdown}>}
+   * @returns {Promise<{dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown, effectPenaltyBreakdown, reputationBreakdown}>}
    */
   static async computeDialogFields(actor, rollContext = {}, selectedModifierIds = new Set(), unselectedModifierIds = new Set(), targetActors = [], options = {}) {
     if (!actor) return {
       dialogModifiers: [],
-      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, repBonus: 0, repValue: 0, fame: 0, attributeKey: null, skillKey: null, skillLabel: null, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, finalDifficultyShift: 0, maximumDifficulty: null, autoSuccess: false, annotations: [], damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], dieManualBonus: 0, dieReductionBonus: 0 },
+      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, repBonus: 0, repValue: 0, fame: 0, attributeKey: null, skillKey: null, skillLabel: null, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, effectPenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, finalDifficultyShift: 0, maximumDifficulty: null, autoSuccess: false, annotations: [], damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], dieManualBonus: 0, dieReductionBonus: 0 },
       modBreakdown: [],
       attrBreakdown: [],
       skillBreakdown: [],
+      effectPenaltyBreakdown: [],
       reputationBreakdown: { repBonus: [], repValue: [], fame: [] },
       preRollModifiers: []
     };
@@ -5093,8 +5099,8 @@ export class NeuroshimaScriptRunner {
       ? foundry.utils.deepClone(options.preRollModifiers)
       : [];
 
-    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, repBonus: 0, repValue: 0, fame: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, finalDifficultyShift: 0, maximumDifficulty: null, autoSuccess: false, annotations: [], damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], attributeKey: null, skillKey: null, skillLabel: null, dieManualBonus: 0, dieReductionBonus: 0 };
-    const modBreakdown = [], attrBreakdown = [], skillBreakdown = [];
+    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, repBonus: 0, repValue: 0, fame: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, effectPenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, finalDifficultyShift: 0, maximumDifficulty: null, autoSuccess: false, annotations: [], damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], attributeKey: null, skillKey: null, skillLabel: null, dieManualBonus: 0, dieReductionBonus: 0 };
+    const modBreakdown = [], attrBreakdown = [], skillBreakdown = [], effectPenaltyBreakdown = [];
     const reputationBreakdown = { repBonus: [], repValue: [], fame: [] };
 
     for (const dm of dialogModifiers) {
@@ -5127,6 +5133,7 @@ export class NeuroshimaScriptRunner {
       scriptFields.armorDelta += result.armorDelta || 0;
       scriptFields.woundDelta += result.woundDelta || 0;
       scriptFields.diseasePenalty += result.diseasePenalty || 0;
+      scriptFields.effectPenalty += result.effectPenalty || 0;
       scriptFields.weaponModifier += result.weaponModifier || 0;
       scriptFields.difficultyShift += result.difficultyShift || 0;
       scriptFields.finalDifficultyShift += Number(result.finalDifficultyShift ?? 0);
@@ -5159,6 +5166,7 @@ export class NeuroshimaScriptRunner {
       if (result.modifier) modBreakdown.push({ label, value: result.modifier });
       if (result.attributeBonus) attrBreakdown.push({ label, value: result.attributeBonus });
       if (result.skillBonus) skillBreakdown.push({ label, value: result.skillBonus });
+      if (result.effectPenalty) effectPenaltyBreakdown.push({ label, value: result.effectPenalty });
       if (result.repBonus) reputationBreakdown.repBonus.push({ label, value: result.repBonus });
       if (result.repValue) reputationBreakdown.repValue.push({ label, value: result.repValue });
       if (result.fame) reputationBreakdown.fame.push({ label, value: result.fame });
@@ -5183,6 +5191,7 @@ export class NeuroshimaScriptRunner {
       modBreakdown,
       attrBreakdown,
       skillBreakdown,
+      effectPenaltyBreakdown,
       reputationBreakdown,
       preRollModifiers
     };
@@ -5414,22 +5423,117 @@ export class NeuroshimaScriptRunner {
     const daysCrossed    = Math.floor(worldTime / 86400) - Math.floor(prevTime / 86400);
     const args = { worldTime, dt, dtMinutes, dtHours, dtDays, minutesCrossed, hoursCrossed, daysCrossed };
 
-    const seen = new Set();
-
-    if (canvas?.scene) {
-      for (const tokenDoc of canvas.scene.tokens) {
-        const actor = tokenDoc.actor;
-        if (!actor || seen.has(actor.id)) continue;
-        seen.add(actor.id);
-        await this.execute("worldTimeUpdate", { actor, ...args });
-      }
-    }
-
-    for (const actor of game.actors) {
-      if (seen.has(actor.id)) continue;
-      seen.add(actor.id);
+    const actors = this._worldTimeActors();
+    for (const actor of actors) {
       await this.execute("worldTimeUpdate", { actor, ...args });
     }
+    await this.expireWorldTimeEffects(actors);
+  }
+
+  /**
+   * Return every actor whose world-time effects should be processed, preferring
+   * live token actors over their world-document counterparts.
+   *
+   * @returns {Actor[]}
+   */
+  static _worldTimeActors() {
+    const actors = [];
+    const seen = new Set();
+    const collect = actor => {
+      if (!actor || seen.has(actor.id)) return;
+      seen.add(actor.id);
+      actors.push(actor);
+    };
+
+    if (globalThis.canvas?.scene) {
+      for (const tokenDoc of canvas.scene.tokens) collect(tokenDoc.actor);
+    }
+    for (const actor of (game.actors ?? [])) collect(actor);
+    return actors;
+  }
+
+  /**
+   * Remove elapsed seconds-based effects after worldTimeUpdate scripts have run.
+   * Foundry computes duration.remaining but does not delete Active Effect
+   * documents solely because that value reached zero.
+   *
+   * Running this after trigger execution lets effects handle their own expiry
+   * first (for example, applying a follow-up fatigue effect). Any remaining
+   * elapsed effects are then removed through the normal embedded-document API,
+   * preserving Active Effect deletion lifecycle hooks.
+   *
+   * @param {Actor[]} [actors]
+   * @returns {Promise<number>} Number of expired effects removed.
+   */
+  static async expireWorldTimeEffects(actors = this._worldTimeActors()) {
+    let expired = 0;
+    for (const actor of actors) {
+      const ids = (actor.effects ?? [])
+        .filter(effect => {
+          const seconds = Number(effect.duration?.seconds);
+          const remaining = Number(effect.duration?.remaining);
+          return Number.isFinite(seconds) && seconds > 0
+            && Number.isFinite(remaining) && remaining <= 0;
+        })
+        .map(effect => effect.id);
+
+      if (!ids.length) continue;
+      await actor.deleteEmbeddedDocuments("ActiveEffect", ids, {
+        neuroshimaDurationExpired: true
+      });
+      expired += ids.length;
+    }
+    return expired;
+  }
+
+  /**
+   * Advance seconds-based Active Effect durations when an external calendar is
+   * deliberately isolated from Foundry's world clock.
+   *
+   * Simple Calendar's "none" integration mode does not update
+   * game.time.worldTime, while ActiveEffect#duration.remaining is calculated
+   * against that clock. Moving startTime by the inverse calendar delta keeps
+   * Foundry's native remaining calculation authoritative without changing the
+   * configured duration or maintaining a second, system-specific timer.
+   *
+   * @param {number} dt Calendar delta in seconds. Negative values rewind time.
+   * @returns {Promise<number>} Number of adjusted effects.
+   */
+  static async advanceIndependentCalendarDurations(dt) {
+    const delta = Number(dt);
+    if (!Number.isFinite(delta) || delta === 0) return 0;
+
+    let adjusted = 0;
+    const worldTime = Number(game.time?.worldTime ?? 0);
+    for (const actor of this._worldTimeActors()) {
+      const updates = (actor.effects ?? [])
+        .filter(effect => {
+          const seconds = Number(effect.duration?.seconds);
+          return Number.isFinite(seconds) && seconds > 0;
+        })
+        .map(effect => {
+          const rawStart = effect.duration?.startTime;
+          const startTime = rawStart === null || rawStart === undefined || !Number.isFinite(Number(rawStart))
+            ? worldTime
+            : Number(rawStart);
+          return {
+            _id: effect.id,
+            "duration.startTime": startTime - delta
+          };
+        });
+
+      if (!updates.length) continue;
+      await actor.updateEmbeddedDocuments("ActiveEffect", updates, {
+        neuroshimaSimpleCalendarAdvance: true
+      });
+      adjusted += updates.length;
+    }
+
+    game.neuroshima?.log("[Simple Calendar] advanced isolated effect durations", {
+      dt: delta,
+      adjusted
+    });
+    return adjusted;
   }
 
   // ── Script utility helpers (available in scripts via game.neuroshima.NeuroshimaScriptRunner) ──

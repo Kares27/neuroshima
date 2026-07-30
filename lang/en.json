@@ -188,6 +188,7 @@
             "Armor": "Armor",
             "Wounds": "Wounds",
             "Disease": "Disease",
+            "Effects": "Effects",
             "Weapon": "Weapon",
             "Location": "Location",
             "Distance": "Distance",
@@ -271,6 +272,8 @@
             "Armor": "Armor",
             "Wounds": "Wounds",
             "Disease": "Disease",
+            "Effects": "Effects",
+            "DialogEffects": "Dialog scripts",
             "Summary": "Summary",
             "TotalModifier": "Total Modifier",
             "DialogModifiers": "Dialog Modifiers",
@@ -785,6 +788,7 @@
             "MeleeInitiative": "Melee Initiative",
             "ArmorPenalty": "Armor Penalty",
             "GeneralPenalty": "General Penalty",
+            "EffectPenalty": "Effects (%)",
             "PiercingAbbr": "AP"
         },
         "MeleeOpposed": {

@@ -7,7 +7,9 @@ import { getEffectiveArmorRatings, getEffectiveRadiationResistance } from "../he
 import { BeastActivitySheet } from "../apps/beast-activity-sheet.js";
 import {
   buildBreakdownTooltip,
-  collectAttributeEffectSources
+  collectAttributeEffectSources,
+  collectDocumentEffectSources,
+  renderTooltipSections
 } from "../helpers/tooltip-renderer.js";
 
 function _collectCreatureArmorBonusByEffect(actor) {
@@ -1034,6 +1036,52 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
 
     const totalArmorPenalty = system.combat?.totalArmorPenalty || 0;
     const totalWoundPenalty = system.combat?.totalWoundPenalty || 0;
+    const totalDiseasePenalty = actor.items
+      .filter(i => i.type === "disease" && (i.system.diseaseType ?? "chronic") === "transient")
+      .reduce((sum, i) => sum + (Number(i.system.transientPenalty) || 0), 0);
+    const totalEffectPenalty = Number(system.combat?.generalPenalty ?? 0) || 0;
+    const effectPenaltySources = collectDocumentEffectSources(
+      actor,
+      ["system.combat.generalPenalty"]
+    )["system.combat.generalPenalty"] ?? [];
+    const totalCombatPenalty = totalArmorPenalty + totalWoundPenalty
+      + totalDiseasePenalty + totalEffectPenalty;
+    const penaltyTooltip = renderTooltipSections([
+      {
+        title: "NEUROSHIMA.Wound.TotalPenalty",
+        rows: [
+          { label: "NEUROSHIMA.Roll.Armor", value: totalArmorPenalty, suffix: "%" },
+          { label: "NEUROSHIMA.Roll.Wounds", value: totalWoundPenalty, suffix: "%" },
+          { label: "NEUROSHIMA.Roll.Disease", value: totalDiseasePenalty, suffix: "%" }
+        ].filter(row => row.value)
+      },
+      ...(totalEffectPenalty !== 0 || effectPenaltySources.length ? [{
+        title: "NEUROSHIMA.Roll.Effects",
+        rows: [
+          ...effectPenaltySources.map(source => ({
+            label: source.label,
+            value: source.value,
+            signed: source.signed,
+            suffix: "%"
+          })),
+          {
+            label: "NEUROSHIMA.Roll.Total",
+            value: totalEffectPenalty,
+            suffix: "%",
+            emphasis: true
+          }
+        ]
+      }] : []),
+      {
+        kind: "threshold",
+        rows: [{
+          label: "NEUROSHIMA.Roll.Total",
+          value: totalCombatPenalty,
+          suffix: "%",
+          emphasis: true
+        }]
+      }
+    ]);
     const maxHP = actor.getFlag("neuroshima", "creatureMaxHP") || system.combat?.maxHP || 27;
     const totalArmorAP = context.armorLocations.reduce((sum, loc) => sum + (loc.reduction || 0) + (loc.totalAP || 0), 0);
     const meleePendingsFromCombat = Object.values(game.combat?.getFlag("neuroshima", "meleePendings") || {})
@@ -1078,7 +1126,10 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
     context.combat = {
       totalArmorPenalty,
       totalWoundPenalty,
-      totalCombatPenalty: totalArmorPenalty + totalWoundPenalty,
+      totalDiseasePenalty,
+      totalEffectPenalty,
+      totalCombatPenalty,
+      penaltyTooltip,
       totalDamagePoints:  system.combat?.totalDamagePoints || 0,
       totalArmorAP,
       maxHP,

@@ -3509,25 +3509,34 @@ Hooks.on("updateActiveEffect", async (effect, changes, options, userId) => {
     await NeuroshimaAuraManager._syncRenderTemplates(tokenDoc, actor, null, null);
 });
 
-let _worldTimeUpdatePending = false;
 Hooks.on("updateWorldTime", async (worldTime, dt) => {
     if (!game.user.isGM) return;
     game.neuroshima?.log("[hook:updateWorldTime]", { worldTime, dt });
-    _worldTimeUpdatePending = true;
-    try {
-        await NeuroshimaScriptRunner.runWorldTimeUpdate(worldTime, dt);
-    } finally {
-        setTimeout(() => { _worldTimeUpdatePending = false; }, 200);
-    }
+    await NeuroshimaScriptRunner.runWorldTimeUpdate(worldTime, dt);
 });
 
-Hooks.on("simple-calendar.dateTimeChange", async (data) => {
+// Simple Calendar Reborn exposes four world-time integration modes:
+// - self / mixed: calendar changes advance Foundry world time;
+// - third-party: another module advances Foundry world time;
+// - none: the calendar is isolated and Foundry world time stays unchanged.
+// The first three are handled by updateWorldTime above. Only "none" needs an
+// explicit bridge, otherwise seconds-based Active Effects never lose time.
+Hooks.on("simple-calendar-date-time-change", async (data) => {
     if (!game.user.isGM) return;
-    if (_worldTimeUpdatePending) return;
-    const currentWorldTime = game.time.worldTime;
-    const dt = typeof data?.diff === "number" ? data.diff : 0;
-    if (dt === 0) return;
-    game.neuroshima?.log("[hook:simple-calendar.dateTimeChange]", { currentWorldTime, dt });
+    const calendar = globalThis.SimpleCalendar?.api?.getCurrentCalendar?.();
+    const integration = calendar?.generalSettings?.gameWorldTimeIntegration;
+    if (integration !== "none") return;
+
+    const dt = Number(data?.diff ?? 0);
+    if (!Number.isFinite(dt) || dt === 0) return;
+
+    const currentWorldTime = Number(game.time?.worldTime ?? 0);
+    game.neuroshima?.log("[hook:simple-calendar-date-time-change]", {
+        integration,
+        currentWorldTime,
+        dt
+    });
+    await NeuroshimaScriptRunner.advanceIndependentCalendarDurations(dt);
     await NeuroshimaScriptRunner.runWorldTimeUpdate(currentWorldTime, dt);
 });
 

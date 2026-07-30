@@ -166,7 +166,7 @@ export class EditRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
         flags.attributeBonus ??= 0;
         flags.skillBonus ??= 0;
         flags.penalties ??= {};
-        for (const key of ["mod", "wounds", "armor", "disease"]) flags.penalties[key] ??= 0;
+        for (const key of ["mod", "wounds", "armor", "disease", "effects"]) flags.penalties[key] ??= 0;
         if (messageType === "healing") {
           flags.penalties.mod = Number(flags.penalties.mod) - Number(NEUROSHIMA.difficulties[difficultyKey]?.min ?? 0);
         }
@@ -201,7 +201,8 @@ export class EditRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
               mod: Number(data.penaltyMod ?? 0),
               wounds: Number(data.penaltyWounds ?? 0),
               armor: Number(data.penaltyArmor ?? 0),
-              disease: Number(data.penaltyDisease ?? 0)
+              disease: Number(data.penaltyDisease ?? 0),
+              effects: Number(data.penaltyEffects ?? 0)
             }
           }
         }, { message: this.message });

@@ -70,6 +70,7 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
       useArmorPenalty:   lastRoll.useArmorPenalty   ?? false,
       useWoundPenalty:   lastRoll.useWoundPenalty   ?? true,
       useDiseasePenalty: lastRoll.useDiseasePenalty ?? true,
+      useEffectPenalty:  lastRoll.useEffectPenalty  ?? true,
       skillBonus:        lastRoll.skillBonus        || 0,
       attributeBonus:    lastRoll.attributeBonus    || 0,
     };
@@ -127,6 +128,7 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
     const actorArmorPenalty  = medicActor.system.combat?.totalArmorPenalty || 0;
     const actorWoundPenalty  = medicActor.system.combat?.totalWoundPenalty || 0;
     const actorDiseasePenalty = this._computeActorDiseasePenalty();
+    const actorEffectPenalty = this._computeActorEffectPenalty();
 
     const healingMethod    = this.userEntry.healingMethod    ?? this.rollOptions.healingMethod    ?? "firstAid";
     const currentAttribute = this.userEntry.attribute        ?? this.rollOptions.currentAttribute ?? "cleverness";
@@ -136,6 +138,7 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
     const useArmorPenalty  = this.userEntry.useArmorPenalty  ?? this.rollOptions.useArmorPenalty   ?? false;
     const useWoundPenalty  = this.userEntry.useWoundPenalty  ?? this.rollOptions.useWoundPenalty   ?? true;
     const useDiseasePenalty = this.userEntry.useDiseasePenalty ?? this.rollOptions.useDiseasePenalty ?? true;
+    const useEffectPenalty = this.userEntry.useEffectPenalty ?? this.rollOptions.useEffectPenalty ?? true;
 
     const skillName  = healingMethod === "firstAid" ? "firstAid" : "woundTreatment";
     const skillValue = medicActor.system.skills?.[skillName]?.value || 0;
@@ -144,7 +147,7 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
     const attrObj    = { name: currentAttribute, value: attrValue, key: currentAttribute };
 
     const targetActors = Array.from(game.user.targets || []).map(t => t.actor).filter(Boolean);
-    const { dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown } = await NeuroshimaScriptRunner.computeDialogFields(
+    const { dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown, effectPenaltyBreakdown } = await NeuroshimaScriptRunner.computeDialogFields(
       medicActor,
       {
         rollType: "healing",
@@ -164,7 +167,8 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
             + (sf.modifier || 0)
             + (useArmorPenalty ? actorArmorPenalty + (sf.armorDelta || 0) : 0)
             + (useWoundPenalty ? actorWoundPenalty + (sf.woundDelta || 0) : 0)
-            + (useDiseasePenalty ? actorDiseasePenalty + (sf.diseasePenalty || 0) : 0);
+            + (useDiseasePenalty ? actorDiseasePenalty + (sf.diseasePenalty || 0) : 0)
+            + (useEffectPenalty ? actorEffectPenalty + (sf.effectPenalty || 0) : 0);
           const finalDifficulties = {};
 
           for (const group of Object.values(this._woundGroupMap)) {
@@ -191,7 +195,7 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
 
     this._dialogModifiers = dialogModifiers;
     this._scriptFields    = scriptFields;
-    this._breakdown       = { mod: modBreakdown, attr: attrBreakdown, skill: skillBreakdown };
+    this._breakdown       = { mod: modBreakdown, attr: attrBreakdown, skill: skillBreakdown, effect: effectPenaltyBreakdown };
     this._userValues      = { modifier: userModifier, attributeBonus: userAttrBonus, skillBonus: userSkillBonus };
 
     const sfHealAll   = scriptFields.healingModifierAll  || 0;
@@ -252,6 +256,7 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
     context.useArmorPenalty   = useArmorPenalty;
     context.useWoundPenalty   = useWoundPenalty;
     context.useDiseasePenalty = useDiseasePenalty;
+    this._prepareEffectPenaltyContext(context, useEffectPenalty);
     context.dialogModifiers   = dialogModifiers;
 
     return context;
@@ -318,6 +323,7 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
     const useArmor       = html.querySelector('[name="useArmorPenalty"]')?.checked  ?? this.rollOptions.useArmorPenalty  ?? false;
     const useWound       = html.querySelector('[name="useWoundPenalty"]')?.checked  ?? this.rollOptions.useWoundPenalty  ?? true;
     const useDisease     = html.querySelector('[name="useDiseasePenalty"]')?.checked ?? this.rollOptions.useDiseasePenalty ?? true;
+    const useEffects     = html.querySelector('[name="useEffectPenalty"]')?.checked ?? this.rollOptions.useEffectPenalty ?? true;
 
     const medicActor = this.medicActor;
     const sf = this._scriptFields || {};
@@ -325,8 +331,9 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
     const armorPenalty   = useArmor   ? (medicActor.system.combat?.totalArmorPenalty  || 0) + (sf.armorDelta   || 0) : 0;
     const woundPenalty   = useWound   ? (medicActor.system.combat?.totalWoundPenalty  || 0) + (sf.woundDelta   || 0) : 0;
     const diseasePenalty = useDisease ? this._computeActorDiseasePenalty() + (sf.diseasePenalty || 0) : 0;
+    const effectPenalty  = useEffects ? this._computeDialogEffectPenalty(sf) : 0;
 
-    const diffModifier = modifier + armorPenalty + woundPenalty + diseasePenalty + (sf.modifier || 0);
+    const diffModifier = modifier + armorPenalty + woundPenalty + diseasePenalty + effectPenalty + (sf.modifier || 0);
 
     const diffModEl = html.querySelector('.difficulty-modifier');
     if (diffModEl) diffModEl.innerText = `${diffModifier >= 0 ? '+' : ''}${diffModifier}%`;
@@ -367,14 +374,15 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
     const globalModifier = parseInt(formData.modifier) || 0;
     const useArmor       = formData.useArmorPenalty  === true || formData.useArmorPenalty  === "true";
     const useWound       = formData.useWoundPenalty  === true || formData.useWoundPenalty  === "true";
+    const useEffects     = formData.useEffectPenalty === true || formData.useEffectPenalty === "true";
     const skillBonus     = parseInt(formData.skillBonus)     || 0;
     const attributeBonus = parseInt(formData.attributeBonus) || 0;
 
     const medicActor   = this.medicActor;
     const armorPenalty = medicActor.system.combat?.totalArmorPenalty || 0;
     const woundPenalty = medicActor.system.combat?.totalWoundPenalty || 0;
-
     const sf = this._scriptFields || {};
+    const effectPenalty = useEffects ? this._computeDialogEffectPenalty(sf) : 0;
     const sfHealAll  = sf.healingModifierAll  || 0;
     const sfHealDt   = sf.healingModifier     || {};
     const sfHealDiff = sf.healingDifficulty   || {};
@@ -400,6 +408,7 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
           damageType:           wound.damageType,
           difficulty:           selDifficulty,
           modifier:             difficultyMod,
+          effectPenalty,
           difficultyShift,
           healingModifier:      userHealingMod,
           scriptHealingModifier,
@@ -416,6 +425,7 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
         currentAttribute: selectedAttr,
         useArmorPenalty: useArmor,
         useWoundPenalty: useWound,
+        useEffectPenalty: useEffects,
         skillBonus,
         attributeBonus
       }

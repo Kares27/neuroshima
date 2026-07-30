@@ -29,6 +29,7 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
       useArmorPenalty: options.useArmorPenalty ?? false,
       useWoundPenalty: options.useWoundPenalty ?? true,
       useDiseasePenalty: options.useDiseasePenalty ?? true,
+      useEffectPenalty: options.useEffectPenalty ?? true,
       rollMode: options.rollMode || game.settings.get("core", "rollMode")
     };
 
@@ -68,6 +69,7 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
     const actorArmorPenalty = this.actor.system.combat?.totalArmorPenalty || 0;
     const actorWoundPenalty = this.actor.system.combat?.totalWoundPenalty || 0;
     const actorDiseasePenalty = this._computeActorDiseasePenalty();
+    const actorEffectPenalty = this._computeActorEffectPenalty();
 
     const userModifier    = this.userEntry.modifier       ?? this.rollOptions.modifier ?? 0;
     const userAttrBonus   = this.userEntry.attributeBonus ?? 0;
@@ -79,6 +81,7 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
     const useArmorPenalty   = this.userEntry.useArmorPenalty   ?? this.rollOptions.useArmorPenalty   ?? false;
     const useWoundPenalty   = this.userEntry.useWoundPenalty   ?? this.rollOptions.useWoundPenalty   ?? true;
     const useDiseasePenalty = this.userEntry.useDiseasePenalty ?? this.rollOptions.useDiseasePenalty ?? true;
+    const useEffectPenalty = this.userEntry.useEffectPenalty ?? this.rollOptions.useEffectPenalty ?? true;
     const rollMode          = this.userEntry.rollMode          ?? this.rollOptions.rollMode;
 
     const initAttrValue = this.actor.system.attributeTotals?.[attribute] ?? 0;
@@ -87,7 +90,7 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
     const initSkillObj = skill ? { name: game.i18n.localize(`NEUROSHIMA.Skills.${skill}`) || skill, value: initSkillValue, key: skill } : null;
 
     const targetActors = Array.from(game.user.targets || []).map(t => t.actor).filter(Boolean);
-    const { dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown } = await NeuroshimaScriptRunner.computeDialogFields(
+    const { dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown, effectPenaltyBreakdown } = await NeuroshimaScriptRunner.computeDialogFields(
       this.actor,
       { rollType: "initiative", isMelee: this.isMelee, skill: initSkillObj, attribute: initAttrObj, difficulty },
       this.selectedModifierIds,
@@ -109,7 +112,8 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
                 userModifier + (sf.modifier || 0),
                 useArmorPenalty ? actorArmorPenalty + (sf.armorDelta || 0) : 0,
                 useWoundPenalty ? actorWoundPenalty + (sf.woundDelta || 0) : 0,
-                useDiseasePenalty ? actorDiseasePenalty + (sf.diseasePenalty || 0) : 0
+                useDiseasePenalty ? actorDiseasePenalty + (sf.diseasePenalty || 0) : 0,
+                useEffectPenalty ? actorEffectPenalty + (sf.effectPenalty || 0) : 0
               ],
               skillShift
             })
@@ -120,7 +124,7 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
 
     this._dialogModifiers = dialogModifiers;
     this._scriptFields = scriptFields;
-    this._breakdown = { mod: modBreakdown, attr: attrBreakdown, skill: skillBreakdown };
+    this._breakdown = { mod: modBreakdown, attr: attrBreakdown, skill: skillBreakdown, effect: effectPenaltyBreakdown };
     this._userValues = { modifier: userModifier, attributeBonus: userAttrBonus, skillBonus: userSkillBonus };
 
     const equippedWeapon = this.actor.items.find(i => i.type === "weapon" && i.system.equipped);
@@ -153,6 +157,7 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
     context.diseasePenalty = actorDiseasePenalty + (scriptFields.diseasePenalty || 0);
     context.showDiseasePenalty = context.diseasePenalty > 0;
     context.useDiseasePenalty = useDiseasePenalty;
+    this._prepareEffectPenaltyContext(context, useEffectPenalty);
 
     let effectDifficulty = (scriptFields.difficulty && this.userEntry.difficulty === undefined)
       ? scriptFields.difficulty : difficulty;
@@ -260,9 +265,11 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
     const woundPenalty   = useWoundPenalty   ? (actorWoundPenalty + (sf.woundDelta || 0)) : 0;
     const useDiseasePenalty = this.userEntry.useDiseasePenalty ?? this.rollOptions.useDiseasePenalty ?? true;
     const diseasePenalty = useDiseasePenalty ? (this._computeActorDiseasePenalty() + (sf.diseasePenalty || 0)) : 0;
+    const useEffectPenalty = this.userEntry.useEffectPenalty ?? this.rollOptions.useEffectPenalty ?? true;
+    const effectPenalty = useEffectPenalty ? this._computeDialogEffectPenalty(sf) : 0;
 
     const basePenalty = NEUROSHIMA.difficulties[difficultyKey]?.min || 0;
-    const totalPct = basePenalty + modifier + armorPenalty + woundPenalty + diseasePenalty;
+    const totalPct = basePenalty + modifier + armorPenalty + woundPenalty + diseasePenalty + effectPenalty;
 
     const totalElement = html.querySelector('.total-modifier');
     if (totalElement) totalElement.innerText = `${totalPct}%`;
@@ -326,6 +333,7 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
     const useArmor   = this.userEntry.useArmorPenalty   ?? this.rollOptions.useArmorPenalty   ?? false;
     const useWound   = this.userEntry.useWoundPenalty   ?? this.rollOptions.useWoundPenalty   ?? true;
     const useDisease = this.userEntry.useDiseasePenalty ?? this.rollOptions.useDiseasePenalty ?? true;
+    const useEffects = this.userEntry.useEffectPenalty ?? this.rollOptions.useEffectPenalty ?? true;
     const actorArmorPenalty = this.actor.system.combat?.totalArmorPenalty || 0;
     const actorWoundPenalty = this.actor.system.combat?.totalWoundPenalty || 0;
 
@@ -351,6 +359,8 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
       useWoundPenalty: useWound,
       useDiseasePenalty: useDisease,
       diseasePenalty: useDisease ? this._computeActorDiseasePenalty() + (sf.diseasePenalty || 0) : 0,
+      useEffectPenalty: useEffects,
+      effectPenalty: useEffects ? this._computeDialogEffectPenalty(sf) : 0,
       skillBonus: combinedSkillBonus,
       attributeBonus: combinedAttrBonus,
       maneuver: formData.maneuver || "none",
@@ -369,6 +379,8 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
         difficulty: difficultyKey,
         useArmorPenalty: useArmor,
         useWoundPenalty: useWound,
+        useDiseasePenalty: useDisease,
+        useEffectPenalty: useEffects,
         rollMode: rollData.rollMode
       }
     }).catch(() => {});
@@ -450,7 +462,8 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
           wounds: rollData.useWoundPenalty
             ? Number(this.actor.system.combat?.totalWoundPenalty ?? 0)
             : 0,
-          disease: rollData.useDiseasePenalty ? Number(rollData.diseasePenalty ?? 0) : 0
+          disease: rollData.useDiseasePenalty ? Number(rollData.diseasePenalty ?? 0) : 0,
+          effects: rollData.useEffectPenalty ? Number(rollData.effectPenalty ?? 0) : 0
         }
       },
       context: {

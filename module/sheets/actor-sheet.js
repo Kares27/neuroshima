@@ -344,7 +344,13 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     const totalDiseasePenalty = actor.items
       .filter(i => i.type === "disease" && (i.system.diseaseType ?? "chronic") === "transient")
       .reduce((sum, i) => sum + (Number(i.system.transientPenalty) || 0), 0);
-    const totalCombatPenalty = totalArmorPenalty + totalWoundPenalty + totalDiseasePenalty;
+    const totalEffectPenalty = Number(system.combat.generalPenalty ?? 0) || 0;
+    const effectPenaltySources = collectDocumentEffectSources(
+      actor,
+      ["system.combat.generalPenalty"]
+    )["system.combat.generalPenalty"] ?? [];
+    const totalCombatPenalty = totalArmorPenalty + totalWoundPenalty
+      + totalDiseasePenalty + totalEffectPenalty;
 
     const penaltyRows = [
       { label: "NEUROSHIMA.Roll.Armor", value: totalArmorPenalty },
@@ -360,6 +366,27 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
           ? penaltyRows
           : [{ label: "NEUROSHIMA.Wound.TotalPenaltyAbbr", value: 0, suffix: "%" }]
       },
+      ...(totalEffectPenalty !== 0 || effectPenaltySources.length ? [{
+        title: "NEUROSHIMA.Roll.Effects",
+        rows: [
+          ...effectPenaltySources.map(source => ({
+            label: source.label,
+            value: source.value,
+            signed: source.signed,
+            suffix: "%",
+            state: Number(source.value) > 0 ? "penalty"
+              : Number(source.value) < 0 ? "bonus" : null
+          })),
+          {
+            label: "NEUROSHIMA.Roll.Total",
+            value: totalEffectPenalty,
+            suffix: "%",
+            emphasis: true,
+            state: totalEffectPenalty > 0 ? "penalty"
+              : totalEffectPenalty < 0 ? "bonus" : null
+          }
+        ]
+      }] : []),
       {
         kind: "threshold",
         rows: [{
@@ -458,6 +485,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       activeWounds: items.filter(i => i.type === "wound" && i.system.isActive),
       totalArmorPenalty: totalArmorPenalty,
       totalWoundPenalty: totalWoundPenalty,
+      totalEffectPenalty,
       totalCombatPenalty: totalCombatPenalty,
       penaltyTooltip: penaltyTooltip,
       totalDamagePoints: system.combat.totalDamagePoints,

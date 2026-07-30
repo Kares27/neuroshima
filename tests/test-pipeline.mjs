@@ -63,6 +63,13 @@ globalThis.foundry = {
       current[parts.at(-1)] = value;
       return true;
     },
+    expandObject(object) {
+      const expanded = {};
+      for (const [path, value] of Object.entries(object ?? {})) {
+        this.setProperty(expanded, path, value);
+      }
+      return expanded;
+    },
     mergeObject(target, source) {
       for (const [key, value] of Object.entries(source ?? {})) {
         if (value && typeof value === "object" && !Array.isArray(value)) {
@@ -151,6 +158,7 @@ const {
   NeuroshimaScript,
   NeuroshimaScriptRunner
 } = await import("../module/apps/neuroshima-script-engine.js");
+const { NeuroshimaActiveEffect } = await import("../module/documents/active-effect.js");
 const { CombatHelper } = await import("../module/helpers/combat-helper.js");
 const {
   buildBreakdownTooltip,
@@ -199,6 +207,89 @@ const {
   showXpSpentAdjustmentDialog
 } = await import("../module/helpers/xp.js");
 game.neuroshima.tests = NEUROSHIMA_TESTS;
+
+test("convertToApplied stamps seconds duration with current world time", () => {
+  const previousTime = game.time;
+  game.time = { worldTime: 123456 };
+  try {
+    const effect = Object.create(NeuroshimaActiveEffect.prototype);
+    effect.name = "Timed template";
+    effect.uuid = "Item.source.ActiveEffect.template";
+    effect.parent = { uuid: "Item.source" };
+    effect.system = { scriptData: [] };
+    effect.getFlag = (_scope, key) => key === "transferType" ? "other" : null;
+    effect.toObject = () => ({
+      name: effect.name,
+      system: { scriptData: [] },
+      duration: { seconds: 3600, startTime: null },
+      flags: { neuroshima: { transferType: "other" } }
+    });
+
+    const applied = effect.convertToApplied();
+    assert.equal(applied.duration.seconds, 3600);
+    assert.equal(applied.duration.startTime, 123456);
+  } finally {
+    game.time = previousTime;
+  }
+});
+
+test("isolated Simple Calendar delta advances Foundry seconds durations", async () => {
+  const previousTime = game.time;
+  const previousActors = game.actors;
+  const previousCanvas = globalThis.canvas;
+  const effect = {
+    id: "timed-effect",
+    duration: { seconds: 3600, startTime: 1000 }
+  };
+  const actor = {
+    id: "actor",
+    uuid: "Actor.actor",
+    effects: [effect],
+    async updateEmbeddedDocuments(type, updates, options) {
+      assert.equal(type, "ActiveEffect");
+      assert.equal(options.neuroshimaSimpleCalendarAdvance, true);
+      for (const update of updates) {
+        const target = this.effects.find(entry => entry.id === update._id);
+        target.duration.startTime = update["duration.startTime"];
+      }
+    }
+  };
+
+  game.time = { worldTime: 1000 };
+  game.actors = [actor];
+  globalThis.canvas = { scene: null };
+  try {
+    const adjusted = await NeuroshimaScriptRunner.advanceIndependentCalendarDurations(3600);
+    assert.equal(adjusted, 1);
+    assert.equal(effect.duration.startTime, -2600);
+  } finally {
+    game.time = previousTime;
+    game.actors = previousActors;
+    if (previousCanvas === undefined) delete globalThis.canvas;
+    else globalThis.canvas = previousCanvas;
+  }
+});
+
+test("world-time expiry removes elapsed seconds effects after trigger processing", async () => {
+  const actors = [{
+    id: "actor",
+    effects: [
+      { id: "expired", duration: { seconds: 3600, remaining: 0 } },
+      { id: "active", duration: { seconds: 3600, remaining: 1 } },
+      { id: "combat-only", duration: { rounds: 1, remaining: 0 } }
+    ],
+    async deleteEmbeddedDocuments(type, ids, options) {
+      assert.equal(type, "ActiveEffect");
+      assert.deepEqual(ids, ["expired"]);
+      assert.equal(options.neuroshimaDurationExpired, true);
+      this.effects = this.effects.filter(effect => !ids.includes(effect.id));
+    }
+  }];
+
+  const expired = await NeuroshimaScriptRunner.expireWorldTimeEffects(actors);
+  assert.equal(expired, 1);
+  assert.deepEqual(actors[0].effects.map(effect => effect.id), ["active", "combat-only"]);
+});
 
 function actorFixture() {
   return {
@@ -340,6 +431,37 @@ test("reputation and fame changes support numeric Active Effect modes", () => {
   assert.equal(data._applyPostDerivedActiveEffectValue("system.fame", 4), 2);
   assert.equal(data._applyPostDerivedActiveEffectValue("system.fameBonus", 3), 6);
   assert.equal(data._applyPostDerivedActiveEffectValue("system.reputationBonus", 1), 7);
+});
+
+test("general Active Effect penalty remains separate from prepared armor penalty", () => {
+  const data = Object.assign(Object.create(NeuroshimaActorData.prototype), {
+    attributes: {},
+    attributeBonuses: {},
+    modifiers: {},
+    skills: {},
+    skillBonuses: {},
+    combat: {
+      armorPenaltyBonus: 3,
+      generalPenalty: 40
+    },
+    size: "normal"
+  });
+  data.parent = {
+    items: [{
+      type: "armor",
+      system: { equipped: true, armor: { penalty: 7 } }
+    }]
+  };
+  const originalExecute = NeuroshimaScriptRunner.executeEventSync;
+  NeuroshimaScriptRunner.executeEventSync = () => undefined;
+  try {
+    data._prepareSharedData();
+  } finally {
+    NeuroshimaScriptRunner.executeEventSync = originalExecute;
+  }
+
+  assert.equal(data.combat.totalArmorPenalty, 10);
+  assert.equal(data.combat.generalPenalty, 40);
 });
 
 test("manual spent XP adjustments log both expenses and restorations", () => {
@@ -1720,6 +1842,71 @@ test("reputation and fame tooltips collect exact Actor and Item effect paths", (
   );
 });
 
+test("effect penalty tooltip uses applicable sources but the prepared value as total", () => {
+  const actor = {
+    system: { combat: { generalPenalty: -15 } },
+    items: [],
+    allApplicableEffects() {
+      return [
+        {
+          uuid: "Actor.actor.Item.trait.ActiveEffect.enabled",
+          name: "Odporność chemiczna",
+          changes: [{ key: "system.combat.generalPenalty", value: "-10", mode: 2 }]
+        },
+        {
+          uuid: "Actor.actor.ActiveEffect.disabled",
+          name: "Wyłączony efekt",
+          disabled: true,
+          changes: [{ key: "system.combat.generalPenalty", value: "50", mode: 2 }]
+        }
+      ];
+    }
+  };
+  const dialog = new NeuroshimaRollDialogBase({ actor });
+  assert.equal(dialog._computeActorEffectPenalty(), -15);
+  assert.deepEqual(
+    dialog._getActorEffectPenaltySources().map(source => [source.label, source.value]),
+    [["Odporność chemiczna", -10]]
+  );
+
+  const input = { dataset: {} };
+  dialog._applyTooltips({
+    querySelector(selector) {
+      return selector === '[name="effectPenalty"]' ? input : null;
+    }
+  });
+  assert.match(input.dataset.tooltipHtml, /Odporność chemiczna/);
+  assert.match(input.dataset.tooltipHtml, /-15%/);
+  assert.doesNotMatch(input.dataset.tooltipHtml, /Wyłączony efekt/);
+});
+
+test("healing test keeps effect penalties as a distinct editable category", () => {
+  const wound = { uuid: "Actor.patient.Item.wound" };
+  const test = HealingTest.forWound({
+    medicActor: {
+      system: {
+        attributeTotals: { dexterity: 12 },
+        skills: { firstAid: { value: 3 } }
+      }
+    },
+    patientActor: {
+      uuid: "Actor.patient",
+      items: { get: () => wound }
+    },
+    healingMethod: "firstAid",
+    woundConfig: {
+      woundId: "wound",
+      woundName: "Rana",
+      difficulty: "average",
+      modifier: 20,
+      effectPenalty: -10
+    }
+  });
+
+  assert.equal(test.preData.penalties.effects, -10);
+  assert.equal(test.preData.penalties.mod, 20);
+});
+
 test("tooltip permission recognizes direct pain and aggregate grenade actors", () => {
   const actors = new Map([
     ["owned", { isOwner: true }],
@@ -1966,6 +2153,47 @@ test("dialog script flags survive preview and submission state", async () => {
     );
     assert.equal(result.scriptFields.modifier, 5);
     assert.equal(flags.marked, true);
+  } finally {
+    NeuroshimaScriptRunner.getScripts = originalGetScripts;
+  }
+});
+
+test("dialog scripts add and subtract the dedicated effect penalty with source breakdown", async () => {
+  const actor = {
+    ...actorFixture(),
+    name: "Effect penalty tester",
+    system: { combat: { generalPenalty: 10 } }
+  };
+  const script = {
+    effect: { id: "effect-penalty", parent: null },
+    label: "Warunki pogodowe",
+    code: "effect penalty",
+    targeter: false,
+    isDialogScript: false,
+    async evalHide() {
+      return false;
+    },
+    async evalActivate() {
+      return true;
+    },
+    async execute(args) {
+      args.fields.effectPenalty += 20;
+      args.fields.effectPenalty -= 5;
+    }
+  };
+  const originalGetScripts = NeuroshimaScriptRunner.getScripts;
+  NeuroshimaScriptRunner.getScripts = (_actor, trigger) => trigger === "dialog" ? [script] : [];
+  try {
+    const result = await NeuroshimaScriptRunner.computeDialogFields(actor, { rollType: "skill" });
+    assert.equal(result.scriptFields.effectPenalty, 15);
+    assert.deepEqual(result.effectPenaltyBreakdown, [
+      { label: "Warunki pogodowe", value: 15 }
+    ]);
+
+    const dialog = new NeuroshimaRollDialogBase({ actor });
+    dialog._scriptFields = result.scriptFields;
+    dialog._breakdown.effect = result.effectPenaltyBreakdown;
+    assert.equal(dialog._computeDialogEffectPenalty(), 25);
   } finally {
     NeuroshimaScriptRunner.getScripts = originalGetScripts;
   }

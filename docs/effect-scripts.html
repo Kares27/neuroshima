@@ -594,6 +594,7 @@
       <tr><td><code>args.fields.armorPenalty</code></td><td>number</td><td>Kara za pancerz dodawana do ogólnych kar rzutu (np. <code>args.fields.armorPenalty += 10</code>).</td></tr>
       <tr><td><code>args.fields.woundPenalty</code></td><td>number</td><td>Kara za rany dodawana do ogólnych kar rzutu.</td></tr>
       <tr><td><code>args.fields.diseasePenalty</code></td><td>number</td><td>Dodatkowa kara za chorobę przejściową doliczana do rzutu (np. <code>args.fields.diseasePenalty += 20</code>). Kumuluje się z karą wyliczoną automatycznie z itemów chorób przejściowych aktora. Dostępne w skryptach typu <code>dialog</code>.</td></tr>
+      <tr><td><code>args.fields.effectPenalty</code></td><td>number</td><td>Tymczasowa zmiana kategorii „Efekty (%)” dla bieżącego rzutu. Wartość dodatnia zwiększa karę, a ujemna ją zmniejsza lub tworzy bonus. Kumuluje się z przygotowaną wartością <code>system.combat.generalPenalty</code>, pojawia się w podglądzie i tooltipie, ale nie zapisuje pola na aktorze.</td></tr>
       <tr><td><code>args.fields.distance</code></td><td>number</td><td>Dystans do celu (testy broni dystansowej).</td></tr>
       <tr><td><code>args.fields.distanceModifier</code></td><td>number</td><td>Modyfikator kary za dystans.</td></tr>
       <tr><td><code>args.fields.hitLocation</code></td><td>string</td><td>Docelowa lokacja trafienia (np. <code>"random"</code>, <code>"head"</code>).</td></tr>
@@ -614,6 +615,24 @@
       <tr><td><code>args.fields.burstHitStep</code></td><td>number</td><td>Krok trafień przy serii — ile kul trafia na jeden Punkt Przewagi. Domyślnie <code>1</code> (1 kula / PP). Ustaw <code>2</code> aby podwoić liczbę trafionych kul (Ruchome gniazdo CKM). Obsługuje dowolne całkowite wartości ≥ 1. Działa wyłącznie przy <code>rollType === "ranged"</code> i <code>burstLevel ≥ 1</code>.</td></tr>
     </tbody>
   </table>
+
+  <h4>Kara efektów — Dialog Script</h4>
+  <p>
+    Pole <code>args.fields.effectPenalty</code> działa we wszystkich standardowych dialogach testów:
+    umiejętności i współczynnika, broni, granatu, inicjatywy oraz leczenia. Jest doliczane do osobnego
+    wiersza <strong>Efekty (%)</strong>, który użytkownik może wyłączyć checkboxem bez wyłączania kar za
+    pancerz, rany albo chorobę.
+  </p>
+  <pre><code><span class="cmt">// +20% kary tylko do bieżącego testu</span>
+args.fields.effectPenalty += <span class="num">20</span>;
+
+<span class="cmt">// -10%: zmniejszenie istniejącej kary efektów / bonus</span>
+args.fields.effectPenalty -= <span class="num">10</span>;</code></pre>
+  <div class="callout info">
+    Skrypty <code>dialog</code> są reaktywne i nietrwałe. Jeśli kara ma obowiązywać aktora przez cały
+    czas działania Active Effectu, użyj zamiast tego zakładki <strong>Changes</strong> i klucza
+    <code>system.combat.generalPenalty</code>.
+  </div>
 
   <p><strong>Wartości klucza <code>args.fields.difficulty</code></strong> — dostępne klucze trudności:</p>
   <table>
@@ -4577,10 +4596,28 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
   <h4>Walka (Postać / NPC)</h4>
   <table>
     <tbody><tr><th>Klucz</th><th>Opis</th></tr>
-    <tr><td>system.combat.totalArmorPenalty</td><td>Kara od pancerza</td></tr>
+    <tr><td>system.combat.armorPenaltyBonus</td><td>Dodatkowa kara od pancerza</td></tr>
+    <tr><td>system.combat.generalPenalty</td><td>Kara efektów (%) — osobna od pancerza, ran i choroby</td></tr>
     <tr><td>system.combat.meleeInitiative</td><td>Inicjatywa w walce wręcz</td></tr>
     <tr><td>system.healingRate</td><td>Tempo Leczenia</td></tr>
   </tbody></table>
+
+  <h4>Kara efektów — trwała zmiana przez Changes</h4>
+  <p>
+    Wybierz klucz <code>system.combat.generalPenalty</code> i tryb <strong>Add</strong>.
+    Wartości wielu aktywnych efektów sumują się w przygotowanych danych aktora:
+  </p>
+  <table>
+    <tbody><tr><th>Wartość</th><th>Rezultat</th></tr>
+    <tr><td><code>20</code></td><td>Dodaje 20% kary w kategorii „Efekty”.</td></tr>
+    <tr><td><code>-10</code></td><td>Odejmuje 10% od tej kategorii; wynik może być ujemnym bonusem.</td></tr>
+  </tbody></table>
+  <div class="callout info">
+    Changes nie zapisuje bazowej wartości formularza aktora. Foundry wylicza
+    <code>system.combat.generalPenalty</code> ponownie z aktywnych efektów podczas przygotowania danych.
+    Suma jest widoczna w nagłówku aktora, dialogach rzutu i tooltipie ze źródłami. Na karcie testu trafia
+    do <code>preData.penalties.effects</code>.
+  </div>
 
   <h4>Naturalna Zbroja (Bestia)</h4>
   <table>

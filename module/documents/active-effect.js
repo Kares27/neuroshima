@@ -554,10 +554,22 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
       foundry.utils.mergeObject(data, foundry.utils.expandObject(overrides));
     }
 
+    // A seconds-based applied effect must be anchored to the canonical Foundry
+    // world clock. Item effects are templates and commonly keep startTime null;
+    // without stamping the applied copy, duration.remaining cannot be tracked
+    // reliably and calendar integrations have no stable point to advance.
+    const durationSeconds = Number(foundry.utils.getProperty(data, "duration.seconds"));
+    const durationStart = foundry.utils.getProperty(data, "duration.startTime");
+    if (Number.isFinite(durationSeconds) && durationSeconds > 0
+      && (durationStart === null || durationStart === undefined || !Number.isFinite(Number(durationStart)))) {
+      foundry.utils.setProperty(data, "duration.startTime", Number(game.time?.worldTime ?? 0));
+    }
+
     game.neuroshima?.log("[NeuroshimaActiveEffect.convertToApplied]", {
       effectName:           this.name,
       originalTransferType,
       appliedTransferType:  foundry.utils.getProperty(data, "flags.neuroshima.transferType"),
+      durationStartTime:     foundry.utils.getProperty(data, "duration.startTime"),
     });
 
     return data;
