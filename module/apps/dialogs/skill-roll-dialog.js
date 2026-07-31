@@ -63,9 +63,17 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
         || ""
     };
 
-    this.resultCallback =
-      options.resultCallback
-      ?? null;
+    this.resultCallback = options.resultCallback ?? null;
+    this._onRollCallback = options.onRoll ?? null;
+  }
+
+  /**
+   * Open the dialog and wait until the roll finishes or the user cancels it.
+   * @param {object} options Dialog constructor options.
+   * @returns {Promise<object|null>} Roll payload or null after cancellation.
+   */
+  static wait(options = {}) {
+    return NeuroshimaRollDialogBase.prompt(this, options);
   }
 
   static DEFAULT_OPTIONS = {
@@ -1092,8 +1100,6 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
       }
     });
 
-    this.close();
-
     const TestClass = currentSkill.key ? SkillTest : AttributeTest;
     const test = this.actor._setupTest(TestClass, {
       attribute: { key: currentAttribute || null, value: finalStat },
@@ -1127,15 +1133,28 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
       test.forceSuccess({ mode: "keepRoll" });
     }
     await test.roll();
-    if (this.resultCallback) {
-      const successPoints = test.result.successPoints;
-      await this.resultCallback({
-        isSuccess: test.result.success,
-        successPoints,
-        // One-release compatibility for consumers of the old callback key.
-        successes: successPoints,
-        test
-      });
+
+    const successPoints = Number(test.result.successPoints ?? 0);
+    const payload = {
+      cancelled: false,
+      success: test.result.success === true,
+      isSuccess: test.result.success === true,
+      successPoints,
+      // One-release compatibility for consumers of the old callback key.
+      successes: successPoints,
+      test,
+      result: test.result
+    };
+
+    try {
+      if (this._onRollCallback) {
+        await this._onRollCallback(payload);
+      }
+      if (this.resultCallback) {
+        await this.resultCallback(payload);
+      }
+    } finally {
+      await this.close();
     }
     return test.result;
   }

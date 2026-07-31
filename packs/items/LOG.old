@@ -1,6 +1,6 @@
-2026/07/31-09:44:11.106 45bc Log #932: 138 ops saved to Table #934 OK
-2026/07/31-09:44:11.107 45bc Archiving D:\FoundryData\Data\systems\neuroshima\packs\items/000932.log: OK
-2026/07/31-09:44:11.108 45bc Table #933: 347 entries OK
-2026/07/31-09:44:11.108 45bc Table #934: 138 entries OK
-2026/07/31-09:44:11.110 45bc Archiving D:\FoundryData\Data\systems\neuroshima\packs\items/MANIFEST-000931: OK
-2026/07/31-09:44:11.112 45bc **** Repaired leveldb D:\FoundryData\Data\systems\neuroshima\packs\items; recovered 2 files; 377456 bytes. Some data may have been lost. ****
+2026/07/31-18:15:07.990 55e4 Log #936: 96 ops saved to Table #938 OK
+2026/07/31-18:15:07.990 55e4 Archiving H:\FOUNDRY DATA\Data\systems\neuroshima\packs\items/000936.log: OK
+2026/07/31-18:15:07.991 55e4 Table #937: 362 entries OK
+2026/07/31-18:15:07.992 55e4 Table #938: 96 entries OK
+2026/07/31-18:15:07.995 55e4 Archiving H:\FOUNDRY DATA\Data\systems\neuroshima\packs\items/MANIFEST-000935: OK
+2026/07/31-18:15:07.999 55e4 **** Repaired leveldb H:\FOUNDRY DATA\Data\systems\neuroshima\packs\items; recovered 2 files; 404265 bytes. Some data may have been lost. ****

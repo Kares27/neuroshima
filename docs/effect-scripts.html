@@ -333,6 +333,10 @@
     <div class="ctx-row"><span class="ctx-name">await this.setConditionValue(key, value, actor?)</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Ustaw poziom kondycji int bezpośrednio. <code>0</code> usuwa efekt kondycji.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.addCondition(key, actor?)</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Dodaj/inkrementuj kondycję (bool: włącza; int: +1)</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.removeCondition(key, actor?)</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Usuń/dekrementuj kondycję (bool: wyłącza; int: −1, usuwa przy 0)</span></div>
+    <div class="ctx-row ctx-separator"><span class="ctx-name">— Natychmiastowe testy lokalne —</span><span class="ctx-type"></span><span class="ctx-desc">otwierają dialog na kliencie wykonującym skrypt i czekają na rzut albo anulowanie; tylko w skryptach ASYNC</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.rollTest(options)</span><span class="ctx-type">Promise&lt;object&gt;</span><span class="ctx-desc">Ogólne API testu Współczynnika lub Umiejętności. <code>options.type</code>: <code>"attribute"</code> albo <code>"skill"</code>. Zwraca m.in. <code>cancelled</code>, <code>success</code>, <code>successPoints</code>, <code>test</code> i <code>result</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.rollAttributeTest(attributeKey, options?)</span><span class="ctx-type">Promise&lt;object&gt;</span><span class="ctx-desc">Skrót otwierający lokalny dialog testu wskazanego Współczynnika.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.rollSkillTest(skillKey, options?)</span><span class="ctx-type">Promise&lt;object&gt;</span><span class="ctx-desc">Skrót testu Umiejętności. Domyślny Współczynnik jest ustalany automatycznie z konfiguracji systemu; można go nadpisać przez <code>attributeKey</code>.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.requestTest(actor, { skillKey, difficulty?, modifier?, attributeKey?, isOpen?, minAP?, label?, note?, onSuccess?, onFailure? })</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Pojedynczy aktor: karta whisperowana do właściciela aktora + GM. <code>onSuccess</code>/<code>onFailure</code>: klucz kondycji (string) lub <code>[{addCondition, value?}]</code> — nakładane na rzucającego aktora po rzucie. <code>isOpen</code> domyślnie <code>false</code>. Czysty test atrybutu (np. Budowy): ustaw <code>skillKey</code> i <code>attributeKey</code> na ten sam klucz atrybutu (np. <code>"constitution"</code>) — skill = 0, roll tylko na atrybut.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.requestTest({ skillKey, difficulty?, modifier?, attributeKey?, isOpen?, minAP?, label?, note?, onSuccess?, onFailure? })</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Grupowy: jedna publiczna karta na czacie. Każdy gracz klika i rzuca dla swojej postaci. <code>onSuccess</code>/<code>onFailure</code>: klucz kondycji (string) lub <code>[{addCondition, value?}]</code> — nakładane na rzucającego aktora. <code>isOpen</code> domyślnie <code>false</code>. Czysty test atrybutu: <code>skillKey === attributeKey</code> (np. oba <code>"constitution"</code>).</span></div>
     <div class="ctx-row ctx-separator"><span class="ctx-name">— Helpery statystyk aktora —</span><span class="ctx-type"></span><span class="ctx-desc">skróty do odczytu danych aktora</span></div>
@@ -460,6 +464,79 @@
   args.dexterity = (args.dexterity || <span class="num">0</span>) + <span class="var">focus</span>;
 }</code></pre>
   </div>
+
+  <h3 id="guide-local-roll-test">Natychmiastowy Roll Test z dialogiem</h3>
+  <p>
+    Metody <code>rollTest()</code>, <code>rollAttributeTest()</code> i <code>rollSkillTest()</code>
+    otwierają standardowy dialog na kliencie wykonującym skrypt, czekają na rzut i zwracają jego wynik.
+    Są przeznaczone do bezpośrednich akcji, np. aktywacji sztuczki lub Totemu. Nie zastępują
+    <code>requestTest()</code>, które wysyła innemu użytkownikowi kartę z prośbą o późniejszy rzut.
+  </p>
+  <div class="callout warning">
+    Metody otwierające dialog są asynchroniczne — wywołuj je przez <code>await</code> wyłącznie w triggerach
+    obsługujących kod ASYNC. Dialog pojawia się użytkownikowi, na którego kliencie wykonywany jest skrypt.
+  </div>
+  <table>
+    <thead><tr><th>Opcja</th><th>Typ / domyślna</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td><code>type</code></td><td><code>"attribute" | "skill"</code></td><td>Wymagane tylko dla ogólnego <code>rollTest()</code>; wrappery ustawiają typ automatycznie.</td></tr>
+      <tr><td><code>attributeKey</code></td><td>string</td><td>Współczynnik testu. Dla Umiejętności może zostać pominięty — system znajdzie domyślny.</td></tr>
+      <tr><td><code>skillKey</code></td><td>string</td><td>Wymagany dla testu Umiejętności.</td></tr>
+      <tr><td><code>difficulty</code></td><td><code>"average"</code></td><td>Klucz trudności z konfiguracji systemu, np. <code>easy</code>, <code>problematic</code>, <code>hard</code>, <code>veryHard</code>.</td></tr>
+      <tr><td><code>isOpen</code></td><td><code>true</code></td><td><code>true</code> — test otwarty; <code>false</code> — zamknięty.</td></tr>
+      <tr><td><code>modifier</code></td><td><code>0</code></td><td>Początkowy modyfikator procentowy.</td></tr>
+      <tr><td><code>useArmorPenalty</code>, <code>useWoundPenalty</code>, <code>useDiseasePenalty</code>, <code>useEffectPenalty</code></td><td><code>true</code></td><td>Domyślny stan pól kar w dialogu.</td></tr>
+      <tr><td><code>label</code></td><td>string</td><td>Własna nazwa testu; bez niej używana jest lokalizowana nazwa Współczynnika lub Umiejętności.</td></tr>
+      <tr><td><code>rollMode</code></td><td>bieżący tryb Core</td><td>Początkowy tryb publikacji rzutu.</td></tr>
+      <tr><td><code>testType</code>, <code>testSubtype</code></td><td>string | null</td><td>Dodatkowy kontekst semantyczny przekazywany do opcji testu, bez zmiany klasy <code>AttributeTest</code>/<code>SkillTest</code>.</td></tr>
+      <tr><td><code>actor</code></td><td>Actor | Token</td><td>Opcjonalny wykonawca; domyślnie <code>this.actor</code>.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">manual / ASYNC</span> Test Współczynnika</div>
+    <pre><code><span class="kw">const</span> <span class="var">roll</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">rollAttributeTest</span>(<span class="str">"constitution"</span>, {
+  difficulty: <span class="str">"problematic"</span>,
+  isOpen: <span class="kw">true</span>,
+  label: <span class="str">"Próba Budowy"</span>,
+  testType: <span class="str">"totem"</span>,
+  testSubtype: <span class="str">"activation"</span>
+});
+
+<span class="kw">if</span> (<span class="var">roll</span>.cancelled) <span class="kw">return</span>;
+<span class="kw">if</span> (!<span class="var">roll</span>.success) {
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Test nieudany."</span>, <span class="str">"warn"</span>);
+  <span class="kw">return</span>;
+}
+<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Punkty sukcesu: ${<span class="var">roll</span>.successPoints}`</span>);</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">manual / ASYNC</span> Test Umiejętności</div>
+    <pre><code><span class="cmt">// Charyzma zostanie znaleziona automatycznie.</span>
+<span class="kw">const</span> <span class="var">roll</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">rollSkillTest</span>(<span class="str">"steadfastness"</span>, {
+  difficulty: <span class="str">"hard"</span>,
+  isOpen: <span class="kw">false</span>,
+  label: <span class="str">"Odporność na strach"</span>
+});
+
+<span class="kw">if</span> (<span class="var">roll</span>.cancelled) <span class="kw">return</span>;
+<span class="kw">if</span> (!<span class="var">roll</span>.success) <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">addCondition</span>(<span class="str">"fear"</span>);</code></pre>
+  </div>
+
+  <p>Zwrócony obiekt ma stabilny kształt:</p>
+  <pre><code>{
+  cancelled: <span class="kw">false</span>,
+  success: <span class="kw">true</span>,
+  isSuccess: <span class="kw">true</span>,
+  successPoints: <span class="num">2</span>,
+  type: <span class="str">"attribute"</span>,
+  attributeKey: <span class="str">"constitution"</span>,
+  skillKey: <span class="kw">null</span>,
+  test,   <span class="cmt">// cały obiekt testu</span>
+  result  <span class="cmt">// test.result</span>
+}</code></pre>
+  <p>Po anulowaniu <code>cancelled</code> ma wartość <code>true</code>, a <code>test</code> i <code>result</code> są równe <code>null</code>.</p>
 
   <h3>Argumenty <code>args</code></h3>
   <p>Obiekt <code>args</code> jest zawsze przekazywany jako parametr funkcji skryptu. Publiczne zdarzenia otrzymują także <code>args.eventContext</code> z identyfikatorem triggera, fazą, trybem wykonania, zakresem i metadanymi. Wszystkie fazy testowe oraz akcje wyniku używają wspólnego kontraktu: <code>args.actor</code>, <code>args.item</code>, <code>args.test</code>, <code>args.context</code>, <code>args.eventContext</code>, <code>args.dice</code>, <code>args.result</code> i <code>args.links</code>.</p>

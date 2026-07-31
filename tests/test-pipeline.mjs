@@ -187,6 +187,7 @@ const {
 } = await import("../module/sheets/neuroshima-effect-sheet.js");
 const { ReputationRollDialog } = await import("../module/apps/dialogs/reputation-roll-dialog.js");
 const { NeuroshimaRollDialogBase } = await import("../module/apps/dialogs/roll-dialog-base.js");
+const { NeuroshimaSkillRollDialog } = await import("../module/apps/dialogs/skill-roll-dialog.js");
 const { syncMountedModEffects } = await import("../module/helpers/mod-helpers.js");
 const {
   EFFECT_PENALTY_KEY,
@@ -1520,6 +1521,97 @@ test("forceInitiative from rollTest recalculates before updating the Combat Trac
   assert.equal(instance.result.initiative, 23);
   assert.equal(instance.result.successPoints, 23);
   assert.deepEqual(updates, [{ initiative: 23 }]);
+});
+
+test("script rollSkillTest opens the local dialog with prepared actor totals", async () => {
+  const actor = {
+    ...actorFixture(),
+    documentName: "Actor",
+    name: "Tester",
+    type: "character",
+    system: {
+      attributeTotals: { charisma: 14 },
+      attributes: { charisma: 12 },
+      skillTotals: { steadfastness: 5 },
+      skills: { steadfastness: { value: 4 } }
+    }
+  };
+  const expectedResult = { success: true, successPoints: 3 };
+  const expectedTest = { result: expectedResult };
+  let dialogOptions;
+  const originalWait = NeuroshimaSkillRollDialog.wait;
+  NeuroshimaSkillRollDialog.wait = async options => {
+    dialogOptions = options;
+    return {
+      cancelled: false,
+      success: true,
+      isSuccess: true,
+      successPoints: 3,
+      test: expectedTest,
+      result: expectedResult
+    };
+  };
+
+  try {
+    const script = new NeuroshimaScript({}, null);
+    const result = await script.rollSkillTest("steadfastness", {
+      actor,
+      difficulty: "hard",
+      isOpen: false,
+      testType: "totem",
+      testSubtype: "activation"
+    });
+
+    assert.equal(dialogOptions.stat, 14);
+    assert.equal(dialogOptions.skill, 5);
+    assert.equal(dialogOptions.currentAttribute, "charisma");
+    assert.equal(dialogOptions.lastRoll.baseDifficulty, "hard");
+    assert.equal(dialogOptions.lastRoll.isOpen, false);
+    assert.equal(dialogOptions.testType, "totem");
+    assert.equal(dialogOptions.testSubtype, "activation");
+    assert.equal(result.cancelled, false);
+    assert.equal(result.successPoints, 3);
+    assert.equal(result.type, "skill");
+    assert.equal(result.attributeKey, "charisma");
+    assert.equal(result.skillKey, "steadfastness");
+    assert.equal(result.test, expectedTest);
+  } finally {
+    NeuroshimaSkillRollDialog.wait = originalWait;
+  }
+});
+
+test("script rollAttributeTest returns a normalized cancellation", async () => {
+  const actor = {
+    ...actorFixture(),
+    documentName: "Actor",
+    name: "Tester",
+    type: "character",
+    system: {
+      attributeTotals: { constitution: 13 },
+      attributes: { constitution: 12 },
+      skills: {}
+    }
+  };
+  const originalWait = NeuroshimaSkillRollDialog.wait;
+  NeuroshimaSkillRollDialog.wait = async () => null;
+
+  try {
+    const script = new NeuroshimaScript({}, null);
+    const result = await script.rollAttributeTest("constitution", { actor });
+    assert.deepEqual(result, {
+      cancelled: true,
+      success: false,
+      isSuccess: false,
+      successPoints: 0,
+      test: null,
+      result: null,
+      type: "attribute",
+      attributeKey: "constitution",
+      skillKey: null
+    });
+  } finally {
+    NeuroshimaSkillRollDialog.wait = originalWait;
+  }
 });
 
 test("reroll and edit preserve lifecycle state without resource side effects", async () => {
