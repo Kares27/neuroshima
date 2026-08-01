@@ -20,7 +20,11 @@ globalThis.foundry = {
       }
     },
     api: {
-      ApplicationV2: class {},
+      ApplicationV2: class {
+        constructor(options = {}) { this.options = options; }
+        render() { return this; }
+        async close() { return this; }
+      },
       HandlebarsApplicationMixin: Base => class extends Base {}
     },
     sheets: {
@@ -92,6 +96,7 @@ globalThis.ChatMessage = class {
 };
 globalThis.CONST = {
   CHAT_MESSAGE_STYLES: { OTHER: 0 },
+  DOCUMENT_OWNERSHIP_LEVELS: { NONE: 0, LIMITED: 1, OBSERVER: 2, OWNER: 3 },
   ACTIVE_EFFECT_MODES: {
     CUSTOM: 0,
     MULTIPLY: 1,
@@ -126,6 +131,11 @@ globalThis.game = {
   messages: new Map(),
   user: { id: "user", role: 4, isGM: true }
 };
+game.user.active = true;
+game.user.name = "Gamemaster";
+game.users = [game.user];
+game.users.has = id => game.users.some(user => user.id === id);
+game.users.get = id => game.users.find(user => user.id === id);
 globalThis.ui = { notifications: { warn() {}, error() {}, info() {} } };
 globalThis.fromUuid = async uuid => documents.get(uuid) ?? null;
 globalThis.fromUuidSync = uuid => documents.get(uuid) ?? null;
@@ -145,6 +155,7 @@ const documents = new Map();
 const {
   NEUROSHIMA_TESTS,
   NeuroshimaTestBase,
+  AttributeTest,
   SkillTest,
   HealingTest,
   InitiativeTest,
@@ -188,6 +199,8 @@ const {
 const { ReputationRollDialog } = await import("../module/apps/dialogs/reputation-roll-dialog.js");
 const { NeuroshimaRollDialogBase } = await import("../module/apps/dialogs/roll-dialog-base.js");
 const { NeuroshimaSkillRollDialog } = await import("../module/apps/dialogs/skill-roll-dialog.js");
+const { NeuroshimaRollTestRouter } = await import("../module/helpers/roll-test-router.js");
+const { NeuroshimaSocket } = await import("../module/helpers/socket-helper.js");
 const { syncMountedModEffects } = await import("../module/helpers/mod-helpers.js");
 const {
   EFFECT_PENALTY_KEY,
@@ -1580,7 +1593,7 @@ test("script rollSkillTest opens the local dialog with prepared actor totals", a
   }
 });
 
-test("script rollAttributeTest returns a normalized cancellation", async () => {
+test("script rollAttributeTest falls back to the local GM and normalizes cancellation", async () => {
   const actor = {
     ...actorFixture(),
     documentName: "Actor",
@@ -1603,15 +1616,281 @@ test("script rollAttributeTest returns a normalized cancellation", async () => {
       success: false,
       isSuccess: false,
       successPoints: 0,
+      successes: 0,
       test: null,
       result: null,
       type: "attribute",
       attributeKey: "constitution",
-      skillKey: null
+      skillKey: null,
+      difficulty: "average",
+      isOpen: true
     });
   } finally {
     NeuroshimaSkillRollDialog.wait = originalWait;
   }
+});
+
+function immediateRollActor({ rollImpl, resultCallback } = {}) {
+  const result = { success: true, successPoints: 2 };
+  const fakeTest = {
+    result,
+    async roll() {
+      if (rollImpl) await rollImpl();
+      return this;
+    }
+  };
+  const actor = {
+    ...actorFixture(),
+    documentName: "Actor",
+    name: "Immediate tester",
+    type: "character",
+    items: [],
+    system: {
+      attributeTotals: { constitution: 13 },
+      attributes: { constitution: 12 },
+      skillTotals: {},
+      skills: {},
+      combat: {}
+    },
+    async update() {},
+    _setupTest(TestClass, data) {
+      assert.equal(TestClass, AttributeTest);
+      assert.equal(data.attribute.value, 13);
+      return fakeTest;
+    }
+  };
+  return { actor, fakeTest, result, resultCallback };
+}
+
+function immediateDialogOptions(actor, extra = {}) {
+  return {
+    actor,
+    stat: 13,
+    skill: 0,
+    label: "Budowa",
+    isSkill: false,
+    skillKey: "",
+    currentAttribute: "constitution",
+    lastRoll: {
+      modifier: 0,
+      baseDifficulty: "average",
+      useArmorPenalty: true,
+      useWoundPenalty: true,
+      useDiseasePenalty: true,
+      useEffectPenalty: true,
+      isOpen: true,
+      rollMode: "publicroll"
+    },
+    ...extra
+  };
+}
+
+test("SkillRollDialog.wait resolves the real prompt pipeline and keeps resultCallback", async () => {
+  const { actor, result } = immediateRollActor();
+  let legacyPayload = null;
+  const originalRender = NeuroshimaSkillRollDialog.prototype.render;
+  NeuroshimaSkillRollDialog.prototype.render = function() {
+    queueMicrotask(() => this._onRoll().catch(() => {}));
+    return this;
+  };
+
+  try {
+    const payload = await NeuroshimaSkillRollDialog.wait(immediateDialogOptions(actor, {
+      resultCallback: value => { legacyPayload = value; }
+    }));
+    assert.equal(payload.cancelled, false);
+    assert.equal(payload.success, true);
+    assert.equal(payload.successPoints, 2);
+    assert.equal(payload.result, result);
+    assert.equal(legacyPayload, payload);
+  } finally {
+    NeuroshimaSkillRollDialog.prototype.render = originalRender;
+  }
+});
+
+test("SkillRollDialog.wait resolves null only for a real cancellation", async () => {
+  const { actor } = immediateRollActor();
+  const originalRender = NeuroshimaSkillRollDialog.prototype.render;
+  NeuroshimaSkillRollDialog.prototype.render = function() {
+    queueMicrotask(() => this.close());
+    return this;
+  };
+  try {
+    assert.equal(await NeuroshimaSkillRollDialog.wait(immediateDialogOptions(actor)), null);
+  } finally {
+    NeuroshimaSkillRollDialog.prototype.render = originalRender;
+  }
+});
+
+test("closing a submitted SkillRollDialog cannot turn an in-flight roll into cancellation", async () => {
+  let releaseRoll;
+  let rollStarted = false;
+  const rollGate = new Promise(resolve => { releaseRoll = resolve; });
+  const { actor } = immediateRollActor({
+    rollImpl: async () => {
+      rollStarted = true;
+      await rollGate;
+    }
+  });
+  const originalRender = NeuroshimaSkillRollDialog.prototype.render;
+  NeuroshimaSkillRollDialog.prototype.render = function() {
+    queueMicrotask(() => this._onRoll().catch(() => {}));
+    return this;
+  };
+
+  try {
+    let settled = false;
+    const pending = NeuroshimaSkillRollDialog.wait(immediateDialogOptions(actor))
+      .then(value => { settled = true; return value; });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(rollStarted, true);
+    assert.equal(settled, false);
+    releaseRoll();
+    assert.equal((await pending).successPoints, 2);
+  } finally {
+    NeuroshimaSkillRollDialog.prototype.render = originalRender;
+  }
+});
+
+test("SkillRollDialog.wait rejects when test.roll throws", async () => {
+  const expected = new Error("roll failed");
+  const { actor } = immediateRollActor({ rollImpl: async () => { throw expected; } });
+  const originalRender = NeuroshimaSkillRollDialog.prototype.render;
+  NeuroshimaSkillRollDialog.prototype.render = function() {
+    queueMicrotask(() => this._onRoll().catch(() => {}));
+    return this;
+  };
+  try {
+    await assert.rejects(
+      NeuroshimaSkillRollDialog.wait(immediateDialogOptions(actor)),
+      /roll failed/
+    );
+  } finally {
+    NeuroshimaSkillRollDialog.prototype.render = originalRender;
+  }
+});
+
+test("rollTest actorOwner routes an MG-created immediate roll to the active player owner", async () => {
+  const gm = game.user;
+  const player = { id: "player", name: "Player", active: true, isGM: false, character: { id: "actor" } };
+  const originalUsers = game.users;
+  const originalExecuteAsUser = NeuroshimaSocket.executeAsUser;
+  const users = [gm, player];
+  users.has = id => users.some(user => user.id === id);
+  users.get = id => users.find(user => user.id === id);
+  game.users = users;
+  const actor = {
+    ...actorFixture(),
+    documentName: "Actor",
+    name: "Owned actor",
+    type: "character",
+    system: {
+      attributeTotals: { constitution: 13 },
+      attributes: { constitution: 12 },
+      skills: {},
+      combat: {}
+    },
+    testUserPermission(user) { return user.id === player.id; }
+  };
+  let routed;
+  NeuroshimaSocket.executeAsUser = async (action, userId, request) => {
+    routed = { action, userId, request };
+    return {
+      status: "rolled",
+      value: {
+        cancelled: false,
+        success: true,
+        isSuccess: true,
+        successPoints: 2,
+        successes: 2,
+        type: "attribute",
+        attributeKey: "constitution",
+        skillKey: null,
+        difficulty: "average",
+        isOpen: true,
+        test: null,
+        result: null
+      }
+    };
+  };
+
+  try {
+    const result = await new NeuroshimaScript({}, null)
+      .rollAttributeTest("constitution", { actor });
+    assert.equal(routed.action, "rollTest:prompt");
+    assert.equal(routed.userId, player.id);
+    assert.equal(routed.request.actorUuid, actor.uuid);
+    assert.equal(result.successPoints, 2);
+    assert.equal(result.test, null);
+    assert.equal(result.result, null);
+    assert.doesNotThrow(() => structuredClone(result));
+  } finally {
+    game.users = originalUsers;
+    NeuroshimaSocket.executeAsUser = originalExecuteAsUser;
+  }
+});
+
+test("socket rollTest handler strips test documents from its response", async () => {
+  const actor = {
+    ...actorFixture(),
+    documentName: "Actor",
+    name: "Remote actor",
+    type: "character"
+  };
+  documents.set(actor.uuid, actor);
+  const originalWait = NeuroshimaSkillRollDialog.wait;
+  const circularTest = { result: { success: true, successPoints: 4 } };
+  circularTest.self = circularTest;
+  NeuroshimaSkillRollDialog.wait = async () => ({
+    success: true,
+    isSuccess: true,
+    successPoints: 4,
+    test: circularTest,
+    result: circularTest.result
+  });
+  try {
+    const response = await NeuroshimaRollTestRouter._handleSocketRequest({
+      actorUuid: actor.uuid,
+      type: "attribute",
+      attributeKey: "constitution",
+      skillKey: null,
+      stat: 13,
+      skill: 0,
+      label: "Budowa",
+      difficulty: "problematic",
+      modifier: 0,
+      useArmorPenalty: true,
+      useWoundPenalty: true,
+      useDiseasePenalty: true,
+      useEffectPenalty: true,
+      isOpen: true,
+      rollMode: "publicroll",
+      testType: "attribute",
+      testSubtype: null
+    });
+    assert.equal(response.status, "rolled");
+    assert.equal(response.value.test, null);
+    assert.equal(response.value.result, null);
+    assert.equal(response.value.difficulty, "problematic");
+    assert.doesNotThrow(() => structuredClone(response));
+  } finally {
+    documents.delete(actor.uuid);
+    NeuroshimaSkillRollDialog.wait = originalWait;
+  }
+});
+
+test("creature experience roll requires an explicit attribute", async () => {
+  const actor = {
+    ...actorFixture(),
+    documentName: "Actor",
+    name: "Creature",
+    type: "creature",
+    system: { attributeTotals: { perception: 12 }, attributes: { perception: 10 }, experience: 4, skills: {} }
+  };
+  await assert.rejects(
+    new NeuroshimaScript({}, null).rollSkillTest("experience", { actor, recipient: "executor" }),
+    /nieprawidłowy Współczynnik/
+  );
 });
 
 test("reroll and edit preserve lifecycle state without resource side effects", async () => {

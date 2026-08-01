@@ -1839,9 +1839,10 @@ export class NeuroshimaScript {
   }
 
   /**
-   * Open a local Attribute or Skill Test dialog and wait for its result.
-   * Unlike requestTest(), this runs immediately on the client executing the
-   * script and does not create a request card for another user.
+   * Open an immediate Attribute or Skill Test dialog and wait for its result.
+   * By default the dialog is routed to an active player owner of the Actor,
+   * with an active GM as fallback. Unlike requestTest(), it does not create a
+   * request card for a later roll.
    *
    * @param {object} options
    * @param {"attribute"|"skill"} [options.type]
@@ -1858,9 +1859,10 @@ export class NeuroshimaScript {
    * @param {boolean} [options.useEffectPenalty=true]
    * @param {string} [options.testType]
    * @param {string} [options.testSubtype]
+   * @param {"actorOwner"|"executor"|"gm"} [options.recipient="actorOwner"]
    * @param {Actor|Token} [options.actor]
-  * @returns {Promise<object>} Normalized result, including cancelled and test.
-  */
+   * @returns {Promise<object>} Normalized result, including cancelled and test.
+   */
   async rollTest(options = {}) {
     options ??= {};
     const actor = options.actor?.actor ?? options.actor ?? this.actor;
@@ -1892,7 +1894,6 @@ export class NeuroshimaScript {
     }
 
     const isCreatureExperience = actor.type === "creature" && skillKey === "experience";
-    if (isCreatureExperience && !attributeKey) attributeKey = "dexterity";
 
     if (!attributeKey || !NEUROSHIMA.attributes?.[attributeKey]) {
       throw new Error(`rollTest: nieprawidłowy Współczynnik „${attributeKey || "brak"}”.`);
@@ -1936,65 +1937,44 @@ export class NeuroshimaScript {
     }
     if (!label) label = game.i18n.localize(NEUROSHIMA.attributes[attributeKey].label);
 
-    const lastRoll = {
-      modifier: Number(options.modifier ?? 0),
-      baseDifficulty: difficulty,
+    const modifier = Number(options.modifier ?? 0);
+    if (!Number.isFinite(modifier)) {
+      throw new Error("rollTest: modyfikator musi być prawidłową liczbą.");
+    }
+    if (!actor.uuid) throw new Error("rollTest: Aktor nie posiada UUID.");
+
+    const request = {
+      actorUuid: actor.uuid,
+      type,
+      attributeKey,
+      skillKey: isSkill ? skillKey : null,
+      stat,
+      skill,
+      label,
+      difficulty,
+      modifier,
       useArmorPenalty: options.useArmorPenalty ?? true,
       useWoundPenalty: options.useWoundPenalty ?? true,
       useDiseasePenalty: options.useDiseasePenalty ?? true,
       useEffectPenalty: options.useEffectPenalty ?? true,
       isOpen: options.isOpen ?? true,
-      rollMode: options.rollMode ?? game.settings.get("core", "rollMode")
-    };
-
-    const { NeuroshimaSkillRollDialog } = await import("./dialogs/skill-roll-dialog.js");
-    const payload = await NeuroshimaSkillRollDialog.wait({
-      actor,
-      stat,
-      skill,
-      label,
-      isSkill,
-      skillKey,
-      currentAttribute: attributeKey,
-      lastRoll,
+      rollMode: options.rollMode ?? game.settings.get("core", "rollMode"),
       testType: options.testType ?? type,
       testSubtype: options.testSubtype ?? null
-    });
-
-    if (!payload) {
-      return {
-        cancelled: true,
-        success: false,
-        isSuccess: false,
-        successPoints: 0,
-        test: null,
-        result: null,
-        type,
-        attributeKey,
-        skillKey: isSkill ? skillKey : null
-      };
-    }
-
-    const success = payload.success === true || payload.isSuccess === true;
-    return {
-      ...payload,
-      cancelled: false,
-      success,
-      isSuccess: success,
-      successPoints: Number(payload.successPoints ?? 0),
-      result: payload.result ?? payload.test?.result ?? null,
-      type,
-      attributeKey,
-      skillKey: isSkill ? skillKey : null
     };
+
+    const { NeuroshimaRollTestRouter } = await import("../helpers/roll-test-router.js");
+    return NeuroshimaRollTestRouter.roll(actor, request, {
+      recipient: options.recipient ?? "actorOwner"
+    });
   }
 
-  /** Open a local Attribute Test dialog and wait for its result. */
+  /** Open an immediate Attribute Test dialog and wait for its result. */
   async rollAttributeTest(attributeKey, options = {}) {
     return this.rollTest({ ...options, type: "attribute", attributeKey });
   }
 
-  /** Open a local Skill Test dialog and wait for its result. */
+  /** Open an immediate Skill Test dialog and wait for its result. */
   async rollSkillTest(skillKey, options = {}) {
     return this.rollTest({ ...options, type: "skill", skillKey });
   }

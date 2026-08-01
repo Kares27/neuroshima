@@ -892,6 +892,22 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
   }
 
   async _onRoll(event, target) {
+    if (this._rollSubmitted) return null;
+    this._rollSubmitted = true;
+
+    try {
+      return await this._submitRoll();
+    } catch (error) {
+      try {
+        await this._onErrorCallback?.(error);
+      } finally {
+        await this.close();
+      }
+      throw error;
+    }
+  }
+
+  async _submitRoll() {
     const sf =
       this._scriptFields || {};
 
@@ -1072,6 +1088,10 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
         ?? this.stat;
     }
 
+    // Closing a submitted dialog is not cancellation. The prompt remains
+    // pending until onRoll receives the completed result (or onError rejects).
+    await this.close();
+
     await this.actor.update({
       "system.lastRoll": {
         modifier:
@@ -1146,15 +1166,11 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
       result: test.result
     };
 
-    try {
-      if (this._onRollCallback) {
-        await this._onRollCallback(payload);
-      }
-      if (this.resultCallback) {
-        await this.resultCallback(payload);
-      }
-    } finally {
-      await this.close();
+    if (this._onRollCallback) {
+      await this._onRollCallback(payload);
+    }
+    if (this.resultCallback) {
+      await this.resultCallback(payload);
     }
     return test.result;
   }

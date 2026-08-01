@@ -333,9 +333,9 @@
     <div class="ctx-row"><span class="ctx-name">await this.setConditionValue(key, value, actor?)</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Ustaw poziom kondycji int bezpośrednio. <code>0</code> usuwa efekt kondycji.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.addCondition(key, actor?)</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Dodaj/inkrementuj kondycję (bool: włącza; int: +1)</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.removeCondition(key, actor?)</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Usuń/dekrementuj kondycję (bool: wyłącza; int: −1, usuwa przy 0)</span></div>
-    <div class="ctx-row ctx-separator"><span class="ctx-name">— Natychmiastowe testy lokalne —</span><span class="ctx-type"></span><span class="ctx-desc">otwierają dialog na kliencie wykonującym skrypt i czekają na rzut albo anulowanie; tylko w skryptach ASYNC</span></div>
+    <div class="ctx-row ctx-separator"><span class="ctx-name">— Natychmiastowe testy dialogowe —</span><span class="ctx-type"></span><span class="ctx-desc">domyślnie kierowane do aktywnego właściciela Aktora, z fallbackiem do MG; czekają na rzut albo anulowanie; tylko w skryptach ASYNC</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.rollTest(options)</span><span class="ctx-type">Promise&lt;object&gt;</span><span class="ctx-desc">Ogólne API testu Współczynnika lub Umiejętności. <code>options.type</code>: <code>"attribute"</code> albo <code>"skill"</code>. Zwraca m.in. <code>cancelled</code>, <code>success</code>, <code>successPoints</code>, <code>test</code> i <code>result</code>.</span></div>
-    <div class="ctx-row"><span class="ctx-name">await this.rollAttributeTest(attributeKey, options?)</span><span class="ctx-type">Promise&lt;object&gt;</span><span class="ctx-desc">Skrót otwierający lokalny dialog testu wskazanego Współczynnika.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.rollAttributeTest(attributeKey, options?)</span><span class="ctx-type">Promise&lt;object&gt;</span><span class="ctx-desc">Skrót otwierający natychmiastowy dialog testu wskazanego Współczynnika.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.rollSkillTest(skillKey, options?)</span><span class="ctx-type">Promise&lt;object&gt;</span><span class="ctx-desc">Skrót testu Umiejętności. Domyślny Współczynnik jest ustalany automatycznie z konfiguracji systemu; można go nadpisać przez <code>attributeKey</code>.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.requestTest(actor, { skillKey, difficulty?, modifier?, attributeKey?, isOpen?, minAP?, label?, note?, onSuccess?, onFailure? })</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Pojedynczy aktor: karta whisperowana do właściciela aktora + GM. <code>onSuccess</code>/<code>onFailure</code>: klucz kondycji (string) lub <code>[{addCondition, value?}]</code> — nakładane na rzucającego aktora po rzucie. <code>isOpen</code> domyślnie <code>false</code>. Czysty test atrybutu (np. Budowy): ustaw <code>skillKey</code> i <code>attributeKey</code> na ten sam klucz atrybutu (np. <code>"constitution"</code>) — skill = 0, roll tylko na atrybut.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.requestTest({ skillKey, difficulty?, modifier?, attributeKey?, isOpen?, minAP?, label?, note?, onSuccess?, onFailure? })</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Grupowy: jedna publiczna karta na czacie. Każdy gracz klika i rzuca dla swojej postaci. <code>onSuccess</code>/<code>onFailure</code>: klucz kondycji (string) lub <code>[{addCondition, value?}]</code> — nakładane na rzucającego aktora. <code>isOpen</code> domyślnie <code>false</code>. Czysty test atrybutu: <code>skillKey === attributeKey</code> (np. oba <code>"constitution"</code>).</span></div>
@@ -468,13 +468,15 @@
   <h3 id="guide-local-roll-test">Natychmiastowy Roll Test z dialogiem</h3>
   <p>
     Metody <code>rollTest()</code>, <code>rollAttributeTest()</code> i <code>rollSkillTest()</code>
-    otwierają standardowy dialog na kliencie wykonującym skrypt, czekają na rzut i zwracają jego wynik.
+    otwierają standardowy dialog natychmiast, czekają na rzut i zwracają jego wynik. Domyślnie dialog
+    trafia do aktywnego gracza posiadającego Aktora, a jeśli takiego nie ma — do aktywnego MG.
     Są przeznaczone do bezpośrednich akcji, np. aktywacji sztuczki lub Totemu. Nie zastępują
     <code>requestTest()</code>, które wysyła innemu użytkownikowi kartę z prośbą o późniejszy rzut.
   </p>
   <div class="callout warning">
     Metody otwierające dialog są asynchroniczne — wywołuj je przez <code>await</code> wyłącznie w triggerach
-    obsługujących kod ASYNC. Dialog pojawia się użytkownikowi, na którego kliencie wykonywany jest skrypt.
+    obsługujących kod ASYNC. Anulowanie zwraca <code>cancelled: true</code>, natomiast błąd wykonania rzutu
+    odrzuca Promise i jest obsługiwany przez standardowy mechanizm błędów skryptów.
   </div>
   <table>
     <thead><tr><th>Opcja</th><th>Typ / domyślna</th><th>Opis</th></tr></thead>
@@ -489,6 +491,7 @@
       <tr><td><code>label</code></td><td>string</td><td>Własna nazwa testu; bez niej używana jest lokalizowana nazwa Współczynnika lub Umiejętności.</td></tr>
       <tr><td><code>rollMode</code></td><td>bieżący tryb Core</td><td>Początkowy tryb publikacji rzutu.</td></tr>
       <tr><td><code>testType</code>, <code>testSubtype</code></td><td>string | null</td><td>Dodatkowy kontekst semantyczny przekazywany do opcji testu, bez zmiany klasy <code>AttributeTest</code>/<code>SkillTest</code>.</td></tr>
+      <tr><td><code>recipient</code></td><td><code>"actorOwner"</code></td><td>Odbiorca dialogu: <code>actorOwner</code> — aktywny gracz OWNER, potem MG; <code>executor</code> — klient wykonujący skrypt; <code>gm</code> — aktywny MG.</td></tr>
       <tr><td><code>actor</code></td><td>Actor | Token</td><td>Opcjonalny wykonawca; domyślnie <code>this.actor</code>.</td></tr>
     </tbody>
   </table>
@@ -537,6 +540,16 @@
   result  <span class="cmt">// test.result</span>
 }</code></pre>
   <p>Po anulowaniu <code>cancelled</code> ma wartość <code>true</code>, a <code>test</code> i <code>result</code> są równe <code>null</code>.</p>
+  <div class="callout info">
+    Gdy dialog wykonuje się na tym samym kliencie, wynik zawiera pełne <code>test</code> i <code>result</code>.
+    Przy routingu przez socket zwracany jest wyłącznie serializowalny rezultat: status, Punkty sukcesu,
+    typ testu, klucze Współczynnika/Umiejętności, trudność i tryb otwarty/zamknięty; wtedy
+    <code>test</code> i <code>result</code> mają wartość <code>null</code>.
+  </div>
+  <p>
+    Specjalna Umiejętność stworzenia <code>experience</code> nie ma jednego systemowego Współczynnika.
+    Podaj go jawnie, np. <code>this.rollSkillTest("experience", { attributeKey: "perception" })</code>.
+  </p>
 
   <h3>Argumenty <code>args</code></h3>
   <p>Obiekt <code>args</code> jest zawsze przekazywany jako parametr funkcji skryptu. Publiczne zdarzenia otrzymują także <code>args.eventContext</code> z identyfikatorem triggera, fazą, trybem wykonania, zakresem i metadanymi. Wszystkie fazy testowe oraz akcje wyniku używają wspólnego kontraktu: <code>args.actor</code>, <code>args.item</code>, <code>args.test</code>, <code>args.context</code>, <code>args.eventContext</code>, <code>args.dice</code>, <code>args.result</code> i <code>args.links</code>.</p>

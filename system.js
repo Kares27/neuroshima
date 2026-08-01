@@ -56,6 +56,7 @@ import { EditRollDialog } from "./module/apps/dialogs/minor-dialogs.js";
 import { PointAllocationDialog } from "./module/apps/dialogs/point-allocation-dialog.js";
 import { ListChoiceDialog } from "./module/apps/dialogs/list-choice-dialog.js";
 import { NeuroshimaChoiceRouter } from "./module/helpers/choice-router.js";
+import { NeuroshimaRollTestRouter } from "./module/helpers/roll-test-router.js";
 
 import { NeuroshimaInitiativeRollDialog } from "./module/apps/dialogs/initiative-roll-dialog.js";
 import { HealingApp } from "./module/apps/healing-app.js";
@@ -2778,6 +2779,7 @@ function initializeSocketlib() {
     if (!game.neuroshima.socket) return;
 
     NeuroshimaChoiceRouter.registerSocketHandlers();
+    NeuroshimaRollTestRouter.registerSocketHandlers();
 
     console.log("Neuroshima 1.5 | Rejestracja handlerów Socketlib");
     

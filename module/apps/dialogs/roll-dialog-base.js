@@ -30,6 +30,9 @@ export class NeuroshimaRollDialogBase extends HandlebarsApplicationMixin(Applica
     super(options);
     this.actor             = options.actor ?? null;
     this._onCloseCallback  = options.onClose ?? null;
+    this._onErrorCallback  = options.onError ?? null;
+    this._rollSubmitted    = false;
+    this._closeNotified    = false;
 
     this.userEntry             = {};
     this.selectedModifierIds   = new Set();
@@ -48,7 +51,10 @@ export class NeuroshimaRollDialogBase extends HandlebarsApplicationMixin(Applica
 
   /** @override */
   async close(options = {}) {
-    if (this._onCloseCallback) this._onCloseCallback();
+    if (!this._rollSubmitted && !this._closeNotified && this._onCloseCallback) {
+      this._closeNotified = true;
+      this._onCloseCallback();
+    }
     return super.close(options);
   }
 
@@ -227,8 +233,8 @@ export class NeuroshimaRollDialogBase extends HandlebarsApplicationMixin(Applica
 
   /**
    * Static constructor that wraps the dialog in a Promise.
-   * Resolve with the roll result when the user clicks Roll;
-   * resolve with null on cancel or window close.
+   * Resolve with the roll result when the user clicks Roll, resolve with null
+   * on cancel/window close, or reject through onError when execution fails.
    *
    * Subclasses should pass an `onRoll` option that resolves with the result
    * and call `resolve(result)` from `_onRoll`.
@@ -245,11 +251,23 @@ export class NeuroshimaRollDialogBase extends HandlebarsApplicationMixin(Applica
    * if (result) console.log("rolled", result);
    */
   static async prompt(DialogClass, options = {}) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = value => {
+        if (settled) return;
+        settled = true;
+        resolve(value);
+      };
+      const fail = error => {
+        if (settled) return;
+        settled = true;
+        reject(error);
+      };
       const dialog = new DialogClass({
         ...options,
-        onRoll:  (result) => resolve(result),
-        onClose: () => resolve(null)
+        onRoll: finish,
+        onClose: () => finish(null),
+        onError: fail
       });
       dialog.render(true);
     });
