@@ -1027,8 +1027,10 @@ export class NeuroshimaTestBase {
   }
 
   async getChatData() {
+    const autoSuccess = this.preData.resultModifiers?.forcedSuccess === true;
     return {
       ...clone(this.result),
+      autoSuccess,
       modifiedResults: this.getDiceDisplayData(),
       config: NEUROSHIMA,
       dataTooltip: this.getDataTooltip(),

@@ -237,6 +237,7 @@
             "ClosedTest": "Test Zamknięty",
             "ClosedTestShort": "Zamknięty",
             "Success": "Sukces",
+            "AutomaticSuccess": "Automatyczny Sukces",
             "Failure": "Porażka",
             "Jamming": "ZACIĘCIE",
             "SuccessPoints": "Punkty Sukcesu",

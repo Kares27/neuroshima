@@ -234,6 +234,7 @@
             "ClosedTest": "Closed Test",
             "ClosedTestShort": "Closed",
             "Success": "Success",
+            "AutomaticSuccess": "Automatic Success",
             "Failure": "Failure",
             "Jamming": "JAMMING",
             "SuccessPoints": "Success Points",

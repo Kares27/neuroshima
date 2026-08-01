@@ -55,7 +55,7 @@
     <hr class="dotted-hr">
     <footer class="roll-outcome">
         <div class="outcome-result {{#if success}}outcome-success{{else}}outcome-failure{{/if}}">
-            {{#if success}}{{localize "NEUROSHIMA.Roll.Success"}}{{else}}{{localize "NEUROSHIMA.Roll.Failure"}}{{/if}}
+            {{#if autoSuccess}}{{localize "NEUROSHIMA.Roll.AutomaticSuccess"}}{{else if success}}{{localize "NEUROSHIMA.Roll.Success"}}{{else}}{{localize "NEUROSHIMA.Roll.Failure"}}{{/if}}
         </div>
         <div class="outcome-item">
             <span class="label">{{localize "NEUROSHIMA.Roll.SuccessPointsAbbr"}}:</span>

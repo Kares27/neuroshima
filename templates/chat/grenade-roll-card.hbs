@@ -80,7 +80,7 @@
         </div>
         <div class="outcome-item">
             <span class="value {{#if isSuccess}}success{{else}}failure{{/if}}">
-                <strong>{{#if isCritSuccess}}{{localize "NEUROSHIMA.Roll.CritSuccess"}}{{else if isSuccess}}{{localize "NEUROSHIMA.Roll.Success"}}{{else if isCritFailure}}{{localize "NEUROSHIMA.Roll.CritFailure"}}{{else}}{{localize "NEUROSHIMA.Roll.Failure"}}{{/if}}</strong>
+                <strong>{{#if autoSuccess}}{{localize "NEUROSHIMA.Roll.AutomaticSuccess"}}{{else if isCritSuccess}}{{localize "NEUROSHIMA.Roll.CritSuccess"}}{{else if isSuccess}}{{localize "NEUROSHIMA.Roll.Success"}}{{else if isCritFailure}}{{localize "NEUROSHIMA.Roll.CritFailure"}}{{else}}{{localize "NEUROSHIMA.Roll.Failure"}}{{/if}}</strong>
             </span>
         </div>
     </footer>

@@ -117,7 +117,7 @@
                 
                 <div class="outcome-item roll-status">
                     <span class="value {{#if isSuccess}}success{{else}}failure{{/if}}">
-                        <strong>{{#if isSuccess}}{{localize "NEUROSHIMA.Roll.Success"}}{{else}}{{localize "NEUROSHIMA.Roll.Failure"}}{{/if}}</strong>
+                        <strong>{{#if autoSuccess}}{{localize "NEUROSHIMA.Roll.AutomaticSuccess"}}{{else if isSuccess}}{{localize "NEUROSHIMA.Roll.Success"}}{{else}}{{localize "NEUROSHIMA.Roll.Failure"}}{{/if}}</strong>
                     </span>
                 </div>
             {{/unless}}

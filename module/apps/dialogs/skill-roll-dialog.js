@@ -1166,11 +1166,11 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
       result: test.result
     };
 
-    if (this._onRollCallback) {
-      await this._onRollCallback(payload);
-    }
     if (this.resultCallback) {
       await this.resultCallback(payload);
+    }
+    if (this._onRollCallback) {
+      await this._onRollCallback(payload);
     }
     return test.result;
   }

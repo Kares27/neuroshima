@@ -1451,6 +1451,8 @@ test("pre-roll API changes survive first roll", async () => {
   await instance.roll({ sendToChat: false });
   assert.equal(instance.result.success, true);
   assert.equal(instance.context.basePreData.resultModifiers.forcedSuccess, true);
+  const chatData = await instance.getChatData();
+  assert.equal(chatData.autoSuccess, true);
 });
 
 test("forceInitiative persists the override and updates chat data and Combat Tracker", async () => {
@@ -1688,6 +1690,7 @@ function immediateDialogOptions(actor, extra = {}) {
 test("SkillRollDialog.wait resolves the real prompt pipeline and keeps resultCallback", async () => {
   const { actor, result } = immediateRollActor();
   let legacyPayload = null;
+  let legacyCompleted = false;
   const originalRender = NeuroshimaSkillRollDialog.prototype.render;
   NeuroshimaSkillRollDialog.prototype.render = function() {
     queueMicrotask(() => this._onRoll().catch(() => {}));
@@ -1696,8 +1699,13 @@ test("SkillRollDialog.wait resolves the real prompt pipeline and keeps resultCal
 
   try {
     const payload = await NeuroshimaSkillRollDialog.wait(immediateDialogOptions(actor, {
-      resultCallback: value => { legacyPayload = value; }
+      resultCallback: async value => {
+        await Promise.resolve();
+        legacyPayload = value;
+        legacyCompleted = true;
+      }
     }));
+    assert.equal(legacyCompleted, true);
     assert.equal(payload.cancelled, false);
     assert.equal(payload.success, true);
     assert.equal(payload.successPoints, 2);
