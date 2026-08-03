@@ -13,10 +13,10 @@
 
     <div class="crew-occupants">
         {{#each crewMembers as |member|}}
-        <div class="occupant {{#if member.exposed}}is-exposed{{/if}}" data-actor-id="{{member.actorId}}">
+        <div class="occupant {{#if member.exposed}}is-exposed{{/if}}" data-actor-id="{{member.actorId}}" data-actor-uuid="{{member.actorUuid}}">
 
             <div class="occupant-position">
-                <select data-action="setCrewRole" data-actor-id="{{member.actorId}}">
+                <select data-action="setCrewRole" data-actor-id="{{member.actorId}}" data-actor-uuid="{{member.actorUuid}}">
                     {{#each member.roleOptions as |opt|}}
                     <option value="{{opt.value}}" {{#if opt.selected}}selected{{/if}}>{{opt.label}}</option>
                     {{/each}}
@@ -28,17 +28,17 @@
             <div class="occupant-name">{{member.name}}</div>
 
             <div class="occupant-exposed">
-                <a class="button {{#if member.exposed}}active{{/if}}" data-action="toggleCrewExposed" data-actor-id="{{member.actorId}}" title="{{localize 'NEUROSHIMA.Vehicle.Exposed'}}">
+                <a class="button {{#if member.exposed}}active{{/if}}" data-action="toggleCrewExposed" data-actor-id="{{member.actorId}}" data-actor-uuid="{{member.actorUuid}}" title="{{localize 'NEUROSHIMA.Vehicle.Exposed'}}">
                     <i class="fas fa-eye"></i>
                     {{localize "NEUROSHIMA.Vehicle.Exposed"}}
                 </a>
             </div>
 
             <div class="occupant-buttons">
-                <a class="button" data-action="editCrewMember" data-actor-id="{{member.actorId}}" title="{{localize 'NEUROSHIMA.Actions.Edit'}}">
+                <a class="button" data-action="editCrewMember" data-actor-id="{{member.actorId}}" data-actor-uuid="{{member.actorUuid}}" title="{{localize 'NEUROSHIMA.Actions.Edit'}}">
                     <i class="fas fa-edit"></i>
                 </a>
-                <a class="button crew-remove" data-action="removeCrew" data-actor-id="{{member.actorId}}" title="{{localize 'NEUROSHIMA.Actions.Delete'}}">
+                <a class="button crew-remove" data-action="removeCrew" data-actor-id="{{member.actorId}}" data-actor-uuid="{{member.actorUuid}}" title="{{localize 'NEUROSHIMA.Actions.Delete'}}">
                     <i class="fas fa-times"></i>
                 </a>
             </div>

@@ -2,6 +2,11 @@ import { NEUROSHIMA } from "../config.js";
 import { getConditions } from "../apps/config/condition-config.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
 import { buildBreakdownTooltip } from "../helpers/tooltip-renderer.js";
+import {
+  crewMemberData,
+  crewMemberMatches,
+  resolveCrewActor
+} from "../helpers/vehicle-crew.js";
 
 function _collectVehicleArmorBonusByEffect(actor) {
   const byLoc = {};
@@ -69,28 +74,28 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
       editItem:    async function(event, target) { const id = target.dataset.itemId || target.closest("[data-item-id]")?.dataset.itemId; this.document.items.get(id)?.sheet.render(true); },
       deleteItem:  async function(event, target) { const id = target.dataset.itemId || target.closest("[data-item-id]")?.dataset.itemId; await this.document.items.get(id)?.delete(); },
       editCrewMember: async function(event, target) {
-        const actor = game.actors.get(target.dataset.actorId);
+        const actor = await resolveCrewActor(target.dataset);
         if (actor) actor.sheet.render(true);
       },
       removeCrew: async function(event, target) {
-        const actorId = target.dataset.actorId;
-        const crewMembers = this.document.system.crewMembers.filter(m => m.actorId !== actorId);
+        const identity = target.dataset;
+        const crewMembers = this.document.system.crewMembers
+          .map(crewMemberData)
+          .filter(member => !crewMemberMatches(member, identity));
         await this.document.update({ "system.crewMembers": crewMembers });
       },
       toggleCrewExposed: async function(event, target) {
-        const actorId = target.dataset.actorId;
         const crewMembers = foundry.utils.deepClone(this.document.system.crewMembers.map(m => m.toObject?.() ?? m));
-        const member = crewMembers.find(m => m.actorId === actorId);
+        const member = crewMembers.find(m => crewMemberMatches(m, target.dataset));
         if (member) {
           member.exposed = !member.exposed;
           await this.document.update({ "system.crewMembers": crewMembers });
         }
       },
       setCrewRole: async function(event, target) {
-        const actorId = target.dataset.actorId;
         const role = target.value;
         const crewMembers = foundry.utils.deepClone(this.document.system.crewMembers.map(m => m.toObject?.() ?? m));
-        const member = crewMembers.find(m => m.actorId === actorId);
+        const member = crewMembers.find(m => crewMemberMatches(m, target.dataset));
         if (member) {
           member.role = role;
           await this.document.update({ "system.crewMembers": crewMembers });
@@ -305,11 +310,12 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
     context.vehicleCrewPositions  = NEUROSHIMA.vehicleCrewPositions;
     context.vehicleDamageTypes    = NEUROSHIMA.vehicleDamageTypes;
 
-    context.crewMembers = (system.crewMembers ?? []).map((m) => {
-      const raw     = m.toObject?.() ?? m;
-      const crewActor = game.actors.get(raw.actorId);
+    context.crewMembers = await Promise.all((system.crewMembers ?? []).map(async (m) => {
+      const raw = crewMemberData(m);
+      const crewActor = await resolveCrewActor(raw);
       return {
         actorId: raw.actorId,
+        actorUuid: raw.actorUuid ?? crewActor?.uuid ?? "",
         role:    raw.role,
         exposed: raw.exposed,
         name:    crewActor?.name ?? game.i18n.localize("NEUROSHIMA.Unknown"),
@@ -320,7 +326,7 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
           selected: raw.role === key
         }))
       };
-    });
+    }));
 
     const items = actor.items.contents.sort((a, b) => (a.sort || 0) - (b.sort || 0));
     const modChildIds = new Set(
@@ -710,10 +716,9 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
     }
 
     if (input?.dataset?.action === "setCrewRole") {
-      const actorId = input.dataset.actorId;
       const role    = input.value;
       const crewMembers = foundry.utils.deepClone(this.document.system.crewMembers.map(m => m.toObject?.() ?? m));
-      const member = crewMembers.find(m => m.actorId === actorId);
+      const member = crewMembers.find(m => crewMemberMatches(m, input.dataset));
       if (member) {
         member.role = role;
         await this.document.update({ "system.crewMembers": crewMembers });
@@ -737,10 +742,25 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
   async _onDropActor(event, data) {
     const dropped = await fromUuid(data.uuid);
     if (!dropped) return;
+    const actor = dropped.documentName === "Token" ? dropped.actor : dropped;
+    if (!actor || actor.documentName !== "Actor") return;
+
+    const actorUuid = actor.uuid;
     const existing = this.document.system.crewMembers ?? [];
-    if (existing.some(m => (m.toObject?.() ?? m).actorId === dropped.id)) return;
-    const crewMembers = existing.map(m => m.toObject?.() ?? m);
-    crewMembers.push({ actorId: dropped.id, role: "passenger", exposed: false });
+    if (existing.some(member => {
+      const raw = crewMemberData(member);
+      if (raw.actorUuid) return raw.actorUuid === actorUuid;
+      // A legacy row can only be matched safely by actorId when the dropped
+      // Actor is a world Actor. Never collapse two synthetic token Actors.
+      return actor.isToken !== true && raw.actorId === actor.id;
+    })) return;
+    const crewMembers = existing.map(crewMemberData);
+    crewMembers.push({
+      actorId: actor.id,
+      actorUuid,
+      role: "passenger",
+      exposed: false
+    });
     await this.document.update({ "system.crewMembers": crewMembers });
   }
 

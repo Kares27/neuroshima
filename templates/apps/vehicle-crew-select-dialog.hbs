@@ -7,9 +7,9 @@
         {{#if hasNoCrew}}
         <p class="notification warning">{{localize "NEUROSHIMA.Vehicle.NoCrewInVehicle"}}</p>
         {{else}}
-        <select name="crewActorId" style="font-size: 0.9em;">
+        <select name="crewActorRef" style="font-size: 0.9em;">
             {{#each crewOptions}}
-            <option value="{{this.actorId}}">{{this.label}}</option>
+            <option value="{{this.actorRef}}">{{this.label}}</option>
             {{/each}}
         </select>
         {{/if}}

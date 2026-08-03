@@ -203,6 +203,10 @@ const { NeuroshimaRollTestRouter } = await import("../module/helpers/roll-test-r
 const { NeuroshimaSocket } = await import("../module/helpers/socket-helper.js");
 const { syncMountedModEffects } = await import("../module/helpers/mod-helpers.js");
 const {
+  crewMemberMatches,
+  resolveCrewActor
+} = await import("../module/helpers/vehicle-crew.js");
+const {
   EFFECT_PENALTY_KEY,
   LEGACY_EFFECT_PENALTY_KEY,
   normalizeEffectPenaltyChanges
@@ -798,6 +802,43 @@ test("automatic condition checks mark their own effects and never remove manual 
     { active: false, automaticOnly: true }
   );
   assert.deepEqual(deletedIds, ["automatic"]);
+});
+
+test("vehicle crew UUID resolves the concrete unlinked-token Actor", async () => {
+  const syntheticActor = {
+    id: "prototype-npc",
+    uuid: "Scene.scene.Token.token.Actor",
+    documentName: "Actor",
+    name: "NPC w pojeździe"
+  };
+  const token = {
+    uuid: "Scene.scene.Token.token",
+    documentName: "Token",
+    actor: syntheticActor
+  };
+  documents.set(syntheticActor.uuid, syntheticActor);
+  documents.set(token.uuid, token);
+
+  try {
+    assert.equal(
+      await resolveCrewActor({ actorId: "prototype-npc", actorUuid: syntheticActor.uuid }),
+      syntheticActor
+    );
+    assert.equal(
+      await resolveCrewActor({ actorId: "prototype-npc", actorUuid: token.uuid }),
+      syntheticActor
+    );
+    assert.equal(
+      crewMemberMatches(
+        { actorId: "prototype-npc", actorUuid: "Scene.scene.Token.first.Actor" },
+        { actorId: "prototype-npc", actorUuid: "Scene.scene.Token.second.Actor" }
+      ),
+      false
+    );
+  } finally {
+    documents.delete(syntheticActor.uuid);
+    documents.delete(token.uuid);
+  }
 });
 
 test("saved legacy overweight template is upgraded without replacing custom checks", () => {

@@ -6471,6 +6471,14 @@ console.<span class="fn">log</span>(<span class="var">diceRoll</span>.total);
 <span class="var">sys</span>.crew.max          <span class="cmt">// Maks. załoga</span>
 <span class="var">sys</span>.passengers.current
 <span class="var">sys</span>.passengers.max
+<span class="var">sys</span>.crewMembers       <span class="cmt">// Wpisy: actorId, actorUuid, role, exposed</span>
+
+<span class="cmt">// Zawsze rozwiązuj członka przez UUID. Działa także dla niepowiązanego tokena NPC.</span>
+<span class="kw">for</span> (<span class="kw">const</span> <span class="var">member</span> <span class="kw">of</span> <span class="var">sys</span>.crewMembers ?? []) {
+  <span class="kw">const</span> <span class="var">crewActor</span> = <span class="kw">await</span> game.neuroshima.<span class="fn">resolveCrewActor</span>(<span class="var">member</span>);
+  <span class="kw">if</span> (!<span class="var">crewActor</span>) <span class="kw">continue</span>;
+  <span class="cmt">// Efekty nakładaj na crewActor, nigdy przez game.actors.get(member.actorId).</span>
+}
 
 <span class="cmt">// ── Paliwo ─────────────────────────────────────────────</span>
 <span class="var">sys</span>.fuel.value    <span class="cmt">// Aktualne paliwo</span>

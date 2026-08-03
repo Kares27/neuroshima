@@ -57,6 +57,7 @@ import { PointAllocationDialog } from "./module/apps/dialogs/point-allocation-di
 import { ListChoiceDialog } from "./module/apps/dialogs/list-choice-dialog.js";
 import { NeuroshimaChoiceRouter } from "./module/helpers/choice-router.js";
 import { NeuroshimaRollTestRouter } from "./module/helpers/roll-test-router.js";
+import { resolveCrewActor } from "./module/helpers/vehicle-crew.js";
 
 import { NeuroshimaInitiativeRollDialog } from "./module/apps/dialogs/initiative-roll-dialog.js";
 import { HealingApp } from "./module/apps/healing-app.js";
@@ -248,6 +249,9 @@ Hooks.once('init', async function() {
         showHealingRollDialog,
         buildRef,
         resolveRef,
+        // Public utility for Active Effect scripts operating on vehicle crew.
+        // It preserves unlinked-token identity through member.actorUuid.
+        resolveCrewActor,
         NeuroshimaScriptRunner,
         config: NEUROSHIMA,
         log: (...args) => {

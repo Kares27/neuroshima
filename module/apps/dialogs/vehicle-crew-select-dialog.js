@@ -1,3 +1,5 @@
+import { crewMemberData, resolveCrewActor } from "../../helpers/vehicle-crew.js";
+
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ApplicationV2 } = foundry.applications.api;
 
@@ -12,23 +14,8 @@ export class VehicleCrewSelectDialog extends HandlebarsApplicationMixin(Applicat
     this.weapon   = options.weapon;
     this.onSelect = options.onSelect;
 
-    // Build list of available crew actors
-    const crewPositionLabels = {
-      driver:    game.i18n.localize("NEUROSHIMA.Vehicle.Position.Driver"),
-      gunner:    game.i18n.localize("NEUROSHIMA.Vehicle.Position.Gunner"),
-      commander: game.i18n.localize("NEUROSHIMA.Vehicle.Position.Commander"),
-      passenger: game.i18n.localize("NEUROSHIMA.Vehicle.Position.Passenger")
-    };
-
-    this.crewOptions = (this.vehicle.system.crewMembers ?? [])
-      .map(m => {
-        const raw   = m.toObject?.() ?? m;
-        const actor = game.actors.get(raw.actorId);
-        if (!actor) return null;
-        const roleLabel = crewPositionLabels[raw.role] ?? raw.role;
-        return { actorId: raw.actorId, actor, label: `${actor.name} (${roleLabel})` };
-      })
-      .filter(Boolean);
+    this.crewOptions = [];
+    this._crewActors = new Map();
   }
 
   static DEFAULT_OPTIONS = {
@@ -48,6 +35,23 @@ export class VehicleCrewSelectDialog extends HandlebarsApplicationMixin(Applicat
 
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
+    this._crewActors.clear();
+    const crewPositionLabels = {
+      driver:    game.i18n.localize("NEUROSHIMA.Vehicle.Position.Driver"),
+      gunner:    game.i18n.localize("NEUROSHIMA.Vehicle.Position.Gunner"),
+      commander: game.i18n.localize("NEUROSHIMA.Vehicle.Position.Commander"),
+      passenger: game.i18n.localize("NEUROSHIMA.Vehicle.Position.Passenger")
+    };
+    const resolved = await Promise.all((this.vehicle.system.crewMembers ?? []).map(async member => {
+      const raw = crewMemberData(member);
+      const actor = await resolveCrewActor(raw);
+      if (!actor) return null;
+      const actorRef = raw.actorUuid || actor.uuid;
+      const roleLabel = crewPositionLabels[raw.role] ?? raw.role;
+      this._crewActors.set(actorRef, actor);
+      return { actorRef, actorId: raw.actorId, actorUuid: actor.uuid, label: `${actor.name} (${roleLabel})` };
+    }));
+    this.crewOptions = resolved.filter(Boolean);
     context.crewOptions  = this.crewOptions;
     context.weaponName   = this.weapon?.name ?? "";
     context.hasNoCrew    = this.crewOptions.length === 0;
@@ -56,14 +60,14 @@ export class VehicleCrewSelectDialog extends HandlebarsApplicationMixin(Applicat
 
   async _onConfirm() {
     const form = this.element.tagName === "FORM" ? this.element : this.element.querySelector("form");
-    const actorId = form?.querySelector("select[name='crewActorId']")?.value;
-    const actor   = actorId ? game.actors.get(actorId) : null;
+    const actorRef = form?.querySelector("select[name='crewActorRef']")?.value;
+    const actor = actorRef ? this._crewActors.get(actorRef) ?? null : null;
     if (!actor) {
       ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Vehicle.NoCrewSelected"));
       return;
     }
     await this.close();
-    if (this.onSelect) this.onSelect(actor);
+    if (this.onSelect) await this.onSelect(actor);
   }
 
   async _onCancel() {

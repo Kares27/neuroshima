@@ -582,6 +582,9 @@ export class NeuroshimaVehicleData extends foundry.abstract.TypeDataModel {
       }),
       crewMembers: new fields.ArrayField(new fields.SchemaField({
         actorId:  new fields.StringField({ initial: "", required: true }),
+        // World Actors use Actor.<id>; unlinked Tokens store the UUID of their
+        // synthetic Actor (Scene.<scene>.Token.<token>.Actor).
+        actorUuid: new fields.StringField({ initial: "" }),
         role:     new fields.StringField({ initial: "passenger" }),
         exposed:  new fields.BooleanField({ initial: false })
       }), { initial: [] }),
