@@ -818,11 +818,23 @@ test("vehicle crew UUID resolves the concrete unlinked-token Actor", async () =>
   };
   documents.set(syntheticActor.uuid, syntheticActor);
   documents.set(token.uuid, token);
+  const originalActors = game.actors;
+  game.actors = new Map([[syntheticActor.id, { documentName: "Actor", name: "Prototyp NPC" }]]);
 
   try {
     assert.equal(
       await resolveCrewActor({ actorId: "prototype-npc", actorUuid: syntheticActor.uuid }),
       syntheticActor
+    );
+    assert.equal(
+      await resolveCrewActor({ actorId: syntheticActor.id, actorUuid: "Scene.deleted.Token.missing.Actor" }),
+      null,
+      "a stale synthetic UUID must never fall back to the prototype Actor"
+    );
+    assert.equal(
+      await resolveCrewActor({ actorId: syntheticActor.id }),
+      game.actors.get(syntheticActor.id),
+      "actorId remains available only for legacy rows without actorUuid"
     );
     assert.equal(
       await resolveCrewActor({ actorId: "prototype-npc", actorUuid: token.uuid }),
@@ -838,6 +850,8 @@ test("vehicle crew UUID resolves the concrete unlinked-token Actor", async () =>
   } finally {
     documents.delete(syntheticActor.uuid);
     documents.delete(token.uuid);
+    if (originalActors === undefined) delete game.actors;
+    else game.actors = originalActors;
   }
 });
 
@@ -2796,6 +2810,22 @@ test("healing edit uses messageType healing", () => {
 test("percentile edit menu is disabled until dedicated editor exists", () => {
   assert.equal(PercentileTest.editableByGM, false);
   assert.equal(PercentileTest.dieSides, 100);
+});
+
+test("percentile chat displays a signed threshold margin without negative successPoints", async () => {
+  const percentile = new PercentileTest({
+    preData: { target: 50, fixedDice: [67] },
+    context: { isDebug: true }
+  }, actorFixture());
+
+  await percentile.roll({ sendToChat: false });
+  const chatData = await percentile.getChatData();
+
+  assert.equal(percentile.result.success, false);
+  assert.equal(percentile.result.successPoints, 0);
+  assert.equal(percentile.result.thresholdMargin, -17);
+  assert.equal(chatData.displaySuccessPoints, -17);
+  assert.match(chatData.dataTooltip, /-17/);
 });
 
 function installMeleeEncounter({

@@ -1020,6 +1020,14 @@ export class NeuroshimaTestBase {
     return this.constructor.renderTooltipSections(this.getTooltipSections());
   }
 
+  /**
+   * Value presented on the chat card. Most tests display canonical success
+   * points; threshold-comparison tests may expose a signed margin instead.
+   */
+  getDisplayedSuccessPoints() {
+    return Number(this.result.successPoints ?? 0);
+  }
+
   canShowTooltip() {
     const minimum = game.settings.get("neuroshima", "rollTooltipMinRole");
     return game.user.role >= minimum
@@ -1031,6 +1039,7 @@ export class NeuroshimaTestBase {
     return {
       ...clone(this.result),
       autoSuccess,
+      displaySuccessPoints: this.getDisplayedSuccessPoints(),
       modifiedResults: this.getDiceDisplayData(),
       config: NEUROSHIMA,
       dataTooltip: this.getDataTooltip(),
@@ -1443,6 +1452,7 @@ export class PercentileTest extends NeuroshimaTestBase {
   async computeResult() {
     const value = Number(this.result.rawResults[0] ?? 0);
     const success = value <= Number(this.result.target ?? 0);
+    const thresholdMargin = Number(this.result.target ?? 0) - value;
     Object.assign(this.result, {
       rolledResults: this.result.rolledResults?.length ? this.result.rolledResults : [value],
       modifiedResults: [{
@@ -1457,10 +1467,22 @@ export class PercentileTest extends NeuroshimaTestBase {
       }],
       success,
       isSuccess: success,
-      successPoints: Number(this.result.target ?? 0) - value
+      successPoints: thresholdMargin,
+      thresholdMargin
     });
     this.applyResultModifiers();
+    // Keep the signed comparison for presentation. successPoints remains the
+    // non-negative mechanical aggregate required by the shared test contract.
+    this.result.thresholdMargin = thresholdMargin
+      + Number(this.preData.resultModifiers?.successPoints ?? 0);
     return this;
+  }
+
+  getDisplayedSuccessPoints() {
+    return Number(
+      this.result.thresholdMargin
+      ?? (Number(this.result.target ?? 0) - Number(this.result.rawResults?.[0] ?? 0))
+    );
   }
 
   getTooltipSections() {
@@ -1475,7 +1497,7 @@ export class PercentileTest extends NeuroshimaTestBase {
               : "NEUROSHIMA.Tooltip.Failure"),
             state: this.result.success ? "success" : "failure"
           },
-          { label: "NEUROSHIMA.Tooltip.Margin", value: this.result.successPoints ?? 0, signed: true },
+          { label: "NEUROSHIMA.Tooltip.Margin", value: this.getDisplayedSuccessPoints(), signed: true },
           { label: "NEUROSHIMA.Roll.SuccessPoints", value: this.result.successPoints ?? 0 }
         ]
       },

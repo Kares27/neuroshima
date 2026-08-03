@@ -308,6 +308,37 @@
     display: flex;
 }
 
+/* Specialization uses the complete Stats-tab height. The table owns the
+   available space while only its list body scrolls when the window is short. */
+.neuroshima.sheet.item .specialization-stats.active {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.neuroshima.sheet.item .specialization-stats .spec-master-table {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.neuroshima.sheet.item .specialization-stats .spec-master-header {
+    flex: 0 0 auto;
+}
+
+.neuroshima.sheet.item .specialization-stats .spec-master-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+}
+
 /* Stats Tab Grid Layout */
 .neuroshima.sheet.item .stats-grid {
     gap: 10px;

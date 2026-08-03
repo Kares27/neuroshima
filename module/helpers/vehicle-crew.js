@@ -25,6 +25,10 @@ export async function resolveCrewActor(member) {
         error
       });
     }
+    // A UUID-bearing row identifies one concrete Actor/Token. Falling back to
+    // actorId here could target the prototype Actor after an unlinked Token
+    // was deleted, so stale UUID entries deliberately resolve to nothing.
+    return null;
   }
   return data.actorId ? game.actors.get(data.actorId) ?? null : null;
 }
@@ -38,4 +42,3 @@ export function crewMemberMatches(member, { actorUuid = "", actorId = "" } = {})
   if (data.actorUuid && actorUuid) return data.actorUuid === actorUuid;
   return !!actorId && data.actorId === actorId;
 }
-
