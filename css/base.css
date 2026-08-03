@@ -1,6 +1,10 @@
 :root {
     --ns-color-green: #3a8c3a;
     --ns-color-green-darker: #2a6a2a;
+    --ns-select-bg: #17151c;
+    --ns-select-text: #eee9dc;
+    --ns-select-border: #514b55;
+    --ns-select-disabled-text: #aaa397;
 }
 
 body.theme-light {
@@ -69,6 +73,30 @@ body.theme-dark {
 /* Global System Styles - Scoped to .neuroshima */
 .neuroshima {
     letter-spacing: 1px;
+}
+
+/* Native system dropdowns stay dark in both Foundry themes. Keeping the
+   platform arrow preserves familiar keyboard and pointer interaction. */
+.neuroshima select {
+    background-color: var(--ns-select-bg);
+    border-color: var(--ns-select-border);
+    color: var(--ns-select-text);
+    color-scheme: dark;
+}
+
+.neuroshima select option,
+.neuroshima select optgroup {
+    background-color: var(--ns-select-bg);
+    color: var(--ns-select-text);
+}
+
+.neuroshima select:focus,
+.neuroshima select:focus-visible {
+    border-color: var(--ns-border-focus);
+}
+
+.neuroshima select:disabled {
+    color: var(--ns-select-disabled-text);
 }
 
 /* Stosujemy czcionkę tylko do pól wprowadzania i etykiet */
@@ -2716,8 +2744,8 @@ body.theme-dark .neuroshima .xp-debt-warning i {
     margin: 0;
     border: 1px solid rgba(181, 154, 98, 0.28);
     border-radius: 4px;
-    background: #17151c;
-    color: #eee9dc;
+    background-color: var(--ns-select-bg);
+    color: var(--ns-select-text);
     color-scheme: dark;
     text-align: right;
 }
@@ -2728,14 +2756,18 @@ body.theme-dark .neuroshima .xp-debt-warning i {
 
 .neuroshima.edit-roll-dialog .ns-roll-editor__row select option,
 .neuroshima.edit-roll-dialog .ns-roll-editor__row select optgroup {
-    background: #17151c;
-    color: #eee9dc;
+    background-color: var(--ns-select-bg);
+    color: var(--ns-select-text);
 }
 
 .neuroshima.edit-roll-dialog .ns-roll-editor__row input[type="number"]:focus,
 .neuroshima.edit-roll-dialog .ns-roll-editor__row select:focus {
     border-color: var(--ns-edit-accent);
     box-shadow: 0 0 0 1px rgba(181, 154, 98, 0.25);
+}
+
+.neuroshima.edit-roll-dialog .ns-roll-editor__row select:focus {
+    border-color: var(--ns-border-focus);
 }
 
 /* System-wide dark treatment for Foundry chat message chrome. */
@@ -4809,21 +4841,21 @@ li.chat-message.message.flexcol > .message-content {
 .medic-selection-dialog select {
     width: 100%;
     padding: 8px 12px;
-    background-color: var(--ns-bg-input);
-    color: var(--ns-text-main);
-    border: 1px solid var(--ns-border-main);
+    background-color: var(--ns-select-bg);
+    color: var(--ns-select-text);
+    border: 1px solid var(--ns-select-border);
     border-radius: 4px;
     font-size: 0.95em;
     cursor: pointer;
 }
 
 .medic-selection-dialog select:hover {
-    border-color: var(--ns-color-accent);
+    border-color: var(--ns-border-focus);
 }
 
 .medic-selection-dialog select:focus {
     outline: none;
-    border-color: var(--ns-color-accent);
+    border-color: var(--ns-border-focus);
     box-shadow: 0 0 0 3px rgba(148, 148, 217, 0.1);
 }
 
@@ -5306,16 +5338,12 @@ li.chat-message.message.flexcol > .message-content {
 .neuroshima.healing-roll-dialog .difficulty-select {
     width: 100%;
     padding: 4px 3px;
-    border: 1px solid var(--ns-border-light);
+    border: 1px solid var(--ns-select-border);
     border-radius: 2px;
     font-size: 0.85em;
-    background: white;
+    background-color: var(--ns-select-bg);
+    color: var(--ns-select-text);
     cursor: pointer;
-}
-
-.theme-dark .neuroshima.healing-roll-dialog .difficulty-select {
-    background: var(--color-shadow-dark);
-    color: var(--color-text-light);
 }
 
 /* Roll Mode Row in Dialogs */
@@ -8116,10 +8144,10 @@ li.chat-message.message.flexcol > .message-content {
     width: 100%;
     font-size: 0.82em;
     padding: 2px 2px;
-    background: var(--ns-bg-input, rgba(0,0,0,0.05));
-    border: 1px solid var(--ns-border, #ccc);
+    background-color: var(--ns-select-bg);
+    border: 1px solid var(--ns-select-border);
     border-radius: 3px;
-    color: inherit;
+    color: var(--ns-select-text);
 }
 
 .condition-neg-checkbox:disabled {
@@ -8166,6 +8194,7 @@ li.chat-message.message.flexcol > .message-content {
 
 .condition-row select:disabled {
     opacity: 0.5;
+    color: var(--ns-select-disabled-text);
     cursor: not-allowed;
 }
 

@@ -93,9 +93,9 @@
     height: 20px;
     line-height: 20px;
     padding: 0 20px 0 4px;
-    border: 1px solid transparent;
-    background-color: transparent;
-    color: var(--ns-text-main);
+    border: 1px solid var(--ns-select-border);
+    background-color: var(--ns-select-bg);
+    color: var(--ns-select-text);
     font-size: 1.05em;
     font-weight: bold;
     text-align: center;
@@ -109,14 +109,14 @@
 }
 
 .neuroshima.sheet.item .trait-category-control select:focus-visible {
-    border-color: var(--ns-border-main);
-    outline: 1px solid var(--ns-text-main);
+    border-color: var(--ns-border-focus);
+    outline: 1px solid var(--ns-border-focus);
     outline-offset: 1px;
 }
 
 .neuroshima.sheet.item .trait-category-control select option {
-    background: var(--ns-bg-panel);
-    color: var(--ns-text-main);
+    background-color: var(--ns-select-bg);
+    color: var(--ns-select-text);
 }
 
 .neuroshima.sheet.item .item-qty {
@@ -1601,7 +1601,7 @@ input[type="color"].rep-color-input::-moz-color-swatch {
 }
 
 .neuroshima.sheet.item .weapon-mod-bazowe .bazowe-inline > select {
-    border: 1px solid var(--ns-border-main);
+    border: 1px solid var(--ns-select-border);
     border-radius: 5px;
     padding: 0 4px;
     height: 36px !important;
@@ -1816,8 +1816,15 @@ input[type="color"].rep-color-input::-moz-color-swatch {
 }
 
 .neuroshima.sheet.item .weapon-mod-section .bazowe-inline .damage-input-row select,
-.neuroshima.sheet.item .weapon-mod-section .bazowe-inline .damage-input-row input[type="text"],
 .neuroshima.sheet.item .weapon-mod-section .damage-col .damage-input-row select {
+    border: none;
+    background-color: var(--ns-select-bg);
+    box-shadow: none;
+    flex: 1;
+    min-width: 0;
+}
+
+.neuroshima.sheet.item .weapon-mod-section .bazowe-inline .damage-input-row input[type="text"] {
     border: none;
     background: transparent;
     box-shadow: none;
@@ -1837,9 +1844,10 @@ input[type="color"].rep-color-input::-moz-color-swatch {
 
 /* ─── select option dark background ─── */
 
-.neuroshima.sheet.item select option {
-    background: #1a1a1a;
-    color: #e2e8f0;
+.neuroshima.sheet.item select option,
+.neuroshima.sheet.item select optgroup {
+    background-color: var(--ns-select-bg);
+    color: var(--ns-select-text);
 }
 
 /* ─── Container stats row ─── */
@@ -2113,23 +2121,105 @@ input[type="color"].rep-color-input::-moz-color-swatch {
     margin-left: auto;
 }
 
-.neuroshima.sheet.item .gear-stats.secondary-box.gear-stats-inline {
+.neuroshima.sheet.item .gear-stats .gear-stats-grid {
     display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 12px;
     flex-wrap: wrap;
-    padding: 4px 8px;
+    align-items: stretch;
+    gap: 10px;
+    padding-top: 2px;
 }
 
-.neuroshima.sheet.item .gear-stats.gear-stats-inline .gear-type-group {
-    flex: 1;
+.neuroshima.sheet.item .gear-stats .gear-stat-field {
+    display: flex;
+    flex: 1 1 270px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
     min-width: 0;
+    margin: 0;
 }
 
-.neuroshima.sheet.item .gear-stats.gear-stats-inline .gear-wearable-group {
-    flex: 0 0 auto;
+.neuroshima.sheet.item .gear-stats .gear-stat-label,
+.neuroshima.sheet.item .gear-stats .gear-wearable-label {
+    font-family: 'SpecialElite', serif;
+    font-size: 0.76em;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    line-height: 1.1;
+    text-transform: uppercase;
+    color: var(--ns-text-main);
+}
+
+.neuroshima.sheet.item .gear-stats .gear-type-group select {
+    width: 100%;
+    min-width: 0;
+    height: 30px;
+    padding: 2px 26px 2px 8px;
+    border: 1px solid var(--ns-select-border);
+    border-radius: 3px;
+    background-color: var(--ns-select-bg);
+    color: var(--ns-select-text);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.neuroshima.sheet.item .gear-stats .gear-type-group select:hover {
+    border-color: var(--ns-text-accent);
+}
+
+.neuroshima.sheet.item .gear-stats .gear-type-group select:focus-visible {
+    border-color: var(--ns-border-focus);
+    outline: 1px solid var(--ns-border-focus);
+    outline-offset: 1px;
+}
+
+.neuroshima.sheet.item .gear-stats .gear-type-group select option {
+    background-color: var(--ns-select-bg);
+    color: var(--ns-select-text);
+}
+
+.neuroshima.sheet.item .gear-stats .gear-wearable-group {
+    display: flex;
+    flex: 0 1 180px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 7px;
+    min-width: 150px;
+    min-height: 42px;
+    margin: 0;
+    padding: 6px 10px;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--ns-bg-panel) 78%, transparent);
+    cursor: pointer;
+    transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.neuroshima.sheet.item .gear-stats .gear-wearable-group:hover,
+.neuroshima.sheet.item .gear-stats .gear-wearable-group:focus-within {
+    border-color: var(--ns-text-accent);
+    background: var(--ns-bg-panel);
+}
+
+.neuroshima.sheet.item .gear-stats .gear-wearable-group:has(input:checked) {
+    border-color: var(--ns-text-accent);
+    background: color-mix(in srgb, var(--ns-bg-panel) 88%, var(--ns-text-accent) 12%);
+}
+
+.neuroshima.sheet.item .gear-stats .gear-wearable-label {
+    flex: 1 1 auto;
+    min-width: 0;
     white-space: nowrap;
+}
+
+.neuroshima.sheet.item .gear-stats .gear-wearable-group input[type="checkbox"] {
+    display: block;
+    flex: 0 0 18px;
+    align-self: center;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    cursor: pointer;
 }
 
 .neuroshima.sheet.item .beast-action-stats .beast-activities-header {
@@ -2484,14 +2574,14 @@ input[type="color"].rep-color-input::-moz-color-swatch {
     min-width: 0;
     font-size: 0.82em;
     padding: 2px 4px;
-    background: var(--ns-bg-input);
-    border: 1px solid var(--ns-border-main);
+    background-color: var(--ns-select-bg);
+    border: 1px solid var(--ns-select-border);
     border-radius: 3px;
-    color: var(--ns-text-main);
+    color: var(--ns-select-text);
 }
 
 .beast-activity-sheet .bas-open-test-control select:focus {
-    border-color: var(--ns-text-accent);
+    border-color: var(--ns-border-focus);
     outline: none;
 }
 
@@ -2565,16 +2655,25 @@ input[type="color"].rep-color-input::-moz-color-swatch {
     height: 26px;
     font-size: 0.82em;
     padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.beast-activity-sheet .bas-field-group input {
     background: var(--ns-bg-input);
     border: 1px solid var(--ns-border-main);
-    border-radius: 3px;
     color: var(--ns-text-main);
+}
+
+.beast-activity-sheet .bas-field-group select {
+    background-color: var(--ns-select-bg);
+    border: 1px solid var(--ns-select-border);
+    color: var(--ns-select-text);
 }
 
 .beast-activity-sheet .bas-field-group select option,
 .beast-activity-sheet .bas-field-group select optgroup {
-    background-color: var(--ns-bg-sheet) !important;
-    color: var(--ns-text-main) !important;
+    background-color: var(--ns-select-bg);
+    color: var(--ns-select-text);
     font-style: normal;
 }
 
@@ -2582,6 +2681,10 @@ input[type="color"].rep-color-input::-moz-color-swatch {
 .beast-activity-sheet .bas-field-group select:focus {
     border-color: var(--ns-text-accent);
     outline: none;
+}
+
+.beast-activity-sheet .bas-field-group select:focus {
+    border-color: var(--ns-border-focus);
 }
 
 /* --- Two-column row --- */
@@ -2716,10 +2819,10 @@ input[type="color"].rep-color-input::-moz-color-swatch {
     min-width: 0;
     font-size: 0.82em;
     padding: 3px 6px;
-    background: var(--ns-bg-input, rgba(0,0,0,0.25));
-    border: 1px solid rgba(255,255,255,0.12);
+    background-color: var(--ns-select-bg);
+    border: 1px solid var(--ns-select-border);
     border-radius: 4px;
-    color: var(--ns-text-main);
+    color: var(--ns-select-text);
 }
 
 .beast-activity-sheet .bas-link-row .bas-link-btn {

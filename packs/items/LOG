@@ -1,1 +1,13 @@
-2026/08/03-08:18:55.671 2660 Delete type=3 #1
+2026/08/03-11:23:52.112 2ee4 Recovering log #947
+2026/08/03-11:23:52.113 2ee4 Level-0 table #949: started
+2026/08/03-11:23:52.117 2ee4 Level-0 table #949: 154927 bytes OK
+2026/08/03-11:23:52.120 2ee4 Delete type=0 #947
+2026/08/03-11:23:52.120 2ee4 Delete type=3 #946
+2026/08/03-11:23:52.121 1bec Compacting 4@0 + 0@1 files
+2026/08/03-11:23:52.132 1bec Generated table #951@0: 429 keys, 380994 bytes
+2026/08/03-11:23:52.132 1bec Compacted 4@0 + 0@1 files => 380994 bytes
+2026/08/03-11:23:52.134 1bec compacted to: files[ 0 1 0 0 0 0 0 ]
+2026/08/03-11:23:52.134 1bec Delete type=2 #937
+2026/08/03-11:23:52.134 1bec Delete type=2 #938
+2026/08/03-11:23:52.134 1bec Delete type=2 #945
+2026/08/03-11:23:52.134 1bec Delete type=2 #949

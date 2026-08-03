@@ -59,14 +59,15 @@
 
 
 .neuroshima.sheet.actor select {
-    background: var(--ns-bg-input);
-    color: var(--ns-text-main);
-    border: 1px solid var(--ns-border-main);
+    background-color: var(--ns-select-bg);
+    color: var(--ns-select-text);
+    border: 1px solid var(--ns-select-border);
 }
 
-.neuroshima.sheet.actor select option {
-    background-color: #333 !important; /* Wymuszenie ciemnego tła */
-    color: #eee !important; /* Wymuszenie jasnego tekstu */
+.neuroshima.sheet.actor select option,
+.neuroshima.sheet.actor select optgroup {
+    background-color: var(--ns-select-bg);
+    color: var(--ns-select-text);
 }
 
 .neuroshima.sheet.actor .actor-sheet-content {
@@ -1698,7 +1699,15 @@
     font-family: 'SpecialElite', serif;
 }
 
-.neuroshima.sheet.actor .wounds-table select,
+.neuroshima.sheet.actor .wounds-table select {
+    width: 100%;
+    height: 24px;
+    background-color: var(--ns-select-bg);
+    color: var(--ns-select-text);
+    border: 1px solid var(--ns-select-border);
+    font-family: 'SpecialElite', serif;
+}
+
 .neuroshima.sheet.actor .wounds-table input {
     width: 100%;
     height: 24px;
@@ -1708,7 +1717,6 @@
     font-family: 'SpecialElite', serif;
 }
 
-body.theme-dark .neuroshima.sheet.actor .wounds-table select,
 body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     background: rgba(255, 255, 255, 0.05);
 }
@@ -2113,9 +2121,9 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 }
 
 .wound-type-select {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(100, 150, 200, 0.4);
-  color: #ff6b6b;
+  background-color: var(--ns-select-bg);
+  border: 1px solid var(--ns-select-border);
+  color: var(--ns-select-text);
   padding: 4px 6px;
   border-radius: 2px;
   font-weight: bold;
@@ -2126,8 +2134,8 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 
 .wound-type-select:hover,
 .wound-type-select:focus {
-  background: rgba(0, 0, 0, 0.5);
-  border-color: rgba(100, 150, 200, 0.6);
+  background-color: var(--ns-select-bg);
+  border-color: var(--ns-border-focus);
   outline: none;
 }
 
@@ -3977,8 +3985,8 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 
 .neuroshima.sheet.actor-vehicle .occupant-position select {
     width: 100%;
-    background: transparent;
-    color: #fff;
+    background-color: transparent;
+    color: var(--ns-select-text);
     border: none;
     font-family: 'SpecialElite', serif;
     font-size: 0.90em;
@@ -3988,9 +3996,10 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     padding: 1px 0;
 }
 
-.neuroshima.sheet.actor-vehicle .occupant-position select option {
-    background: #222;
-    color: #fff;
+.neuroshima.sheet.actor-vehicle .occupant-position select option,
+.neuroshima.sheet.actor-vehicle .occupant-position select optgroup {
+    background-color: var(--ns-select-bg);
+    color: var(--ns-select-text);
 }
 
 .neuroshima.sheet.actor-vehicle .occupant-image {
@@ -4573,7 +4582,16 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     cursor: pointer;
 }
 
-.neuroshima.sheet.actor-creature .wounds-table select,
+.neuroshima.sheet.actor-creature .wounds-table select {
+    width: 100%;
+    height: 22px;
+    background-color: var(--ns-select-bg);
+    color: var(--ns-select-text);
+    border: 1px solid var(--ns-select-border);
+    font-family: inherit;
+    font-size: 0.85em;
+}
+
 .neuroshima.sheet.actor-creature .wounds-table input {
     width: 100%;
     height: 22px;
@@ -4992,7 +5010,16 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     gap: 6px;
 }
 
-.neuroshima.sheet.actor-vehicle .wounds-table select,
+.neuroshima.sheet.actor-vehicle .wounds-table select {
+    width: 100%;
+    height: 22px;
+    background-color: var(--ns-select-bg);
+    color: var(--ns-select-text);
+    border: 1px solid var(--ns-select-border);
+    font-family: inherit;
+    font-size: 0.85em;
+}
+
 .neuroshima.sheet.actor-vehicle .wounds-table input {
     width: 100%;
     height: 22px;

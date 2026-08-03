@@ -237,10 +237,10 @@
     margin-top: 2px;
     font-size: 0.9em;
     padding: 1px 2px;
-    background: rgba(0,0,0,0.4);
-    border: 1px solid rgba(255,255,255,0.2);
+    background-color: var(--ns-select-bg);
+    border: 1px solid var(--ns-select-border);
     border-radius: 3px;
-    color: rgba(255,255,255,0.75);
+    color: var(--ns-select-text);
     cursor: pointer;
     max-width: 100%;
     overflow: hidden;
@@ -249,7 +249,7 @@
 
 .fc-weapon-select:focus,
 .fc-target-select:focus {
-    border-color: #f39c12;
+    border-color: var(--ns-border-focus);
     outline: none;
 }
 
@@ -1001,9 +1001,9 @@
 .mtc-weapon-select {
     width: 100%;
     font-size: 0.72em;
-    background: rgba(0,0,0,0.3);
-    border: 1px solid rgba(255,255,255,0.15);
-    color: var(--ns-text-main);
+    background-color: var(--ns-select-bg);
+    border: 1px solid var(--ns-select-border);
+    color: var(--ns-select-text);
     border-radius: 3px;
     padding: 2px 4px;
 }

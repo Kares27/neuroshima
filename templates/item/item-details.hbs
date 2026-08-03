@@ -264,20 +264,22 @@
     {{/if}}
 
     {{#if (eq item.type "gear")}}
-        <div class="item-features gear-stats secondary-box gear-stats-inline">
-            <div class="form-group row-group gear-type-group">
-                <label>{{localize "NEUROSHIMA.Items.Fields.GearType"}}</label>
-                <select name="system.gearType">
-                    {{#each gearTypes as |label key|}}
-                    <option value="{{key}}" {{#if (eq ../system.gearType key)}}selected{{/if}}>{{localize label}}</option>
-                    {{/each}}
-                </select>
+        <fieldset class="item-features gear-stats">
+            <div class="gear-stats-grid">
+                <label class="gear-stat-field gear-type-group">
+                    <span class="gear-stat-label">{{localize "NEUROSHIMA.Items.Fields.GearType"}}</span>
+                    <select name="system.gearType">
+                        {{#each gearTypes as |label key|}}
+                        <option value="{{key}}" {{#if (eq ../system.gearType key)}}selected{{/if}}>{{localize label}}</option>
+                        {{/each}}
+                    </select>
+                </label>
+                <label class="gear-wearable-group">
+                    <span class="gear-wearable-label">{{localize "NEUROSHIMA.Items.Fields.IsWearable"}}</span>
+                    <input type="checkbox" name="system.isWearable" {{checked system.isWearable}}/>
+                </label>
             </div>
-            <div class="form-group row-group checkbox gear-wearable-group">
-                <label>{{localize "NEUROSHIMA.Items.Fields.IsWearable"}}</label>
-                <input type="checkbox" name="system.isWearable" {{checked system.isWearable}}/>
-            </div>
-        </div>
+        </fieldset>
     {{/if}}
 
     {{#if (eq item.type "money")}}
