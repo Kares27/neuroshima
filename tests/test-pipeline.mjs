@@ -28,6 +28,7 @@ globalThis.foundry = {
       HandlebarsApplicationMixin: Base => class extends Base {}
     },
     sheets: {
+      ActorSheetV2: class {},
       ActiveEffectConfig: class {
         static DEFAULT_OPTIONS = {};
         static PARTS = {};
@@ -203,6 +204,12 @@ const { NeuroshimaRollTestRouter } = await import("../module/helpers/roll-test-r
 const { NeuroshimaSocket } = await import("../module/helpers/socket-helper.js");
 const { syncMountedModEffects } = await import("../module/helpers/mod-helpers.js");
 const {
+  DEFAULT_EQUIPPABLE_GEAR_TYPES,
+  isGearTypeEquippable,
+  parseEquippableGearTypes
+} = await import("../module/helpers/gear-types.js");
+const { NeuroshimaBaseActorSheet } = await import("../module/sheets/actor-sheet-base.js");
+const {
   crewMemberMatches,
   resolveCrewActor
 } = await import("../module/helpers/vehicle-crew.js");
@@ -231,6 +238,71 @@ const {
   showXpSpentAdjustmentDialog
 } = await import("../module/helpers/xp.js");
 game.neuroshima.tests = NEUROSHIMA_TESTS;
+
+test("gear subtype equipability defaults to clothing and supports world overrides", () => {
+  assert.deepEqual(DEFAULT_EQUIPPABLE_GEAR_TYPES, { clothing: true });
+  const configured = parseEquippableGearTypes(JSON.stringify({ clothing: false, tools: true }));
+  assert.equal(isGearTypeEquippable("clothing", configured), false);
+  assert.equal(isGearTypeEquippable("tools", configured), true);
+  assert.equal(isGearTypeEquippable("misc", configured), false);
+  assert.equal(isGearTypeEquippable("clothing", parseEquippableGearTypes("invalid")), true);
+});
+
+test("non-equippable gear cannot create Transfer on Equip actor mirrors", async () => {
+  const created = [];
+  const actor = {
+    effects: [],
+    async deleteEmbeddedDocuments() {},
+    async createEmbeddedDocuments(_type, entries) { created.push(...entries); }
+  };
+  const sourceEffect = {
+    id: "equip-effect",
+    disabled: false,
+    getFlag(_scope, key) { return key === "equipTransfer"; },
+    toObject() { return { _id: this.id, name: "Equip effect", flags: { neuroshima: {} } }; }
+  };
+  const gear = {
+    uuid: "Actor.actor.Item.gear",
+    isEquippable: false,
+    effects: [sourceEffect]
+  };
+  await NeuroshimaActor.prototype.syncEquipTransferEffects.call(actor, gear, true);
+  assert.deepEqual(created, []);
+});
+
+test("Effects tab exposes and executes manual scripts from direct actor effects", async () => {
+  const effect = {
+    id: "manual-effect",
+    name: "Awaryjny zastrzyk",
+    disabled: false,
+    system: {
+      scriptData: [
+        { trigger: "rollTest", label: "Nie pokazuj" },
+        { trigger: "manual", label: "Uruchom @effect.name" }
+      ]
+    },
+    getFlag() { return null; }
+  };
+  const scripts = NeuroshimaBaseActorSheet.prototype._prepareEffectManualScripts.call({}, effect, null);
+  assert.equal(scripts.length, 1);
+  assert.equal(scripts[0].label, "Uruchom Awaryjny zastrzyk");
+  assert.equal(scripts[0].itemId, null);
+
+  const actor = { effects: new Map([[effect.id, effect]]), items: new Map() };
+  const originalExecuteManual = NeuroshimaScriptRunner.executeManual;
+  let executed = null;
+  NeuroshimaScriptRunner.executeManual = async (...args) => { executed = args; };
+  try {
+    await NeuroshimaBaseActorSheet.prototype._onInvokeEffectScript.call(
+      { document: actor },
+      { preventDefault() {} },
+      { dataset: { effectId: effect.id, scriptIndex: "1" } }
+    );
+    assert.deepEqual(executed, [actor, effect, 1]);
+  } finally {
+    NeuroshimaScriptRunner.executeManual = originalExecuteManual;
+  }
+});
 
 test("convertToApplied stamps seconds duration with current world time", () => {
   const previousTime = game.time;

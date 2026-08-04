@@ -2139,8 +2139,7 @@ input[type="color"].rep-color-input::-moz-color-swatch {
     margin: 0;
 }
 
-.neuroshima.sheet.item .gear-stats .gear-stat-label,
-.neuroshima.sheet.item .gear-stats .gear-wearable-label {
+.neuroshima.sheet.item .gear-stats .gear-stat-label {
     font-family: 'SpecialElite', serif;
     font-size: 0.76em;
     font-weight: 700;
@@ -2176,50 +2175,6 @@ input[type="color"].rep-color-input::-moz-color-swatch {
 .neuroshima.sheet.item .gear-stats .gear-type-group select option {
     background-color: var(--ns-select-bg);
     color: var(--ns-select-text);
-}
-
-.neuroshima.sheet.item .gear-stats .gear-wearable-group {
-    display: flex;
-    flex: 0 1 180px;
-    align-items: center;
-    justify-content: space-between;
-    gap: 7px;
-    min-width: 150px;
-    min-height: 42px;
-    margin: 0;
-    padding: 6px 10px;
-    border: 1px solid var(--ns-border-main);
-    border-radius: 3px;
-    background: color-mix(in srgb, var(--ns-bg-panel) 78%, transparent);
-    cursor: pointer;
-    transition: border-color 120ms ease, background-color 120ms ease;
-}
-
-.neuroshima.sheet.item .gear-stats .gear-wearable-group:hover,
-.neuroshima.sheet.item .gear-stats .gear-wearable-group:focus-within {
-    border-color: var(--ns-text-accent);
-    background: var(--ns-bg-panel);
-}
-
-.neuroshima.sheet.item .gear-stats .gear-wearable-group:has(input:checked) {
-    border-color: var(--ns-text-accent);
-    background: color-mix(in srgb, var(--ns-bg-panel) 88%, var(--ns-text-accent) 12%);
-}
-
-.neuroshima.sheet.item .gear-stats .gear-wearable-label {
-    flex: 1 1 auto;
-    min-width: 0;
-    white-space: nowrap;
-}
-
-.neuroshima.sheet.item .gear-stats .gear-wearable-group input[type="checkbox"] {
-    display: block;
-    flex: 0 0 18px;
-    align-self: center;
-    width: 18px;
-    height: 18px;
-    margin: 0;
-    cursor: pointer;
 }
 
 .neuroshima.sheet.item .beast-action-stats .beast-activities-header {

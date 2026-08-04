@@ -562,9 +562,10 @@
                 "ColExchRate": "Kurs",
                 "ColPrimary": "Główna",
                 "GearTypesHeader": "Podtypy ekwipunku i modyfikatory cen",
-                "GearTypesHint": "Wbudowane podtypy — ustaw mnożnik ceny kupna (×) i sprzedaży (×). Własne podtypy dodaj poniżej.",
+                "GearTypesHint": "Ustaw, które podtypy można zakładać, oraz ich mnożniki ceny kupna (×) i sprzedaży (×). Własne podtypy dodaj poniżej.",
                 "AddGearType": "Dodaj własny podtyp",
                 "ColGearType": "Podtyp",
+                "ColEquippable": "Można założyć",
                 "ColBuy": "Zakup ×",
                 "ColSell": "Sprzedaż ×",
                 "CustomTypePlaceholder": "np. Tarcze",
@@ -1473,8 +1474,7 @@
                 "AvailabilityAbbr": "Dostępność",
                 "CoinValue": "Wartość w Gamblach",
                 "CoinValueIn": "Wartość w",
-                "JammedClear": "Usuń zacięcie",
-                "IsWearable": "Można założyć"
+                "JammedClear": "Usuń zacięcie"
             }
         },
         "Mods": {

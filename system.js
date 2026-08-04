@@ -58,6 +58,7 @@ import { ListChoiceDialog } from "./module/apps/dialogs/list-choice-dialog.js";
 import { NeuroshimaChoiceRouter } from "./module/helpers/choice-router.js";
 import { NeuroshimaRollTestRouter } from "./module/helpers/roll-test-router.js";
 import { resolveCrewActor } from "./module/helpers/vehicle-crew.js";
+import { DEFAULT_EQUIPPABLE_GEAR_TYPES, isGearTypeEquippable } from "./module/helpers/gear-types.js";
 
 import { NeuroshimaInitiativeRollDialog } from "./module/apps/dialogs/initiative-roll-dialog.js";
 import { HealingApp } from "./module/apps/healing-app.js";
@@ -589,6 +590,13 @@ Hooks.once('init', async function() {
         config: false,
         type: String,
         default: "{}"
+    });
+
+    game.settings.register("neuroshima", "equippableGearTypes", {
+        scope: "world",
+        config: false,
+        type: String,
+        default: JSON.stringify(DEFAULT_EQUIPPABLE_GEAR_TYPES)
     });
 
     game.settings.register("neuroshima", "debugMode", {
@@ -1130,6 +1138,7 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/actors/actor/parts/actor-tricks.hbs",
         "systems/neuroshima/templates/actors/actor/parts/actor-combat.hbs",
         "systems/neuroshima/templates/actors/actor/parts/actor-inventory.hbs",
+        "systems/neuroshima/templates/actors/parts/effect-manual-actions.hbs",
         "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs",
         "systems/neuroshima/templates/actors/actor/parts/wounds-paper-doll.hbs",
         "systems/neuroshima/templates/actors/actor/parts/wounds-list.hbs",
@@ -1232,6 +1241,36 @@ Hooks.once("ready", () => {
             }
         }
     } catch(e) {}
+});
+
+// Upgrade legacy per-item wearable state to subtype-driven equipability and
+// reconcile Transfer on Equip mirrors for world and synthetic token actors.
+Hooks.once("ready", async () => {
+    if (!game.user.isGM) return;
+    const actors = new Map(Array.from(game.actors ?? [], actor => [actor.uuid, actor]));
+    for (const scene of (game.scenes ?? [])) {
+        for (const token of (scene.tokens ?? [])) {
+            if (token.actor) actors.set(token.actor.uuid, token.actor);
+        }
+    }
+
+    for (const actor of actors.values()) {
+        try {
+            const gearItems = actor.items.filter(item => item.type === "gear");
+            const updates = gearItems
+                .filter(item => item.system.equipped && !isGearTypeEquippable(item.system.gearType))
+                .map(item => ({ _id: item.id, "system.equipped": false }));
+            if (updates.length) await actor.updateEmbeddedDocuments("Item", updates);
+            for (const item of gearItems) {
+                await actor.syncEquipTransferEffects(item, item.system.equipped && item.isEquippable);
+            }
+        } catch (error) {
+            game.neuroshima?.warn?.("[gear equipability] Reconciliation failed", {
+                actor: actor.uuid,
+                error
+            });
+        }
+    }
 });
 
 Hooks.once("ready", () => {

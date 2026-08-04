@@ -615,7 +615,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       toggleEquipped: async function(event, target) {
         const li   = target.closest("[data-item-id]");
         const item = this.document.items.get(li.dataset.itemId);
-        if (!item) return;
+        if (!item?.isEquippable) return;
         const newEquipped = !item.system.equipped;
         await item.update({ "system.equipped": newEquipped });
       },
@@ -760,6 +760,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
         await NeuroshimaScriptRunner.executeManual(this.document, effect, Number(scriptIndex));
       },
+      invokeEffectScript: NeuroshimaBaseActorSheet.prototype._onInvokeEffectScript,
 
       toggleCondition: async function(event, target) {
         const key  = target.dataset.conditionKey;
@@ -960,7 +961,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       weaponsThrown:  topItems.filter(i => i.type === "weapon" && i.system.weaponType === "thrown"),
       armor:          armorItems,
       gear:           topItems.filter(i => i.type === "gear"),
-      hasWearableGear: topItems.some(i => i.type === "gear" && i.system.isWearable),
+      hasWearableGear: topItems.some(i => i.type === "gear" && i.isEquippable),
       ammo:           topItems.filter(i => i.type === "ammo"),
       magazines:      topItems.filter(i => i.type === "magazine").map(m => {
         m.contentsReversed = [...(m.system.contents || [])].reverse();
@@ -1193,7 +1194,8 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         sourceName,
         sourceIcon,
         durationLabel: effectDurationLabel(e),
-        isItemEffect: !!isItemEffect
+        isItemEffect: !!isItemEffect,
+        manualScripts: this._prepareEffectManualScripts(e, itemId ? actor.items.get(itemId) : null)
       };
       if (isConditionEffect(e)) {
         const statusKey = [...(e.statuses ?? [])][0];

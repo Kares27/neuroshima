@@ -77,6 +77,7 @@
     <div class="cgc-scroll cgc-geartypes-scroll">
         <div class="cgc-header cgc-geartype-cols">
             <span>{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.ColGearType"}}</span>
+            <span class="cgc-center">{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.ColEquippable"}}</span>
             <span class="cgc-center">{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.ColBuy"}}</span>
             <span class="cgc-center">{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.ColSell"}}</span>
             <span></span>
@@ -85,6 +86,7 @@
         {{#each builtinRows}}
         <div class="cgc-row cgc-geartype-cols cgc-builtin-row">
             <span class="cgc-builtin-label">{{label}}</span>
+            <div class="cgc-center"><input type="checkbox" name="builtin.{{key}}.equippable" {{checked equippable}}/></div>
             <input class="cgc-num" type="number" name="builtin.{{key}}.buy"  value="{{buy}}"  min="0" step="0.01"/>
             <input class="cgc-num" type="number" name="builtin.{{key}}.sell" value="{{sell}}" min="0" step="0.01"/>
             <span></span>
@@ -94,6 +96,7 @@
         {{#each customRows}}
         <div class="cgc-row cgc-geartype-cols cgc-custom-row">
             <input type="text" name="custom.{{idx}}.label" value="{{label}}" placeholder="{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.CustomTypePlaceholder"}}"/>
+            <div class="cgc-center"><input type="checkbox" name="custom.{{idx}}.equippable" {{checked equippable}}/></div>
             <input class="cgc-num" type="number" name="custom.{{idx}}.buy"  value="{{buy}}"  min="0" step="0.01"/>
             <input class="cgc-num" type="number" name="custom.{{idx}}.sell" value="{{sell}}" min="0" step="0.01"/>
             <a class="cgc-del" data-action="deleteGearTypeRow" data-index="{{idx}}" title="{{localize 'Delete'}}">

@@ -4760,7 +4760,7 @@ export class NeuroshimaScriptRunner {
     for (const item of (actor.items ?? [])) {
       if (item.type === "weapon-mod" || item.type === "armor-mod") continue;
       const hasEquipped  = "equipped" in (item.system ?? {});
-      const isUnequipped = hasEquipped && item.system.equipped === false;
+      const isUnequipped = hasEquipped && (item.system.equipped === false || item.isEquippable === false);
       for (const effect of (item.effects ?? [])) {
         const fromModId = effect.getFlag("neuroshima", "fromModId");
         if (fromModId) {

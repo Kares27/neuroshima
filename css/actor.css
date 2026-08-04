@@ -6290,6 +6290,16 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     transition: border-color 0.15s, opacity 0.15s;
 }
 
+.neuroshima .effect-manual-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 3px 8px 5px 44px;
+    background: var(--ns-bg-input, rgba(0,0,0,0.15));
+    border-top: 1px dashed rgba(255,255,255,0.08);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
 .neuroshima .rep-item-value:hover {
     opacity: 1;
     border-color: var(--ns-accent, #c07a30);

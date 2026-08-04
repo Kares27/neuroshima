@@ -1,3 +1,5 @@
+import { getEquippableGearTypes, isGearTypeEquippable } from "../../helpers/gear-types.js";
+
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
 export const DEFAULT_CURRENCY = {
@@ -67,11 +69,12 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
         const NEUROSHIMA = game.neuroshima.config;
         const builtinMods = {};
         for (const [key, val] of Object.entries(NEUROSHIMA.gearTypes)) {
-            if (key === "misc" || key === val) continue;
+            if (key === val) continue;
             const mod = modifiers[key];
-            if (typeof mod === "number")               builtinMods[key] = { buy: mod,       sell: mod };
-            else if (mod && typeof mod === "object")   builtinMods[key] = { buy: mod.buy ?? 1, sell: mod.sell ?? 1 };
-            else                                       builtinMods[key] = { buy: 1, sell: 1 };
+            const equippable = isGearTypeEquippable(key);
+            if (typeof mod === "number")               builtinMods[key] = { buy: mod,       sell: mod, equippable };
+            else if (mod && typeof mod === "object")   builtinMods[key] = { buy: mod.buy ?? 1, sell: mod.sell ?? 1, equippable };
+            else                                       builtinMods[key] = { buy: 1, sell: 1, equippable };
         }
         return builtinMods;
     }
@@ -81,12 +84,13 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
         try { modifiers = JSON.parse(game.settings.get("neuroshima", "gearTypePriceModifiers") || "{}"); } catch(e) {}
         try {
             const raw = JSON.parse(game.settings.get("neuroshima", "customGearTypes") || "[]");
+            const equippableTypes = getEquippableGearTypes();
             return raw.filter(l => l).map(label => {
                 const mod = modifiers[label];
                 let buy = 1, sell = 1;
                 if (typeof mod === "number")             { buy = sell = mod; }
                 else if (mod && typeof mod === "object") { buy = mod.buy ?? 1; sell = mod.sell ?? 1; }
-                return { label, buy, sell };
+                return { label, buy, sell, equippable: equippableTypes[label] === true };
             });
         } catch(e) { return []; }
     }
@@ -95,18 +99,20 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
         const state = this._pendingState ?? this._loadState();
         const NEUROSHIMA = game.neuroshima.config;
         const builtinRows = Object.entries(NEUROSHIMA.gearTypes)
-            .filter(([key, val]) => key !== "misc" && key !== val)
+            .filter(([key, val]) => key !== val)
             .map(([key, i18nKey]) => ({
                 key,
                 label: game.i18n.localize(i18nKey),
                 buy:   (state.builtinMods[key]?.buy  ?? 1).toFixed(2),
-                sell:  (state.builtinMods[key]?.sell ?? 1).toFixed(2)
+                sell:  (state.builtinMods[key]?.sell ?? 1).toFixed(2),
+                equippable: state.builtinMods[key]?.equippable === true
             }));
         const customRows = (state.customTypes ?? []).map((t, i) => ({
             idx:   i,
             label: t.label,
             buy:   (t.buy  ?? 1).toFixed(2),
-            sell:  (t.sell ?? 1).toFixed(2)
+            sell:  (t.sell ?? 1).toFixed(2),
+            equippable: t.equippable === true
         }));
         const currencies = (state.currencies ?? []).map((c, i) => ({
             idx:          i,
@@ -125,6 +131,7 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
     _captureState() {
         const fd   = new FormDataExtended(this.element);
         const data = fd.object;
+        const checked = value => value === true || value === "true" || value === "on";
 
         const primaryIdx = parseInt(data["currPrimary"] ?? "0");
         const currencies = [];
@@ -144,10 +151,11 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
         const NEUROSHIMA = game.neuroshima.config;
         const builtinMods = {};
         for (const [key, val] of Object.entries(NEUROSHIMA.gearTypes)) {
-            if (key === "misc" || key === val) continue;
+            if (key === val) continue;
             builtinMods[key] = {
                 buy:  Math.max(0, parseFloat(data[`builtin.${key}.buy`])  || 1),
-                sell: Math.max(0, parseFloat(data[`builtin.${key}.sell`]) || 1)
+                sell: Math.max(0, parseFloat(data[`builtin.${key}.sell`]) || 1),
+                equippable: checked(data[`builtin.${key}.equippable`])
             };
         }
 
@@ -158,7 +166,8 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
             customTypes.push({
                 label,
                 buy:  Math.max(0, parseFloat(data[`custom.${i}.buy`])  || 1),
-                sell: Math.max(0, parseFloat(data[`custom.${i}.sell`]) || 1)
+                sell: Math.max(0, parseFloat(data[`custom.${i}.sell`]) || 1),
+                equippable: checked(data[`custom.${i}.equippable`])
             });
         }
 
@@ -214,7 +223,7 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
     async _onAddGearType(event, target) {
         const scrolls = this._saveScrolls();
         const state = this._captureState();
-        state.customTypes.push({ label: "", buy: 1, sell: 1 });
+        state.customTypes.push({ label: "", buy: 1, sell: 1, equippable: false });
         this._pendingState = state;
         const gtScroll = this.element?.querySelector(".cgc-geartypes-scroll");
         scrolls[".cgc-geartypes-scroll"] = gtScroll ? gtScroll.scrollHeight : 0;
@@ -256,9 +265,14 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
         await game.settings.set("neuroshima", "currencies", JSON.stringify(state.currencies));
 
         const allMods = {};
-        for (const [key, mod] of Object.entries(state.builtinMods)) allMods[key] = mod;
+        for (const [key, mod] of Object.entries(state.builtinMods)) allMods[key] = { buy: mod.buy, sell: mod.sell };
         for (const { label, buy, sell } of state.customTypes) if (label) allMods[label] = { buy, sell };
         await game.settings.set("neuroshima", "gearTypePriceModifiers", JSON.stringify(allMods));
+
+        const equippableTypes = {};
+        for (const [key, mod] of Object.entries(state.builtinMods)) equippableTypes[key] = mod.equippable === true;
+        for (const { label, equippable } of state.customTypes) if (label) equippableTypes[label] = equippable === true;
+        await game.settings.set("neuroshima", "equippableGearTypes", JSON.stringify(equippableTypes));
 
         const customLabels = state.customTypes.filter(t => t.label).map(t => t.label);
         await game.settings.set("neuroshima", "customGearTypes", JSON.stringify(customLabels));
@@ -268,6 +282,20 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
             if (key === NEUROSHIMA.gearTypes[key] && key !== "misc") delete NEUROSHIMA.gearTypes[key];
         }
         for (const { label } of state.customTypes) if (label) NEUROSHIMA.gearTypes[label] = label;
+
+        // Turning a subtype into non-equippable must immediately remove the
+        // equipped state. Item lifecycle hooks then remove equip-transfer
+        // mirrors and dispatch equipToggle(false) through the normal path.
+        for (const actor of game.actors) {
+            try {
+                const updates = actor.items
+                    .filter(item => item.type === "gear" && item.system.equipped && !isGearTypeEquippable(item.system.gearType, equippableTypes))
+                    .map(item => ({ _id: item.id, "system.equipped": false }));
+                if (updates.length) await actor.updateEmbeddedDocuments("Item", updates);
+            } catch (error) {
+                console.warn("Neuroshima | Gear equipability reconciliation failed", actor.uuid, error);
+            }
+        }
 
         if (game.modules.get("item-piles")?.active) {
             try {

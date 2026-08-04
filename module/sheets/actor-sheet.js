@@ -116,6 +116,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       toggleEffect: this.prototype._onToggleEffect,
       openSource: this.prototype._onOpenSource,
       invokeItemScript: this.prototype._onInvokeItemScript,
+      invokeEffectScript: this.prototype._onInvokeEffectScript,
       toggleCondition: this.prototype._onToggleCondition,
       adjustConditionValue: this.prototype._onAdjustConditionValue,
       revertXpEntry: this.prototype._onRevertXpEntry,
@@ -259,7 +260,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       weaponsThrown: topItems.filter(i => i.type === "weapon" && (i.system.weaponType === "thrown" || i.system.weaponType === "grenade")),
       armor: topItems.filter(i => i.type === "armor"),
       gear: topItems.filter(i => i.type === "gear"),
-      hasWearableGear: topItems.some(i => i.type === "gear" && i.system.isWearable),
+      hasWearableGear: topItems.some(i => i.type === "gear" && i.isEquippable),
       ammo: topItems.filter(i => i.type === "ammo"),
       magazines: topItems.filter(i => i.type === "magazine").map(m => {
           m.contentsReversed = [...(m.system.contents || [])].reverse();
@@ -742,7 +743,8 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         sourceName,
         sourceIcon,
         durationLabel: effectDurationLabel(e),
-        isItemEffect: !!isItemEffect
+        isItemEffect: !!isItemEffect,
+        manualScripts: this._prepareEffectManualScripts(e, itemId ? actor.items.get(itemId) : null)
       };
       if (isDiseaseItem) {
         diseaseEffects.push(entry);
@@ -2767,7 +2769,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
   async _onToggleEquipped(event, target) {
     const li = target.closest(".item");
     const item = this.document.items.get(li.dataset.itemId);
-    if (!item || !("equipped" in item.system)) return;
+    if (!item || !item.isEquippable) return;
     const newEquipped = !item.system.equipped;
     await item.update({ "system.equipped": newEquipped });
   }

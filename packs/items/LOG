@@ -1,1 +1,8 @@
-2026/08/03-22:15:22.012 3c30 Delete type=3 #1
+2026/08/04-08:15:05.240 1144 Delete type=3 #1
+2026/08/04-08:15:05.276 2bbc Compacting 3@0 + 0@1 files
+2026/08/04-08:15:05.287 2bbc Generated table #958@0: 473 keys, 429126 bytes
+2026/08/04-08:15:05.287 2bbc Compacted 3@0 + 0@1 files => 429126 bytes
+2026/08/04-08:15:05.289 2bbc compacted to: files[ 0 1 0 0 0 0 0 ]
+2026/08/04-08:15:05.289 2bbc Delete type=2 #951
+2026/08/04-08:15:05.289 2bbc Delete type=2 #952
+2026/08/04-08:15:05.289 2bbc Delete type=2 #955

@@ -639,7 +639,7 @@ export class NeuroshimaActor extends Actor {
    * @returns {Promise<void>}
    */
   async syncEquipTransferEffects(item, equipped) {
-    const desired = equipped
+    const desired = equipped && item?.isEquippable !== false
       ? item.effects.filter(effect =>
         effect.getFlag("neuroshima", "equipTransfer") === true
         && effect.disabled !== true

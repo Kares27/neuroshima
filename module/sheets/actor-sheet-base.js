@@ -1,4 +1,5 @@
 import { NeuroshimaSkillRollDialog } from "../apps/dialogs/skill-roll-dialog.js";
+import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
@@ -105,6 +106,42 @@ export class NeuroshimaBaseActorSheet extends HandlebarsApplicationMixin(ActorSh
       v.cssClass = v.active ? "active" : "";
     }
     return tabs;
+  }
+
+  /**
+   * Prepare enabled manual scripts for an effect row in the Effects tab.
+   * Item-reference placeholders use the same resolver as inventory buttons.
+   */
+  _prepareEffectManualScripts(effect, item = null) {
+    if (!effect || effect.disabled) return [];
+    const modId = effect.getFlag?.("neuroshima", "fromModId") ?? null;
+    const modSnapshot = modId ? (item?.system?.mods?.[modId] ?? null) : null;
+    return Array.from(effect.system?.scriptData ?? []).flatMap((script, scriptIndex) => {
+      if (script.trigger !== "manual") return [];
+      const rawLabel = script.label || effect.name;
+      const label = NeuroshimaScriptRunner._resolveItemRef(rawLabel, item, effect, modSnapshot, modId);
+      return [{
+        itemId: item?.id ?? null,
+        effectId: effect.id,
+        effectName: effect.name,
+        scriptIndex,
+        label
+      }];
+    });
+  }
+
+  /** Execute a manual script exposed directly below an effect row. */
+  async _onInvokeEffectScript(event, target) {
+    event?.preventDefault?.();
+    const { itemId, effectId, scriptIndex } = target.dataset;
+    const item = itemId ? this.document.items.get(itemId) : null;
+    const actorEffect = this.document.effects.get(effectId);
+    const sourceEffectId = actorEffect?.getFlag?.("neuroshima", "sourceEffectId") ?? null;
+    const effect = item?.effects.get(effectId)
+      ?? (sourceEffectId ? item?.effects.get(sourceEffectId) : null)
+      ?? actorEffect;
+    if (!effect) return;
+    await NeuroshimaScriptRunner.executeManual(this.document, effect, Number(scriptIndex));
   }
 
   /**

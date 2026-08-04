@@ -1,4 +1,5 @@
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
+import { isGearTypeEquippable } from "../helpers/gear-types.js";
 
 /**
  * Extended Item document class for Neuroshima 1.5.
@@ -16,6 +17,12 @@ import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
  *   `containerId` flag (DnD5e-style container pattern).
  */
 export class NeuroshimaItem extends Item {
+  /** Whether this Item is allowed to expose and use its equipped state. */
+  get isEquippable() {
+    if (!("equipped" in (this.system ?? {}))) return false;
+    return this.type !== "gear" || isGearTypeEquippable(this.system.gearType);
+  }
+
   prepareBaseData() {
     if (this.actor) {
       NeuroshimaScriptRunner.executeEventSync("prePrepareItem", {
@@ -369,6 +376,20 @@ export class NeuroshimaItem extends Item {
       if (args.cancel) return false;
     }
 
+    // Gear equipability belongs to the configured subtype, not to an
+    // individual Item. Changing to a non-equippable subtype also unequips the
+    // Item in the same update so equip-transfer effects and equipToggle stay in
+    // sync and never remain active behind a hidden toggle.
+    if (this.type === "gear") {
+      const nextGearType = foundry.utils.getProperty(changed, "system.gearType") ?? this.system.gearType;
+      if (!isGearTypeEquippable(nextGearType)) {
+        const requestedEquipped = foundry.utils.getProperty(changed, "system.equipped");
+        if (this.system.equipped || requestedEquipped === true) {
+          foundry.utils.setProperty(changed, "system.equipped", false);
+        }
+      }
+    }
+
     // Capture the current containerId before any flag change so _onUpdate can
     // re-render the former parent container on all clients (DnD5e pattern).
     const nsFlags = foundry.utils.getProperty(changed, "flags.neuroshima");
@@ -510,10 +531,8 @@ export class NeuroshimaItem extends Item {
     if (equippedChanged) {
       const equipped = data.system.equipped;
       await actor.syncEquipTransferEffects(this, equipped);
-      import("../apps/neuroshima-script-engine.js").then(({ NeuroshimaScriptRunner }) => {
-        game.neuroshima?.log("[item._onUpdate] firing equipToggle scripts", { itemName: this.name, actorName: actor.name, equipped });
-        NeuroshimaScriptRunner.execute("equipToggle", { actor, item: this, equipped });
-      }).catch(err => console.error("Neuroshima | equipToggle script dispatch failed:", err));
+      game.neuroshima?.log("[item._onUpdate] firing equipToggle scripts", { itemName: this.name, actorName: actor.name, equipped });
+      await NeuroshimaScriptRunner.execute("equipToggle", { actor, item: this, equipped });
     }
 
     const isBuiltChanged = this.type === "facilities" && foundry.utils.hasProperty(data, "system.isBuilt");

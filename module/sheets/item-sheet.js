@@ -827,7 +827,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       this._headerToggles.jammed = btn;
     }
 
-    if ("equipped" in (item.system ?? {}) && (item.type !== "gear" || item.system.isWearable)) {
+    if (item.isEquippable) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "header-control equip-toggle-btn";
@@ -876,7 +876,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
     if (this._headerToggles.equipped) {
       const isEquipped = item.system.equipped;
-      this._headerToggles.equipped.hidden = item.type === "gear" && !item.system.isWearable;
+      this._headerToggles.equipped.hidden = !item.isEquippable;
       this._headerToggles.equipped.title = isEquipped
         ? game.i18n.localize("NEUROSHIMA.Items.Fields.Unequip")
         : game.i18n.localize("NEUROSHIMA.Items.Fields.Equip");

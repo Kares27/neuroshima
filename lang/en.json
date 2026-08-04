@@ -559,9 +559,10 @@
                 "ColExchRate": "Rate",
                 "ColPrimary": "Primary",
                 "GearTypesHeader": "Gear Subtypes & Price Modifiers",
-                "GearTypesHint": "Built-in subtypes — set buy (×) and sell (×) price multipliers. Add custom subtypes below.",
+                "GearTypesHint": "Choose which subtypes can be equipped and set their buy (×) and sell (×) price multipliers. Add custom subtypes below.",
                 "AddGearType": "Add Custom Subtype",
                 "ColGearType": "Subtype",
+                "ColEquippable": "Equippable",
                 "ColBuy": "Buy ×",
                 "ColSell": "Sell ×",
                 "CustomTypePlaceholder": "e.g. Shields",
@@ -1445,8 +1446,7 @@
                 "AvailabilityAbbr": "Avail.",
                 "CoinValue": "Gamble Value",
                 "CoinValueIn": "Value in",
-                "JammedClear": "Clear jam",
-                "IsWearable": "Wearable"
+                "JammedClear": "Clear jam"
             }
         },
         "Mods": {

@@ -116,6 +116,7 @@ export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {
         const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
         await NeuroshimaScriptRunner.executeManual(this.document, effect, Number(scriptIndex));
       },
+      invokeEffectScript: NeuroshimaBaseActorSheet.prototype._onInvokeEffectScript,
 
       takeFromContainer: async function(event, target) {
         const actor = this.document;
@@ -265,7 +266,8 @@ export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {
         sourceName,
         sourceIcon,
         durationLabel: effectDurationLabel(e),
-        isItemEffect: !!isItemEffect
+        isItemEffect: !!isItemEffect,
+        manualScripts: this._prepareEffectManualScripts(e, itemId ? actor.items.get(itemId) : null)
       };
       if (isConditionEffect(e)) return;
       if (e.disabled) {

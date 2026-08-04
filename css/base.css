@@ -8731,10 +8731,10 @@ li.chat-message.message.flexcol > .message-content {
     align-items: center;
 }
 
-/* Gear type row grid: Name/Label | Buy | Sell | Del */
+/* Gear type row grid: Name/Label | Equippable | Buy | Sell | Del */
 .neuroshima.currency-gear-config .cgc-geartype-cols {
     display: grid;
-    grid-template-columns: 2.5fr 1fr 1fr 28px;
+    grid-template-columns: 2.3fr 0.8fr 1fr 1fr 28px;
     gap: 4px;
     align-items: center;
 }

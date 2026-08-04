@@ -103,7 +103,7 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
       },
       toggleEquipped: async function(event, target) {
         const item = this.document.items.get(target.dataset.itemId);
-        if (item) await item.update({ "system.equipped": !item.system.equipped });
+        if (item?.isEquippable) await item.update({ "system.equipped": !item.system.equipped });
       },
       rollDurability: async function(event, target) {
         const vehicle = this.document;
@@ -188,6 +188,7 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
         const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
         await NeuroshimaScriptRunner.executeManual(this.document, effect, Number(scriptIndex));
       },
+      invokeEffectScript: NeuroshimaBaseActorSheet.prototype._onInvokeEffectScript,
 
       toggleCondition: async function(event, target) {
         const key  = target.dataset.conditionKey;
@@ -341,7 +342,7 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
       weaponsThrown:  topItems.filter(i => i.type === "weapon" && i.system.weaponType === "thrown"),
       armor:          topItems.filter(i => i.type === "armor"),
       gear:           topItems.filter(i => i.type === "gear"),
-      hasWearableGear: topItems.some(i => i.type === "gear" && i.system.isWearable),
+      hasWearableGear: topItems.some(i => i.type === "gear" && i.isEquippable),
       ammo:           topItems.filter(i => i.type === "ammo"),
       magazines:      topItems.filter(i => i.type === "magazine"),
       tricks:         topItems.filter(i => i.type === "trick"),
@@ -500,7 +501,8 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
         sourceName,
         sourceIcon,
         durationLabel: effectDurationLabel(e),
-        isItemEffect: !!isItemEffect
+        isItemEffect: !!isItemEffect,
+        manualScripts: this._prepareEffectManualScripts(e, itemId ? actor.items.get(itemId) : null)
       };
       if (isConditionEffect(e)) {
         const statusKey = [...(e.statuses ?? [])][0];

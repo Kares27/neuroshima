@@ -379,7 +379,7 @@
                         </div>
                         {{#if ../inventory.hasWearableGear}}
                         <div class="item-stat equipped text-center">
-                            {{#if item.system.isWearable}}
+                            {{#if item.isEquippable}}
                             <a class="item-control toggle-equipped" data-action="toggleEquipped" title="{{localize 'NEUROSHIMA.Items.Fields.Equipped'}}">
                                 <i class="{{#if item.system.equipped}}fas fa-check-circle{{else}}far fa-circle{{/if}}"></i>
                             </a>

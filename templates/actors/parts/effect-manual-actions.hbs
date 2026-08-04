@@ -1,0 +1,14 @@
+{{#if manualScripts.length}}
+<div class="effect-manual-actions" data-effect-id="{{id}}" {{#if itemId}}data-item-id="{{itemId}}"{{/if}}>
+    {{#each manualScripts as |script|}}
+    <button type="button" class="manual-script-btn effect-manual-action"
+            data-action="invokeEffectScript"
+            {{#if script.itemId}}data-item-id="{{script.itemId}}"{{/if}}
+            data-effect-id="{{script.effectId}}"
+            data-script-index="{{script.scriptIndex}}"
+            title="{{script.effectName}}">
+        <i class="fas fa-play"></i> {{script.label}}
+    </button>
+    {{/each}}
+</div>
+{{/if}}
