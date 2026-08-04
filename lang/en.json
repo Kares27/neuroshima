@@ -1359,6 +1359,7 @@
                 "Armor-mod": "armor modification"
             },
             "Empty": "No items.",
+            "GearSection": "Items",
             "Fields": {
                 "Weight": "Weight",
                 "Cost": "Cost",

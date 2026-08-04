@@ -761,6 +761,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         await NeuroshimaScriptRunner.executeManual(this.document, effect, Number(scriptIndex));
       },
       invokeEffectScript: NeuroshimaBaseActorSheet.prototype._onInvokeEffectScript,
+      toggleGearCategory: NeuroshimaBaseActorSheet.prototype._onToggleGearCategory,
 
       toggleCondition: async function(event, target) {
         const key  = target.dataset.conditionKey;
@@ -1008,6 +1009,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
 
       wounds:         topItems.filter(i => i.type === "wound")
     };
+    this._prepareGearGroups(context.inventory);
 
     const anatomicalArmor = this._prepareAnatomicalArmor(armorItems.filter(i => i.system.equipped), actor);
 

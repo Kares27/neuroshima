@@ -1,8 +1,90 @@
 import { NeuroshimaSkillRollDialog } from "../apps/dialogs/skill-roll-dialog.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
+import { NEUROSHIMA } from "../config.js";
+import { getEquippableGearTypes, isGearTypeEquippable } from "../helpers/gear-types.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
+
+/** Normalize missing legacy gear categories without altering valid custom keys. */
+export function normalizeGearType(gearType) {
+  const value = String(gearType ?? "");
+  return value.trim() ? value : "misc";
+}
+
+/**
+ * Build a deterministic, DOM-safe token without exposing the raw category key.
+ * Two independently seeded 64-bit FNV-1a hashes make collisions negligible,
+ * while keeping IDs compact even for long custom category names.
+ */
+export function gearCategoryIdToken(gearType) {
+  const value = normalizeGearType(gearType);
+  const prime = 0x100000001b3n;
+  const mask = 0xffffffffffffffffn;
+  let primary = 0xcbf29ce484222325n;
+  let secondary = 0x84222325cbf29cen;
+
+  for (let index = 0; index < value.length; index++) {
+    const code = value.charCodeAt(index);
+    for (const byte of [code & 0xff, code >>> 8]) {
+      primary = ((primary ^ BigInt(byte)) * prime) & mask;
+      secondary = ((secondary ^ BigInt(byte ^ 0xa5)) * prime) & mask;
+    }
+  }
+
+  return `${primary.toString(36)}-${secondary.toString(36)}`;
+}
+
+/**
+ * Group gear in configured category order, followed by legacy/custom keys in
+ * first-seen order. Raw category keys are never used to build DOM identifiers.
+ */
+export function buildGearGroups(items = [], {
+  gearTypes = NEUROSHIMA.gearTypes,
+  equippableGearTypes = {},
+  collapsedTypes = new Set(),
+  localize = key => key,
+  idPrefix = "ns-gear"
+} = {}) {
+  const grouped = new Map();
+  for (const item of items ?? []) {
+    const key = normalizeGearType(item?.system?.gearType);
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push(item);
+  }
+
+  const orderedKeys = [];
+  for (const key of Object.keys(gearTypes ?? {})) {
+    if (grouped.has(key)) orderedKeys.push(key);
+  }
+  for (const key of grouped.keys()) {
+    if (!orderedKeys.includes(key)) orderedKeys.push(key);
+  }
+
+  return orderedKeys.map(key => {
+    const labelKey = gearTypes?.[key];
+    const items = grouped.get(key);
+    const idToken = gearCategoryIdToken(key);
+    return {
+      key,
+      label: labelKey ? localize(labelKey) : key,
+      count: items.length,
+      items,
+      isEquippable: isGearTypeEquippable(key, equippableGearTypes),
+      expanded: !collapsedTypes.has(key),
+      buttonId: `${idPrefix}-toggle-${idToken}`,
+      panelId: `${idPrefix}-panel-${idToken}`,
+      labelId: `${idPrefix}-label-${idToken}`,
+      countId: `${idPrefix}-count-${idToken}`
+    };
+  });
+}
+
+/** Remove collapse-state entries for categories no longer present. */
+export function reconcileCollapsedGearTypes(collapsedTypes = new Set(), groups = []) {
+  const present = new Set(groups.map(group => group.key));
+  return new Set(Array.from(collapsedTypes).filter(key => present.has(key)));
+}
 
 /**
  * Shared base class for Neuroshima actor sheets.
@@ -16,6 +98,8 @@ const { ActorSheetV2 } = foundry.applications.sheets;
 export class NeuroshimaBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
 
   _scrollState = {};
+  _collapsedGearTypes = new Set();
+  _gearGroupDomPrefix = null;
 
   static _SCROLL_SELECTORS = [
     "section.window-content",
@@ -48,7 +132,7 @@ export class NeuroshimaBaseActorSheet extends HandlebarsApplicationMixin(ActorSh
       this.element.querySelectorAll("input, select, textarea").forEach(el => {
         el.disabled = true;
       });
-      this.element.querySelectorAll("[data-action]:not([data-action='editImage']):not([data-action='tab'])").forEach(el => {
+      this.element.querySelectorAll("[data-action]:not([data-action='editImage']):not([data-action='tab']):not([data-action='toggleGearCategory'])").forEach(el => {
         el.style.pointerEvents = "none";
         el.style.opacity = "0.5";
       });
@@ -106,6 +190,45 @@ export class NeuroshimaBaseActorSheet extends HandlebarsApplicationMixin(ActorSh
       v.cssClass = v.active ? "active" : "";
     }
     return tabs;
+  }
+
+  /** Prepare persistent, independently collapsible gear groups. */
+  _prepareGearGroups(inventory) {
+    if (!inventory) return inventory;
+    this._gearGroupDomPrefix ??= `ns-gear-${foundry.utils.randomID()}`;
+
+    let groups = buildGearGroups(inventory.gear ?? [], {
+      gearTypes: NEUROSHIMA.gearTypes,
+      equippableGearTypes: getEquippableGearTypes(),
+      collapsedTypes: this._collapsedGearTypes,
+      localize: key => game.i18n.localize(key),
+      idPrefix: this._gearGroupDomPrefix
+    });
+    this._collapsedGearTypes = reconcileCollapsedGearTypes(this._collapsedGearTypes, groups);
+    groups = groups.map(group => ({
+      ...group,
+      expanded: !this._collapsedGearTypes.has(group.key)
+    }));
+    inventory.gearGroups = groups;
+    return inventory;
+  }
+
+  /** Toggle one category in-place, preserving scroll position and other groups. */
+  _onToggleGearCategory(event, target) {
+    event?.preventDefault?.();
+    const group = target?.closest?.("[data-gear-category-group]");
+    const key = group?.dataset?.gearType;
+    if (key === undefined) return;
+
+    const expanded = this._collapsedGearTypes.has(key);
+    if (expanded) this._collapsedGearTypes.delete(key);
+    else this._collapsedGearTypes.add(key);
+
+    group.classList.toggle("collapsed", !expanded);
+    const button = group.querySelector(".gear-category-toggle");
+    const panel = group.querySelector(".gear-category-panel");
+    button?.setAttribute("aria-expanded", String(expanded));
+    if (panel) panel.hidden = !expanded;
   }
 
   /**

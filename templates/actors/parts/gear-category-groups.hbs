@@ -1,0 +1,24 @@
+<button id="{{group.buttonId}}"
+        class="section-header inv-section-header gear-category-toggle"
+        type="button"
+        data-action="toggleGearCategory"
+        aria-labelledby="{{group.labelId}} {{group.countId}}"
+        aria-expanded="{{#if group.expanded}}true{{else}}false{{/if}}"
+        aria-controls="{{group.panelId}}">
+    <span class="gear-category-name item-name flex3">
+        <span id="{{group.countId}}" class="gear-category-count">{{group.count}}</span>
+        <span id="{{group.labelId}}" class="gear-category-label">{{group.label}}</span>
+    </span>
+    {{#if supportsEquipping}}
+    {{#if group.isEquippable}}
+    <span class="item-stat equipped text-center" aria-hidden="true">{{localize "NEUROSHIMA.Items.Fields.EquippedAbbr"}}</span>
+    {{/if}}
+    {{/if}}
+    <span class="item-stat quantity text-center" aria-hidden="true">{{localize "NEUROSHIMA.Items.Fields.Quantity"}}</span>
+    {{#if showWeight}}
+    <span class="item-stat weight text-center" aria-hidden="true">{{localize "NEUROSHIMA.Items.Fields.Weight"}}</span>
+    {{/if}}
+    <span class="item-controls gear-category-chevron-slot">
+        <i class="fas fa-chevron-down gear-category-chevron" aria-hidden="true"></i>
+    </span>
+</button>

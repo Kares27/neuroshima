@@ -1387,6 +1387,7 @@
                 "Armor-mod": "modyfikację pancerza"
             },
             "Empty": "Brak przedmiotów.",
+            "GearSection": "Przedmioty",
             "Fields": {
                 "Weight": "Waga",
                 "Cost": "Koszt",

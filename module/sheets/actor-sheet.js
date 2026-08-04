@@ -132,6 +132,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       sortReputationItems: this.prototype._onSortReputationItems,
       adjustDiseaseState: this.prototype._onAdjustDiseaseState,
       adjustTransientPenalty: this.prototype._onAdjustTransientPenalty,
+      toggleGearCategory: NeuroshimaBaseActorSheet.prototype._onToggleGearCategory,
       takeFromContainer: this.prototype._onTakeFromContainer
     },
     dragDrop: [
@@ -270,6 +271,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       weaponMods: topItems.filter(i => i.type === "weapon-mod"),
       armorMods:  topItems.filter(i => i.type === "armor-mod")
     };
+    this._prepareGearGroups(context.inventory);
 
     const armorEffectiveResistances = {};
     for (const armorItem of context.inventory.armor) {

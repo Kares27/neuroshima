@@ -117,6 +117,7 @@ export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {
         await NeuroshimaScriptRunner.executeManual(this.document, effect, Number(scriptIndex));
       },
       invokeEffectScript: NeuroshimaBaseActorSheet.prototype._onInvokeEffectScript,
+      toggleGearCategory: NeuroshimaBaseActorSheet.prototype._onToggleGearCategory,
 
       takeFromContainer: async function(event, target) {
         const actor = this.document;
@@ -219,6 +220,7 @@ export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {
       weaponMods:     topItems.filter(i => i.type === "weapon-mod"),
       armorMods:      topItems.filter(i => i.type === "armor-mod")
     };
+    this._prepareGearGroups(context.inventory);
 
     const totalBaseUnits = moneyItems.reduce((sum, i) => sum + (i.system.quantity * i.system.coinValue), 0);
     context.moneyData = {

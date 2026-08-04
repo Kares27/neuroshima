@@ -1,7 +1,11 @@
-2026/08/04-08:15:05.229 1144 Log #954: 44 ops saved to Table #955 OK
-2026/08/04-08:15:05.229 1144 Archiving D:\FoundryData\Data\systems\neuroshima\packs\items/000954.log: OK
-2026/08/04-08:15:05.231 1144 Table #951: 429 entries OK
-2026/08/04-08:15:05.231 1144 Table #952: 49 entries OK
-2026/08/04-08:15:05.231 1144 Table #955: 44 entries OK
-2026/08/04-08:15:05.233 1144 Archiving D:\FoundryData\Data\systems\neuroshima\packs\items/MANIFEST-000953: OK
-2026/08/04-08:15:05.235 1144 **** Repaired leveldb D:\FoundryData\Data\systems\neuroshima\packs\items; recovered 3 files; 464132 bytes. Some data may have been lost. ****
+2026/08/04-14:39:46.092 1f28 Recovering log #957
+2026/08/04-14:39:46.093 1f28 Level-0 table #960: started
+2026/08/04-14:39:46.097 1f28 Level-0 table #960: 98984 bytes OK
+2026/08/04-14:39:46.100 1f28 Delete type=0 #957
+2026/08/04-14:39:46.101 1f28 Delete type=3 #956
+2026/08/04-14:39:46.133 3a70 Compacting 1@0 + 1@1 files
+2026/08/04-14:39:46.144 3a70 Generated table #962@0: 528 keys, 487101 bytes
+2026/08/04-14:39:46.144 3a70 Compacted 1@0 + 1@1 files => 487101 bytes
+2026/08/04-14:39:46.145 3a70 compacted to: files[ 0 1 0 0 0 0 0 ]
+2026/08/04-14:39:46.146 3a70 Delete type=2 #958
+2026/08/04-14:39:46.146 3a70 Delete type=2 #960

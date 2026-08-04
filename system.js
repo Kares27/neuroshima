@@ -11,6 +11,7 @@ import { NeuroshimaNPCSheet } from "./module/sheets/npc-sheet.js";
 import { NeuroshimaCreatureSheet } from "./module/sheets/creature-sheet.js";
 import { NeuroshimaVehicleSheet } from "./module/sheets/vehicle-sheet.js";
 import { NeuroshimaHomeBaseSheet } from "./module/sheets/home-base-sheet.js";
+import { normalizeGearType } from "./module/sheets/actor-sheet-base.js";
 import { NeuroshimaItemSheet } from "./module/sheets/item-sheet.js";
 import { NeuroshimaEffectSheet } from "./module/sheets/neuroshima-effect-sheet.js";
 import {
@@ -427,6 +428,7 @@ Hooks.once('init', async function() {
         const i18nKey = NEUROSHIMA.gearTypes[gearType];
         return i18nKey ? game.i18n.localize(i18nKey) : gearType;
     });
+    Handlebars.registerHelper('nsGearTypeKey', normalizeGearType);
 
     Handlebars.registerHelper('capitalize', (str) => {
         if (!str || typeof str !== 'string') return '';
@@ -1138,6 +1140,7 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/actors/actor/parts/actor-tricks.hbs",
         "systems/neuroshima/templates/actors/actor/parts/actor-combat.hbs",
         "systems/neuroshima/templates/actors/actor/parts/actor-inventory.hbs",
+        "systems/neuroshima/templates/actors/parts/gear-category-groups.hbs",
         "systems/neuroshima/templates/actors/parts/effect-manual-actions.hbs",
         "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs",
         "systems/neuroshima/templates/actors/actor/parts/wounds-paper-doll.hbs",

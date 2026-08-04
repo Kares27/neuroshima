@@ -1005,6 +1005,123 @@
     border-left: none;
 }
 
+/* Gear is kept visible as vertically stacked, independently collapsible groups. */
+.neuroshima.sheet.actor .gear-category-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 5px 0 0;
+}
+
+.neuroshima.sheet.actor .gear-category-group {
+    overflow: hidden;
+    border: 1px solid var(--ns-border-light);
+    border-radius: 3px;
+    background: var(--ns-bg-panel);
+}
+
+.neuroshima.sheet.actor .gear-category-toggle {
+    display: flex;
+    width: 100%;
+    min-height: 30px;
+    align-items: center;
+    gap: 0;
+    margin: 0;
+    padding: 4px 5px;
+    border: 0;
+    border-radius: 0;
+    background: var(--ns-bg-header);
+    color: var(--ns-text-main);
+    font-family: 'SpecialElite', serif;
+    font-size: 0.82em;
+    line-height: 1.2;
+    text-align: left;
+    cursor: pointer;
+}
+
+.neuroshima.sheet.actor .gear-category-toggle:hover {
+    background: var(--ns-bg-input);
+}
+
+.neuroshima.sheet.actor .gear-category-toggle:focus-visible {
+    outline: 1px solid var(--ns-border-focus);
+    outline-offset: -2px;
+}
+
+.neuroshima.sheet.actor .gear-category-chevron {
+    color: var(--ns-text-light);
+    font-size: 0.8em;
+    text-align: center;
+    transition: transform 120ms ease;
+}
+
+.neuroshima.sheet.actor .gear-category-group.collapsed .gear-category-chevron {
+    transform: rotate(-90deg);
+}
+
+.neuroshima.sheet.actor .gear-category-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.neuroshima.sheet.actor .section-header.inv-section-header.gear-category-toggle > .gear-category-name {
+    flex: 3 1 0;
+    gap: 8px;
+}
+
+.neuroshima.sheet.actor .section-header.inv-section-header.gear-category-toggle > .item-stat.equipped {
+    flex: 0 0 55px;
+}
+
+.neuroshima.sheet.actor .section-header.inv-section-header.gear-category-toggle > .item-stat.quantity {
+    flex: 0 0 80px;
+}
+
+.neuroshima.sheet.actor .section-header.inv-section-header.gear-category-toggle > .item-stat.weight {
+    flex: 0 0 70px;
+}
+
+.neuroshima.sheet.actor .section-header.inv-section-header.gear-category-toggle > .gear-category-chevron-slot {
+    flex: 0 0 25px;
+}
+
+.neuroshima.sheet.actor .gear-category-count {
+    display: inline-flex;
+    flex: 0 0 28px;
+    width: 28px;
+    min-width: 28px;
+    height: 20px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    border: 1px solid var(--ns-border-light);
+    border-radius: 3px;
+    background: var(--ns-bg-sheet);
+    color: var(--ns-text-main);
+    font-size: 0.9em;
+    font-variant-numeric: tabular-nums;
+}
+
+.neuroshima.sheet.actor .gear-category-toggle > .item-stat {
+    align-self: stretch;
+    font-size: 0.9em;
+}
+
+.neuroshima.sheet.actor .gear-category-chevron-slot {
+    align-self: stretch;
+    border-left: 1px solid var(--ns-bg-header);
+}
+
+.neuroshima.sheet.actor .gear-category-panel {
+    border-top: 1px solid var(--ns-border-light);
+}
+
+.neuroshima.sheet.actor .gear-category-panel[hidden] {
+    display: none;
+}
+
 .neuroshima.sheet.actor .section-header.money-section-header .money-header-left {
     flex: 1;
     display: flex;

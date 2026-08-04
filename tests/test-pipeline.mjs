@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 Math.clamp ??= (value, minimum, maximum) => Math.min(maximum, Math.max(minimum, value));
 
@@ -208,7 +209,12 @@ const {
   isGearTypeEquippable,
   parseEquippableGearTypes
 } = await import("../module/helpers/gear-types.js");
-const { NeuroshimaBaseActorSheet } = await import("../module/sheets/actor-sheet-base.js");
+const {
+  NeuroshimaBaseActorSheet,
+  buildGearGroups,
+  reconcileCollapsedGearTypes,
+  normalizeGearType
+} = await import("../module/sheets/actor-sheet-base.js");
 const {
   crewMemberMatches,
   resolveCrewActor
@@ -268,6 +274,297 @@ test("non-equippable gear cannot create Transfer on Equip actor mirrors", async 
   };
   await NeuroshimaActor.prototype.syncEquipTransferEffects.call(actor, gear, true);
   assert.deepEqual(created, []);
+});
+
+test("gear groups use config order, normalize blanks and retain every item", () => {
+  const gearTypes = {
+    food: "gear.food",
+    tools: "gear.tools",
+    electronics: "gear.electronics",
+    misc: "gear.misc"
+  };
+  const items = [
+    { system: { gearType: "tools" } },
+    { system: { gearType: "" } },
+    { system: { gearType: "Złom / β [stary]" } },
+    { system: { gearType: "food" } },
+    { system: { gearType: null } },
+    { system: { gearType: "tools" } },
+    { system: { gearType: "Złom / β [stary]" } }
+  ];
+
+  const groups = buildGearGroups(items, {
+    gearTypes,
+    localize: key => `L:${key}`
+  });
+
+  assert.deepEqual(
+    groups.map(group => group.key),
+    ["food", "tools", "misc", "Złom / β [stary]"]
+  );
+  assert.deepEqual(
+    groups.map(group => group.count),
+    [1, 2, 2, 2]
+  );
+  assert.equal(groups[0].label, "L:gear.food");
+  assert.equal(groups.at(-1).label, "Złom / β [stary]");
+  assert.equal(groups.flatMap(group => group.items).length, items.length);
+  assert.equal(groups.every(group => group.expanded), true);
+  assert.equal(normalizeGearType("   "), "misc");
+});
+
+test("gear collapse state is independent and removes categories that vanished", () => {
+  const collapsed = new Set(["tools", "legacy type"]);
+  const groups = buildGearGroups([
+    { system: { gearType: "food" } },
+    { system: { gearType: "tools" } }
+  ], {
+    gearTypes: { food: "gear.food", tools: "gear.tools" },
+    collapsedTypes: collapsed
+  });
+  const reconciled = reconcileCollapsedGearTypes(collapsed, groups);
+
+  assert.deepEqual(Array.from(reconciled), ["tools"]);
+  assert.equal(groups.find(group => group.key === "food")?.expanded, true);
+  assert.equal(groups.find(group => group.key === "tools")?.expanded, false);
+});
+
+test("gear groups expose equipability per category from the configured subtype map", () => {
+  const groups = buildGearGroups([
+    { system: { gearType: "clothing" } },
+    { system: { gearType: "tools" } },
+    { system: { gearType: "custom wearable" } },
+    { system: { gearType: "" } }
+  ], {
+    gearTypes: { clothing: "gear.clothing", tools: "gear.tools", misc: "gear.misc" },
+    equippableGearTypes: {
+      clothing: true,
+      tools: false,
+      "custom wearable": true,
+      misc: true
+    }
+  });
+
+  assert.deepEqual(
+    Object.fromEntries(groups.map(group => [group.key, group.isEquippable])),
+    { clothing: true, tools: false, misc: true, "custom wearable": true }
+  );
+});
+
+test("new gear categories start expanded after collapse state was established", () => {
+  const groups = buildGearGroups([
+    { system: { gearType: "tools" } },
+    { system: { gearType: "new custom" } }
+  ], {
+    gearTypes: { tools: "gear.tools" },
+    collapsedTypes: new Set(["tools"])
+  });
+
+  assert.equal(groups.find(group => group.key === "tools")?.expanded, false);
+  assert.equal(groups.find(group => group.key === "new custom")?.expanded, true);
+});
+
+test("literal all and special-character gear categories remain independent and DOM-safe", () => {
+  const custom = "Ciężki sprzęt / β [1] #?";
+  const groups = buildGearGroups(
+    [
+      { system: { gearType: "all" } },
+      { system: { gearType: custom } }
+    ],
+    { gearTypes: {}, collapsedTypes: new Set([custom]), idPrefix: "safe-sheet-id" }
+  );
+
+  assert.deepEqual(groups.map(group => group.key), ["all", custom]);
+  assert.equal(groups[0].expanded, true);
+  assert.equal(groups[1].expanded, false);
+  assert.equal(groups.some(group => group.panelId.includes(custom)), false);
+  assert.equal(
+    new Set(groups.flatMap(group => [group.buttonId, group.panelId, group.labelId, group.countId])).size,
+    8
+  );
+
+  const reordered = buildGearGroups(
+    [
+      { system: { gearType: "new-first" } },
+      { system: { gearType: custom } },
+      { system: { gearType: "all" } }
+    ],
+    { gearTypes: {}, idPrefix: "safe-sheet-id" }
+  );
+  assert.equal(
+    reordered.find(group => group.key === custom)?.panelId,
+    groups.find(group => group.key === custom)?.panelId
+  );
+  assert.equal(
+    reordered.find(group => group.key === "all")?.buttonId,
+    groups.find(group => group.key === "all")?.buttonId
+  );
+});
+
+test("all active actor sheets register and render the shared collapsible gear groups", () => {
+  const integrations = [
+    ["../module/sheets/actor-sheet.js", "../templates/actors/actor/parts/actor-inventory.hbs"],
+    ["../module/sheets/creature-sheet.js", "../templates/actors/creature/parts/creature-inventory.hbs"],
+    ["../module/sheets/vehicle-sheet.js", "../templates/actors/vehicle/parts/vehicle-equipment.hbs"],
+    ["../module/sheets/home-base-sheet.js", "../templates/actors/home-base/parts/home-base-cargo.hbs"]
+  ];
+
+  for (const [sheetPath, templatePath] of integrations) {
+    const sheetSource = readFileSync(new URL(sheetPath, import.meta.url), "utf8");
+    const templateSource = readFileSync(new URL(templatePath, import.meta.url), "utf8");
+
+    assert.match(sheetSource, /toggleGearCategory:\s*NeuroshimaBaseActorSheet\.prototype\._onToggleGearCategory/);
+    assert.match(sheetSource, /this\._prepareGearGroups\(context\.inventory\)/);
+    assert.match(templateSource, /#each inventory\.gearGroups as \|group\|/);
+    assert.match(templateSource, /gear-category-groups\.hbs/);
+    assert.match(templateSource, /id="\{\{group\.panelId\}\}"[^>]*role="region"[^>]*aria-labelledby="\{\{group\.buttonId\}\}"/);
+    assert.doesNotMatch(templateSource, /#each inventory\.gear as \|item\|/);
+    assert.doesNotMatch(templateSource, /gear-category-tabs|selectGearType/);
+    assert.match(templateSource, /data-item-id="\{\{item\.id\}\}"/);
+    assert.match(templateSource, /invokeItemScript/);
+    assert.match(templateSource, /itemContextMenu/);
+  }
+});
+
+test("shared gear group partial keeps native button and complete ARIA linkage", () => {
+  const partial = readFileSync(
+    new URL("../templates/actors/parts/gear-category-groups.hbs", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(partial, /<button[^>]*id="\{\{group\.buttonId\}\}"/);
+  assert.match(partial, /type="button"/);
+  assert.match(partial, /data-action="toggleGearCategory"/);
+  assert.match(partial, /aria-labelledby="\{\{group\.labelId\}\} \{\{group\.countId\}\}"/);
+  assert.match(partial, /aria-expanded=/);
+  assert.match(partial, /aria-controls="\{\{group\.panelId\}\}"/);
+  assert.match(partial, /id="\{\{group\.countId\}\}" class="gear-category-count"/);
+  assert.match(partial, /id="\{\{group\.labelId\}\}" class="gear-category-label"/);
+  assert.doesNotMatch(partial, /gear-category-count" aria-hidden/);
+  assert.match(partial, /item-stat equipped text-center" aria-hidden="true"/);
+  assert.match(partial, /item-stat quantity text-center" aria-hidden="true"/);
+  assert.match(partial, /item-stat weight text-center" aria-hidden="true"/);
+  assert.match(partial, /section-header inv-section-header gear-category-toggle/);
+  assert.match(partial, /gear-category-count[\s\S]*gear-category-label[\s\S]*Items\.Fields\.Quantity[\s\S]*gear-category-chevron/);
+  assert.match(partial, /#if supportsEquipping[\s\S]*#if group\.isEquippable[\s\S]*Items\.Fields\.EquippedAbbr/);
+  assert.match(partial, /#if showWeight[\s\S]*Items\.Fields\.Weight/);
+});
+
+test("gear category grid overrides the generic section span flex and keeps a compact count track", () => {
+  const css = readFileSync(new URL("../css/actor.css", import.meta.url), "utf8");
+
+  assert.match(
+    css,
+    /\.section-header\.inv-section-header\.gear-category-toggle > \.gear-category-name\s*\{[^}]*flex:\s*3 1 0;/
+  );
+  assert.match(
+    css,
+    /\.gear-category-count\s*\{[^}]*flex:\s*0 0 28px;[^}]*min-width:\s*28px;/
+  );
+  assert.match(
+    css,
+    /\.section-header\.inv-section-header\.gear-category-toggle > \.gear-category-chevron-slot\s*\{[^}]*flex:\s*0 0 25px;/
+  );
+});
+
+test("gear category headers leave enough vertical room for the SpecialElite font", () => {
+  const css = readFileSync(new URL("../css/actor.css", import.meta.url), "utf8");
+  const rule = css.match(/\.neuroshima\.sheet\.actor \.gear-category-toggle\s*\{([^}]*)\}/)?.[1] ?? "";
+
+  assert.match(rule, /min-height:\s*(?:3\d|[4-9]\d)px;/);
+  assert.match(rule, /padding:\s*[4-9]px\s+[^;]+;/);
+  assert.match(rule, /line-height:\s*1\.[2-9]\d*;/);
+});
+
+test("gear table columns live in each category header instead of the main Gear header", () => {
+  const integrations = [
+    {
+      templatePath: "../templates/actors/actor/parts/actor-inventory.hbs",
+      partialArgs: /supportsEquipping=true showWeight=\.\.\/enableEncumbrance/
+    },
+    {
+      templatePath: "../templates/actors/creature/parts/creature-inventory.hbs",
+      partialArgs: /group=group supportsEquipping=true/
+    },
+    {
+      templatePath: "../templates/actors/vehicle/parts/vehicle-equipment.hbs",
+      partialArgs: /supportsEquipping=true showWeight=\.\.\/enableEncumbrance/
+    },
+    {
+      templatePath: "../templates/actors/home-base/parts/home-base-cargo.hbs",
+      partialArgs: /showWeight=true/
+    }
+  ];
+
+  for (const { templatePath, partialArgs } of integrations) {
+    const templateSource = readFileSync(new URL(templatePath, import.meta.url), "utf8");
+    const gearSection = templateSource.split("{{!-- Gear --}}")[1]?.split("{{!-- Magazines --}}")[0] ?? "";
+    const mainHeader = gearSection.split('<div class="gear-category-groups">')[0] ?? "";
+
+    assert.match(mainHeader, /NEUROSHIMA\.Items\.GearSection/);
+    assert.match(mainHeader, /data-action="createItem"[^>]*data-type="gear"/);
+    assert.doesNotMatch(mainHeader, /Items\.Fields\.(?:EquippedAbbr|Quantity|Weight)/);
+    assert.match(gearSection, partialArgs);
+  }
+});
+
+test("gear rows render the equip column only for an equippable category", () => {
+  const equippedSheets = [
+    "../templates/actors/actor/parts/actor-inventory.hbs",
+    "../templates/actors/creature/parts/creature-inventory.hbs",
+    "../templates/actors/vehicle/parts/vehicle-equipment.hbs"
+  ];
+
+  for (const templatePath of equippedSheets) {
+    const templateSource = readFileSync(new URL(templatePath, import.meta.url), "utf8");
+    const gearSection = templateSource.split("{{!-- Gear --}}")[1]?.split("{{!-- Magazines --}}")[0] ?? "";
+    assert.match(gearSection, /#if \.\.\/isEquippable[\s\S]*data-action="toggleEquipped"/);
+    assert.doesNotMatch(gearSection, /inventory\.hasWearableGear/);
+  }
+
+  const homeBase = readFileSync(
+    new URL("../templates/actors/home-base/parts/home-base-cargo.hbs", import.meta.url),
+    "utf8"
+  );
+  const homeBaseGear = homeBase.split("{{!-- Gear --}}")[1]?.split("{{!-- Magazines --}}")[0] ?? "";
+  assert.doesNotMatch(homeBaseGear, /supportsEquipping=true|toggleEquipped|Items\.Fields\.EquippedAbbr/);
+});
+
+test("gear category toggle changes only its own DOM group without rendering", () => {
+  const collapsed = new Set();
+  const attributes = new Map();
+  const button = { setAttribute: (key, value) => attributes.set(key, value) };
+  const panel = { hidden: false };
+  const classState = new Set();
+  const group = {
+    dataset: { gearType: "tools" },
+    classList: {
+      toggle(name, active) {
+        if (active) classState.add(name);
+        else classState.delete(name);
+      }
+    },
+    querySelector(selector) {
+      return selector === ".gear-category-toggle" ? button : panel;
+    }
+  };
+  const target = { closest: () => group };
+  let rendered = false;
+  const sheet = { _collapsedGearTypes: collapsed, render: () => { rendered = true; } };
+
+  NeuroshimaBaseActorSheet.prototype._onToggleGearCategory.call(sheet, { preventDefault() {} }, target);
+  assert.equal(collapsed.has("tools"), true);
+  assert.equal(classState.has("collapsed"), true);
+  assert.equal(attributes.get("aria-expanded"), "false");
+  assert.equal(panel.hidden, true);
+  assert.equal(rendered, false);
+
+  NeuroshimaBaseActorSheet.prototype._onToggleGearCategory.call(sheet, { preventDefault() {} }, target);
+  assert.equal(collapsed.has("tools"), false);
+  assert.equal(classState.has("collapsed"), false);
+  assert.equal(attributes.get("aria-expanded"), "true");
+  assert.equal(panel.hidden, false);
+  assert.equal(rendered, false);
 });
 
 test("Effects tab exposes and executes manual scripts from direct actor effects", async () => {
