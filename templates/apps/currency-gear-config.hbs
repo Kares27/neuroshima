@@ -68,19 +68,12 @@
     </div>
     <p class="cgc-hint">{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.GearTypesHint"}}</p>
 
-    <div class="cgc-add-bar">
-        <a class="cgc-add-btn" data-action="addGearTypeRow">
-            <i class="fas fa-plus"></i> {{localize "NEUROSHIMA.Settings.CurrencyGearConfig.AddGearType"}}
-        </a>
-    </div>
-
     <div class="cgc-scroll cgc-geartypes-scroll">
         <div class="cgc-header cgc-geartype-cols">
             <span>{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.ColGearType"}}</span>
             <span class="cgc-center">{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.ColEquippable"}}</span>
             <span class="cgc-center">{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.ColBuy"}}</span>
             <span class="cgc-center">{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.ColSell"}}</span>
-            <span></span>
         </div>
 
         {{#each builtinRows}}
@@ -89,25 +82,9 @@
             <div class="cgc-center"><input type="checkbox" name="builtin.{{key}}.equippable" {{checked equippable}}/></div>
             <input class="cgc-num" type="number" name="builtin.{{key}}.buy"  value="{{buy}}"  min="0" step="0.01"/>
             <input class="cgc-num" type="number" name="builtin.{{key}}.sell" value="{{sell}}" min="0" step="0.01"/>
-            <span></span>
         </div>
         {{/each}}
 
-        {{#each customRows}}
-        <div class="cgc-row cgc-geartype-cols cgc-custom-row">
-            <input type="text" name="custom.{{idx}}.label" value="{{label}}" placeholder="{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.CustomTypePlaceholder"}}"/>
-            <div class="cgc-center"><input type="checkbox" name="custom.{{idx}}.equippable" {{checked equippable}}/></div>
-            <input class="cgc-num" type="number" name="custom.{{idx}}.buy"  value="{{buy}}"  min="0" step="0.01"/>
-            <input class="cgc-num" type="number" name="custom.{{idx}}.sell" value="{{sell}}" min="0" step="0.01"/>
-            <a class="cgc-del" data-action="deleteGearTypeRow" data-index="{{idx}}" title="{{localize 'Delete'}}">
-                <i class="fas fa-trash"></i>
-            </a>
-        </div>
-        {{/each}}
-
-        {{#unless customRows.length}}
-        <p class="cgc-custom-empty">{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.CustomTypesEmpty"}}</p>
-        {{/unless}}
     </div>
 
     <footer class="form-footer">

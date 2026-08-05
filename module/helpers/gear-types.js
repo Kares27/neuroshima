@@ -3,6 +3,29 @@ export const DEFAULT_EQUIPPABLE_GEAR_TYPES = Object.freeze({
   clothing: true
 });
 
+/** The complete, ordered set of categories supported by gear Items. */
+export const GEAR_TYPE_KEYS = Object.freeze([
+  "stimulants",
+  "fuel",
+  "medicine",
+  "electronics",
+  "food",
+  "living",
+  "services",
+  "chemicals",
+  "tools",
+  "clothing",
+  "misc"
+]);
+
+const GEAR_TYPE_KEY_SET = new Set(GEAR_TYPE_KEYS);
+
+/** Normalize missing, legacy, and custom categories to the canonical fallback. */
+export function normalizeGearType(gearType) {
+  const value = String(gearType ?? "").trim();
+  return GEAR_TYPE_KEY_SET.has(value) ? value : "misc";
+}
+
 /**
  * Parse the world setting that maps gear subtype keys to equipability.
  * Missing and malformed entries are intentionally treated as `false`, except
@@ -23,7 +46,9 @@ export function parseEquippableGearTypes(raw) {
   if (!saved || typeof saved !== "object" || Array.isArray(saved)) saved = {};
 
   const result = { ...DEFAULT_EQUIPPABLE_GEAR_TYPES };
-  for (const [key, value] of Object.entries(saved)) result[key] = value === true;
+  for (const [key, value] of Object.entries(saved)) {
+    if (GEAR_TYPE_KEY_SET.has(key)) result[key] = value === true;
+  }
   return result;
 }
 
@@ -41,5 +66,5 @@ export function getEquippableGearTypes() {
  */
 export function isGearTypeEquippable(gearType, map = null) {
   const types = map ?? getEquippableGearTypes();
-  return types[String(gearType ?? "misc")] === true;
+  return types[normalizeGearType(gearType)] === true;
 }

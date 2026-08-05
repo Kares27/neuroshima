@@ -1,16 +1,10 @@
 import { NeuroshimaSkillRollDialog } from "../apps/dialogs/skill-roll-dialog.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { NEUROSHIMA } from "../config.js";
-import { getEquippableGearTypes, isGearTypeEquippable } from "../helpers/gear-types.js";
+import { getEquippableGearTypes, isGearTypeEquippable, normalizeGearType } from "../helpers/gear-types.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
-
-/** Normalize missing legacy gear categories without altering valid custom keys. */
-export function normalizeGearType(gearType) {
-  const value = String(gearType ?? "");
-  return value.trim() ? value : "misc";
-}
 
 /**
  * Build a deterministic, DOM-safe token without exposing the raw category key.

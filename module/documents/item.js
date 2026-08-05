@@ -1,5 +1,5 @@
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
-import { isGearTypeEquippable } from "../helpers/gear-types.js";
+import { isGearTypeEquippable, normalizeGearType } from "../helpers/gear-types.js";
 
 /**
  * Extended Item document class for Neuroshima 1.5.
@@ -74,6 +74,11 @@ export class NeuroshimaItem extends Item {
     };
 
     const updates = {};
+
+    if (data.type === "gear") {
+      const gearType = foundry.utils.getProperty(data, "system.gearType");
+      if (gearType !== undefined) updates["system.gearType"] = normalizeGearType(gearType);
+    }
 
     // Override weapon icon based on weaponType
     if (data.type === "weapon") {
@@ -381,7 +386,11 @@ export class NeuroshimaItem extends Item {
     // Item in the same update so equip-transfer effects and equipToggle stay in
     // sync and never remain active behind a hidden toggle.
     if (this.type === "gear") {
-      const nextGearType = foundry.utils.getProperty(changed, "system.gearType") ?? this.system.gearType;
+      const submittedGearType = foundry.utils.getProperty(changed, "system.gearType");
+      const nextGearType = normalizeGearType(submittedGearType ?? this.system.gearType);
+      if (submittedGearType !== undefined && submittedGearType !== nextGearType) {
+        foundry.utils.setProperty(changed, "system.gearType", nextGearType);
+      }
       if (!isGearTypeEquippable(nextGearType)) {
         const requestedEquipped = foundry.utils.getProperty(changed, "system.equipped");
         if (this.system.equipped || requestedEquipped === true) {

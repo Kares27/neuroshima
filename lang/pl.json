@@ -13,7 +13,7 @@
         "Item": {
             "weapon": "Broń",
             "armor": "Pancerz",
-            "gear": "Ekwipunek",
+            "gear": "Przedmiot",
             "trick": "Sztuczka",
             "trait": "Cecha",
             "ammo": "Amunicja",
@@ -545,10 +545,10 @@
                 "Empty": "Brak własnych podtypów. Kliknij \"Dodaj podtyp\" aby dodać."
             },
             "CurrencyGearConfig": {
-                "Label": "Waluty i podtypy ekwipunku",
-                "Title": "Waluty i podtypy ekwipunku",
-                "MenuHint": "Konfiguruj waluty twórzone na aktorach oraz niestandardowe podtypy i modyfikatory cen ekwipunku.",
-                "Saved": "Ustawienia walut i podtypów zostały zapisane.",
+                "Label": "Waluty i kategorie przedmiotów",
+                "Title": "Waluty i kategorie przedmiotów",
+                "MenuHint": "Konfiguruj waluty tworzone na aktorach oraz właściwości kategorii przedmiotów.",
+                "Saved": "Ustawienia walut i kategorii przedmiotów zostały zapisane.",
                 "CurrenciesHeader": "Waluty",
                 "CurrenciesHint": "Waluty dodawane automatycznie każdemu nowemu aktorowi. Pole 'Skrót' używa {#} jako miejsca na kwotę (np. {#}G = 10G).",
                 "AddCurrency": "Dodaj walutę",
@@ -561,10 +561,10 @@
                 "ColCoinVal": "Wartość",
                 "ColExchRate": "Kurs",
                 "ColPrimary": "Główna",
-                "GearTypesHeader": "Podtypy ekwipunku i modyfikatory cen",
-                "GearTypesHint": "Ustaw, które podtypy można zakładać, oraz ich mnożniki ceny kupna (×) i sprzedaży (×). Własne podtypy dodaj poniżej.",
+                "GearTypesHeader": "Kategorie przedmiotów i modyfikatory cen",
+                "GearTypesHint": "Ustaw, które kategorie można zakładać, oraz ich mnożniki ceny kupna (×) i sprzedaży (×).",
                 "AddGearType": "Dodaj własny podtyp",
-                "ColGearType": "Podtyp",
+                "ColGearType": "Kategoria",
                 "ColEquippable": "Można założyć",
                 "ColBuy": "Zakup ×",
                 "ColSell": "Sprzedaż ×",
@@ -572,8 +572,8 @@
                 "CustomTypesEmpty": "Brak własnych podtypów. Kliknij powyżej aby dodać."
             },
             "GearTypePriceModifiers": {
-                "Name": "Modyfikatory cen według kategorii ekwipunku",
-                "Hint": "JSON: mapowanie kategorii ekwipunku (gearType) na mnożniki ceny kupna/sprzedaży."
+                "Name": "Modyfikatory cen według kategorii przedmiotu",
+                "Hint": "JSON: mapowanie kategorii przedmiotu (gearType) na mnożniki ceny kupna/sprzedaży."
             },
             "RequireBuildOnItems": {
                 "Name": "Wymagaj budowy na broni i pancerzach",
@@ -1347,7 +1347,7 @@
                 "WeaponThrown": "Broń Miotana",
                 "WeaponGrenade": "Granat",
                 "Armor": "Pancerz",
-                "Gear": "Ekwipunek",
+                "Gear": "Przedmiot",
                 "Trick": "Sztuczka",
                 "Trait": "Cecha",
                 "Ammo": "Amunicja",
@@ -1374,7 +1374,7 @@
             "AddType": {
                 "Weapon": "broń",
                 "Armor": "pancerz",
-                "Gear": "ekwipunek",
+                "Gear": "przedmiot",
                 "Trick": "atut",
                 "Trait": "cechę",
                 "Ammo": "amunicję",
@@ -1399,7 +1399,7 @@
                 "Equip": "Załóż",
                 "Unequip": "Zdejmij",
                 "IsEquipable": "Można założyć",
-                "GearType": "Typ ekwipunku",
+                "GearType": "Kategoria przedmiotu",
                 "Damage": "Obrażenia",
                 "Speed": "Prędkość",
                 "Range": "Zasięg",
@@ -2318,21 +2318,17 @@
             "radiation": "Promieniowanie"
         },
         "GearType": {
-            "food":          "Jedzenie i woda",
-            "medicine":      "Leki i medycyna",
-            "clothing":      "Ubrania",
-            "tools":         "Narzędzia",
-            "survival":      "Przetrwanie",
-            "camping":       "Obóz i schronienie",
-            "electronics":   "Elektronika",
-            "communication": "Łączność",
-            "documents":     "Dokumenty i informacje",
-            "fuel":          "Paliwo i energia",
-            "materials":     "Materiały i części",
-            "chemicals":     "Chemikalia",
-            "services":      "Usługi",
-            "luxury":        "Towary luksusowe",
-            "misc":          "Inne"
+            "stimulants":  "Używki",
+            "fuel":        "Paliwo",
+            "medicine":    "Lekarstwa",
+            "electronics": "Elektronika",
+            "food":        "Żywność",
+            "living":      "Istoty żywe",
+            "services":    "Usługi",
+            "chemicals":   "Chemia i Prochy",
+            "tools":       "Narzędzia",
+            "clothing":    "Ubrania",
+            "misc":        "Różności"
         },
         "RadiationResistance": "Odporność na Promieniowanie",
         "RadiationResistanceBase": "Bazowa odporność na promieniowanie (bez pancerza)",

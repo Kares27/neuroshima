@@ -37,8 +37,9 @@
 
 import { collectTraitSnapshots } from "./trait-snapshot.js";
 import { normalizeEffectPenaltyChanges } from "./effect-penalty.js";
+import { GEAR_TYPE_KEYS, normalizeGearType } from "./gear-types.js";
 
-const CURRENT_SCHEMA_VERSION = "1.7";
+const CURRENT_SCHEMA_VERSION = "1.8";
 
 export function registerMigrationHook() {
     Hooks.once("ready", async () => {
@@ -66,6 +67,7 @@ export function registerMigrationHook() {
             if (!_versionGte(stored, "1.5")) await _migrate_1_4_to_1_5();
             if (!_versionGte(stored, "1.6")) await _migrate_1_5_to_1_6();
             if (!_versionGte(stored, "1.7")) await _migrate_1_6_to_1_7();
+            if (!_versionGte(stored, "1.8")) await _migrate_1_7_to_1_8();
 
             await game.settings.set("neuroshima", "schemaVersion", CURRENT_SCHEMA_VERSION);
             ui.notifications.info(game.i18n.localize("NEUROSHIMA.Migration.Done"));
@@ -438,6 +440,70 @@ async function _migrate_1_6_to_1_7() {
     }
 }
 
+async function _normalizeGearItem(item) {
+    if (item?.type !== "gear") return false;
+    const current = item._source?.system?.gearType ?? item.system?.gearType;
+    const normalized = normalizeGearType(current);
+    if (current === normalized) return false;
+    await item.update({ "system.gearType": normalized });
+    return true;
+}
+
+async function _normalizeGearItems(document) {
+    await _normalizeGearItem(document);
+    for (const item of document?.items ?? []) await _normalizeGearItem(item);
+}
+
+function _readObjectSetting(key) {
+    try {
+        const value = JSON.parse(game.settings.get("neuroshima", key) || "{}");
+        return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    } catch (_) {
+        return {};
+    }
+}
+
+async function _filterGearCategorySettings() {
+    const allowed = new Set(GEAR_TYPE_KEYS);
+    for (const key of ["gearTypePriceModifiers", "equippableGearTypes"]) {
+        const current = _readObjectSetting(key);
+        const filtered = Object.fromEntries(
+            Object.entries(current).filter(([gearType]) => allowed.has(gearType))
+        );
+        if (JSON.stringify(filtered) !== JSON.stringify(current)) {
+            await game.settings.set("neuroshima", key, JSON.stringify(filtered));
+        }
+    }
+    await game.settings.set("neuroshima", "customGearTypes", "[]");
+}
+
+async function _migrate_1_7_to_1_8() {
+    console.log("Neuroshima | Running migration 1.7 -> 1.8 (gear categories)");
+
+    for (const actor of _allActors()) await _normalizeGearItems(actor);
+    for (const item of _allWorldItems()) await _normalizeGearItem(item);
+    await _filterGearCategorySettings();
+
+    const packs = game.packs?.contents ?? Array.from(game.packs ?? []);
+    for (const pack of packs.filter(pack => {
+        const documentType = pack.metadata?.type ?? pack.documentName;
+        const belongsToNeuroshima = pack.metadata?.packageType === "world"
+            || pack.metadata?.system === "neuroshima"
+            || pack.collection?.startsWith("neuroshima.");
+        return belongsToNeuroshima && ["Actor", "Item"].includes(documentType);
+    })) {
+        const wasLocked = pack.locked;
+        try {
+            if (wasLocked) await pack.configure({ locked: false });
+            for (const document of await pack.getDocuments()) {
+                await _normalizeGearItems(document);
+            }
+        } finally {
+            if (wasLocked) await pack.configure({ locked: true });
+        }
+    }
+}
+
 /** Return a read-only inventory of canonical Active Effect triggers in use. */
 export function auditEffectTriggers() {
     const report = { documents: 0, effects: 0, scripts: 0, triggers: {} };
@@ -484,6 +550,7 @@ export async function normalizeActor(actor) {
     await _migrate_1_1_normalizeActorMods(actor);
     await _repairStoredSystemData(actor);
     for (const item of actor.items) {
+        try { await _normalizeGearItem(item); } catch (_) {}
         try { await _repairStoredSystemData(item); } catch (_) {}
         try { await _materializeBackgroundTraitCopies(item); } catch (_) {}
     }
@@ -510,6 +577,7 @@ export async function normalizeAll() {
             await _migrate_1_1_normalizeActorMods(actor);
             await _repairStoredSystemData(actor);
             for (const item of actor.items) {
+                try { await _normalizeGearItem(item); } catch (_) {}
                 try { await _repairStoredSystemData(item); } catch (_) {}
                 try { await _materializeBackgroundTraitCopies(item); } catch (_) {}
             }
@@ -520,6 +588,7 @@ export async function normalizeAll() {
 
     for (const item of _allWorldItems()) {
         try {
+            await _normalizeGearItem(item);
             await _migrate_1_1_normalizeWorldItemMods(item);
             await _repairStoredSystemData(item);
             await _materializeBackgroundTraitCopies(item);

@@ -11,7 +11,11 @@ import { NeuroshimaNPCSheet } from "./module/sheets/npc-sheet.js";
 import { NeuroshimaCreatureSheet } from "./module/sheets/creature-sheet.js";
 import { NeuroshimaVehicleSheet } from "./module/sheets/vehicle-sheet.js";
 import { NeuroshimaHomeBaseSheet } from "./module/sheets/home-base-sheet.js";
-import { normalizeGearType } from "./module/sheets/actor-sheet-base.js";
+import {
+    DEFAULT_EQUIPPABLE_GEAR_TYPES,
+    isGearTypeEquippable,
+    normalizeGearType
+} from "./module/helpers/gear-types.js";
 import { NeuroshimaItemSheet } from "./module/sheets/item-sheet.js";
 import { NeuroshimaEffectSheet } from "./module/sheets/neuroshima-effect-sheet.js";
 import {
@@ -59,8 +63,6 @@ import { ListChoiceDialog } from "./module/apps/dialogs/list-choice-dialog.js";
 import { NeuroshimaChoiceRouter } from "./module/helpers/choice-router.js";
 import { NeuroshimaRollTestRouter } from "./module/helpers/roll-test-router.js";
 import { resolveCrewActor } from "./module/helpers/vehicle-crew.js";
-import { DEFAULT_EQUIPPABLE_GEAR_TYPES, isGearTypeEquippable } from "./module/helpers/gear-types.js";
-
 import { NeuroshimaInitiativeRollDialog } from "./module/apps/dialogs/initiative-roll-dialog.js";
 import { HealingApp } from "./module/apps/healing-app.js";
 import { showHealingRollDialog } from "./module/apps/dialogs/healing-roll-dialog.js";
@@ -1235,16 +1237,9 @@ Hooks.once("i18nInit", () => {
     foundry.helpers.Localization.localizeDataModel(RadiationZoneBehaviorType);
 });
 
-Hooks.once("ready", () => {
-    try {
-        const customTypes = JSON.parse(game.settings.get("neuroshima", "customGearTypes") || "[]");
-        for (const label of customTypes) {
-            if (label && typeof label === "string") {
-                NEUROSHIMA.gearTypes[label] = label;
-            }
-        }
-    } catch(e) {}
-});
+// Register migrations before ready-time reconciliation hooks so stored data is
+// canonical before other subsystems inspect category-dependent state.
+registerMigrationHook();
 
 // Upgrade legacy per-item wearable state to subtype-driven equipability and
 // reconcile Transfer on Equip mirrors for world and synthetic token actors.
@@ -1282,8 +1277,6 @@ Hooks.once("ready", () => {
         _applyCustomDamageCategories(custom);
     } catch(e) {}
 });
-
-registerMigrationHook();
 
 // Reconcile mounted modification effects on startup. This also cleans legacy
 // copies where ordinary (non-equip-transfer) effects were duplicated onto the
