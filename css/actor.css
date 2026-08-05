@@ -1009,15 +1009,31 @@
 .neuroshima.sheet.actor .gear-category-groups {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 0;
     padding: 5px 0 0;
 }
 
 .neuroshima.sheet.actor .gear-category-group {
     overflow: hidden;
     border: 1px solid var(--ns-border-light);
-    border-radius: 3px;
+    border-radius: 0;
     background: var(--ns-bg-panel);
+}
+
+.neuroshima.sheet.actor .gear-category-group + .gear-category-group {
+    border-top: 0;
+}
+
+.neuroshima.sheet.actor .gear-category-group:first-child {
+    border-radius: 3px 3px 0 0;
+}
+
+.neuroshima.sheet.actor .gear-category-group:last-child {
+    border-radius: 0 0 3px 3px;
+}
+
+.neuroshima.sheet.actor .gear-category-group:only-child {
+    border-radius: 3px;
 }
 
 .neuroshima.sheet.actor .gear-category-toggle {

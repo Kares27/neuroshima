@@ -476,6 +476,19 @@ test("gear category headers leave enough vertical room for the SpecialElite font
   assert.match(rule, /line-height:\s*1\.[2-9]\d*;/);
 });
 
+test("gear categories form one continuous block without doubled seams", () => {
+  const css = readFileSync(new URL("../css/actor.css", import.meta.url), "utf8");
+  const groupsRule = css.match(/\.neuroshima\.sheet\.actor \.gear-category-groups\s*\{([^}]*)\}/)?.[1] ?? "";
+  const groupRule = css.match(/\.neuroshima\.sheet\.actor \.gear-category-group\s*\{([^}]*)\}/)?.[1] ?? "";
+
+  assert.match(groupsRule, /gap:\s*0;/);
+  assert.match(groupRule, /border-radius:\s*0;/);
+  assert.match(css, /\.gear-category-group \+ \.gear-category-group\s*\{[^}]*border-top:\s*0;/);
+  assert.match(css, /\.gear-category-group:first-child\s*\{[^}]*border-radius:\s*3px 3px 0 0;/);
+  assert.match(css, /\.gear-category-group:last-child\s*\{[^}]*border-radius:\s*0 0 3px 3px;/);
+  assert.match(css, /\.gear-category-group:only-child\s*\{[^}]*border-radius:\s*3px;/);
+});
+
 test("gear table columns live in each category header instead of the main Gear header", () => {
   const integrations = [
     {
