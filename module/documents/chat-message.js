@@ -75,6 +75,10 @@ export class NeuroshimaChatMessage extends ChatMessage {
       btn.addEventListener("click", async event => {
         event.preventDefault();
         const action = btn.dataset.action;
+        const meleeMarker = message.getFlag("neuroshima", "melee");
+        if (meleeMarker?.engine === "v2" && ["meleeOpposedDefend", "hailDefend"].includes(action)) {
+          return;
+        }
         
         switch (action) {
           case "reroll-healing":

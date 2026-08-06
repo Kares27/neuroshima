@@ -4,7 +4,9 @@ import {
   MeleeMigration,
   normalizeMeleeActivity,
   isMeleeV2Enabled,
-  buildMeleeRequiredAction
+  buildMeleeRequiredAction,
+  meleePoolDice,
+  meleeParticipantFromActor
 } from "../combat/melee-system.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
@@ -53,6 +55,15 @@ export class MeleeActivityEditor extends HandlebarsApplicationMixin(foundry.appl
       automation: { approval: "gm", resolver: "opposedSuccessPoints" }
     });
     this.activityId = activity.id;
+    const quickOutcome = activity.outcomes[0] ?? null;
+    const quickOperation = quickOutcome?.operations?.[0] ?? activity.operations[0] ?? null;
+    const quickEditable = activity.outcomes.length <= 1 && activity.operations.length <= 1 &&
+      (quickOutcome?.operations?.length ?? activity.operations.length) <= 1;
+    const conditionRows = Array.from({ length: 3 }, (_, index) => {
+      const condition = activity.conditions[index] ?? {};
+      return { index, key: condition.key ?? "", value: condition.value ?? condition.stackKey ?? "" };
+    });
+    const meleeModifiers = Array.from(this.document.system?.melee?.modifiers ?? []);
     return {
       activity,
       activityList: this.activities.map(entry => ({ id: entry.id, name: entry.name || entry.label || entry.id })),
@@ -63,6 +74,32 @@ export class MeleeActivityEditor extends HandlebarsApplicationMixin(foundry.appl
       expiryRulesJson: JSON.stringify(this.document.system?.melee?.expiryRules ?? [], null, 2),
       modifiersJson: JSON.stringify(this.document.system?.melee?.modifiers ?? [], null, 2),
       restrictionsJson: JSON.stringify(this.document.system?.melee?.restrictions ?? [], null, 2),
+      conditionRows,
+      conditionChoices: [
+        ["", "Brak"], ["hasInitiative", "Posiada inicjatywę"], ["lacksInitiative", "Nie posiada inicjatywy"],
+        ["segment", "Segment (0–2)"], ["minDice", "Minimum kości"], ["maxDice", "Maksimum kości"],
+        ["minSuccessPoints", "Minimum sukcesów"], ["previousHit", "Poprzednio trafiono"],
+        ["targetHasEffect", "Cel ma status"], ["weaponTag", "Tag broni"], ["usageLimit", "Limit użyć"]
+      ].map(([value, label]) => ({ value, label })),
+      quick: {
+        enabled: !!quickOperation && quickEditable,
+        when: quickOutcome?.when ?? "hit",
+        operationType: quickOperation?.type ?? "damage",
+        target: quickOperation?.target ?? quickOutcome?.target ?? "opponent",
+        effectUuid: quickOperation?.data?.effectUuid ?? quickOperation?.data?.sourceEffectUuid ?? "",
+        stackMode: quickOperation?.data?.stackMode ?? "ignore",
+        damage1: activity.damage.profile[1] ?? quickOperation?.data?.damageProfiles?.[0] ?? "",
+        damage2: activity.damage.profile[2] ?? quickOperation?.data?.damageProfiles?.[1] ?? "",
+        damage3: activity.damage.profile[3] ?? quickOperation?.data?.damageProfiles?.[2] ?? "",
+        testType: activity.test?.type ?? "attribute",
+        testKey: activity.test?.key ?? "",
+        testDifficulty: activity.test?.difficulty ?? "average"
+      },
+      parameter: activity.parameters[0] ?? { key: "", label: "", type: "number", default: 0, min: null, max: null },
+      modifierTiers: [1, 2, 3].map(tier => {
+        const modifier = meleeModifiers.find(entry => Number(entry.tier) === tier);
+        return { tier, mode: modifier?.mode ?? "", value: modifier?.value ?? "", priority: modifier?.priority ?? 100 };
+      }),
       isEffect: this.document.documentName === "ActiveEffect",
       melee: this.document.system?.melee?.toObject?.() ?? this.document.system?.melee ?? {}
     };
@@ -74,6 +111,28 @@ export class MeleeActivityEditor extends HandlebarsApplicationMixin(foundry.appl
       try { return JSON.parse(value || "[]"); }
       catch (_error) { throw new Error(`${label}: niepoprawny JSON`); }
     };
+    const conditions = [0, 1, 2].map(index => {
+      const key = data[`condition${index}Key`];
+      if (!key) return null;
+      const value = data[`condition${index}Value`];
+      if (["hasInitiative", "lacksInitiative", "previousHit"].includes(key)) return { key };
+      if (key === "targetHasEffect") return { key, stackKey: value };
+      return { key, value: ["segment", "minDice", "maxDice", "minSuccessPoints", "usageLimit"].includes(key)
+        ? Number(value) : value };
+    }).filter(Boolean);
+    const useQuickOutcome = data.useQuickOutcome === true;
+    const quickOperation = useQuickOutcome ? {
+      id: foundry.utils.randomID(),
+      type: data.operationType || "damage",
+      target: data.operationTarget || "opponent",
+      data: data.operationType === "damage"
+        ? { damageProfiles: [data.damage1 || null, data.damage2 || null, data.damage3 || null] }
+        : ["applyActiveEffect", "removeActiveEffect"].includes(data.operationType)
+          ? { effectUuid: data.effectUuid || null, stackMode: data.effectStackMode || "ignore" }
+          : data.operationType === "modifyInitiative"
+            ? { to: data.operationTarget === "self" ? "self" : "opponent" }
+            : {}
+    } : null;
     const normalized = normalizeMeleeActivity({
       id: this.activityId,
       name: data.name,
@@ -84,11 +143,28 @@ export class MeleeActivityEditor extends HandlebarsApplicationMixin(foundry.appl
         role: data.role, timing: data.timing,
         minDice: Number(data.minDice), maxDice: Number(data.maxDice),
         successCost: Number(data.successCost), segmentCost: Number(data.segmentCost),
+        responsePolicy: data.responsePolicy || "exact",
+        uses: data.uses === "" || data.uses == null ? null : Number(data.uses),
         reusableDice: data.reusableDice === true
       },
-      conditions: parse(data.conditionsJson, "Warunki"),
-      outcomes: parse(data.outcomesJson, "Wyniki"),
-      operations: parse(data.operationsJson, "Operacje"),
+      conditions: conditions.length ? conditions : parse(data.conditionsJson, "Warunki"),
+      test: data.testEnabled === true ? {
+        type: data.testType || "attribute", key: data.testKey || "", difficulty: data.testDifficulty || "average"
+      } : null,
+      parameters: data.parameterKey ? [{
+        key: data.parameterKey,
+        label: data.parameterLabel || data.parameterKey,
+        type: data.parameterType || "number",
+        default: data.parameterDefault,
+        min: data.parameterMin === "" ? null : Number(data.parameterMin),
+        max: data.parameterMax === "" ? null : Number(data.parameterMax)
+      }] : [],
+      damage: { mode: data.damageMode || "weapon", profile: { 1: data.damage1 || null, 2: data.damage2 || null, 3: data.damage3 || null } },
+      outcomes: quickOperation ? [{
+        id: foundry.utils.randomID(), when: data.outcomeWhen || "hit", target: quickOperation.target,
+        label: data.outcomeLabel || "Wynik akcji", operations: [quickOperation]
+      }] : parse(data.outcomesJson, "Wyniki"),
+      operations: quickOperation ? [] : parse(data.operationsJson, "Operacje"),
       automation: { approval: data.approval, resolver: data.resolver }
     });
     const previous = this.activities.find(entry => entry.id === this.activityId);
@@ -98,10 +174,21 @@ export class MeleeActivityEditor extends HandlebarsApplicationMixin(foundry.appl
     if (["beast-action", "beast-segment"].includes(this.document.type)) {
       await this.document.update({ "system.activities": activities });
     } else if (this.document.documentName === "ActiveEffect") {
+      const typedModifiers = [1, 2, 3].map(tier => {
+        const mode = data[`modifierTier${tier}Mode`];
+        if (!mode) return null;
+        return {
+          selector: { tags: String(data.modifierTags || "melee").split(",").map(value => value.trim()).filter(Boolean) },
+          tier,
+          mode,
+          value: data[`modifierTier${tier}Value`],
+          priority: Number(data[`modifierTier${tier}Priority`] ?? 100)
+        };
+      }).filter(Boolean);
       await this.document.update({
         "system.melee.stackKey": data.stackKey || "",
         "system.melee.stackMode": data.stackMode || "ignore",
-        "system.melee.modifiers": parse(data.modifiersJson, "Modyfikatory"),
+        "system.melee.modifiers": typedModifiers.length ? typedModifiers : parse(data.modifiersJson, "Modyfikatory"),
         "system.melee.restrictions": parse(data.restrictionsJson, "Ograniczenia"),
         "system.melee.expiryRules": parse(data.expiryRulesJson, "Wygasanie"),
         "system.melee.grantedActivities": activities
@@ -150,6 +237,125 @@ export class MeleeActivityEditor extends HandlebarsApplicationMixin(foundry.appl
 }
 
 export class MeleeSessionPresenter {
+  static _resultMessagePromises = new Map();
+  static _diceFromResult(result = {}) {
+    return (result.modifiedResults ?? []).map((die, index) => ({
+      id: die.id || `die-${index + 1}-${foundry.utils.randomID(6)}`,
+      raw: die.original ?? result.rawResults?.[index] ?? die.modified,
+      modified: die.modified ?? die.original,
+      target: result.target,
+      isSuccess: die.isSuccess === true,
+      successPoints: die.isSuccess === true ? 1 : 0,
+      changes: result.diceChanges?.filter(change => change.index === index) ?? []
+    }));
+  }
+
+  static async _actor(participant) {
+    const document = await fromUuid(participant?.tokenUuid || participant?.actorUuid);
+    return document?.actor ?? document ?? null;
+  }
+
+  static async _pendingContext(session, status = "pending") {
+    const attacker = await this._actor(session.participants.attacker);
+    const defender = await this._actor(session.participants.defender);
+    const defenderWeapons = Array.from(defender?.items ?? [])
+      .filter(item => item.type === "weapon" && item.system?.weaponType === "melee")
+      .map(item => ({ id: item.id, name: item.name, img: item.img }));
+    return {
+      mode: session.mode,
+      modeLabel: game.i18n.localize(`NEUROSHIMA.MeleeOpposedChat.Mode.${session.mode}`),
+      attackerName: attacker?.name ?? session.participants.attacker.name,
+      attackerImg: attacker?.img ?? "",
+      defenderName: defender?.name ?? session.participants.defender.name,
+      defenderImg: defender?.img ?? "",
+      defenderWeapons,
+      status
+    };
+  }
+
+  static async beginAttack(actor, weapon, targetUuid, mode = "opposedPips") {
+    if (!isMeleeV2Enabled()) throw new Error("Melee V2 is disabled.");
+    const targetDocument = await fromUuid(targetUuid);
+    const defender = targetDocument?.actor ?? targetDocument;
+    if (!actor || !defender) throw new Error("Nie udało się odnaleźć uczestników zwarcia.");
+    const { NeuroshimaWeaponRollDialog } = await import("./dialogs/weapon-roll-dialog.js");
+    const dialog = new NeuroshimaWeaponRollDialog({
+      actor,
+      weapon,
+      rollType: "melee",
+      meleeAction: "attack",
+      targets: [targetUuid],
+      lastRoll: actor.system.lastWeaponRoll ?? {},
+      isPoolRoll: true,
+      onRoll: async (rawResult, attackerTest) => {
+        if (!rawResult) return;
+        const sessionId = foundry.utils.randomID(16);
+        const startCommandId = foundry.utils.randomID(16);
+        const attackerParticipant = meleeParticipantFromActor(actor, { weapon });
+        const defenderParticipant = meleeParticipantFromActor(defender);
+        const preview = {
+          id: sessionId,
+          mode,
+          participants: { attacker: attackerParticipant, defender: defenderParticipant }
+        };
+        const content = await foundry.applications.handlebars.renderTemplate(
+          "systems/neuroshima/templates/chat/melee-opposed-pending.hbs",
+          await this._pendingContext(preview)
+        );
+        const message = await ChatMessage.create({
+          speaker: { alias: "⚔" },
+          content,
+          rollMode: rawResult.rollMode ?? game.settings.get("core", "rollMode"),
+          flags: { neuroshima: { melee: {
+            engine: "v2", sessionId, cardType: "pending", renderedRevision: -1
+          } } }
+        });
+        const variant = rawResult.isGradCios === true ? "gradCiosow" : "standard";
+        try {
+          const started = await game.neuroshima.melee.requestStart({
+            id: sessionId,
+            startCommandId,
+            messageId: message.id,
+            attacker: attackerParticipant,
+            defender: defenderParticipant,
+            initiativeOwnerId: attackerParticipant.actorUuid,
+            variant,
+            mode,
+            attackerRoll: {
+              dice: this._diceFromResult(rawResult),
+              target: rawResult.target
+            },
+            metadata: {
+              attackerTestMessageId: attackerTest?.message?.id ?? null,
+              weaponId: weapon?.id ?? null,
+              beastItemId: weapon?.beastItemId ?? null,
+              beastActivityId: weapon?.beastActivityId ?? null,
+              damage1: rawResult.damageMelee1 ?? weapon?.system?.damageMelee1 ?? "D",
+              damage2: rawResult.damageMelee2 ?? weapon?.system?.damageMelee2 ?? "L",
+              damage3: rawResult.damageMelee3 ?? weapon?.system?.damageMelee3 ?? "K",
+              location: rawResult.finalLocation ?? null,
+              headDamageApplied: rawResult.headDamageApplied === true,
+              attackerManeuver: rawResult.maneuver ?? null,
+              activatedMeleePreRollMods: rawResult.activatedMeleePreRollMods ?? []
+            }
+          });
+          if (attackerTest?.message) {
+            attackerTest.context.opposedLink = {
+              type: "meleeSessionV2", sessionId, role: "attacker", messageId: message.id
+            };
+            await attackerTest.updateMessage(attackerTest.message);
+          }
+          return started;
+        } catch (error) {
+          await message.update({ content: `<div class="neuroshima melee-opposed-card"><p>${error.message}</p></div>` });
+          throw error;
+        }
+      }
+    });
+    dialog.render(true);
+    return dialog;
+  }
+
   static async context(session) {
     const ownerSide = session.participants.attacker.actorUuid === session.initiative.ownerId ? "attacker" : "defender";
     const activities = {};
@@ -168,7 +374,7 @@ export class MeleeSessionPresenter {
     const poolRows = ["attacker", "defender"].map(side => ({
       side,
       name: session.participants[side].name,
-      dice: session.pools[side] ?? []
+      dice: meleePoolDice(session, side)
     })).filter(row => row.dice.length);
     return {
       session,
@@ -198,21 +404,144 @@ export class MeleeSessionPresenter {
   static async renderMessage(message, root) {
     if (!isMeleeV2Enabled()) return;
     const marker = message.getFlag("neuroshima", "melee");
-    if (!marker?.sessionId) return;
+    if (marker?.engine !== "v2" || !marker.sessionId) return;
     const session = await game.neuroshima.melee.get(marker.sessionId, { messageId: message.id });
     if (!session) return;
     const element = root instanceof HTMLElement ? root : root?.[0];
-    const shell = element?.querySelector?.(".melee-session-v2-shell") ?? element?.querySelector?.("[data-melee-session-id]");
-    if (!shell) return;
-    shell.innerHTML = await foundry.applications.handlebars.renderTemplate(
-      "systems/neuroshima/templates/chat/melee-session-v2.hbs",
-      await this.context(session)
-    );
-    this.activate(shell, session);
+    if (!element) return;
+    this.activate(element, session, message);
+  }
+
+  static async renderSession(session) {
+    if (!game.user?.isGM) return null;
+    const message = game.messages.get(session.messageId);
+    if (!message) return null;
+    let template;
+    let context;
+    let cardType;
+    if (session.phase === "awaitingDefenderRoll" ||
+        (session.phase === "complete" && session.endReason === "cancelled" && !session.v1State && !session.hailResult)) {
+      template = "systems/neuroshima/templates/chat/melee-opposed-pending.hbs";
+      context = await this._pendingContext(session, session.endReason === "cancelled" ? "cancelled" : "pending");
+      cardType = "pending";
+    } else if (session.variant === "gradCiosow" && session.hailResult) {
+      const attacker = await this._actor(session.participants.attacker);
+      const defender = await this._actor(session.participants.defender);
+      const result = session.hailResult;
+      const toChip = die => ({
+        value: die.modified ?? die.raw,
+        isSuccess: die.isSuccess,
+        isNat20: die.raw === 20
+      });
+      template = "systems/neuroshima/templates/chat/melee-hail-card.hbs";
+      context = {
+        attackerName: attacker?.name ?? session.participants.attacker.name,
+        attackerImg: attacker?.img ?? "",
+        defenderName: defender?.name ?? session.participants.defender.name,
+        defenderImg: defender?.img ?? "",
+        attackDiceChips: meleePoolDice(session, "attacker").map(toChip),
+        defenseDiceChips: meleePoolDice(session, "defender").map(toChip),
+        attackSuccesses: result.attackerSuccesses,
+        isPending: false,
+        isDone: true,
+        isBlocked: result.blocked,
+        hasHit: !result.blocked,
+        outcomeLabel: result.blocked
+          ? (result.netSuccesses === 0
+            ? game.i18n.localize("NEUROSHIMA.GradCios.EqualSuccessesBlock")
+            : game.i18n.localize("NEUROSHIMA.GradCios.Blocked"))
+          : game.i18n.format("NEUROSHIMA.GradCios.Hit", { n: result.tier, dmg: result.damage })
+      };
+      cardType = "hail";
+    } else if (session.v1State) {
+      const { MeleeOpposedChat } = await import("../combat/combat.js");
+      const attacker = await this._actor(session.participants.attacker);
+      const defender = await this._actor(session.participants.defender);
+      template = "systems/neuroshima/templates/chat/melee-duel-card.hbs";
+      context = await MeleeOpposedChat._buildDuelContext(session.v1State, attacker, defender);
+      const hasAppliedOutcome = session.result?.applied || session.hailResult?.applied ||
+        session.pendingOutcomes.some(outcome => outcome.status === "applied");
+      if (hasAppliedOutcome) {
+        context.canUndo = false;
+        context.canRedo = false;
+      }
+      const ownerSide = session.v1State.initiativeOwnerSide;
+      const configuredActivities = (session.metadata.activitySnapshots?.[ownerSide] ?? [])
+        .filter(snapshot => ["either", "owner"].includes(snapshot.definition.activation.role) &&
+          ["either", "declaration"].includes(snapshot.definition.activation.timing))
+        .map(snapshot => ({
+        id: snapshot.runtimeId,
+        name: snapshot.definition.name,
+        img: snapshot.definition.img,
+        gmNote: snapshot.definition.description,
+        minDice: snapshot.definition.activation.minDice,
+        maxDice: snapshot.definition.activation.maxDice,
+        successCost: snapshot.definition.activation.successCost,
+        damage: snapshot.definition.damage?.profile?.[1]
+          ?? snapshot.definition.operations?.find(operation => operation.type === "damage")?.data?.damage
+          ?? ""
+      }));
+      if (configuredActivities.length) {
+        const byId = new Map([...(context.ownerExtraActions ?? []), ...configuredActivities].map(activity => [activity.id, activity]));
+        context.ownerExtraActions = [...byId.values()];
+      }
+      context.pendingMeleeOutcomes = (session.pendingOutcomes ?? [])
+        .filter(outcome => outcome.status === "pending")
+        .map(outcome => ({ id: outcome.id, label: outcome.label }));
+      if (session.metadata.beastActivityId && Array.isArray(context.ownerBeastActions)) {
+        context.ownerBeastActions = context.ownerBeastActions.filter(activity =>
+          activity.id === session.metadata.beastActivityId ||
+          String(activity.id).endsWith(`::${session.metadata.beastActivityId}`)
+        );
+      }
+      cardType = session.v1State.status === "done" ? "result" : "duel";
+    } else return null;
+    const content = await foundry.applications.handlebars.renderTemplate(template, context);
+    if (cardType !== "pending" &&
+        (!session.messages.duelMessageId || session.messages.duelMessageId === session.messages.pendingMessageId)) {
+      const existing = this._resultMessagePromises.get(session.id);
+      if (existing) return existing;
+      const creation = (async () => {
+        const pending = game.messages.get(session.messages.pendingMessageId || session.messageId);
+        if (pending) {
+          const resolvedContent = await foundry.applications.handlebars.renderTemplate(
+            "systems/neuroshima/templates/chat/melee-opposed-pending.hbs",
+            await this._pendingContext(session, "resolved")
+          );
+          await pending.update({
+            content: resolvedContent,
+            "flags.neuroshima.melee.cardType": "pending",
+            "flags.neuroshima.melee.renderedRevision": session.revision
+          });
+        }
+        const resultMessage = await ChatMessage.create({
+          speaker: { alias: "⚔" },
+          content,
+          flags: { neuroshima: { melee: {
+            engine: "v2", sessionId: session.id, cardType, renderedRevision: session.revision
+          } } }
+        });
+        await game.neuroshima.melee.bindResultMessage(session.id, resultMessage.id, session.revision);
+        return resultMessage;
+      })();
+      this._resultMessagePromises.set(session.id, creation);
+      try { return await creation; }
+      finally { this._resultMessagePromises.delete(session.id); }
+    }
+    await message.update({
+      content,
+      "flags.neuroshima.melee": {
+        engine: "v2",
+        sessionId: session.id,
+        cardType,
+        renderedRevision: session.revision
+      }
+    });
+    return message;
   }
 
   /** Open the normal weapon-roll dialog and submit its 3d20 pool to the session. */
-  static async openRoll(session, side) {
+  static async openRoll(session, side, weaponId = null) {
     const expectedPhase = side === "attacker" ? "awaitingAttackerRoll" : "awaitingDefenderRoll";
     if (session.phase !== expectedPhase) {
       ui.notifications.warn("Ten rzut melee został już wykonany albo sesja oczekuje na drugą stronę.");
@@ -228,7 +557,8 @@ export class MeleeSessionPresenter {
     const actor = actorDoc?.actor ?? actorDoc;
     if (!actor) throw new Error("Nie udało się odnaleźć Aktora dla rzutu melee V2.");
 
-    let weapon = participant.weaponUuid ? await fromUuid(participant.weaponUuid) : null;
+    let weapon = weaponId ? actor.items?.get?.(weaponId) : null;
+    weapon ??= participant.weaponUuid ? await fromUuid(participant.weaponUuid) : null;
     if (["beast-action", "beast-segment"].includes(weapon?.type)) {
       const beastItem = weapon;
       const byTier = {};
@@ -264,25 +594,34 @@ export class MeleeSessionPresenter {
       meleeAction: side === "attacker" ? "attack" : "defense",
       targets: [],
       isPoolRoll: true,
-      onRoll: async result => {
-        const dice = (result.modifiedResults ?? []).map((die, index) => ({
-          id: die.id || `die-${index + 1}-${foundry.utils.randomID(6)}`,
-          raw: die.original ?? result.rawResults?.[index],
-          modified: die.modified,
-          target: result.target,
-          isSuccess: die.isSuccess === true,
-          changes: result.diceChanges?.filter(change => change.index === index) ?? []
-        }));
+      onRoll: async (result, test) => {
+        const dice = this._diceFromResult(result);
         try {
-          return await game.neuroshima.melee.dispatch({
+          const submitted = await game.neuroshima.melee.dispatch({
             type: "submitRoll",
             side,
-            payload: { dice },
+            payload: {
+              dice,
+              target: result.target,
+              maneuver: result.maneuver ?? null,
+              testMessageId: test?.message?.id ?? null,
+              weaponUuid: weapon?.uuid ?? null,
+              defenderDamage1: weapon?.system?.damageMelee1 ?? "D",
+              defenderDamage2: weapon?.system?.damageMelee2 ?? "L",
+              defenderDamage3: weapon?.system?.damageMelee3 ?? "K"
+            },
             sessionId: session.id,
             messageId: session.messageId,
             expectedRevision: session.revision,
             commandId: foundry.utils.randomID()
           });
+          if (test?.message) {
+            test.context.opposedLink = {
+              type: "meleeSessionV2", sessionId: session.id, role: side, messageId: session.messageId
+            };
+            await test.updateMessage(test.message);
+          }
+          return submitted;
         } catch (error) {
           ui.notifications.error(`Nie udało się zapisać rzutu melee: ${error.message}`);
           console.error("Neuroshima | Melee V2 submitRoll failed", error);
@@ -294,7 +633,38 @@ export class MeleeSessionPresenter {
     return dialog;
   }
 
-  static activate(root, session) {
+  static async activate(root, session, message = null) {
+    root.querySelectorAll(".melee-opposed-defend-btn").forEach(button => button.addEventListener("click", async event => {
+      event.preventDefault();
+      event.stopPropagation();
+      const latest = await game.neuroshima.melee.get(session.id, { messageId: session.messageId });
+      if (latest?.phase !== "awaitingDefenderRoll") {
+        ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.AlreadyResolved"));
+        return;
+      }
+      try {
+        await this.openRoll(latest, "defender", button.dataset.weaponId || null);
+      } catch (error) {
+        ui.notifications.error(error.message);
+      }
+    }));
+    if (session.v1State && message) {
+      root.querySelectorAll("[data-v2-outcome-id]").forEach(button => button.addEventListener("click", async event => {
+        event.preventDefault();
+        event.stopPropagation();
+        const latest = await game.neuroshima.melee.get(session.id, { messageId: message.id });
+        await game.neuroshima.melee.dispatch({
+          type: "approveOutcome", side: null,
+          payload: { outcomeId: button.dataset.v2OutcomeId },
+          sessionId: latest.id, messageId: message.id,
+          expectedRevision: latest.revision, commandId: foundry.utils.randomID()
+        });
+      }));
+      message._neuroshimaMeleeV2Session = session;
+      const { MeleeOpposedChat } = await import("../combat/combat.js");
+      MeleeOpposedChat.onRenderDuelCard(root, message);
+      return;
+    }
     root.querySelectorAll("[data-melee-command]").forEach(button => button.addEventListener("click", async event => {
       event.preventDefault();
       const type = button.dataset.meleeCommand;
@@ -431,11 +801,17 @@ export function registerMeleeSystemUI() {
   Hooks.on("renderChatMessage", (message, html) => MeleeSessionPresenter.renderMessage(message, html));
   Hooks.on("renderNeuroshimaItemSheet", injectEditorButton);
   Hooks.on("renderNeuroshimaEffectSheet", injectEditorButton);
+  Hooks.on("renderCombatTrackerHTML", (_app, html) => projectTracker(html));
+  Hooks.on("renderCombatTracker", (_app, html) => projectTracker(html));
   Hooks.on("neuroshimaMeleeSessionUpdated", session => {
-    const message = game.messages.get(session.messageId);
-    if (message) ui.chat?.updateMessage?.(message);
+    if (game.user?.isGM) {
+      MeleeSessionPresenter.renderSession(session).catch(error => {
+        console.error("Neuroshima | Failed to render canonical melee session", error);
+      });
+    }
     refreshMeleeProjections(session);
   });
+  game.neuroshima.melee.beginAttack = (...args) => MeleeSessionPresenter.beginAttack(...args);
   game.neuroshima.melee.openEditor = (document, activityId) => new MeleeActivityEditor(document, activityId).render(true);
   game.neuroshima.melee.openRoll = (session, side) => MeleeSessionPresenter.openRoll(session, side);
   game.neuroshima.melee.openMessage = session => openMeleeMessage(session);

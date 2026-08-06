@@ -1259,6 +1259,9 @@ export class MeleeOpposedChat {
    * @param {string} mode        "opposedPips" | "opposedSuccesses"
    */
   static async initiateAttack(attacker, weapon, targetUuid, mode) {
+    if (game.neuroshima?.melee?.enabled?.()) {
+      return game.neuroshima.melee.beginAttack(attacker, weapon, targetUuid, mode);
+    }
     const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
 
     const lastRoll = attacker.system.lastWeaponRoll ?? {};
@@ -1443,6 +1446,20 @@ export class MeleeOpposedChat {
    */
   static async routeWeaponClick(actor, weapon, targetUuids = [], mode = "opposedPips") {
     const ownUuids = [actor.uuid, actor.token?.uuid].filter(Boolean);
+    if (game.neuroshima?.melee?.enabled?.()) {
+      const targetUuid = targetUuids.find(uuid => uuid && !ownUuids.includes(uuid));
+      if (!targetUuid) {
+        const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
+        const dialog = new NeuroshimaWeaponRollDialog({
+          actor, weapon, rollType: "melee", meleeAction: "attack",
+          targets: [], lastRoll: actor.system.lastWeaponRoll ?? {}, isPoolRoll: true
+        });
+        await dialog.render(true);
+        return { handled: true, action: "unopposedRoll", engine: "v2" };
+      }
+      await game.neuroshima.melee.beginAttack(actor, weapon, targetUuid, mode);
+      return { handled: true, action: "attack", engine: "v2" };
+    }
     const embeddedWeapon = weapon?.id ? actor.items?.get?.(weapon.id) : null;
     const weaponId = embeddedWeapon?.type === "weapon" ? embeddedWeapon.id : null;
     const syntheticWeapon = weaponId ? null : weapon;
@@ -1852,6 +1869,10 @@ export class MeleeOpposedChat {
   static async syncFromTest(test, { reason = "test-update" } = {}) {
     const link = test?.context?.opposedLink;
     if (!link) return { ok: true, skipped: true };
+    if (link.type === "meleeSessionV2") {
+      await game.neuroshima.melee.syncTest(test);
+      return { ok: true, engine: "v2", reason };
+    }
     if (!game.user.isGM && game.neuroshima?.socket) {
       return game.neuroshima.socket.executeAsGM("syncOpposedTestState", {
         duelMessageId: link.duelMessageId,
@@ -2934,7 +2955,8 @@ export class MeleeOpposedChat {
     root = root instanceof HTMLElement ? root : root[0];
     if (!root) return;
 
-    const state = message.getFlag("neuroshima", "duelCard");
+    const state = message._neuroshimaMeleeV2Session?.v1State
+      ?? message.getFlag("neuroshima", "duelCard");
     if (!state || state.status !== "picking") return;
 
     root.querySelectorAll("[data-melee-owner]").forEach(el => {
@@ -3056,7 +3078,8 @@ export class MeleeOpposedChat {
             if (checkedMods.length > 0) {
               try {
                 const { NeuroshimaScript } = await import("../apps/neuroshima-script-engine.js");
-                const duelState = message.getFlag("neuroshima", "duelCard");
+                const duelState = message._neuroshimaMeleeV2Session?.v1State
+                  ?? message.getFlag("neuroshima", "duelCard");
                 const ownerUuid = root.querySelector("[data-melee-owner]")?.dataset.meleeOwner;
                 const ownerDocMod = fromUuidSync(ownerUuid);
                 const ownerActorMod = ownerDocMod?.actor ?? ownerDocMod;
@@ -3376,6 +3399,21 @@ export class MeleeOpposedChat {
   }
 
   static async applyDuelBatch(messageId, pool, diceIndices, action = null, beastQueue = null) {
+    const v2Message = game.messages.get(messageId);
+    const marker = v2Message?.getFlag("neuroshima", "melee");
+    if (marker?.engine === "v2" && marker.sessionId) {
+      const session = await game.neuroshima.melee.get(marker.sessionId, { messageId });
+      if (!session) return;
+      return game.neuroshima.melee.dispatch({
+        type: "legacyBatch",
+        side: pool,
+        payload: { pool, diceIndices, action, queue: beastQueue },
+        sessionId: session.id,
+        messageId,
+        expectedRevision: session.revision,
+        commandId: foundry.utils.randomID()
+      });
+    }
     const previous = this._duelMutationQueues.get(messageId) ?? Promise.resolve();
     const next = previous.then(
       () => this._applyDuelBatchNow(messageId, pool, diceIndices, action, beastQueue),
@@ -3430,6 +3468,14 @@ export class MeleeOpposedChat {
   static async swapDuelInitiative(messageId) {
     const message = game.messages.get(messageId);
     if (!message) return;
+    const marker = message.getFlag("neuroshima", "melee");
+    if (marker?.engine === "v2" && marker.sessionId) {
+      const session = await game.neuroshima.melee.get(marker.sessionId, { messageId });
+      return game.neuroshima.melee.dispatch({
+        type: "swapInitiative", side: null, payload: {}, sessionId: session.id,
+        messageId, expectedRevision: session.revision, commandId: foundry.utils.randomID()
+      });
+    }
 
     const state = foundry.utils.deepClone(message.getFlag("neuroshima", "duelCard"));
     if (!state || state.status !== "picking") return;
@@ -3453,6 +3499,14 @@ export class MeleeOpposedChat {
     if (!game.user.isGM) return;
     const message = game.messages.get(messageId);
     if (!message) return;
+    const marker = message.getFlag("neuroshima", "melee");
+    if (marker?.engine === "v2" && marker.sessionId) {
+      const session = await game.neuroshima.melee.get(marker.sessionId, { messageId });
+      return game.neuroshima.melee.dispatch({
+        type: "undo", side: null, payload: {}, sessionId: session.id,
+        messageId, expectedRevision: session.revision, commandId: foundry.utils.randomID()
+      });
+    }
 
     const state = foundry.utils.deepClone(message.getFlag("neuroshima", "duelCard"));
     if (!state?.segmentHistory?.length) return;
@@ -3481,6 +3535,14 @@ export class MeleeOpposedChat {
     if (!game.user.isGM) return;
     const message = game.messages.get(messageId);
     if (!message) return;
+    const marker = message.getFlag("neuroshima", "melee");
+    if (marker?.engine === "v2" && marker.sessionId) {
+      const session = await game.neuroshima.melee.get(marker.sessionId, { messageId });
+      return game.neuroshima.melee.dispatch({
+        type: "redo", side: null, payload: {}, sessionId: session.id,
+        messageId, expectedRevision: session.revision, commandId: foundry.utils.randomID()
+      });
+    }
 
     const state = foundry.utils.deepClone(message.getFlag("neuroshima", "duelCard"));
     if (!state?.segmentFuture?.length) return;
@@ -4280,7 +4342,11 @@ export class MeleeOpposedChat {
     const message = game.messages.get(messageId);
     if (!message) return;
 
-    const rd = message.getFlag("neuroshima", "opposedResult");
+    const marker = message.getFlag("neuroshima", "melee");
+    const v2Session = marker?.engine === "v2" && marker.sessionId
+      ? await game.neuroshima.melee.get(marker.sessionId, { messageId })
+      : null;
+    const rd = v2Session?.result ?? message.getFlag("neuroshima", "opposedResult");
     if (!rd) return;
     if (rd.applied) {
       ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.AlreadyApplied"));
@@ -4370,10 +4436,18 @@ export class MeleeOpposedChat {
       const queue = rd.pendingBeastQueue ?? [];
       if (queue.length > 0) {
         await MeleeOpposedChat.applyBeastActions(messageId, queue);
-        const refreshed = message.getFlag("neuroshima", "opposedResult");
-        await message.setFlag("neuroshima", "opposedResult", { ...refreshed, applied: true });
+        if (!v2Session) {
+          const refreshed = message.getFlag("neuroshima", "opposedResult");
+          await message.setFlag("neuroshima", "opposedResult", { ...refreshed, applied: true });
+        }
       } else {
-        await message.setFlag("neuroshima", "opposedResult", { ...rd, applied: true });
+        if (v2Session) {
+          await game.neuroshima.melee.dispatch({
+            type: "markApplied", side: null, payload: { kind: "duel" },
+            sessionId: v2Session.id, messageId, expectedRevision: v2Session.revision,
+            commandId: foundry.utils.randomID()
+          });
+        } else await message.setFlag("neuroshima", "opposedResult", { ...rd, applied: true });
       }
       return;
     }
@@ -4417,7 +4491,15 @@ export class MeleeOpposedChat {
       }
     }
 
-    await message.setFlag("neuroshima", "opposedResult", { ...rd, applied: true });
+    if (v2Session) {
+      await game.neuroshima.melee.dispatch({
+        type: "markApplied", side: null, payload: { kind: "duel" },
+        sessionId: v2Session.id, messageId, expectedRevision: v2Session.revision,
+        commandId: foundry.utils.randomID()
+      });
+    } else {
+      await message.setFlag("neuroshima", "opposedResult", { ...rd, applied: true });
+    }
   }
 
   static async _createPendingHailCard(rawResult, attacker, weapon, targetActor, targetDoc, attackDice, attackerSuccesses) {
@@ -4675,7 +4757,21 @@ export class MeleeOpposedChat {
     const message = game.messages.get(messageId);
     if (!message) return;
 
-    const hr = message.getFlag("neuroshima", "hailResult");
+    const marker = message.getFlag("neuroshima", "melee");
+    const v2Session = marker?.engine === "v2" && marker.sessionId
+      ? await game.neuroshima.melee.get(marker.sessionId, { messageId })
+      : null;
+    const hr = v2Session?.hailResult ? {
+      ...v2Session.hailResult,
+      attackerUuid: v2Session.participants.attacker.tokenUuid || v2Session.participants.attacker.actorUuid,
+      defenderUuid: v2Session.participants.defender.tokenUuid || v2Session.participants.defender.actorUuid,
+      weaponId: v2Session.metadata.weaponId ?? null,
+      damage1: v2Session.metadata.damage1,
+      damage2: v2Session.metadata.damage2,
+      damage3: v2Session.metadata.damage3,
+      location: v2Session.metadata.location ?? null,
+      headDamageApplied: v2Session.metadata.headDamageApplied === true
+    } : message.getFlag("neuroshima", "hailResult");
     if (!hr) return;
     if (hr.applied) {
       ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.AlreadyApplied"));
@@ -4730,7 +4826,15 @@ export class MeleeOpposedChat {
       }
     }
 
-    await message.setFlag("neuroshima", "hailResult", { ...hr, applied: true });
+    if (v2Session) {
+      await game.neuroshima.melee.dispatch({
+        type: "markApplied", side: null, payload: { kind: "hail" },
+        sessionId: v2Session.id, messageId, expectedRevision: v2Session.revision,
+        commandId: foundry.utils.randomID()
+      });
+    } else {
+      await message.setFlag("neuroshima", "hailResult", { ...hr, applied: true });
+    }
   }
 
   /**
@@ -4749,7 +4853,11 @@ export class MeleeOpposedChat {
     const message = game.messages.get(messageId);
     if (!message) return;
 
-    const rd = message.getFlag("neuroshima", "opposedResult");
+    const marker = message.getFlag("neuroshima", "melee");
+    const v2Session = marker?.engine === "v2" && marker.sessionId
+      ? await game.neuroshima.melee.get(marker.sessionId, { messageId })
+      : null;
+    const rd = v2Session?.result ?? message.getFlag("neuroshima", "opposedResult");
     if (!rd) return;
     if (rd.beastActionsApplied) {
       ui.notifications.warn(game.i18n.localize("NEUROSHIMA.BeastAction.AlreadyApplied"));
@@ -4794,7 +4902,15 @@ export class MeleeOpposedChat {
       );
     }
 
-    await message.setFlag("neuroshima", "opposedResult", { ...rd, beastActionsApplied: true });
+    if (v2Session) {
+      await game.neuroshima.melee.dispatch({
+        type: "markApplied", side: null, payload: { kind: "beast" },
+        sessionId: v2Session.id, messageId, expectedRevision: v2Session.revision,
+        commandId: foundry.utils.randomID()
+      });
+    } else {
+      await message.setFlag("neuroshima", "opposedResult", { ...rd, beastActionsApplied: true });
+    }
   }
 
   /** Map first attack die roll to a body location. @private */

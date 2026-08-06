@@ -105,6 +105,20 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       rollMeleeInitiative: this.prototype._onRollMeleeInitiative,
       respondToOpposed: this.prototype._onRespondToOpposed,
       dismissOpposed: this.prototype._onDismissOpposed,
+      openMeleeSession: async function(_event, target) {
+        const session = await game.neuroshima.melee.get(target.closest("[data-session-id]")?.dataset.sessionId);
+        if (session) game.neuroshima.melee.openMessage(session);
+      },
+      cancelMeleeSession: async function(event, target) {
+        event.stopPropagation();
+        const session = await game.neuroshima.melee.get(target.closest("[data-session-id]")?.dataset.sessionId);
+        if (!session) return;
+        await game.neuroshima.melee.dispatch({
+          type: "endSession", side: null, payload: { reason: "cancelled" },
+          sessionId: session.id, messageId: session.messageId,
+          expectedRevision: session.revision, commandId: foundry.utils.randomID()
+        });
+      },
       unloadMagazine: this.prototype._onUnloadMagazine,
       showPatientCard: this.prototype._onShowPatientCard,
       requestHealing: this.prototype._onRequestHealing,
@@ -518,6 +532,35 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       woundsFirst: actor.getFlag("neuroshima", "woundsFirst") || false,
       activeMeleeEncounter: actor.getFlag("neuroshima", "activeMeleeEncounter"),
       meleePendings: (() => {
+        if (game.neuroshima?.melee?.enabled?.()) {
+          return game.neuroshima.melee.list().filter(session => {
+            if (session.status !== "active") return false;
+            return Object.values(session.participants ?? {}).some(participant =>
+              participant.actorUuid === actor.uuid || participant.tokenUuid === actor.token?.uuid
+            );
+          }).map(session => ({
+            id: session.id,
+            sessionId: session.id,
+            isV2: true,
+            attackerName: session.participants.attacker.name,
+            defenderName: session.participants.defender.name,
+            segment: Number(session.currentSegment ?? 0) + 1,
+            initiativeName: Object.values(session.participants).find(participant =>
+              participant.actorUuid === session.initiative.ownerId || participant.tokenUuid === session.initiative.ownerId
+            )?.name ?? "?",
+            waitingText: session.phase === "awaitingDefenderRoll"
+              ? `Oczekuje na obronę: ${session.participants.defender.name}`
+              : session.phase === "response"
+                ? "Oczekuje na odpowiedź"
+                : session.phase === "declaration"
+                  ? "Oczekuje na deklarację"
+                  : "Rozstrzyganie",
+            matchesAttacker: session.participants.attacker.actorUuid === actor.uuid ||
+              session.participants.attacker.tokenUuid === actor.token?.uuid,
+            matchesDefender: session.participants.defender.actorUuid === actor.uuid ||
+              session.participants.defender.tokenUuid === actor.token?.uuid
+          }));
+        }
         // Primary: read from combat flag
         // Also cross-check the chat message status: if the message is already "resolved"
         // or "cancelled" the pending must not show even if the combat flag hasn't been

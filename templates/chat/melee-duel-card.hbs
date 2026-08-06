@@ -325,6 +325,19 @@
   </div>
   {{/if}}
 
+  {{#if pendingMeleeOutcomes.length}}
+  <div class="mdc-controls" data-gm-only="true">
+    <div class="mdc-action-list">
+      {{#each pendingMeleeOutcomes}}
+      <button type="button" class="mdc-action-choice is-ready" data-v2-outcome-id="{{id}}">
+        <span class="mac-icon"><i class="fas fa-check"></i></span>
+        <span class="mac-body"><span class="mac-label">Zatwierdź: {{label}}</span></span>
+      </button>
+      {{/each}}
+    </div>
+  </div>
+  {{/if}}
+
   {{#if resolvedSegs.length}}
   <div class="duel-resolved-segments">
     {{#each resolvedSegs}}

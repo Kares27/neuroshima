@@ -52,6 +52,20 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
     window: { title: "NEUROSHIMA.Sheet.ActorCreature", resizable: true },
     form: { submitOnChange: true, submitOnClose: true, submitOnUnfocus: true },
     actions: {
+      openMeleeSession: async function(_event, target) {
+        const session = await game.neuroshima.melee.get(target.closest("[data-session-id]")?.dataset.sessionId);
+        if (session) game.neuroshima.melee.openMessage(session);
+      },
+      cancelMeleeSession: async function(event, target) {
+        event.stopPropagation();
+        const session = await game.neuroshima.melee.get(target.closest("[data-session-id]")?.dataset.sessionId);
+        if (!session) return;
+        await game.neuroshima.melee.dispatch({
+          type: "endSession", side: null, payload: { reason: "cancelled" },
+          sessionId: session.id, messageId: session.messageId,
+          expectedRevision: session.revision, commandId: foundry.utils.randomID()
+        });
+      },
       editImage: async function(event, target) {
         const fp = new FilePicker({ type: "image", callback: src => this.document.update({ img: src }) });
         fp.browse(this.document.img);
@@ -140,7 +154,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
             if (this.document.token) myUuidsCheck.push(this.document.token.uuid);
 
             // 1. Actor flag (WFRP-style primary check)
-            const opposeFlag = this.document.getFlag("neuroshima", "oppose");
+            const opposeFlag = game.neuroshima?.melee?.enabled?.() ? null : this.document.getFlag("neuroshima", "oppose");
             if (opposeFlag?.messageId) {
               const pendingMsg = game.messages.get(opposeFlag.messageId);
               const opposeData = pendingMsg?.getFlag("neuroshima", "opposedChat");
@@ -161,7 +175,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
             }
 
             // 2. Fallback: combat pending
-            const combatPendings = game.combat?.getFlag("neuroshima", "meleePendings") || {};
+            const combatPendings = game.neuroshima?.melee?.enabled?.() ? {} : (game.combat?.getFlag("neuroshima", "meleePendings") || {});
             const opposedPending = Object.values(combatPendings).find(p => {
               if (!p.active || !p.mode) return false;
               return myUuidsCheck.some(u => game.neuroshima.NeuroshimaMeleeCombat.isSameActor(p.defenderId, u));
@@ -324,7 +338,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         const myUuidsCheck = [actor.uuid];
         if (actor.token) myUuidsCheck.push(actor.token.uuid);
 
-        const opposeFlag = actor.getFlag("neuroshima", "oppose");
+        const opposeFlag = game.neuroshima?.melee?.enabled?.() ? null : actor.getFlag("neuroshima", "oppose");
         if (opposeFlag?.messageId) {
           const pendingMsg = game.messages.get(opposeFlag.messageId);
           const opposeData = pendingMsg?.getFlag("neuroshima", "opposedChat");
@@ -344,7 +358,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
           await actor.unsetFlag("neuroshima", "oppose");
         }
 
-        const combatPendings = game.combat?.getFlag("neuroshima", "meleePendings") || {};
+        const combatPendings = game.neuroshima?.melee?.enabled?.() ? {} : (game.combat?.getFlag("neuroshima", "meleePendings") || {});
         const opposedPending = Object.values(combatPendings).find(p => {
           if (!p.active || !p.mode) return false;
           return myUuidsCheck.some(u => game.neuroshima.NeuroshimaMeleeCombat.isSameActor(p.defenderId, u));
@@ -431,6 +445,8 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         const fallbackDmg = act.damage || "D";
         const syntheticWeapon = {
           id: item.id,
+          beastItemId: item.id,
+          beastActivityId: act.id,
           name: act.name || item.name,
           img: act.img || item.img,
           type: "weapon",
@@ -463,7 +479,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
           const myUuidsCheck = [actor.uuid];
           if (actor.token) myUuidsCheck.push(actor.token.uuid);
 
-          const opposeFlag = actor.getFlag("neuroshima", "oppose");
+          const opposeFlag = game.neuroshima?.melee?.enabled?.() ? null : actor.getFlag("neuroshima", "oppose");
           if (opposeFlag?.messageId) {
             const pendingMsg = game.messages.get(opposeFlag.messageId);
             const opposeData = pendingMsg?.getFlag("neuroshima", "opposedChat");
@@ -483,7 +499,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
             await actor.unsetFlag("neuroshima", "oppose");
           }
 
-          const combatPendings = game.combat?.getFlag("neuroshima", "meleePendings") || {};
+          const combatPendings = game.neuroshima?.melee?.enabled?.() ? {} : (game.combat?.getFlag("neuroshima", "meleePendings") || {});
           const opposedPending = Object.values(combatPendings).find(p => {
             if (!p.active || !p.mode) return false;
             return myUuidsCheck.some(u => game.neuroshima.NeuroshimaMeleeCombat.isSameActor(p.defenderId, u));
@@ -1111,7 +1127,29 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
     ]);
     const maxHP = actor.getFlag("neuroshima", "creatureMaxHP") || system.combat?.maxHP || 27;
     const totalArmorAP = context.armorLocations.reduce((sum, loc) => sum + (loc.reduction || 0) + (loc.totalAP || 0), 0);
-    const meleePendingsFromCombat = Object.values(game.combat?.getFlag("neuroshima", "meleePendings") || {})
+    const meleePendingsFromCombat = game.neuroshima?.melee?.enabled?.()
+      ? game.neuroshima.melee.list().filter(session => session.status === "active" &&
+        Object.values(session.participants ?? {}).some(participant =>
+          participant.actorUuid === actor.uuid || participant.tokenUuid === actor.token?.uuid
+        )).map(session => ({
+          id: session.id,
+          sessionId: session.id,
+          isV2: true,
+          attackerName: session.participants.attacker.name,
+          defenderName: session.participants.defender.name,
+          segment: Number(session.currentSegment ?? 0) + 1,
+          initiativeName: Object.values(session.participants).find(participant =>
+            participant.actorUuid === session.initiative.ownerId || participant.tokenUuid === session.initiative.ownerId
+          )?.name ?? "?",
+          waitingText: session.phase === "awaitingDefenderRoll"
+            ? `Oczekuje na obronę: ${session.participants.defender.name}`
+            : session.phase === "response" ? "Oczekuje na odpowiedź" : "Oczekuje na deklarację",
+          matchesAttacker: session.participants.attacker.actorUuid === actor.uuid ||
+            session.participants.attacker.tokenUuid === actor.token?.uuid,
+          matchesDefender: session.participants.defender.actorUuid === actor.uuid ||
+            session.participants.defender.tokenUuid === actor.token?.uuid
+        }))
+      : Object.values(game.combat?.getFlag("neuroshima", "meleePendings") || {})
       .filter(p => {
         if (!p.active) return false;
         if (p.opposedChatMessageId) {
@@ -1128,7 +1166,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       })
       .filter(p => p.matchesDefender || p.matchesAttacker);
 
-    const opposeFlag = actor.getFlag("neuroshima", "oppose");
+    const opposeFlag = game.neuroshima?.melee?.enabled?.() ? null : actor.getFlag("neuroshima", "oppose");
     if (opposeFlag?.messageId && !meleePendingsFromCombat.some(p => p.matchesDefender)) {
       const msg = game.messages.get(opposeFlag.messageId);
       const data = msg?.getFlag("neuroshima", "opposedChat");
