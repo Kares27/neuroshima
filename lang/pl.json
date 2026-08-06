@@ -533,6 +533,10 @@
                 "Name": "Tryb debugowania",
                 "Hint": "Włącza dodatkowe logi w konsoli deweloperskiej dla celów diagnostycznych."
             },
+            "MeleeEngineV2": {
+                "Name": "Silnik walki wręcz V2",
+                "Hint": "Włącza kanoniczne sesje melee V2. Wyłączenie przywraca dotychczasowy silnik bez migracji danych."
+            },
             "CustomGearTypes": {
                 "Name": "Własne podtypy ekwipunku",
                 "Hint": "Konfiguruj własne podtypy ekwipunku — trafiają automatycznie do kategorii Item Piles i dropdownu w karcie przedmiotu.",

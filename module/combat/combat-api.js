@@ -1504,11 +1504,41 @@ export class DuelDeclarationEngine {
       if (!diceIndices.length || diceIndices.length > 3) return false;
     }
 
+    const uniqueIndices = [...new Set(diceIndices)];
+    if (uniqueIndices.length !== diceIndices.length ||
+        uniqueIndices.some(index => !Number.isInteger(index) || !ownerDicePool[index])) return false;
+
     state.declaredAction        = declaredAction;
     state.committedOwnerIndices = diceIndices;
 
     const { MeleeActionRegistry } = await import("./melee-action-registry.js");
     const { beastEntries, trickActions } = MeleeActionRegistry.splitQueue(beastQueue);
+
+    // The server/GM is authoritative: a client may spend only successes among
+    // the dice actually committed in this declaration.  Validate exact
+    // item+activity references before recording or executing anything.
+    const successBudget = uniqueIndices.filter(index => ownerDicePool[index]?.isSuccess === true).length;
+    let queueCost = trickActions.reduce((sum, action) => sum + Math.max(0, Number(action.successCost ?? 1)), 0);
+    if (beastEntries.length) {
+      const ownerDoc = await fromUuid(isOwnerAttacker
+        ? (state.attackerTokenUuid || state.attackerUuid)
+        : (state.defenderTokenUuid || state.defenderUuid));
+      const ownerActor = ownerDoc?.actor ?? ownerDoc;
+      if (!ownerActor) return false;
+      for (const compositeId of beastEntries) {
+        const separator = compositeId.indexOf("::");
+        if (separator <= 0 || separator === compositeId.length - 2) return false;
+        const itemId = compositeId.slice(0, separator);
+        const activityId = compositeId.slice(separator + 2);
+        const item = ownerActor.items.get(itemId);
+        const activity = item?.type === "beast-action"
+          ? (item.system.activities ?? []).find(entry => entry.id === activityId)
+          : null;
+        if (!activity || activity.costType !== "success") return false;
+        queueCost += Math.max(0, Number(activity.successCost ?? 1));
+      }
+    }
+    if (queueCost > successBudget) return false;
     state.committedBeastQueue       = beastEntries.length > 0 ? beastEntries : null;
     state.committedTrickQueue       = trickActions.length > 0
       ? trickActions.map(a => MeleeActionRegistry.serializeTrickLegacy(a)) : null;
@@ -2001,6 +2031,12 @@ export class DuelSegmentEngine {
       state.allTrickQueue = [...(state.allTrickQueue || []), ...state.committedTrickQueue];
       state.committedTrickQueue = null;
     }
+    if (state.committedBeastQueue?.length > 0) {
+      // Preserve every exact itemId::activityId choice across all three
+      // segments.  Previously only the last segment survived into the result.
+      state.allBeastQueue = [...(state.allBeastQueue || []), ...state.committedBeastQueue];
+      state.committedBeastQueue = null;
+    }
 
     await onSyncInitiative(state);
 
@@ -2052,7 +2088,7 @@ export class DuelSegmentEngine {
         netSuccesses,
         affordableBeastActions,
         isBeastAttack,
-        pendingBeastQueue:     state.committedBeastQueue ?? null,
+        pendingBeastQueue:     state.allBeastQueue?.length > 0 ? state.allBeastQueue : null,
         pendingTrickQueue:     state.allTrickQueue?.length > 0 ? state.allTrickQueue : null,
         counterHits:           state.counterHits?.length > 0 ? state.counterHits : null,
         trickOnHitScripts:     state.trickOnHitScripts ?? null,
@@ -2118,6 +2154,38 @@ export class DuelBeastActionEngine {
     const location     = rd.location ?? "torso";
     const beastItemFilter = rd.beastItemId ?? null;
 
+    if (!Array.isArray(selectedActionIds)) {
+      throw new TypeError("selectedActionIds must be an array");
+    }
+
+    // Resolve the exact composite references and validate the complete cost
+    // before any test, effect, damage or other side effect is produced.
+    const selectedActivities = selectedActionIds.map(compositeId => {
+      if (typeof compositeId !== "string") throw new TypeError("Invalid beast action reference");
+      const separator = compositeId.indexOf("::");
+      if (separator <= 0 || separator === compositeId.length - 2) {
+        throw new RangeError(`Invalid beast action reference: ${compositeId}`);
+      }
+      const itemId = compositeId.slice(0, separator);
+      const activityId = compositeId.slice(separator + 2);
+      const item = attackerActor.items.get(itemId);
+      const activity = item?.type === "beast-action"
+        ? (item.system.activities ?? []).find(entry => entry.id === activityId)
+        : null;
+      if (!item || !activity || (beastItemFilter && item.id !== beastItemFilter) || activity.costType !== "success") {
+        throw new RangeError(`Unknown or unavailable beast action: ${compositeId}`);
+      }
+      return { compositeId, item, activity };
+    });
+
+    const selectedCost = selectedActivities.reduce(
+      (sum, { activity }) => sum + Math.max(0, Number(activity.successCost ?? 1)),
+      0
+    );
+    if (selectedCost > Math.max(0, Number(rd.netSuccesses ?? 0))) {
+      throw new RangeError("Selected beast actions exceed the available success budget");
+    }
+
     const _applyLinkedEffects = async (item, activity, targetActor) => {
       const linkedEffectIds = new Set(activity.effectIds ?? []);
       for (const effect of item.effects) {
@@ -2150,12 +2218,7 @@ export class DuelBeastActionEngine {
       }
     };
 
-    const beastItemsForEffects = attackerActor.items.filter(i =>
-      i.type === "beast-action" && (!beastItemFilter || i.id === beastItemFilter)
-    );
-
-    for (const beastItem of beastItemsForEffects) {
-      for (const activity of (beastItem.system.activities ?? [])) {
+    for (const { item: beastItem, activity } of selectedActivities) {
         if (activity.testRequired) {
           const resolveUuids = (ids = []) =>
             ids.map(id => beastItem.effects.get(id)).filter(Boolean).map(e => e.uuid);
@@ -2182,7 +2245,6 @@ export class DuelBeastActionEngine {
         if (effectTarget === "manual" || effectTarget === "selected") continue;
         const onUseTargetActor = effectTarget === "self" ? attackerActor : defenderActor;
         await _applyLinkedEffects(beastItem, activity, onUseTargetActor);
-      }
     }
 
     const spentPerAction = {};

@@ -923,11 +923,8 @@ export class NeuroshimaScript {
 
     updated.turnState.initiativeOwnerId = opponentId;
 
-    if (game.user.isGM || !game.neuroshima?.socket) {
-      await game.combat.setFlag("neuroshima", "meleeEncounters", encounters);
-    } else {
-      await game.neuroshima.socket.executeAsGM("updateCombatFlag", "meleeEncounters", encounters);
-    }
+    const { MeleeStore } = await import("../combat/combat.js");
+    await MeleeStore.updateEncounter(encounterId, updated);
 
     game.neuroshima?.log(`[yieldMeleeInitiative] ${target.name} → ${enc.participants[opponentId]?.name}`, {
       encounterId, from: pid, to: opponentId

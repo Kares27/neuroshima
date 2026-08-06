@@ -1242,6 +1242,7 @@ export class MeleeEncounter {
 
 export class MeleeOpposedChat {
   static _opposedRefreshQueues = new Map();
+  static _duelMutationQueues = new Map();
 
   static _isAwaitingDefender(status) {
     return status === "awaitingDefender" || status === "pending";
@@ -2786,6 +2787,7 @@ export class MeleeOpposedChat {
   }
 
   static async _renderDuelCard(message, state) {
+    state.revision = Number(state.revision ?? 0) + 1;
     const attackerDoc = fromUuidSync(state.attackerTokenUuid || state.attackerUuid);
     const attackerActor = attackerDoc?.actor ?? attackerDoc ?? null;
     const defenderDoc = fromUuidSync(state.defenderUuid);
@@ -3046,7 +3048,7 @@ export class MeleeOpposedChat {
       const budgetTotalEl     = beastQueueSection.querySelector(".mdc-beast-budget-total");
       const confirmBtn        = beastQueueSection.querySelector(".mdc-beast-confirm-btn");
 
-      const budget = root.querySelectorAll("button.die-chip-mvc.mvc-die-selected").length;
+      const budget = root.querySelectorAll("button.die-chip-mvc.mvc-die-selected.is-success").length;
 
       let spent = 0;
       beastQueueSection.querySelectorAll(".mdc-beast-qty-val").forEach(el => {
@@ -3081,7 +3083,7 @@ export class MeleeOpposedChat {
           e.stopPropagation();
           const id   = pickBtn.dataset.actionId;
           const cost = parseInt(pickBtn.dataset.cost, 10) || 1;
-          const budget  = root.querySelectorAll("button.die-chip-mvc.mvc-die-selected").length;
+          const budget  = root.querySelectorAll("button.die-chip-mvc.mvc-die-selected.is-success").length;
           let spent = 0;
           beastQueueSection.querySelectorAll(".mdc-beast-qty-val").forEach(el => {
             spent += (parseInt(el.textContent, 10) || 0) * (parseInt(el.closest(".mdc-beast-action-entry")?.dataset.cost, 10) || 1);
@@ -3290,6 +3292,17 @@ export class MeleeOpposedChat {
   }
 
   static async applyDuelBatch(messageId, pool, diceIndices, action = null, beastQueue = null) {
+    const previous = this._duelMutationQueues.get(messageId) ?? Promise.resolve();
+    const next = previous.then(
+      () => this._applyDuelBatchNow(messageId, pool, diceIndices, action, beastQueue),
+      () => this._applyDuelBatchNow(messageId, pool, diceIndices, action, beastQueue)
+    );
+    this._duelMutationQueues.set(messageId, next);
+    try { return await next; }
+    finally { if (this._duelMutationQueues.get(messageId) === next) this._duelMutationQueues.delete(messageId); }
+  }
+
+  static async _applyDuelBatchNow(messageId, pool, diceIndices, action = null, beastQueue = null) {
     const message = game.messages.get(messageId);
     if (!message) return;
 
@@ -4665,12 +4678,19 @@ export class MeleeOpposedChat {
     const { CombatHelper }           = await import("../helpers/combat-helper.js");
     const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
 
-    const { allResults, allWoundIds, totalReduced, allReducedDetails, appliedNames } =
-      await DuelBeastActionEngine.processSelected(
+    let result;
+    try {
+      result = await DuelBeastActionEngine.processSelected(
         { ...rd, messageId },
         selectedActionIds,
         { attackerActor, defenderActor, CombatHelper, NeuroshimaScriptRunner }
       );
+    } catch (error) {
+      game.neuroshima?.warn?.("[applyBeastActions] authoritative validation rejected selection", error);
+      ui.notifications.warn(error.message);
+      return;
+    }
+    const { allResults, allWoundIds, totalReduced, allReducedDetails, appliedNames } = result;
 
     if (allWoundIds.length > 0 || appliedNames.length > 0) {
       ui.notifications.info(
@@ -5666,6 +5686,7 @@ export class MeleeResolution {
  * only the GM actually writes to the Combat document.
  */
 export class MeleeStore {
+  static _updateQueues = new Map();
   /**
    * Retrieves all melee encounters from the active combat.
    */
@@ -5685,17 +5706,38 @@ export class MeleeStore {
    * Updates an encounter. Uses socketlib if available to ensure GM permissions.
    */
   static async updateEncounter(id, data) {
+    const previous = this._updateQueues.get(id) ?? Promise.resolve();
+    const next = previous.then(
+      () => this._updateEncounterNow(id, data),
+      () => this._updateEncounterNow(id, data)
+    );
+    this._updateQueues.set(id, next);
+    try { return await next; }
+    finally { if (this._updateQueues.get(id) === next) this._updateQueues.delete(id); }
+  }
+
+  static async _updateEncounterNow(id, data) {
     const combat = game.combat;
     if (!combat) return;
 
     const encounters = foundry.utils.deepClone(this.getEncounters());
-    encounters[id] = data;
+    const current = encounters[id] ?? null;
+    if (current && data.revision != null && Number(data.revision) !== Number(current.revision ?? 0)) {
+      game.neuroshima?.warn?.("[MeleeStore] stale encounter update rejected", {
+        id, expected: data.revision, actual: current.revision ?? 0
+      });
+      return false;
+    }
+    const updated = foundry.utils.deepClone(data);
+    updated.revision = Number(current?.revision ?? 0) + 1;
+    encounters[id] = updated;
 
     if (game.user.isGM || !game.neuroshima.socket) {
       await combat.setFlag("neuroshima", "meleeEncounters", encounters);
     } else {
-      await game.neuroshima.socket.executeAsGM("updateCombatFlag", "meleeEncounters", encounters);
+      await game.neuroshima.socket.executeAsGM("updateMeleeEncounter", id, data);
     }
+    return true;
   }
 
   /**

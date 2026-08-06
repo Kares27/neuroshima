@@ -742,6 +742,19 @@ export class NeuroshimaActiveEffectData extends foundry.abstract.TypeDataModel {
         }),
         { initial: [] }
       ),
+      // Declarative melee V2 contract.  Legacy actionDefs/scriptData remain
+      // untouched and are adapted by the activity catalogue while V2 is opt-in.
+      melee: new fields.SchemaField({
+        stackKey: new fields.StringField({ initial: "", blank: true }),
+        stackMode: new fields.StringField({
+          initial: "ignore",
+          choices: ["stack", "replace", "refresh", "ignore"]
+        }),
+        modifiers: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+        restrictions: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+        expiryRules: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+        grantedActivities: new fields.ArrayField(new fields.ObjectField(), { initial: [] })
+      }),
     };
   }
 }

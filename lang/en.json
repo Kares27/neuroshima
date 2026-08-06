@@ -530,6 +530,10 @@
                 "Name": "Debug Mode",
                 "Hint": "Enables additional logs in the developer console for diagnostic purposes."
             },
+            "MeleeEngineV2": {
+                "Name": "Melee Engine V2",
+                "Hint": "Enables canonical melee V2 sessions. Disabling it restores the legacy engine without migrating data."
+            },
             "CustomGearTypes": {
                 "Name": "Custom Gear Subtypes",
                 "Hint": "Configure custom gear subtypes — they appear automatically in the Item Piles category dropdown and in the item sheet.",

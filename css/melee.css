@@ -3717,3 +3717,37 @@ span.duel-die-chip.is-pending {
 .ct-movement-values {
     letter-spacing: 0.02em;
 }
+/* Melee V2 is visually isolated so disabling the feature flag restores the
+   legacy cards without layout side effects. */
+.melee-v2-card { --m2-accent:#b54b35; display:grid; gap:.65rem; padding:.75rem; color:#ddd; background:linear-gradient(145deg,#27272d,#19191e); border:1px solid #5e4c42; border-radius:5px; }
+.melee-v2-card__header,.melee-v2-participant,.melee-v2-command-row,.melee-v2-outcome { display:flex; align-items:center; gap:.55rem; }
+.melee-v2-card__header { justify-content:space-between; border-bottom:2px solid var(--m2-accent); padding-bottom:.45rem; }
+.melee-v2-card__header small,.melee-v2-participant small { display:block; color:#aaa; text-transform:uppercase; font-size:.65rem; }
+.melee-v2-phase { padding:.15rem .4rem; background:#1118; border:1px solid #665; border-radius:3px; font-size:.68rem; }
+.melee-v2-participants { display:grid; grid-template-columns:1fr 1fr; gap:.4rem; }
+.melee-v2-participant { padding:.35rem; background:#ffffff09; border-left:3px solid #555; }
+.melee-v2-participant.is-owner { border-left-color:#d28b45; }
+.melee-v2-participant img { width:32px; height:32px; object-fit:cover; border:1px solid #777; }
+.melee-v2-participant i { margin-left:auto; color:#d28b45; }
+.melee-v2-segments { display:flex; justify-content:center; gap:.35rem; }
+.melee-v2-segment { width:1.65rem; height:1.65rem; display:grid; place-items:center; border-radius:50%; border:1px solid #666; }
+.melee-v2-segment.is-active { color:#fff; border-color:#d28b45; box-shadow:0 0 0 2px #d28b4533; }
+.melee-v2-segment.is-resolved { color:#999; background:#111; }
+.melee-v2-pool { display:flex; align-items:center; gap:.35rem; }
+.melee-v2-pool>span { width:5.5rem; overflow:hidden; text-overflow:ellipsis; }
+.melee-v2-die { display:flex; align-items:baseline; gap:.15rem; padding:.25rem .35rem; border:1px solid #666; background:#222; cursor:pointer; }
+.melee-v2-die.is-success { border-color:#517b4c; }.melee-v2-die.is-failure { border-color:#8b4138; }.melee-v2-die.is-used { opacity:.4; cursor:not-allowed; }
+.melee-v2-die input { width:auto; margin:0 .15rem 0 0; }.melee-v2-die small { color:#999; }
+.melee-v2-command-row select { flex:1; min-width:0; background:#202127; color:#eee; border:1px solid #666; }
+.melee-v2-card button,.melee-v2-primary { color:#eee; background:#632f27; border:1px solid #a95b48; border-radius:3px; padding:.35rem .55rem; }
+.melee-v2-outcomes { display:grid; gap:.3rem; }.melee-v2-outcome { padding:.4rem; background:#ffffff08; }.melee-v2-outcome small { margin-left:auto; }
+.melee-v2-complete { margin:0; text-align:center; color:#c6b48a; }
+.melee-v2-tracker-badge { margin-left:.4rem; color:#c97850; }
+.melee-v2-editor__body { display:grid; gap:.65rem; padding:.75rem; overflow:auto; height:100%; background:#202126; color:#ddd; }
+.melee-v2-editor__intro { border-left:3px solid #b54b35; padding:.4rem .65rem; background:#ffffff08; }.melee-v2-editor__intro p { margin:.2rem 0 0; color:#aaa; }
+.melee-v2-editor__list { display:grid; gap:.2rem; }.melee-v2-editor__list header,.melee-v2-editor__list>div { display:flex; gap:.3rem; align-items:center; }.melee-v2-editor__list header strong,.melee-v2-editor__list>div button:first-child { flex:1; }.melee-v2-editor__list>div.is-active { border-left:3px solid #b54b35; padding-left:.25rem; }
+.melee-v2-editor fieldset { display:grid; gap:.45rem; border:1px solid #665b53; }.melee-v2-editor label { display:grid; grid-template-columns:10rem 1fr; align-items:center; gap:.5rem; }
+.melee-v2-editor textarea { width:100%; resize:vertical; font-family:monospace; background:#17181c; color:#ddd; border:1px solid #5c5d62; }
+.melee-v2-editor input,.melee-v2-editor select { background:#17181c; color:#ddd; border:1px solid #5c5d62; }.melee-v2-editor select option { background:#17181c; color:#ddd; }
+.melee-v2-editor__grid { display:grid; grid-template-columns:1fr 1fr; gap:.4rem; }.melee-v2-editor__grid label { grid-template-columns:1fr 5rem; }
+.melee-v2-editor .melee-v2-check { display:flex; }.melee-v2-editor .melee-v2-check input { width:auto; }.melee-v2-editor footer { display:flex; justify-content:flex-end; }

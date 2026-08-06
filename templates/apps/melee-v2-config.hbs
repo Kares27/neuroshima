@@ -1,0 +1,78 @@
+<div class="melee-v2-editor__body">
+  <nav class="melee-v2-editor__intro">
+    <strong>Deklaratywna akcja melee</strong>
+    <p>Definicja opisuje dostępność i koszt. Wyniki tworzą operacje wykonywane autorytatywnie przez MG.</p>
+  </nav>
+
+  <section class="melee-v2-editor__list">
+    <header><strong>Activities dokumentu</strong><button type="button" data-action="newActivity"><i class="fa-solid fa-plus"></i> Nowa</button></header>
+    {{#each activityList as |entry|}}
+      <div data-activity-id="{{entry.id}}" class="{{#if (eq entry.id ../activity.id)}}is-active{{/if}}">
+        <button type="button" data-action="editActivity">{{entry.name}}</button>
+        <button type="button" data-action="removeActivity" data-tooltip="Usuń"><i class="fa-solid fa-trash"></i></button>
+      </div>
+    {{/each}}
+  </section>
+
+  <fieldset><legend>Podstawy</legend>
+    <label>Nazwa <input name="name" value="{{activity.name}}"></label>
+    <label>Kategoria <select name="category">
+      <option value="attack" {{#if (eq activity.category "attack")}}selected{{/if}}>Atak</option>
+      <option value="defense" {{#if (eq activity.category "defense")}}selected{{/if}}>Obrona</option>
+      <option value="utility" {{#if (eq activity.category "utility")}}selected{{/if}}>Akcja użytkowa</option>
+      <option value="movement" {{#if (eq activity.category "movement")}}selected{{/if}}>Ruch</option>
+      <option value="beast" {{#if (eq activity.category "beast")}}selected{{/if}}>Akcja bestii</option>
+    </select></label>
+    <label>Tagi <input name="tags" value="{{tagsText}}" placeholder="chwyt, broń, reakcja"></label>
+    <label>Opis <textarea name="description" rows="3">{{activity.description}}</textarea></label>
+  </fieldset>
+
+  <fieldset><legend>Aktywacja i koszt</legend>
+    <div class="melee-v2-editor__grid">
+      <label>Rola <select name="role"><option value="either" {{#if (eq activity.activation.role "either")}}selected{{/if}}>Dowolna</option><option value="owner" {{#if (eq activity.activation.role "owner")}}selected{{/if}}>Właściciel inicjatywy</option><option value="responder" {{#if (eq activity.activation.role "responder")}}selected{{/if}}>Odpowiadający</option></select></label>
+      <label>Moment <select name="timing"><option value="declaration" {{#if (eq activity.activation.timing "declaration")}}selected{{/if}}>Deklaracja</option><option value="response" {{#if (eq activity.activation.timing "response")}}selected{{/if}}>Odpowiedź</option><option value="either" {{#if (eq activity.activation.timing "either")}}selected{{/if}}>Oba etapy</option></select></label>
+      <label>Min. kości <input type="number" name="minDice" min="0" max="3" value="{{activity.activation.minDice}}"></label>
+      <label>Maks. kości <input type="number" name="maxDice" min="0" max="3" value="{{activity.activation.maxDice}}"></label>
+      <label>Koszt sukcesów <input type="number" name="successCost" min="0" value="{{activity.activation.successCost}}"></label>
+      <label>Koszt segmentów <input type="number" name="segmentCost" min="0" max="3" value="{{activity.activation.segmentCost}}"></label>
+    </div>
+    <label class="melee-v2-check"><input type="checkbox" name="reusableDice" {{checked activity.activation.reusableDice}}> Pozwala ponownie wykorzystać kość</label>
+  </fieldset>
+
+  <fieldset><legend>Warunki</legend>
+    <textarea name="conditionsJson" rows="6">{{conditionsJson}}</textarea>
+    <button type="button" data-action="addCondition"><i class="fa-solid fa-plus"></i> Dodaj warunek</button>
+  </fieldset>
+
+  <fieldset><legend>Wyniki i operacje</legend>
+    <label>Wyniki <textarea name="outcomesJson" rows="8">{{outcomesJson}}</textarea></label>
+    <label>Operacje bezpośrednie <textarea name="operationsJson" rows="7">{{operationsJson}}</textarea></label>
+    <button type="button" data-action="addOperation"><i class="fa-solid fa-plus"></i> Dodaj operację</button>
+  </fieldset>
+
+  <fieldset><legend>Automatyzacja</legend>
+    <label>Zatwierdzenie <select name="approval"><option value="gm" {{#if (eq activity.automation.approval "gm")}}selected{{/if}}>MG</option><option value="automatic" {{#if (eq activity.automation.approval "automatic")}}selected{{/if}}>Automatyczne</option></select></label>
+    <label>Resolver <select name="resolver"><option value="opposedSuccessPoints">Przeciwstawne punkty sukcesu</option></select></label>
+  </fieldset>
+
+  <fieldset><legend>Zaawansowane</legend>
+    <label>Activity ID <input value="{{activity.id}}" readonly></label>
+    <p class="hint">Identyfikator jest stabilny. Silnik rozwiązuje akcję przez UUID źródła i Activity ID, nigdy przez nazwę ani koszt.</p>
+  </fieldset>
+
+  {{#if isEffect}}
+    <fieldset><legend>Active Effect</legend>
+      <label>Klucz stosu <input name="stackKey" value="{{melee.stackKey}}"></label>
+      <label>Zasada stosu <select name="stackMode"><option value="ignore" {{#if (eq melee.stackMode "ignore")}}selected{{/if}}>Ignoruj duplikat</option><option value="stack" {{#if (eq melee.stackMode "stack")}}selected{{/if}}>Kumuluj</option><option value="replace" {{#if (eq melee.stackMode "replace")}}selected{{/if}}>Zastąp</option><option value="refresh" {{#if (eq melee.stackMode "refresh")}}selected{{/if}}>Odśwież czas</option></select></label>
+      <label>Modyfikatory Activity <textarea name="modifiersJson" rows="5">{{modifiersJson}}</textarea></label>
+      <label>Ograniczenia <textarea name="restrictionsJson" rows="5">{{restrictionsJson}}</textarea></label>
+      <label>Reguły wygaśnięcia <textarea name="expiryRulesJson" rows="5">{{expiryRulesJson}}</textarea></label>
+    </fieldset>
+  {{else}}
+    <input type="hidden" name="expiryRulesJson" value="[]">
+    <input type="hidden" name="modifiersJson" value="[]">
+    <input type="hidden" name="restrictionsJson" value="[]">
+  {{/if}}
+
+  <footer><button type="submit" class="melee-v2-primary"><i class="fa-solid fa-floppy-disk"></i> Zapisz</button></footer>
+</div>

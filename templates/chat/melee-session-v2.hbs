@@ -1,0 +1,86 @@
+<section class="melee-v2-card" data-session-id="{{session.id}}" data-revision="{{session.revision}}">
+  <header class="melee-v2-card__header">
+    <div>
+      <strong>Walka wręcz</strong>
+      <small>Segment {{add session.currentSegment 1}} / 3 · rewizja {{session.revision}}</small>
+    </div>
+    <span class="melee-v2-phase">{{session.phase}}</span>
+  </header>
+
+  <div class="melee-v2-participants">
+    {{#each session.participants as |participant side|}}
+      <article class="melee-v2-participant {{#if (eq ../ownerSide side)}}is-owner{{/if}}">
+        {{#if participant.img}}<img src="{{participant.img}}" alt="">{{/if}}
+        <div><small>{{side}}</small><strong>{{participant.name}}</strong></div>
+        {{#if (eq ../ownerSide side)}}<i class="fa-solid fa-swords" data-tooltip="Inicjatywa melee"></i>{{/if}}
+      </article>
+    {{/each}}
+  </div>
+
+  <div class="melee-v2-segments">
+    {{#each session.segments as |segment|}}
+      <span class="melee-v2-segment is-{{segment.state}}">{{add @index 1}}</span>
+    {{/each}}
+  </div>
+
+  {{#if isAwaitingAttacker}}
+    {{#if canAct.attacker}}<button type="button" class="melee-v2-primary" data-melee-command="roll" data-side="attacker">Rzut atakującego 3k20</button>{{/if}}
+  {{/if}}
+  {{#if isAwaitingDefender}}
+    {{#if canAct.defender}}<button type="button" class="melee-v2-primary" data-melee-command="roll" data-side="defender">Rzut obrońcy 3k20</button>{{/if}}
+  {{/if}}
+
+  {{#each session.pools as |pool side|}}
+    {{#if pool.length}}
+      <div class="melee-v2-pool">
+        <span>{{lookup ../session.participants side "name"}}</span>
+        {{#each pool as |die|}}
+          <label class="melee-v2-die {{#if die.isSuccess}}is-success{{else}}is-failure{{/if}} {{#if die.used}}is-used{{/if}}">
+            <input type="checkbox" data-die-side="{{side}}" value="{{die.id}}" {{#if die.used}}disabled{{/if}}>
+            <b>{{die.modified}}</b><small>/ {{die.target}}</small>
+          </label>
+        {{/each}}
+      </div>
+    {{/if}}
+  {{/each}}
+
+  {{#if isDeclaration}}
+    <div class="melee-v2-command-row">
+      <select data-activity-select="{{ownerSide}}">
+        {{#each ownerActivities as |activity|}}
+          <option data-activity-id="{{activity.id}}" data-source-item-uuid="{{activity.sourceItemUuid}}" data-source-effect-uuid="{{activity.sourceEffectUuid}}">{{activity.name}}</option>
+        {{/each}}
+      </select>
+      <button type="button" data-melee-command="declare" data-side="{{ownerSide}}">Deklaruj</button>
+    </div>
+  {{/if}}
+
+  {{#if isResponse}}
+    <div class="melee-v2-command-row">
+      <select data-activity-select="{{responderSide}}">
+        {{#each responderActivities as |activity|}}
+          <option data-activity-id="{{activity.id}}" data-source-item-uuid="{{activity.sourceItemUuid}}" data-source-effect-uuid="{{activity.sourceEffectUuid}}">{{activity.name}}</option>
+        {{/each}}
+      </select>
+      <button type="button" data-melee-command="respond" data-side="{{responderSide}}">Odpowiedz</button>
+    </div>
+  {{/if}}
+
+  {{#if isPending}}
+    <div class="melee-v2-outcomes">
+      {{#each session.pendingOutcomes as |outcome|}}
+        <div class="melee-v2-outcome is-{{outcome.status}}">
+          <span>{{outcome.label}}</span><small>{{outcome.data.difference}} PS</small>
+          {{#if (eq outcome.status "pending")}}
+            {{#if ../canGM}}<button type="button" data-melee-command="approveOutcome" data-outcome-id="{{outcome.id}}">Zatwierdź</button>{{/if}}
+          {{/if}}
+        </div>
+      {{/each}}
+    </div>
+  {{/if}}
+
+  {{#if canAdvance}}
+    {{#if canGM}}<button type="button" class="melee-v2-primary" data-melee-command="advanceSegment">Następny segment</button>{{/if}}
+  {{/if}}
+  {{#if isComplete}}<p class="melee-v2-complete">Zwarcie zakończone.</p>{{/if}}
+</section>

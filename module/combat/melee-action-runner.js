@@ -119,6 +119,9 @@ export class MeleeActionRunner {
   static async fireOnHitScript(hit, rd, attackerActor, targetActor) {
     const entry = rd.trickOnHitScripts?.[hit.trickId];
     if (!entry) return;
+    // Immediate scripts are executed while the segment is resolved.  They must
+    // never be repeated when the GM later confirms damage application.
+    if (typeof entry === "object" && entry.immediate === true) return;
     try {
       const { NeuroshimaScript } = await import("../apps/neuroshima-script-engine.js");
       const onHitCode  = typeof entry === "string" ? entry : entry.code;

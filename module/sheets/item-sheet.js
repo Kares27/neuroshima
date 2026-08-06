@@ -1,6 +1,7 @@
 import { NEUROSHIMA } from "../config.js";
 import { TraitBrowserApp } from "../apps/trait-browser.js";
 import { BeastActivitySheet } from "../apps/beast-activity-sheet.js";
+import { MeleeActivityEditor } from "../apps/melee-system-ui.js";
 import { installMod, attachMod, detachMod, removeMod, buildInstalledMap, buildModDeltaSummary, getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveWeight, getEffectiveCost, computeWeaponEffective, buildWeaponWriteback } from "../helpers/mod-helpers.js";
 import { buildItemPreviewTooltip } from "../helpers/item-tooltip.js";
 import {
@@ -1477,7 +1478,10 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     }
     activities.push(base);
     const updated = await item.update({ "system.activities": activities });
-    if (updated) BeastActivitySheet.open(updated, base.id);
+    if (updated) {
+      if (game.neuroshima.melee?.enabled()) new MeleeActivityEditor(updated, base.id).render(true);
+      else BeastActivitySheet.open(updated, base.id);
+    }
   }
 
   async _onRemoveBeastActivity(event, target) {
@@ -1494,7 +1498,8 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     if (item.type !== "beast-action" && item.type !== "beast-segment") return;
     const activityId = target.closest("[data-activity-id]")?.dataset.activityId ?? target.dataset.activityId;
     if (!activityId) return;
-    BeastActivitySheet.open(item, activityId);
+    if (game.neuroshima.melee?.enabled()) new MeleeActivityEditor(item, activityId).render(true);
+    else BeastActivitySheet.open(item, activityId);
   }
 
 }

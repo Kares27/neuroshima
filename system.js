@@ -35,7 +35,8 @@ import {
     RangedWeaponTest,
     MeleeWeaponTest,
     GrenadeTest,
-    TestRules
+    TestRules,
+    runMeleeV2Tests
 } from "./module/tests.mjs";
 import { TriggerRegistry } from "./module/effects/trigger-registry.js";
 import { CombatHelper } from "./module/helpers/combat-helper.js";
@@ -77,14 +78,22 @@ import { GMGroupCheckApp, registerGroupCheckChatListeners } from "./module/apps/
 import { GMPayoutApp } from "./module/apps/gm/gm-payout-app.js";
 import { GMReputationApp } from "./module/apps/gm/gm-reputation-app.js";
 
-import { NeuroshimaCombatTracker, NeuroshimaTokenRuler, MeleeVanillaChat, MeleeOpposedChat } from "./module/combat/combat.js";
+import { NeuroshimaCombatTracker, NeuroshimaTokenRuler, MeleeVanillaChat, MeleeOpposedChat, MeleeStore } from "./module/combat/combat.js";
 import { MeleeCombatApp } from "./module/apps/melee-combat-app.js";
+import {
+    registerMeleeSystemSettings,
+    registerMeleeSystem,
+    registerMeleeSocket,
+    expireMeleeEffects
+} from "./module/combat/melee-system.js";
+import { registerMeleeSystemUI } from "./module/apps/melee-system-ui.js";
 
 
 // System initialization
 Hooks.once('init', async function() {
     console.log('Neuroshima 1.5 | Inicjalizacja systemu');
     InteractiveItemTooltip.initialize();
+    registerMeleeSystemSettings();
 
     CONFIG.fontDefinitions["Special Elite"] = {
         editor: true,
@@ -186,8 +195,10 @@ Hooks.once('init', async function() {
         const currentCombatant = current ? combat.combatants.get(current.combatantId) : null;
         game.neuroshima?.log("[hook:combatTurnChange]", { priorActor: priorCombatant?.actor?.name, currentActor: currentCombatant?.actor?.name, round: combat.round, turn: combat.turn });
         if (priorCombatant) await NeuroshimaScriptRunner.runEndTurn(combat, priorCombatant);
+        await expireMeleeEffects("turnEnd", { prior, current }, combat);
         await NeuroshimaScriptRunner.expireEffects(combat);
         if (currentCombatant) await NeuroshimaScriptRunner.runStartTurn(combat, currentCombatant);
+        await expireMeleeEffects("turnStart", { prior, current }, combat);
     });
 
     Hooks.on("combatRound", async (combat, updates, options) => {
@@ -197,9 +208,11 @@ Hooks.once('init', async function() {
         if (forward) {
             if ((options?.previousRound ?? 0) > 0) {
                 await NeuroshimaScriptRunner.runEndRound(combat, options.previousRound);
+                await expireMeleeEffects("roundEnd", { round: options?.previousRound }, combat);
             }
             await NeuroshimaScriptRunner.expireEffects(combat);
             await NeuroshimaScriptRunner.runStartRound(combat);
+            await expireMeleeEffects("roundStart", { round: updates?.round }, combat);
             for (const combatant of combat.combatants) {
                 await combatant.token?.clearMovementHistory?.();
             }
@@ -209,6 +222,10 @@ Hooks.once('init', async function() {
     });
 
     // Cleanup melee flags on combat delete
+    Hooks.on("preDeleteCombat", async (combat) => {
+        if (game.user.isGM) await expireMeleeEffects("sessionEnd", { reason: "combatDeleted" }, combat);
+    });
+
     Hooks.on("deleteCombat", async (combat) => {
         if (game.user.isGM) await NeuroshimaScriptRunner.runEndCombat(combat);
         game.neuroshima?.log("Combat deleted, cleaning up melee flags");
@@ -224,6 +241,11 @@ Hooks.once('init', async function() {
         }
     });
 
+    // Install the opt-in melee V2 namespace before the main safe merge so the
+    // legacy public API remains unchanged when the flag is disabled.
+    registerMeleeSystem();
+    registerMeleeSystemUI();
+
     // Assign custom classes and constants (safe merge to preserve socket)
     game.neuroshima = Object.assign(game.neuroshima || {}, {
         NeuroshimaActor,
@@ -235,6 +257,7 @@ Hooks.once('init', async function() {
         NeuroshimaChoiceRouter,
         NeuroshimaDice,
         tests: NEUROSHIMA_TESTS,
+        runMeleeV2Tests,
         NeuroshimaTestBase,
         NeuroshimaTest,
         AttributeTest,
@@ -1213,7 +1236,9 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/apps/condition-check-editor.hbs",
         "systems/neuroshima/templates/prosemirror/text-colour.hbs",
         "systems/neuroshima/templates/chat/melee-duel-card.hbs",
-        "systems/neuroshima/templates/apps/beast-activity-sheet.hbs"
+        "systems/neuroshima/templates/apps/beast-activity-sheet.hbs",
+        "systems/neuroshima/templates/chat/melee-session-v2.hbs",
+        "systems/neuroshima/templates/apps/melee-v2-config.hbs"
     ];
     
     await foundry.applications.handlebars.loadTemplates(templates);
@@ -2819,6 +2844,8 @@ function initializeSocketlib() {
 
     NeuroshimaChoiceRouter.registerSocketHandlers();
     NeuroshimaRollTestRouter.registerSocketHandlers();
+    // One authoritative entry point for every V2 melee mutation.
+    registerMeleeSocket(game.neuroshima.socket);
 
     console.log("Neuroshima 1.5 | Rejestracja handlerów Socketlib");
     
@@ -2880,7 +2907,13 @@ function initializeSocketlib() {
     game.neuroshima.socket.register("updateCombatFlag", async (key, value) => {
         const combat = game.combat;
         if (!combat) return;
+        if (["meleeEncounters", "meleeSessionsV2"].includes(key)) {
+            throw new Error(`Neuroshima | ${key} requires its revision-checked command service`);
+        }
         return combat.setFlag("neuroshima", key, value);
+    });
+    game.neuroshima.socket.register("updateMeleeEncounter", async (id, data) => {
+        await MeleeStore.updateEncounter(id, data);
     });
 
     // Atomic, GM-authoritative update of a melee pool snapshot. The service

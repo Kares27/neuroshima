@@ -2498,6 +2498,21 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
     // Melee weapon: initiate or continue a combat encounter when there is a target, pending attacker, or active duel
     if (weapon.system.weaponType === "melee") {
+        // V2 is an opt-in, isolated route. Disabling the setting leaves the
+        // complete legacy branch below available without migrating documents.
+        if (game.neuroshima.melee?.enabled() && targets[0]?.actor) {
+            const attacker = game.neuroshima.melee.participant(this.document, { weapon });
+            const defender = game.neuroshima.melee.participant(targets[0].actor);
+            defender.tokenUuid = targets[0].document.uuid;
+            await game.neuroshima.melee.requestStart({
+                attacker,
+                defender,
+                initiativeOwnerId: attacker.actorUuid,
+                metadata: { source: "actorSheet", weaponUuid: weapon.uuid }
+            });
+            this._isRolling = false;
+            return;
+        }
 
         // ── Chat-based melee (all modes) ─────────────────────────────────────
         const combatTypeSetting = game.settings.get("neuroshima", "meleeCombatType") || "default";

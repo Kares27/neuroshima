@@ -366,6 +366,18 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         }
 
         if (chatTargets.length > 0) {
+          if (game.neuroshima.melee?.enabled()) {
+            const attacker = game.neuroshima.melee.participant(actor, { weapon: sourceItem });
+            const defender = game.neuroshima.melee.participant(chatTargets[0].actor);
+            defender.tokenUuid = chatTargets[0].document.uuid;
+            await game.neuroshima.melee.requestStart({
+              attacker,
+              defender,
+              initiativeOwnerId: attacker.actorUuid,
+              metadata: { source: "creatureSheet", beastItemUuid: sourceItem?.uuid ?? null }
+            });
+            return;
+          }
           const { MeleeOpposedChat } = await import("../combat/combat.js");
           await MeleeOpposedChat.initiateAttack(actor, syntheticWeapon, chatTargets[0].document.uuid, effectiveMode);
           return;
@@ -449,7 +461,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         };
 
         const combatTypeSetting = game.settings.get("neuroshima", "meleeCombatType") || "default";
-        if (combatTypeSetting === "opposedPips" || combatTypeSetting === "opposedSuccesses") {
+        if (game.neuroshima.melee?.enabled() || combatTypeSetting === "opposedPips" || combatTypeSetting === "opposedSuccesses") {
           const myUuidsCheck = [actor.uuid];
           if (actor.token) myUuidsCheck.push(actor.token.uuid);
 
@@ -487,6 +499,18 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
           const rawTargets = Array.from(game.user.targets ?? []);
           const chatTargets = rawTargets.filter(t => !myUuidsCheck.includes(t.document.uuid));
           if (chatTargets.length > 0) {
+            if (game.neuroshima.melee?.enabled() && isMeleeAct) {
+              const attacker = game.neuroshima.melee.participant(actor, { weapon: item });
+              const defender = game.neuroshima.melee.participant(chatTargets[0].actor);
+              defender.tokenUuid = chatTargets[0].document.uuid;
+              await game.neuroshima.melee.requestStart({
+                attacker,
+                defender,
+                initiativeOwnerId: attacker.actorUuid,
+                metadata: { source: "creatureActivity", beastItemUuid: item.uuid, activityId: act.id }
+              });
+              return;
+            }
             const { MeleeOpposedChat } = await import("../combat/combat.js");
             await MeleeOpposedChat.initiateAttack(actor, syntheticWeapon, chatTargets[0].document.uuid, combatTypeSetting);
             return;

@@ -2191,3 +2191,9 @@ export const NEUROSHIMA_TESTS = Object.freeze({
   MeleeWeaponTest,
   GrenadeTest
 });
+
+/** Run the document-free melee V2 regression suite from the existing test API. */
+export async function runMeleeV2Tests() {
+  const { runMeleeCoreSelfTests } = await import("./combat/melee-system.js");
+  return runMeleeCoreSelfTests();
+}

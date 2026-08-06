@@ -169,6 +169,20 @@ export class GearData extends foundry.abstract.TypeDataModel {
   }
 }
 
+/** Declarative fields shared by beast-action and beast-segment activities in melee V2. */
+function meleeActivitySchema() {
+  const fields = foundry.data.fields;
+  return {
+    description: new fields.HTMLField({ initial: "" }),
+    tags: new fields.ArrayField(new fields.StringField({ blank: true }), { initial: [] }),
+    activation: new fields.ObjectField({ initial: {} }),
+    conditions: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+    outcomes: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+    operations: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+    automation: new fields.ObjectField({ initial: {} })
+  };
+}
+
 /**
  * Data model for Ammo.
  */
@@ -290,6 +304,7 @@ export class BeastActionData extends foundry.abstract.TypeDataModel {
   static defineSchema() {
     const fields = foundry.data.fields;
     const activitySchema = new fields.SchemaField({
+      ...meleeActivitySchema(),
       id:                      new fields.StringField({ initial: () => foundry.utils.randomID() }),
       name:                    new fields.StringField({ initial: "" }),
       img:                     new fields.StringField({ initial: "" }),
@@ -332,6 +347,7 @@ export class BeastSegmentData extends foundry.abstract.TypeDataModel {
   static defineSchema() {
     const fields = foundry.data.fields;
     const activitySchema = new fields.SchemaField({
+      ...meleeActivitySchema(),
       id:                      new fields.StringField({ initial: () => foundry.utils.randomID() }),
       name:                    new fields.StringField({ initial: "" }),
       img:                     new fields.StringField({ initial: "" }),
