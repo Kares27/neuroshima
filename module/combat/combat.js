@@ -1437,6 +1437,69 @@ export class MeleeOpposedChat {
   }
 
   /**
+   * Canonical V1 weapon-click router shared by character and creature sheets.
+   * It resumes a pending defence first and starts a fresh attack only when the
+   * actor is not currently expected to answer another opposed test.
+   */
+  static async routeWeaponClick(actor, weapon, targetUuids = [], mode = "opposedPips") {
+    const ownUuids = [actor.uuid, actor.token?.uuid].filter(Boolean);
+    const embeddedWeapon = weapon?.id ? actor.items?.get?.(weapon.id) : null;
+    const weaponId = embeddedWeapon?.type === "weapon" ? embeddedWeapon.id : null;
+    const syntheticWeapon = weaponId ? null : weapon;
+
+    const opposeFlag = actor.getFlag("neuroshima", "oppose");
+    if (opposeFlag?.messageId) {
+      const pendingMessage = game.messages.get(opposeFlag.messageId);
+      const hailData = pendingMessage?.getFlag("neuroshima", "hailCard");
+      if (hailData?.status === "pending") {
+        await this.hailDefendFromChat(opposeFlag.messageId);
+        return { handled: true, action: "hailDefense" };
+      }
+      const opposedData = pendingMessage?.getFlag("neuroshima", "opposedChat");
+      if (this._isAwaitingDefender(opposedData?.status)) {
+        await this.openDefenseDialog(actor, {
+          id: opposedData.defenderUuid,
+          attackerId: opposedData.attackerUuid,
+          attackerTokenUuid: opposedData.attackerTokenUuid,
+          defenderId: opposedData.defenderUuid,
+          mode: opposedData.mode,
+          opposedChatMessageId: opposeFlag.messageId
+        }, weaponId, syntheticWeapon);
+        return { handled: true, action: "defense" };
+      }
+      await actor.unsetFlag("neuroshima", "oppose");
+    }
+
+    const pendings = game.combat?.getFlag("neuroshima", "meleePendings") || {};
+    const pending = Object.values(pendings).find(entry =>
+      entry.active && entry.mode && ownUuids.some(uuid =>
+        game.neuroshima.NeuroshimaMeleeCombat.isSameActor(entry.defenderId, uuid)
+      )
+    );
+    if (pending) {
+      const pendingMessage = pending.opposedChatMessageId
+        ? game.messages.get(pending.opposedChatMessageId)
+        : null;
+      const hailData = pendingMessage?.getFlag("neuroshima", "hailCard");
+      if (hailData?.status === "pending") {
+        await this.hailDefendFromChat(pending.opposedChatMessageId);
+        return { handled: true, action: "hailDefense" };
+      }
+      const opposedData = pendingMessage?.getFlag("neuroshima", "opposedChat");
+      if (this._isAwaitingDefender(opposedData?.status)) {
+        await this.openDefenseDialog(actor, pending, weaponId, syntheticWeapon);
+        return { handled: true, action: "defense" };
+      }
+      await this._removePending(pending.id ?? actor.uuid);
+    }
+
+    const targetUuid = targetUuids.find(uuid => uuid && !ownUuids.includes(uuid));
+    if (!targetUuid) return { handled: false, action: null };
+    await this.initiateAttack(actor, weapon, targetUuid, mode);
+    return { handled: true, action: "attack" };
+  }
+
+  /**
    * Creates the pending handshake card. After the defender rolls it is closed,
    * while a new, naturally-last ChatMessage becomes the synchronized duel view.
    */
@@ -2288,6 +2351,27 @@ export class MeleeOpposedChat {
     const updatedContent = await foundry.applications.handlebars.renderTemplate(
       "systems/neuroshima/templates/chat/melee-opposed-pending.hbs",
       updatedTemplateData
+    );
+    await MeleeOpposedChat._updateChatContent(message, updatedContent);
+  }
+
+  static async _updateHandlerToCancelled(message, data) {
+    const attackerDoc = fromUuidSync(data.attackerTokenUuid || data.attackerUuid);
+    const defenderDoc = fromUuidSync(data.defenderTokenUuid || data.defenderUuid);
+    const attackerActor = attackerDoc?.actor ?? attackerDoc;
+    const defenderActor = defenderDoc?.actor ?? defenderDoc;
+    const updatedContent = await foundry.applications.handlebars.renderTemplate(
+      "systems/neuroshima/templates/chat/melee-opposed-pending.hbs",
+      {
+        mode: data.mode,
+        modeLabel: game.i18n.localize(`NEUROSHIMA.MeleeOpposedChat.Mode.${data.mode}`),
+        attackerName: attackerActor?.name ?? "",
+        attackerImg: attackerActor?.img,
+        defenderName: defenderActor?.name ?? "",
+        defenderImg: defenderActor?.img,
+        defenderWeapons: [],
+        status: "cancelled"
+      }
     );
     await MeleeOpposedChat._updateChatContent(message, updatedContent);
   }
@@ -4095,10 +4179,16 @@ export class MeleeOpposedChat {
   /** Update a chat message flag via socket if the caller is not the GM. @private */
   static async _setChatFlag(message, key, value) {
     if (!message) return;
+    let result;
     if (game.user.isGM || !game.neuroshima?.socket) {
-      return message.setFlag("neuroshima", key, value);
+      result = await message.setFlag("neuroshima", key, value);
+    } else {
+      result = await game.neuroshima.socket.executeAsGM("setChatMessageFlag", message.id, "neuroshima", key, value);
     }
-    return game.neuroshima.socket.executeAsGM("setChatMessageFlag", message.id, "neuroshima", key, value);
+    if (key === "opposedChat" && value?.status === "cancelled") {
+      await this._updateHandlerToCancelled(message, value);
+    }
+    return result;
   }
 
   /** Update chat message content via socket if the caller is not the GM. @private */

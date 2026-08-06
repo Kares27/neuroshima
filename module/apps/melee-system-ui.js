@@ -3,7 +3,8 @@ import {
   MeleeActionCatalog,
   MeleeMigration,
   normalizeMeleeActivity,
-  isMeleeV2Enabled
+  isMeleeV2Enabled,
+  buildMeleeRequiredAction
 } from "../combat/melee-system.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
@@ -163,8 +164,16 @@ export class MeleeSessionPresenter {
         sourceEffectUuid: activity.source.effectUuid
       })) : [];
     }
+    const requiredAction = await buildMeleeRequiredAction(session, game.user);
+    const poolRows = ["attacker", "defender"].map(side => ({
+      side,
+      name: session.participants[side].name,
+      dice: session.pools[side] ?? []
+    })).filter(row => row.dice.length);
     return {
       session,
+      poolRows,
+      requiredAction,
       ownerSide,
       responderSide: ownerSide === "attacker" ? "defender" : "attacker",
       ownerActivities: activities[ownerSide],
@@ -172,9 +181,10 @@ export class MeleeSessionPresenter {
       ownerName: session.participants[ownerSide].name,
       activities,
       canGM: game.user.isGM,
-      canAct: Object.fromEntries(["attacker", "defender"].map(side => [side,
-        game.user.isGM || session.participants[side].userIds.includes(game.user.id)
-      ])),
+      canAct: {
+        attacker: requiredAction.side === "attacker" && requiredAction.canAct,
+        defender: requiredAction.side === "defender" && requiredAction.canAct
+      },
       isAwaitingAttacker: session.phase === "awaitingAttackerRoll",
       isAwaitingDefender: session.phase === "awaitingDefenderRoll",
       isDeclaration: session.phase === "declaration",
@@ -191,13 +201,97 @@ export class MeleeSessionPresenter {
     if (!marker?.sessionId) return;
     const session = await game.neuroshima.melee.get(marker.sessionId, { messageId: message.id });
     if (!session) return;
-    const shell = root.querySelector?.(".melee-session-v2-shell") ?? root.querySelector?.("[data-melee-session-id]");
+    const element = root instanceof HTMLElement ? root : root?.[0];
+    const shell = element?.querySelector?.(".melee-session-v2-shell") ?? element?.querySelector?.("[data-melee-session-id]");
     if (!shell) return;
     shell.innerHTML = await foundry.applications.handlebars.renderTemplate(
       "systems/neuroshima/templates/chat/melee-session-v2.hbs",
       await this.context(session)
     );
     this.activate(shell, session);
+  }
+
+  /** Open the normal weapon-roll dialog and submit its 3d20 pool to the session. */
+  static async openRoll(session, side) {
+    const expectedPhase = side === "attacker" ? "awaitingAttackerRoll" : "awaitingDefenderRoll";
+    if (session.phase !== expectedPhase) {
+      ui.notifications.warn("Ten rzut melee został już wykonany albo sesja oczekuje na drugą stronę.");
+      return null;
+    }
+    const participant = session.participants[side];
+    const requiredAction = await buildMeleeRequiredAction(session, game.user);
+    if (requiredAction.side !== side || !requiredAction.canAct) {
+      ui.notifications.warn("Nie masz uprawnień do wykonania tego rzutu melee.");
+      return null;
+    }
+    const actorDoc = await fromUuid(participant.tokenUuid || participant.actorUuid);
+    const actor = actorDoc?.actor ?? actorDoc;
+    if (!actor) throw new Error("Nie udało się odnaleźć Aktora dla rzutu melee V2.");
+
+    let weapon = participant.weaponUuid ? await fromUuid(participant.weaponUuid) : null;
+    if (["beast-action", "beast-segment"].includes(weapon?.type)) {
+      const beastItem = weapon;
+      const byTier = {};
+      for (const activity of beastItem.system.activities ?? []) {
+        const tier = Math.min(3, Math.max(1, Number(activity.successCost ?? activity.segmentCost ?? 1)));
+        byTier[tier] ??= activity.damage || activity.damage1 || "D";
+      }
+      weapon = {
+        id: null, name: beastItem.name, img: beastItem.img, type: "weapon",
+        system: {
+          weaponType: "melee", attribute: beastItem.system.attribute || "dexterity", skill: "experience",
+          attackBonus: 0, defenseBonus: 0, piercing: 0,
+          damageMelee1: byTier[1] ?? byTier[2] ?? byTier[3] ?? "D",
+          damageMelee2: byTier[2] ?? byTier[1] ?? byTier[3] ?? "D",
+          damageMelee3: byTier[3] ?? byTier[2] ?? byTier[1] ?? "D"
+        }
+      };
+    }
+    weapon ??= {
+      id: null, name: "Walka bez broni", img: actor.img, type: "weapon",
+      system: {
+        weaponType: "melee", attribute: "dexterity", skill: "melee",
+        attackBonus: 0, defenseBonus: 0, piercing: 0,
+        damageMelee1: "D", damageMelee2: "D", damageMelee3: "D"
+      }
+    };
+
+    const { NeuroshimaWeaponRollDialog } = await import("./dialogs/weapon-roll-dialog.js");
+    const dialog = new NeuroshimaWeaponRollDialog({
+      actor,
+      weapon,
+      rollType: "melee",
+      meleeAction: side === "attacker" ? "attack" : "defense",
+      targets: [],
+      isPoolRoll: true,
+      onRoll: async result => {
+        const dice = (result.modifiedResults ?? []).map((die, index) => ({
+          id: die.id || `die-${index + 1}-${foundry.utils.randomID(6)}`,
+          raw: die.original ?? result.rawResults?.[index],
+          modified: die.modified,
+          target: result.target,
+          isSuccess: die.isSuccess === true,
+          changes: result.diceChanges?.filter(change => change.index === index) ?? []
+        }));
+        try {
+          return await game.neuroshima.melee.dispatch({
+            type: "submitRoll",
+            side,
+            payload: { dice },
+            sessionId: session.id,
+            messageId: session.messageId,
+            expectedRevision: session.revision,
+            commandId: foundry.utils.randomID()
+          });
+        } catch (error) {
+          ui.notifications.error(`Nie udało się zapisać rzutu melee: ${error.message}`);
+          console.error("Neuroshima | Melee V2 submitRoll failed", error);
+          throw error;
+        }
+      }
+    });
+    dialog.render(true);
+    return dialog;
   }
 
   static activate(root, session) {
@@ -207,52 +301,12 @@ export class MeleeSessionPresenter {
       const side = button.dataset.side;
       const payload = {};
       if (type === "roll") {
-        const participant = session.participants[side];
-        const actorDoc = await fromUuid(participant.tokenUuid || participant.actorUuid);
-        const actor = actorDoc?.actor ?? actorDoc;
-        let weapon = participant.weaponUuid ? await fromUuid(participant.weaponUuid) : null;
-        if (["beast-action", "beast-segment"].includes(weapon?.type)) {
-          const beastItem = weapon;
-          const byTier = {};
-          for (const activity of beastItem.system.activities ?? []) {
-            const tier = Math.min(3, Math.max(1, Number(activity.successCost ?? activity.segmentCost ?? 1)));
-            byTier[tier] ??= activity.damage || activity.damage1 || "D";
-          }
-          weapon = {
-            id: null, name: beastItem.name, img: beastItem.img, type: "weapon",
-            system: {
-              weaponType: "melee", attribute: beastItem.system.attribute || "dexterity", skill: "experience",
-              attackBonus: 0, defenseBonus: 0, piercing: 0,
-              damageMelee1: byTier[1] ?? byTier[2] ?? byTier[3] ?? "D",
-              damageMelee2: byTier[2] ?? byTier[1] ?? byTier[3] ?? "D",
-              damageMelee3: byTier[3] ?? byTier[2] ?? byTier[1] ?? "D"
-            }
-          };
+        try {
+          await this.openRoll(session, side);
+        } catch (error) {
+          ui.notifications.error(error.message);
+          console.error("Neuroshima | Melee V2 roll dialog failed", error);
         }
-        weapon ??= {
-          id: null, name: "Walka bez broni", img: actor?.img, type: "weapon",
-          system: { weaponType: "melee", attribute: "dexterity", skill: "melee",
-            attackBonus: 0, defenseBonus: 0, damageMelee1: "D", damageMelee2: "D", damageMelee3: "D", piercing: 0 }
-        };
-        const { NeuroshimaWeaponRollDialog } = await import("./dialogs/weapon-roll-dialog.js");
-        new NeuroshimaWeaponRollDialog({
-          actor, weapon, rollType: "melee",
-          meleeAction: side === "attacker" ? "attack" : "defense",
-          targets: [], isPoolRoll: true,
-          onRoll: async result => {
-            const dice = (result.modifiedResults ?? []).map((die, index) => ({
-              id: die.id || `die-${index + 1}-${foundry.utils.randomID(6)}`,
-              raw: die.original ?? result.rawResults?.[index], modified: die.modified,
-              target: result.target, isSuccess: die.isSuccess === true,
-              changes: result.diceChanges?.filter(change => change.index === index) ?? []
-            }));
-            return game.neuroshima.melee.dispatch({
-              type: "submitRoll", side, payload: { dice }, sessionId: session.id,
-              messageId: session.messageId, expectedRevision: session.revision,
-              commandId: foundry.utils.randomID()
-            });
-          }
-        }).render(true);
         return;
       }
       if (type === "approveOutcome") payload.outcomeId = button.dataset.outcomeId;
@@ -292,11 +346,39 @@ function injectEditorButton(app, element) {
   header.querySelector(".close")?.before(button);
 }
 
-function projectTracker(html) {
+function openMeleeMessage(session) {
+  ui.sidebar?.activateTab?.("chat");
+  setTimeout(() => {
+    const element = document.querySelector(`[data-message-id="${session.messageId}"]`);
+    element?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    element?.classList.add("melee-v2-highlight");
+    setTimeout(() => element?.classList.remove("melee-v2-highlight"), 1200);
+  }, 100);
+}
+
+function refreshMeleeProjections(session = null) {
+  ui.combat?.render?.();
+  for (const app of Object.values(ui.windows ?? {})) {
+    const actor = app.document?.documentName === "Actor" ? app.document : null;
+    if (!actor) continue;
+    if (session) {
+      const involved = ["attacker", "defender"].some(side => {
+        const participant = session.participants?.[side];
+        return participant?.actorUuid === actor.uuid || participant?.tokenUuid === actor.token?.uuid;
+      });
+      if (!involved) continue;
+    }
+    app.render?.({ force: false });
+  }
+}
+
+async function projectTracker(html) {
   if (!isMeleeV2Enabled()) return;
   const root = html instanceof HTMLElement ? html : html?.[0];
+  root?.querySelectorAll(".melee-v2-tracker-badge").forEach(element => element.remove());
   for (const session of game.neuroshima.melee.list()) {
     if (session.status !== "active") continue;
+    const requiredAction = await buildMeleeRequiredAction(session, game.user);
     for (const side of ["attacker", "defender"]) {
       const participant = session.participants[side];
       const combatant = game.combat?.combatants.find(entry =>
@@ -305,10 +387,40 @@ function projectTracker(html) {
       if (!row) continue;
       const badge = document.createElement("span");
       badge.className = "melee-v2-tracker-badge";
-      badge.dataset.tooltip = `Melee: ${session.participants[side === "attacker" ? "defender" : "attacker"].name}`;
-      badge.innerHTML = session.initiative.ownerId === participant.actorUuid
-        ? '<i class="fa-solid fa-swords"></i>'
-        : '<i class="fa-regular fa-shield"></i>';
+      badge.dataset.tooltip = `${session.participants.attacker.name} → ${session.participants.defender.name}\nSegment ${session.currentSegment + 1}/3\n${requiredAction.waitingText}`;
+      badge.dataset.sessionId = session.id;
+      const icon = session.initiative.ownerId === participant.actorUuid
+        ? "fa-solid fa-swords"
+        : "fa-regular fa-shield";
+      badge.innerHTML = `<i class="${icon}"></i><span>${session.participants[side === "attacker" ? "defender" : "attacker"].name}</span>`;
+      badge.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        openMeleeMessage(session);
+      });
+      if (requiredAction.canAct && requiredAction.side === side) {
+        badge.classList.add("can-act");
+        badge.dataset.tooltip += "\nKliknij nazwę, aby otworzyć kartę oczekującej akcji.";
+        const actionButton = document.createElement("button");
+        actionButton.type = "button";
+        actionButton.className = "melee-v2-tracker-action";
+        actionButton.dataset.tooltip = requiredAction.label;
+        actionButton.innerHTML = requiredAction.kind === "roll"
+          ? '<i class="fa-solid fa-dice-d20"></i>'
+          : '<i class="fa-solid fa-arrow-up-right-from-square"></i>';
+        actionButton.addEventListener("click", async event => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (requiredAction.kind === "roll") {
+            try {
+              await MeleeSessionPresenter.openRoll(session, side);
+            } catch (error) {
+              ui.notifications.error(error.message);
+            }
+          } else openMeleeMessage(session);
+        });
+        badge.append(actionButton);
+      }
       row.querySelector(".token-name")?.append(badge);
     }
   }
@@ -319,13 +431,20 @@ export function registerMeleeSystemUI() {
   Hooks.on("renderChatMessage", (message, html) => MeleeSessionPresenter.renderMessage(message, html));
   Hooks.on("renderNeuroshimaItemSheet", injectEditorButton);
   Hooks.on("renderNeuroshimaEffectSheet", injectEditorButton);
-  Hooks.on("renderCombatTracker", (_app, html) => projectTracker(html));
   Hooks.on("neuroshimaMeleeSessionUpdated", session => {
     const message = game.messages.get(session.messageId);
     if (message) ui.chat?.updateMessage?.(message);
-    ui.combat?.render?.();
+    refreshMeleeProjections(session);
   });
   game.neuroshima.melee.openEditor = (document, activityId) => new MeleeActivityEditor(document, activityId).render(true);
+  game.neuroshima.melee.openRoll = (session, side) => MeleeSessionPresenter.openRoll(session, side);
+  game.neuroshima.melee.openMessage = session => openMeleeMessage(session);
+  game.neuroshima.melee.act = async (session, side) => {
+    const action = await buildMeleeRequiredAction(session, game.user);
+    if (!action.canAct) throw new Error("Nie masz uprawnień do wykonania oczekującej akcji melee.");
+    if (action.kind === "roll") return MeleeSessionPresenter.openRoll(session, side || action.side);
+    return openMeleeMessage(session);
+  };
   game.neuroshima.melee.dryRun = options => MeleeMigration.dryRun(options);
 }
 

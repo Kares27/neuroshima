@@ -161,6 +161,48 @@ export function sideForActor(session, actorUuid) {
   }) ?? null;
 }
 
+async function userControlsMeleeParticipant(participant, user = game.user) {
+  if (!user?.active) return false;
+  if (user.isGM) return true;
+  const document = await fromUuid(participant?.tokenUuid || participant?.actorUuid);
+  const actor = document?.actor ?? document;
+  if (user.character?.uuid === actor?.uuid) return true;
+  const ownerLevel = globalThis.CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OWNER ?? 3;
+  return actor?.testUserPermission?.(user, ownerLevel) === true;
+}
+
+/** Canonical UI projection of the participant or GM action required by a session phase. */
+export async function buildMeleeRequiredAction(session, user = game.user) {
+  const ownerSide = initiativeSide(session);
+  const responderSide = ownerSide === "attacker" ? "defender" : "attacker";
+  const map = {
+    awaitingAttackerRoll: { side: "attacker", kind: "roll", label: "Rzut atakującego" },
+    awaitingDefenderRoll: { side: "defender", kind: "roll", label: "Rzut obrońcy" },
+    declaration: { side: ownerSide, kind: "declare", label: "Deklaracja akcji" },
+    response: { side: responderSide, kind: "respond", label: "Odpowiedź na akcję" },
+    pendingOutcomes: { side: null, kind: "approve", label: "Zatwierdzenie wyniku przez MG" },
+    resolution: { side: null, kind: "advance", label: "Przejście do następnego segmentu" },
+    complete: { side: null, kind: "complete", label: "Zwarcie zakończone" }
+  };
+  const action = map[session.phase] ?? { side: null, kind: "unknown", label: session.phase };
+  const participant = action.side ? session.participants[action.side] : null;
+  const gmAction = ["approve", "advance"].includes(action.kind);
+  const controlledSides = [];
+  for (const side of MELEE_SIDES) {
+    if (await userControlsMeleeParticipant(session.participants[side], user)) controlledSides.push(side);
+  }
+  return {
+    ...action,
+    participantName: participant?.name ?? (gmAction ? "MG" : null),
+    waitingText: action.kind === "complete"
+      ? action.label
+      : `Oczekuje na: ${participant?.name ?? "MG"} — ${action.label}`,
+    canAct: gmAction ? user?.isGM === true : (participant ? await userControlsMeleeParticipant(participant, user) : false),
+    canCancel: user?.isGM === true || controlledSides.length > 0,
+    controlSide: controlledSides[0] ?? null
+  };
+}
+
 export function meleeParticipantFromActor(actor, { weapon = null } = {}) {
   if (!actor) throw new MeleeValidationError("Actor is required", "MISSING_PARTICIPANT");
   const token = actor.token?.document ?? actor.token ?? null;
@@ -809,6 +851,14 @@ export class MeleeEffectService {
 }
 
 export class MeleeSessionStore {
+  static _writeQueue = Promise.resolve();
+
+  static _write(operation) {
+    const pending = this._writeQueue.catch(() => undefined).then(operation);
+    this._writeQueue = pending.catch(() => undefined);
+    return pending;
+  }
+
   static async get(sessionId, { combat = game.combat, messageId = null } = {}) {
     const combatSession = combat?.getFlag("neuroshima", MELEE_FLAG)?.[sessionId] ?? null;
     if (combatSession) return clone(combatSession);
@@ -820,10 +870,11 @@ export class MeleeSessionStore {
   static async create(session, { combat = game.combat, message = null } = {}) {
     validateMeleeSession(session);
     if (combat) {
-      const sessions = clone(combat.getFlag("neuroshima", MELEE_FLAG) ?? {});
-      if (sessions[session.id]) throw new MeleeValidationError("Session already exists", "SESSION_EXISTS");
-      sessions[session.id] = clone(session);
-      await combat.setFlag("neuroshima", MELEE_FLAG, sessions);
+      await this._write(async () => {
+        const stored = combat.getFlag("neuroshima", MELEE_FLAG)?.[session.id];
+        if (stored) throw new MeleeValidationError("Session already exists", "SESSION_EXISTS");
+        await combat.update({ [`flags.neuroshima.${MELEE_FLAG}.${session.id}`]: clone(session) });
+      });
     } else {
       if (!message) throw new MeleeValidationError("A primary ChatMessage is required outside Combat", "MISSING_PRIMARY_MESSAGE");
       session.messageId = message.id;
@@ -842,15 +893,15 @@ export class MeleeSessionStore {
     session.updatedAt = Date.now();
     validateMeleeSession(session);
     if (combat) {
-      const sessions = clone(combat.getFlag("neuroshima", MELEE_FLAG) ?? {});
-      const stored = sessions[session.id];
-      if (stored && number(stored.revision) !== number(expectedRevision, stored.revision)) {
-        throw new MeleeValidationError("Melee session changed before save", "LOST_UPDATE", {
-          expected: expectedRevision, actual: stored.revision
-        });
-      }
-      sessions[session.id] = clone(session);
-      await combat.setFlag("neuroshima", MELEE_FLAG, sessions);
+      await this._write(async () => {
+        const stored = combat.getFlag("neuroshima", MELEE_FLAG)?.[session.id];
+        if (stored && number(stored.revision) !== number(expectedRevision, stored.revision)) {
+          throw new MeleeValidationError("Melee session changed before save", "LOST_UPDATE", {
+            expected: expectedRevision, actual: stored.revision
+          });
+        }
+        await combat.update({ [`flags.neuroshima.${MELEE_FLAG}.${session.id}`]: clone(session) });
+      });
     } else {
       const message = game.messages.get(session.messageId);
       if (!message) throw new MeleeValidationError("Primary melee message not found", "MESSAGE_NOT_FOUND");
@@ -864,7 +915,11 @@ export class MeleeSessionStore {
   }
 
   static list(combat = game.combat) {
-    return Object.values(clone(combat?.getFlag("neuroshima", MELEE_FLAG) ?? {}));
+    if (combat) return Object.values(clone(combat.getFlag("neuroshima", MELEE_FLAG) ?? {}));
+    return array(game.messages)
+      .map(message => message.getFlag("neuroshima", "meleeSessionV2"))
+      .filter(Boolean)
+      .map(clone);
   }
 }
 
@@ -881,11 +936,18 @@ export function validateMeleeSession(session) {
 }
 
 export class MeleeCommandService {
-  static _queue = Promise.resolve();
+  static _queues = new Map();
 
   static dispatch(command) {
-    this._queue = this._queue.then(() => this._dispatch(command));
-    return this._queue;
+    const key = String(command?.sessionId || "missing-session");
+    const previous = this._queues.get(key) ?? Promise.resolve();
+    const operation = previous.catch(() => undefined).then(() => this._dispatch(command));
+    const tail = operation.catch(() => undefined);
+    this._queues.set(key, tail);
+    tail.finally(() => {
+      if (this._queues.get(key) === tail) this._queues.delete(key);
+    });
+    return operation;
   }
 
   static async _dispatch(command = {}) {
@@ -897,7 +959,7 @@ export class MeleeCommandService {
     if (!commandId) throw new MeleeValidationError("commandId is required", "MISSING_COMMAND_ID");
     if (session.commandLedger[commandId]) return clone(session.commandLedger[commandId].result);
     const user = game.users.get(command.userId);
-    this._authorize(session, command, user);
+    await this._authorize(session, command, user);
     const result = await this._apply(session, command, user);
     session.commandLedger[commandId] = { type: command.type, userId: command.userId, appliedAt: Date.now(), result: clone(result) };
     session.history.push({ commandId, type: command.type, userId: command.userId, revision: session.revision, at: Date.now() });
@@ -908,12 +970,18 @@ export class MeleeCommandService {
     return { session: clone(session), result: clone(result) };
   }
 
-  static _authorize(session, command, user) {
+  static async _authorize(session, command, user) {
     if (!user?.active) throw new MeleeValidationError("Inactive or unknown user", "UNAUTHORIZED");
     if (user.isGM) return;
+    if (command.type === "endSession") {
+      for (const participant of Object.values(session.participants ?? {})) {
+        if (await userControlsMeleeParticipant(participant, user)) return;
+      }
+      throw new MeleeValidationError("User does not control either participant", "UNAUTHORIZED");
+    }
     const side = command.side;
     const participant = session.participants?.[side];
-    if (!participant || !participant.userIds.includes(user.id)) {
+    if (!participant || !await userControlsMeleeParticipant(participant, user)) {
       throw new MeleeValidationError("User does not control this participant", "UNAUTHORIZED");
     }
   }
@@ -1166,26 +1234,81 @@ export class MeleeMigration {
   }
 }
 
-export async function startMeleeSession({ attacker, defender, initiativeOwnerId, metadata = {} } = {}) {
+class MeleeStartService {
+  static _queues = new Map();
+
+  static run(startCommandId, operation) {
+    const key = String(startCommandId || randomId());
+    const previous = this._queues.get(key) ?? Promise.resolve();
+    const pending = previous.catch(() => undefined).then(operation);
+    const tail = pending.catch(() => undefined);
+    this._queues.set(key, tail);
+    tail.finally(() => {
+      if (this._queues.get(key) === tail) this._queues.delete(key);
+    });
+    return pending;
+  }
+}
+
+export async function startMeleeSession({
+  attacker, defender, initiativeOwnerId, metadata = {}, startCommandId = randomId()
+} = {}) {
   if (!game.user?.isGM) {
     throw new MeleeValidationError("Session creation must be requested through the GM", "GM_REQUIRED");
   }
-  const existing = MeleeSessionStore.list(game.combat).find(candidate => {
-    if (candidate.status !== "active") return false;
-    const ids = [candidate.participants.attacker.actorUuid, candidate.participants.defender.actorUuid];
-    return ids.includes(attacker.actorUuid) && ids.includes(defender.actorUuid);
+  return MeleeStartService.run(startCommandId, async () => {
+    const existing = MeleeSessionStore.list(game.combat).find(candidate =>
+      candidate.metadata?.startCommandId === startCommandId
+    );
+    if (existing) {
+      const existingMessage = game.messages.get(existing.messageId);
+      if (existingMessage) {
+        await existingMessage.update({ "flags.neuroshima.melee.renderNonce": randomId() });
+      }
+      Hooks.callAll("neuroshimaMeleeSessionUpdated", clone(existing), { type: "resumeSession" }, null);
+      return existing;
+    }
+
+    const session = createMeleeSession({
+      attacker,
+      defender,
+      initiativeOwnerId,
+      combatId: game.combat?.id ?? null,
+      metadata: { ...metadata, startCommandId }
+    });
+    const content = [
+      `<div class="neuroshima melee-session-v2-shell" data-melee-session-id="${session.id}">`,
+      '<p class="melee-v2-loading"><i class="fa-solid fa-spinner fa-spin"></i> Inicjalizacja zwarcia…</p>',
+      "</div>"
+    ].join("");
+    const attackerDoc = await fromUuid(attacker.tokenUuid || attacker.actorUuid);
+    let message = null;
+    try {
+      message = await ChatMessage.create({
+        speaker: ChatMessage.getSpeaker({ actor: attackerDoc?.actor ?? attackerDoc }),
+        content,
+        flags: { neuroshima: { melee: { sessionId: session.id, renderedRevision: -1, cardType: "session" } } }
+      });
+      session.messageId = message.id;
+      await MeleeSessionStore.create(session, { combat: game.combat, message });
+      // The creation hook may run before the Combat flag exists. This explicit
+      // update guarantees a second render after the authoritative save.
+      await message.update({
+        content,
+        "flags.neuroshima.melee.renderedRevision": session.revision,
+        "flags.neuroshima.melee.renderNonce": randomId()
+      });
+      Hooks.callAll("neuroshimaMeleeSessionUpdated", clone(session), { type: "startSession" }, null);
+      return session;
+    } catch (error) {
+      if (message) {
+        await message.update({
+          content: `<div class="neuroshima melee-session-v2-shell melee-v2-error" data-melee-session-id="${session.id}"><p>Nie udało się uruchomić zwarcia. Szczegóły zostały pokazane użytkownikowi.</p></div>`
+        }).catch(() => undefined);
+      }
+      throw error;
+    }
   });
-  if (existing) return existing;
-  const session = createMeleeSession({ attacker, defender, initiativeOwnerId, combatId: game.combat?.id ?? null, metadata });
-  const content = `<div class="neuroshima melee-session-v2-shell" data-melee-session-id="${session.id}"></div>`;
-  const attackerDoc = await fromUuid(attacker.tokenUuid || attacker.actorUuid);
-  const message = await ChatMessage.create({
-    speaker: ChatMessage.getSpeaker({ actor: attackerDoc?.actor ?? attackerDoc }), content,
-    flags: { neuroshima: { melee: { sessionId: session.id, renderedRevision: -1, cardType: "session" } } }
-  });
-  session.messageId = message.id;
-  await MeleeSessionStore.create(session, { combat: game.combat, message });
-  return session;
 }
 
 export function registerMeleeSystemSettings() {
@@ -1219,13 +1342,18 @@ export function registerMeleeSystem() {
     version: MELEE_VERSION,
     enabled: isMeleeV2Enabled,
     start: startMeleeSession,
-    requestStart: payload => game.user.isGM
-      ? startMeleeSession(payload)
+    requestStart: payload => {
+      const request = { ...payload, startCommandId: payload?.startCommandId || randomId() };
+      return game.user.isGM
+      ? startMeleeSession(request)
       : game.neuroshima.socket.executeAsGM(MELEE_SOCKET_COMMAND, {
-          type: "startSession", userId: game.user.id, payload
-        }),
+          type: "startSession", userId: game.user.id, payload: request
+        });
+    },
     createSession: createMeleeSession,
     participant: meleeParticipantFromActor,
+    sideForActor,
+    requiredAction: buildMeleeRequiredAction,
     get: (...args) => MeleeSessionStore.get(...args),
     list: (...args) => MeleeSessionStore.list(...args),
     dispatch: command => game.user.isGM
@@ -1246,9 +1374,7 @@ export function registerMeleeSocket(socket) {
     if (command?.type === "startSession") {
       const requester = game.users.get(command.userId);
       if (!requester?.active) throw new MeleeValidationError("Inactive or unknown user", "UNAUTHORIZED");
-      const actorDoc = await fromUuid(command.payload?.attacker?.tokenUuid || command.payload?.attacker?.actorUuid);
-      const actor = actorDoc?.actor ?? actorDoc;
-      if (!requester.isGM && !actor?.testUserPermission?.(requester, "OWNER")) {
+      if (!await userControlsMeleeParticipant(command.payload?.attacker, requester)) {
         throw new MeleeValidationError("User does not own the attacker", "UNAUTHORIZED");
       }
       return startMeleeSession(command.payload);

@@ -34,6 +34,11 @@
         {{/each}}
       </div>
     </div>
+  {{else if (eq status "cancelled")}}
+    <div class="resolved-label is-cancelled">
+      <i class="fas fa-times-circle"></i>
+      Anulowano oczekiwanie na obronę
+    </div>
   {{else}}
     <div class="resolved-label">
       <i class="fas fa-check-circle"></i>

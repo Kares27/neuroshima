@@ -585,7 +585,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         return fromCombat;
       })()
     };
-    
+
     game.neuroshima?.log("_prepareContext meleePendings sync", {
       actorName: actor.name,
       myUuids: [actor.uuid, actor.token?.uuid].filter(Boolean),
@@ -2498,25 +2498,20 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
     // Melee weapon: initiate or continue a combat encounter when there is a target, pending attacker, or active duel
     if (weapon.system.weaponType === "melee") {
-        // V2 is an opt-in, isolated route. Disabling the setting leaves the
-        // complete legacy branch below available without migrating documents.
-        if (game.neuroshima.melee?.enabled() && targets[0]?.actor) {
-            const attacker = game.neuroshima.melee.participant(this.document, { weapon });
-            const defender = game.neuroshima.melee.participant(targets[0].actor);
-            defender.tokenUuid = targets[0].document.uuid;
-            await game.neuroshima.melee.requestStart({
-                attacker,
-                defender,
-                initiativeOwnerId: attacker.actorUuid,
-                metadata: { source: "actorSheet", weaponUuid: weapon.uuid }
-            });
-            this._isRolling = false;
-            return;
-        }
-
         // ── Chat-based melee (all modes) ─────────────────────────────────────
         const combatTypeSetting = game.settings.get("neuroshima", "meleeCombatType") || "default";
         const effectiveMode = combatTypeSetting === "default" ? "opposedPips" : combatTypeSetting;
+        const { MeleeOpposedChat: MeleeRouter } = await import("../combat/combat.js");
+        const routedMelee = await MeleeRouter.routeWeaponClick(
+            this.document,
+            weapon,
+            targetUuids,
+            effectiveMode
+        );
+        if (routedMelee.handled) {
+            this._isRolling = false;
+            return;
+        }
         {
             const myUuidsCheck = [this.document.uuid];
             if (this.document.token) myUuidsCheck.push(this.document.token.uuid);
@@ -2633,6 +2628,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         }
     } catch (err) {
         game.neuroshima.log("Weapon roll interrupted or an error occurred:", err.message);
+        ui.notifications.error(`Nie udało się rozpocząć rzutu bronią: ${err.message}`);
         this._isRolling = false;
         game.neuroshima.groupEnd();
     }

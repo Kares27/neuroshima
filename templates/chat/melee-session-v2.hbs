@@ -23,6 +23,10 @@
     {{/each}}
   </div>
 
+  <p class="melee-v2-waiting {{#if requiredAction.canAct}}can-act{{/if}}">
+    <i class="fa-solid fa-hourglass-half"></i> {{requiredAction.waitingText}}
+  </p>
+
   {{#if isAwaitingAttacker}}
     {{#if canAct.attacker}}<button type="button" class="melee-v2-primary" data-melee-command="roll" data-side="attacker">Rzut atakującego 3k20</button>{{/if}}
   {{/if}}
@@ -30,18 +34,16 @@
     {{#if canAct.defender}}<button type="button" class="melee-v2-primary" data-melee-command="roll" data-side="defender">Rzut obrońcy 3k20</button>{{/if}}
   {{/if}}
 
-  {{#each session.pools as |pool side|}}
-    {{#if pool.length}}
+  {{#each poolRows as |row|}}
       <div class="melee-v2-pool">
-        <span>{{lookup ../session.participants side "name"}}</span>
-        {{#each pool as |die|}}
+        <span>{{row.name}}</span>
+        {{#each row.dice as |die|}}
           <label class="melee-v2-die {{#if die.isSuccess}}is-success{{else}}is-failure{{/if}} {{#if die.used}}is-used{{/if}}">
-            <input type="checkbox" data-die-side="{{side}}" value="{{die.id}}" {{#if die.used}}disabled{{/if}}>
+            <input type="checkbox" data-die-side="{{row.side}}" value="{{die.id}}" {{#if die.used}}disabled{{/if}}>
             <b>{{die.modified}}</b><small>/ {{die.target}}</small>
           </label>
         {{/each}}
       </div>
-    {{/if}}
   {{/each}}
 
   {{#if isDeclaration}}
@@ -81,6 +83,13 @@
 
   {{#if canAdvance}}
     {{#if canGM}}<button type="button" class="melee-v2-primary" data-melee-command="advanceSegment">Następny segment</button>{{/if}}
+  {{/if}}
+  {{#if requiredAction.canCancel}}
+    {{#unless isComplete}}
+      <button type="button" class="melee-v2-cancel" data-melee-command="endSession" data-side="{{requiredAction.controlSide}}">
+        <i class="fa-solid fa-xmark"></i> Zamknij starą sesję V2
+      </button>
+    {{/unless}}
   {{/if}}
   {{#if isComplete}}<p class="melee-v2-complete">Zwarcie zakończone.</p>{{/if}}
 </section>
