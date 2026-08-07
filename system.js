@@ -36,7 +36,7 @@ import {
     MeleeWeaponTest,
     GrenadeTest,
     TestRules,
-    runMeleeV2Tests
+    runMeleeTests
 } from "./module/tests.mjs";
 import { TriggerRegistry } from "./module/effects/trigger-registry.js";
 import { CombatHelper } from "./module/helpers/combat-helper.js";
@@ -241,8 +241,7 @@ Hooks.once('init', async function() {
         }
     });
 
-    // Install the opt-in melee V2 namespace before the main safe merge so the
-    // legacy public API remains unchanged when the flag is disabled.
+    // Install the single canonical melee namespace before the main API merge.
     registerMeleeSystem();
     registerMeleeSystemUI();
 
@@ -257,7 +256,7 @@ Hooks.once('init', async function() {
         NeuroshimaChoiceRouter,
         NeuroshimaDice,
         tests: NEUROSHIMA_TESTS,
-        runMeleeV2Tests,
+        runMeleeTests,
         NeuroshimaTestBase,
         NeuroshimaTest,
         AttributeTest,
@@ -1237,7 +1236,6 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/prosemirror/text-colour.hbs",
         "systems/neuroshima/templates/chat/melee-duel-card.hbs",
         "systems/neuroshima/templates/apps/beast-activity-sheet.hbs",
-        "systems/neuroshima/templates/chat/melee-session-v2.hbs",
         "systems/neuroshima/templates/apps/melee-v2-config.hbs"
     ];
     
@@ -2106,11 +2104,6 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
         MeleeVanillaChat.onRender(html, message);
     }
 
-    // Duel card (opposedPips / opposedSuccesses modes)
-    if (message.getFlag("neuroshima", "duelCard")) {
-        MeleeOpposedChat.onRenderDuelCard(html, message);
-    }
-
     // Patient Card — collapsible UI
     const patientCard = html.querySelector(".neuroshima.patient-card");
     if (patientCard) {
@@ -2844,7 +2837,7 @@ function initializeSocketlib() {
 
     NeuroshimaChoiceRouter.registerSocketHandlers();
     NeuroshimaRollTestRouter.registerSocketHandlers();
-    // One authoritative entry point for every V2 melee mutation.
+    // One authoritative entry point for every melee session mutation.
     registerMeleeSocket(game.neuroshima.socket);
 
     console.log("Neuroshima 1.5 | Rejestracja handlerów Socketlib");
@@ -3102,12 +3095,9 @@ function initializeSocketlib() {
     });
 
     game.neuroshima.socket.register("applyDuelPick", async (messageId, side, dieIdx) => {
-        await MeleeOpposedChat.applyDuelBatch(messageId, side, [dieIdx]);
+        await MeleeOpposedChat.commitExchangeAction(messageId, side, [dieIdx]);
     });
 
-    game.neuroshima.socket.register("applyDuelBatch", async (messageId, pool, diceIndices, action, beastQueue, options) => {
-        await MeleeOpposedChat.applyDuelBatch(messageId, pool, diceIndices, action ?? null, beastQueue ?? null, options ?? {});
-    });
 
     // Disarm a weapon — unequip the specified weapon from an actor, or auto-find the first
     // equipped melee weapon that is longer than a knife (skill !== "brawl").

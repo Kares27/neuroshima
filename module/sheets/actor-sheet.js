@@ -560,7 +560,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
           }).map(session => ({
             id: session.id,
             sessionId: session.id,
-            isV2: true,
+            isMeleeSession: true,
             attackerName: session.participants.attacker.name,
             defenderName: session.participants.defender.name,
             segment: Number(session.exchange?.currentSegment ?? 0) + 1,

@@ -286,8 +286,8 @@ function buildSegmentArgs(duel, actor, segment) {
 /**
  * DuelLifecycle — orchestruje wywołania triggerów przez cały cykl życia duela.
  *
- * Zastępuje ad-hoc inline hook calls w applyDuelBatch i resolveOpposed.
- * Może koegzystować z combat.js — applyDuelBatch wywołuje DuelLifecycle,
+ * Zastępuje ad-hoc hooki wykonywane wcześniej w kilku ścieżkach resolvera.
+ * Kanoniczna komenda wymiany wywołuje DuelLifecycle,
  * lifecycle wywołuje triggery.
  *
  * KIEDY CO ODPALA:
@@ -364,7 +364,7 @@ export class DuelLifecycle {
   /**
    * Przygotuj rozstrzygnięty segment dla publicznego afterMeleeAction.
    *
-   * Zastępuje inline hook block w applyDuelBatch (~linie 3205-3247 combat.js).
+   * Wspólny hook rozstrzygnięcia segmentu.
    *
    * Dodatkowe BC args (zachowane z obecnego kodu):
    *   args.context  — MeleeActionContext (legacy, dla istniejących skryptów)
@@ -1432,7 +1432,7 @@ export function _makeActionDefLookup(actor) {
 /**
  * DuelDeclarationEngine — silnik fazy deklaracji właściciela inicjatywy.
  *
- * Wyodrębniony z MeleeOpposedChat.applyDuelBatch w combat.js
+ * Wyodrębniony z MeleeOpposedChat.commitExchangeAction w combat.js
  * (gałąź state.waitingFor === "initiativeOwner").
  *
  * Obsługuje:
@@ -1442,7 +1442,7 @@ export function _makeActionDefLookup(actor) {
  *   • zapis state.declaredAction, committedOwnerIndices, committedTrickId, …
  *   • trigger DuelLifecycle.segmentStart
  *
- * combat.js: applyDuelBatch wywołuje DuelDeclarationEngine.processOwnerCommit()
+ * Kanoniczna komenda wymiany wywołuje DuelDeclarationEngine.processOwnerCommit().
  * i obsługuje tylko wyrenderowanie karty przez onRender callback.
  */
 export class DuelDeclarationEngine {
@@ -1662,7 +1662,7 @@ export class MeleeActionContext {
 /**
  * DuelSegmentEngine — silnik rozstrzygnięcia segmentu (faza respondentem).
  *
- * Wyodrębniony z MeleeOpposedChat.applyDuelBatch w combat.js
+ * Wyodrębniony z MeleeOpposedChat.commitExchangeAction w combat.js
  * (gałąź state.waitingFor === "responder", ~linie 2982–3403).
  *
  * Obsługuje:
@@ -1675,7 +1675,7 @@ export class MeleeActionContext {
  *   • ustalenie wyniku końcowego i zapis flagi opposedResult
  *   • trigger endDuel przez DuelLifecycle.end
  *
- * combat.js: applyDuelBatch wywołuje DuelSegmentEngine.processResponder()
+ * Kanoniczna komenda wymiany wywołuje DuelSegmentEngine.processResponder().
  * i obsługuje tylko wyrenderowanie karty i czyszczenie warunków manewrów.
  */
 export class DuelSegmentEngine {
@@ -2104,7 +2104,7 @@ export class DuelSegmentEngine {
       const defDoc = fromUuidSync(state.defenderTokenUuid || state.defenderUuid);
       await onClearManeuvers(atkDoc?.actor ?? atkDoc);
       await onClearManeuvers(defDoc?.actor ?? defDoc);
-      game.neuroshima?.log("[melee-opposed-chat.applyDuelBatch] maneuver conditions cleared after done", {
+      game.neuroshima?.log("[melee] maneuver conditions cleared after exchange", {
         attacker: state.attackerTokenUuid || state.attackerUuid,
         defender: state.defenderTokenUuid || state.defenderUuid
       });

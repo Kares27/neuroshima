@@ -1,13 +1,13 @@
 import {
-  MELEE_SETTING,
   MeleeActionCatalog,
   MeleeMigration,
   normalizeMeleeActivity,
-  isMeleeV2Enabled,
+  isMeleeEnabled,
+  isMeleeSessionMarker,
   buildMeleeRequiredAction,
   meleePoolDice,
   meleeParticipantFromActor,
-  meleeSessionLegacyView
+  meleeSessionDuelState
 } from "../combat/melee-system.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
@@ -22,7 +22,7 @@ export class MeleeActivityEditor extends HandlebarsApplicationMixin(foundry.appl
 
   static DEFAULT_OPTIONS = {
     tag: "form",
-    classes: ["neuroshima", "melee-v2-editor"],
+    classes: ["neuroshima", "melee-activity-editor"],
     window: { resizable: true },
     position: { width: 620, height: 720 },
     form: { handler: MeleeActivityEditor._submit, submitOnChange: false, closeOnSubmit: false },
@@ -37,7 +37,7 @@ export class MeleeActivityEditor extends HandlebarsApplicationMixin(foundry.appl
 
   static PARTS = { form: { template: "systems/neuroshima/templates/apps/melee-v2-config.hbs" } };
 
-  get title() { return `Melee V2: ${this.document.name}`; }
+  get title() { return `Akcje melee: ${this.document.name}`; }
 
   get activities() {
     if (["beast-action", "beast-segment"].includes(this.document.type)) {
@@ -277,7 +277,7 @@ export class MeleeActivityEditor extends HandlebarsApplicationMixin(foundry.appl
       await this.document.setFlag("neuroshima", "meleeDamageModifiers",
         typedModifiers.length ? typedModifiers : parse(data.modifiersJson, "Modyfikatory"));
     }
-    ui.notifications.info("Zapisano definicję Melee V2.");
+    ui.notifications.info("Zapisano definicję akcji melee.");
     this.render({ force: true });
   }
 
@@ -358,7 +358,7 @@ export class MeleeSessionPresenter {
   }
 
   static async beginAttack(actor, weapon, targetUuid, mode = "opposedPips") {
-    if (!isMeleeV2Enabled()) throw new Error("Melee V2 is disabled.");
+    if (!isMeleeEnabled()) throw new Error("Silnik walki wręcz jest niedostępny.");
     const targetDocument = await fromUuid(targetUuid);
     const defender = targetDocument?.actor ?? targetDocument;
     if (!actor || !defender) throw new Error("Nie udało się odnaleźć uczestników zwarcia.");
@@ -392,7 +392,7 @@ export class MeleeSessionPresenter {
           content,
           rollMode: rawResult.rollMode ?? game.settings.get("core", "rollMode"),
           flags: { neuroshima: { melee: {
-            engine: "v2", sessionId, cardType: "pending", renderedRevision: -1
+            sessionId, cardType: "pending", renderedRevision: -1
           } } }
         });
         const variant = rawResult.isGradCios === true ? "gradCiosow" : "standard";
@@ -426,7 +426,7 @@ export class MeleeSessionPresenter {
           });
           if (attackerTest?.message) {
             attackerTest.context.opposedLink = {
-              type: "meleeSessionV2", sessionId, role: "attacker", messageId: message.id
+              type: "meleeSession", sessionId, role: "attacker", messageId: message.id
             };
             await attackerTest.updateMessage(attackerTest.message);
           }
@@ -487,14 +487,14 @@ export class MeleeSessionPresenter {
   }
 
   static async renderMessage(message, root) {
-    if (!isMeleeV2Enabled()) return;
+    if (!isMeleeEnabled()) return;
     const marker = message.getFlag("neuroshima", "melee");
-    if (marker?.engine !== "v2" || !marker.sessionId) return;
+    if (!isMeleeSessionMarker(marker)) return;
     const session = await game.neuroshima.melee.get(marker.sessionId, { messageId: message.id });
     if (!session) return;
     const element = root instanceof HTMLElement ? root : root?.[0];
     if (!element) return;
-    this.activate(element, session, message);
+    await this.activate(element, session, message);
   }
 
   static async renderSession(session) {
@@ -543,15 +543,15 @@ export class MeleeSessionPresenter {
       const attacker = await this._actor(session.participants.attacker);
       const defender = await this._actor(session.participants.defender);
       template = "systems/neuroshima/templates/chat/melee-duel-card.hbs";
-      const legacyView = meleeSessionLegacyView(session);
-      context = await MeleeOpposedChat._buildDuelContext(legacyView, attacker, defender);
+      const duelState = meleeSessionDuelState(session);
+      context = await MeleeOpposedChat._buildDuelContext(duelState, attacker, defender);
       const hasAppliedOutcome = session.result?.applied || session.hailResult?.applied ||
         session.pendingOutcomes.some(outcome => outcome.status === "applied");
       if (hasAppliedOutcome) {
         context.canUndo = false;
         context.canRedo = false;
       }
-      const ownerSide = legacyView.initiativeOwnerSide;
+      const ownerSide = duelState.initiativeOwnerSide;
       const actingSide = session.phase === "response"
         ? (ownerSide === "attacker" ? "defender" : "attacker")
         : ownerSide;
@@ -616,7 +616,7 @@ export class MeleeSessionPresenter {
           String(activity.id).endsWith(`::${session.metadata.beastActivityId}`)
         );
       }
-      cardType = legacyView.status === "done" ? "result" : "duel";
+      cardType = duelState.status === "done" ? "result" : "duel";
     } else return null;
     const content = await foundry.applications.handlebars.renderTemplate(template, context);
     if (cardType !== "pending" &&
@@ -640,7 +640,7 @@ export class MeleeSessionPresenter {
           speaker: { alias: "⚔" },
           content,
           flags: { neuroshima: { melee: {
-            engine: "v2", sessionId: session.id, cardType, renderedRevision: session.revision
+            sessionId: session.id, cardType, renderedRevision: session.revision
           } } }
         });
         await game.neuroshima.melee.bindResultMessage(session.id, resultMessage.id, session.revision);
@@ -653,7 +653,6 @@ export class MeleeSessionPresenter {
     await message.update({
       content,
       "flags.neuroshima.melee": {
-        engine: "v2",
         sessionId: session.id,
         cardType,
         renderedRevision: session.revision
@@ -677,7 +676,7 @@ export class MeleeSessionPresenter {
     }
     const actorDoc = await fromUuid(participant.tokenUuid || participant.actorUuid);
     const actor = actorDoc?.actor ?? actorDoc;
-    if (!actor) throw new Error("Nie udało się odnaleźć Aktora dla rzutu melee V2.");
+    if (!actor) throw new Error("Nie udało się odnaleźć Aktora dla rzutu melee.");
 
     let weapon = weaponId ? actor.items?.get?.(weaponId) : null;
     weapon ??= participant.weaponUuid ? await fromUuid(participant.weaponUuid) : null;
@@ -738,14 +737,14 @@ export class MeleeSessionPresenter {
           });
           if (test?.message) {
             test.context.opposedLink = {
-              type: "meleeSessionV2", sessionId: session.id, role: side, messageId: session.messageId
+              type: "meleeSession", sessionId: session.id, role: side, messageId: session.messageId
             };
             await test.updateMessage(test.message);
           }
           return submitted;
         } catch (error) {
           ui.notifications.error(`Nie udało się zapisać rzutu melee: ${error.message}`);
-          console.error("Neuroshima | Melee V2 submitRoll failed", error);
+          console.error("Neuroshima | Melee submitRoll failed", error);
           throw error;
         }
       }
@@ -755,6 +754,16 @@ export class MeleeSessionPresenter {
   }
 
   static async activate(root, session, message = null) {
+    // Foundry can expose more than one chat-render hook for the same DOM node.
+    // Binding twice makes a die toggle on and immediately off during one click.
+    // Mark the actual rendered card before the first await so concurrent hooks
+    // cannot attach a second set of listeners to the same controls.
+    const interactionSurface = root.querySelector(
+      ".melee-duel-card, .melee-opposed-card, .melee-hail-card"
+    ) ?? root;
+    if (interactionSurface.dataset.neuroshimaMeleeBound === "true") return;
+    interactionSurface.dataset.neuroshimaMeleeBound = "true";
+
     if (session.phase === "awaitingDefenderRoll" && !game.user.isGM) {
       const defender = await this._actor(session.participants.defender);
       if (defender?.isOwner !== true) {
@@ -781,18 +790,18 @@ export class MeleeSessionPresenter {
       }
     }));
     if (session.exchange && message) {
-      root.querySelectorAll("[data-v2-outcome-id]").forEach(button => button.addEventListener("click", async event => {
+      root.querySelectorAll("[data-melee-outcome-id]").forEach(button => button.addEventListener("click", async event => {
         event.preventDefault();
         event.stopPropagation();
         const latest = await game.neuroshima.melee.get(session.id, { messageId: message.id });
         await game.neuroshima.melee.dispatch({
           type: "approveOutcome", side: null,
-          payload: { outcomeId: button.dataset.v2OutcomeId },
+          payload: { outcomeId: button.dataset.meleeOutcomeId },
           sessionId: latest.id, messageId: message.id,
           expectedRevision: latest.revision, commandId: foundry.utils.randomID()
         });
       }));
-      message._neuroshimaMeleeV2Session = { ...session, legacyView: meleeSessionLegacyView(session) };
+      message._neuroshimaMeleeSession = { ...session, duelState: meleeSessionDuelState(session) };
       const { MeleeOpposedChat } = await import("../combat/combat.js");
       MeleeOpposedChat.onRenderDuelCard(root, message);
       return;
@@ -807,7 +816,7 @@ export class MeleeSessionPresenter {
           await this.openRoll(session, side);
         } catch (error) {
           ui.notifications.error(error.message);
-          console.error("Neuroshima | Melee V2 roll dialog failed", error);
+          console.error("Neuroshima | Melee roll dialog failed", error);
         }
         return;
       }
@@ -837,15 +846,15 @@ export class MeleeSessionPresenter {
 }
 
 function injectEditorButton(app, element) {
-  if (!isMeleeV2Enabled() || !app.document?.isOwner) return;
+  if (!isMeleeEnabled() || !app.document?.isOwner) return;
   const root = element instanceof HTMLElement ? element : element?.[0];
   const header = root?.querySelector(".window-header");
-  if (!header || header.querySelector("[data-open-melee-v2]")) return;
+  if (!header || header.querySelector("[data-open-melee]")) return;
   const button = document.createElement("button");
   button.type = "button";
-  button.dataset.openMeleeV2 = "";
+  button.dataset.openMelee = "";
   button.className = "header-control icon fa-solid fa-swords";
-  button.dataset.tooltip = "Konfiguracja Melee V2";
+  button.dataset.tooltip = "Konfiguracja akcji melee";
   button.addEventListener("click", () => new MeleeActivityEditor(app.document).render(true));
   header.querySelector(".close")?.before(button);
 }
@@ -855,8 +864,8 @@ function openMeleeMessage(session) {
   setTimeout(() => {
     const element = document.querySelector(`[data-message-id="${session.messageId}"]`);
     element?.scrollIntoView?.({ behavior: "smooth", block: "center" });
-    element?.classList.add("melee-v2-highlight");
-    setTimeout(() => element?.classList.remove("melee-v2-highlight"), 1200);
+    element?.classList.add("melee-session-highlight");
+    setTimeout(() => element?.classList.remove("melee-session-highlight"), 1200);
   }, 100);
 }
 
@@ -884,9 +893,9 @@ function refreshMeleeProjections(session = null) {
 }
 
 async function projectTracker(html) {
-  if (!isMeleeV2Enabled()) return;
+  if (!isMeleeEnabled()) return;
   const root = html instanceof HTMLElement ? html : html?.[0];
-  root?.querySelectorAll(".melee-v2-tracker-badge").forEach(element => element.remove());
+  root?.querySelectorAll(".melee-session-tracker-badge").forEach(element => element.remove());
   for (const session of game.neuroshima.melee.list()) {
     if (session.status !== "active") continue;
     const requiredAction = await buildMeleeRequiredAction(session, game.user);
@@ -897,7 +906,7 @@ async function projectTracker(html) {
       const row = root?.querySelector(`[data-combatant-id="${combatant?.id}"]`);
       if (!row) continue;
       const badge = document.createElement("span");
-      badge.className = "melee-v2-tracker-badge";
+      badge.className = "melee-session-tracker-badge";
       badge.dataset.tooltip = `${session.participants.attacker.name} → ${session.participants.defender.name}\nSegment ${session.exchange.currentSegment + 1}/3\n${requiredAction.waitingText}`;
       badge.dataset.sessionId = session.id;
       const icon = session.initiative.ownerId === participant.actorUuid
@@ -914,7 +923,7 @@ async function projectTracker(html) {
         badge.dataset.tooltip += "\nKliknij nazwę, aby otworzyć kartę oczekującej akcji.";
         const actionButton = document.createElement("button");
         actionButton.type = "button";
-        actionButton.className = "melee-v2-tracker-action";
+        actionButton.className = "melee-session-tracker-action";
         actionButton.dataset.tooltip = requiredAction.label;
         actionButton.innerHTML = requiredAction.kind === "roll"
           ? '<i class="fa-solid fa-dice-d20"></i>'
@@ -938,8 +947,11 @@ async function projectTracker(html) {
 }
 
 export function registerMeleeSystemUI() {
-  Hooks.on("renderChatMessageHTML", (message, html) => MeleeSessionPresenter.renderMessage(message, html));
-  Hooks.on("renderChatMessage", (message, html) => MeleeSessionPresenter.renderMessage(message, html));
+  Hooks.on("renderChatMessageHTML", (message, html) => {
+    MeleeSessionPresenter.renderMessage(message, html).catch(error => {
+      console.error("Neuroshima | Failed to activate melee chat controls", error);
+    });
+  });
   Hooks.on("renderNeuroshimaItemSheet", injectEditorButton);
   Hooks.on("renderNeuroshimaEffectSheet", injectEditorButton);
   Hooks.on("renderCombatTrackerHTML", (_app, html) => projectTracker(html));
@@ -963,10 +975,4 @@ export function registerMeleeSystemUI() {
     return openMeleeMessage(session);
   };
   game.neuroshima.melee.dryRun = options => MeleeMigration.dryRun(options);
-}
-
-export function registerMeleeV2SettingMenuHint() {
-  // Kept as a separate hook so worlds can expose the feature flag without
-  // automatically opening or migrating any document.
-  return MELEE_SETTING;
 }

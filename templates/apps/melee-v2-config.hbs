@@ -1,10 +1,10 @@
-<div class="melee-v2-editor__body">
-  <nav class="melee-v2-editor__intro">
+<div class="melee-activity-editor__body">
+  <nav class="melee-activity-editor__intro">
     <strong>Deklaratywna akcja melee</strong>
     <p>Skonfiguruj dostępność, koszt i wynik bez pisania skryptu. Pola zaawansowane służą zgodności ze starszymi danymi.</p>
   </nav>
 
-  <section class="melee-v2-editor__list">
+  <section class="melee-activity-editor__list">
     <header><strong>Akcje dokumentu</strong><button type="button" data-action="newActivity"><i class="fa-solid fa-plus"></i> Nowa</button></header>
     {{#each activityList as |entry|}}
     <div data-activity-id="{{entry.id}}" class="{{#if (eq entry.id ../activity.id)}}is-active{{/if}}">
@@ -34,7 +34,7 @@
   </fieldset>
 
   <fieldset><legend>Aktywacja i koszt</legend>
-    <div class="melee-v2-editor__grid">
+    <div class="melee-activity-editor__grid">
       <label>Rola <select name="role"><option value="either" {{#if (eq activity.activation.role "either")}}selected{{/if}}>Dowolna</option><option value="owner" {{#if (eq activity.activation.role "owner")}}selected{{/if}}>Właściciel inicjatywy</option><option value="responder" {{#if (eq activity.activation.role "responder")}}selected{{/if}}>Odpowiadający</option></select></label>
       <label>Moment <select name="timing"><option value="declaration" {{#if (eq activity.activation.timing "declaration")}}selected{{/if}}>Deklaracja</option><option value="response" {{#if (eq activity.activation.timing "response")}}selected{{/if}}>Odpowiedź</option><option value="modifyDeclaration" {{#if (eq activity.activation.timing "modifyDeclaration")}}selected{{/if}}>Modyfikacja deklaracji</option><option value="followUp" {{#if (eq activity.activation.timing "followUp")}}selected{{/if}}>Dalsza akcja</option><option value="supplement" {{#if (eq activity.activation.timing "supplement")}}selected{{/if}}>Dodatek</option><option value="either" {{#if (eq activity.activation.timing "either")}}selected{{/if}}>Oba etapy</option></select></label>
       <label>Min. kości <input type="number" name="minDice" min="0" max="3" value="{{activity.activation.minDice}}"></label>
@@ -63,7 +63,7 @@
   </fieldset>
 
   <fieldset><legend>Modyfikacja Activity</legend>
-    <div class="melee-v2-editor__grid">
+    <div class="melee-activity-editor__grid">
       <label>Tagi akcji <input name="activityModifierTags" value="{{activityModifier.activityTagsText}}" placeholder="melee.attack"></label>
       <label>Tagi broni <input name="activityModifierWeaponTags" value="{{activityModifier.weaponTagsText}}" placeholder="unarmed"></label>
       <label>Przesunięcie obrażeń <input type="number" name="activityModifierValue" value="{{activityModifier.value}}"></label>
@@ -76,7 +76,7 @@
   <fieldset><legend>Warunki</legend>
     <p class="hint">Puste wiersze są pomijane. Segmenty mają numery 0, 1 i 2 w danych silnika.</p>
     {{#each conditionRows as |condition|}}
-    <div class="melee-v2-editor__grid">
+    <div class="melee-activity-editor__grid">
       <label>Warunek <select name="condition{{condition.index}}Key">
         {{#each ../conditionChoices as |choice|}}<option value="{{choice.value}}" {{#if (eq choice.value condition.key)}}selected{{/if}}>{{choice.label}}</option>{{/each}}
       </select></label>
@@ -86,8 +86,8 @@
   </fieldset>
 
   <fieldset><legend>Wynik akcji</legend>
-    <label class="melee-v2-check"><input type="checkbox" name="useQuickOutcome" {{checked quick.enabled}}> Włącz deklaratywny wynik</label>
-    <div class="melee-v2-editor__grid">
+    <label class="melee-activity-check"><input type="checkbox" name="useQuickOutcome" {{checked quick.enabled}}> Włącz deklaratywny wynik</label>
+    <div class="melee-activity-editor__grid">
       <label>Kiedy <select name="outcomeWhen"><option value="hit" {{#if (eq quick.when "hit")}}selected{{/if}}>Trafienie</option><option value="miss" {{#if (eq quick.when "miss")}}selected{{/if}}>Pudło</option><option value="block" {{#if (eq quick.when "block")}}selected{{/if}}>Blok</option><option value="takeover" {{#if (eq quick.when "takeover")}}selected{{/if}}>Przejęcie inicjatywy</option><option value="testSuccess" {{#if (eq quick.when "testSuccess")}}selected{{/if}}>Udany test</option><option value="testFailure" {{#if (eq quick.when "testFailure")}}selected{{/if}}>Nieudany test</option></select></label>
       <label>Operacja <select name="operationType"><option value="damage" {{#if (eq quick.operationType "damage")}}selected{{/if}}>Obrażenia</option><option value="applyActiveEffect" {{#if (eq quick.operationType "applyActiveEffect")}}selected{{/if}}>Nałóż AE</option><option value="removeActiveEffect" {{#if (eq quick.operationType "removeActiveEffect")}}selected{{/if}}>Usuń AE</option><option value="modifyInitiative" {{#if (eq quick.operationType "modifyInitiative")}}selected{{/if}}>Przekaż inicjatywę</option><option value="consumeSource" {{#if (eq quick.operationType "consumeSource")}}selected{{/if}}>Zużyj źródło</option></select></label>
       <label>Cel <select name="operationTarget"><option value="opponent" {{#if (eq quick.target "opponent")}}selected{{/if}}>Przeciwnik</option><option value="self" {{#if (eq quick.target "self")}}selected{{/if}}>Wykonujący</option></select></label>
@@ -95,14 +95,14 @@
       <label>Stosowanie AE <select name="effectStackMode"><option value="ignore">Ignoruj duplikat</option><option value="replace">Zastąp</option><option value="refresh">Odśwież</option><option value="stack">Kumuluj</option></select></label>
     </div>
     <label>Profil obrażeń</label>
-    <div class="melee-v2-editor__grid"><label>Tier 1 <input name="damage1" value="{{quick.damage1}}"></label><label>Tier 2 <input name="damage2" value="{{quick.damage2}}"></label><label>Tier 3 <input name="damage3" value="{{quick.damage3}}"></label></div>
-    <label class="melee-v2-check"><input type="checkbox" name="testEnabled" {{checked activity.test}}> Wymaga testu</label>
-    <div class="melee-v2-editor__grid"><label>Typ <select name="testType"><option value="attribute">Atrybut</option><option value="skill">Umiejętność</option></select></label><label>Klucz <input name="testKey" value="{{quick.testKey}}"></label><label>Trudność <input name="testDifficulty" value="{{quick.testDifficulty}}"></label></div>
+    <div class="melee-activity-editor__grid"><label>Tier 1 <input name="damage1" value="{{quick.damage1}}"></label><label>Tier 2 <input name="damage2" value="{{quick.damage2}}"></label><label>Tier 3 <input name="damage3" value="{{quick.damage3}}"></label></div>
+    <label class="melee-activity-check"><input type="checkbox" name="testEnabled" {{checked activity.test}}> Wymaga testu</label>
+    <div class="melee-activity-editor__grid"><label>Typ <select name="testType"><option value="attribute">Atrybut</option><option value="skill">Umiejętność</option></select></label><label>Klucz <input name="testKey" value="{{quick.testKey}}"></label><label>Trudność <input name="testDifficulty" value="{{quick.testDifficulty}}"></label></div>
   </fieldset>
 
   <fieldset><legend>Parametr sztuczki</legend>
     <p class="hint">Opcjonalna wartość, do której mogą odwoływać się operacje akcji.</p>
-    <div class="melee-v2-editor__grid">
+    <div class="melee-activity-editor__grid">
       <label>Klucz <input name="parameterKey" value="{{parameter.key}}"></label>
       <label>Etykieta <input name="parameterLabel" value="{{parameter.label}}"></label>
       <label>Typ <select name="parameterType"><option value="number" {{#if (eq parameter.type "number")}}selected{{/if}}>Liczba</option><option value="boolean" {{#if (eq parameter.type "boolean")}}selected{{/if}}>Tak/nie</option><option value="text" {{#if (eq parameter.type "text")}}selected{{/if}}>Tekst</option><option value="select" {{#if (eq parameter.type "select")}}selected{{/if}}>Lista wyboru</option></select></label>
@@ -125,7 +125,7 @@
     {{/if}}
     <label>Tagi modyfikowanych akcji <input name="modifierTags" value="{{modifierTagsText}}"></label>
     {{#each modifierTiers as |modifier|}}
-    <div class="melee-v2-editor__grid">
+    <div class="melee-activity-editor__grid">
       <label>Tier {{modifier.tier}} <select name="modifierTier{{modifier.tier}}Mode"><option value="">Bez zmiany</option><option value="upgrade" {{#if (eq modifier.mode "upgrade")}}selected{{/if}}>Podnieś</option><option value="downgrade" {{#if (eq modifier.mode "downgrade")}}selected{{/if}}>Obniż</option><option value="replace" {{#if (eq modifier.mode "replace")}}selected{{/if}}>Zastąp</option><option value="addSerious" {{#if (eq modifier.mode "addSerious")}}selected{{/if}}>Dodaj poważne</option></select></label>
       <label>Wartość <input name="modifierTier{{modifier.tier}}Value" value="{{modifier.value}}"></label>
       <label>Priorytet <input type="number" name="modifierTier{{modifier.tier}}Priority" value="{{modifier.priority}}"></label>
@@ -136,7 +136,7 @@
   <input type="hidden" name="expiryRulesJson" value="[]"><input type="hidden" name="restrictionsJson" value="[]">
   {{/if}}
 
-  <details class="melee-v2-editor__advanced"><summary>Zaawansowane — zgodność ze starszymi danymi</summary>
+  <details class="melee-activity-editor__advanced"><summary>Zaawansowane — zgodność ze starszymi danymi</summary>
     <fieldset><legend>Dane techniczne</legend>
       <label>Activity ID <input value="{{activity.id}}" readonly></label>
       <label>Warunki JSON <textarea name="conditionsJson" rows="5">{{conditionsJson}}</textarea></label>
@@ -146,5 +146,5 @@
     </fieldset>
   </details>
 
-  <footer><button type="submit" class="melee-v2-primary"><i class="fa-solid fa-floppy-disk"></i> Zapisz</button></footer>
+  <footer><button type="submit" class="melee-activity-primary"><i class="fa-solid fa-floppy-disk"></i> Zapisz</button></footer>
 </div>

@@ -21,6 +21,7 @@ import { NeuroshimaTestBase, MeleeWeaponTest, MeleeOpposedResolver, TestRules } 
 import { MeleeActionRegistry } from "./melee-action-registry.js";
 import { MeleeActionRunner }   from "./melee-action-runner.js";
 import { DuelContext, DuelSegmentContext, DuelLifecycle, MeleeAction, DuelActionPipeline, DuelDamageEngine, DuelDeclarationEngine, DuelSegmentEngine, DuelBeastActionEngine } from "./combat-api.js";
+import { isMeleeSessionLink, isMeleeSessionMarker } from "./melee-system.js";
 
 /**
  * Custom Token Ruler for Neuroshima 1.5.
@@ -1440,7 +1441,7 @@ export class MeleeOpposedChat {
   }
 
   /**
-   * Canonical V1 weapon-click router shared by character and creature sheets.
+   * Canonical weapon-click router shared by character and creature sheets.
    * It resumes a pending defence first and starts a fresh attack only when the
    * actor is not currently expected to answer another opposed test.
    */
@@ -1455,10 +1456,10 @@ export class MeleeOpposedChat {
           targets: [], lastRoll: actor.system.lastWeaponRoll ?? {}, isPoolRoll: true
         });
         await dialog.render(true);
-        return { handled: true, action: "unopposedRoll", engine: "v2" };
+        return { handled: true, action: "unopposedRoll" };
       }
       await game.neuroshima.melee.beginAttack(actor, weapon, targetUuid, mode);
-      return { handled: true, action: "attack", engine: "v2" };
+      return { handled: true, action: "attack" };
     }
     const embeddedWeapon = weapon?.id ? actor.items?.get?.(weapon.id) : null;
     const weaponId = embeddedWeapon?.type === "weapon" ? embeddedWeapon.id : null;
@@ -1869,9 +1870,9 @@ export class MeleeOpposedChat {
   static async syncFromTest(test, { reason = "test-update" } = {}) {
     const link = test?.context?.opposedLink;
     if (!link) return { ok: true, skipped: true };
-    if (link.type === "meleeSessionV2") {
+    if (isMeleeSessionLink(link)) {
       await game.neuroshima.melee.syncTest(test);
-      return { ok: true, engine: "v2", reason };
+      return { ok: true, reason };
     }
     if (!game.user.isGM && game.neuroshima?.socket) {
       return game.neuroshima.socket.executeAsGM("syncOpposedTestState", {
@@ -2954,10 +2955,12 @@ export class MeleeOpposedChat {
   static onRenderDuelCard(root, message) {
     root = root instanceof HTMLElement ? root : root[0];
     if (!root) return;
+    if (root.dataset.neuroshimaMeleeActionsBound === "true") return;
 
-    const state = message._neuroshimaMeleeV2Session?.legacyView
+    const state = message._neuroshimaMeleeSession?.duelState
       ?? message.getFlag("neuroshima", "duelCard");
     if (!state || state.status !== "picking") return;
+    root.dataset.neuroshimaMeleeActionsBound = "true";
 
     root.querySelectorAll("[data-melee-owner]").forEach(el => {
       const ownerUuid = el.dataset.meleeOwner;
@@ -2977,7 +2980,7 @@ export class MeleeOpposedChat {
       const hasSuccess   = selectedChips.some(chip => chip.classList.contains("is-success"));
       const selectedSuccessPoints = selectedChips.filter(chip => chip.classList.contains("is-success")).length;
 
-      root.querySelectorAll(".mdc-action-choice").forEach(btn => {
+      root.querySelectorAll(".mdc-action-choice:not([data-melee-outcome-id])").forEach(btn => {
         const noDice      = btn.dataset.noDice === "true";
         const exactDice   = btn.dataset.exactDice  !== undefined ? parseInt(btn.dataset.exactDice,  10) : null;
         const minDice     = btn.dataset.minDice     !== undefined ? parseInt(btn.dataset.minDice,    10) : null;
@@ -3031,7 +3034,7 @@ export class MeleeOpposedChat {
       });
     });
 
-    root.querySelectorAll(".mdc-action-choice").forEach(btn => {
+    root.querySelectorAll(".mdc-action-choice:not([data-melee-outcome-id])").forEach(btn => {
       btn.addEventListener("click", async e => {
         e.preventDefault();
         e.stopPropagation();
@@ -3081,13 +3084,13 @@ export class MeleeOpposedChat {
 
           // getMeleeActions dialog modifiers — zaznaczone checkboxy uruchamiają swój skrypt
           // i dodają wypchnięte akcje jako trick-queue entries (aplikowane bezwarunkowo).
-          const dmsSection = root.querySelector(".mdc-legacy-dialog-modifiers-section");
+          const dmsSection = root.querySelector(".mdc-script-dialog-modifiers-section");
           if (dmsSection) {
             const checkedMods = [...dmsSection.querySelectorAll(".mdc-dialog-mod-check:checked")];
             if (checkedMods.length > 0) {
               try {
                 const { NeuroshimaScript } = await import("../apps/neuroshima-script-engine.js");
-                const duelState = message._neuroshimaMeleeV2Session?.legacyView
+                const duelState = message._neuroshimaMeleeSession?.duelState
                   ?? message.getFlag("neuroshima", "duelCard");
                 const ownerUuid = root.querySelector("[data-melee-owner]")?.dataset.meleeOwner;
                 const ownerDocMod = fromUuidSync(ownerUuid);
@@ -3149,10 +3152,16 @@ export class MeleeOpposedChat {
           }
         }
 
-        if (game.user.isGM) {
-          await MeleeOpposedChat.applyDuelBatch(message.id, pool, indices, actionArg, extraQueue, { parameterValues, modifierRefs });
-        } else if (game.neuroshima?.socket) {
-          await game.neuroshima.socket.executeAsGM("applyDuelBatch", message.id, pool, indices, actionArg, extraQueue, { parameterValues, modifierRefs });
+        btn.disabled = true;
+        try {
+          await MeleeOpposedChat.commitExchangeAction(
+            message.id, pool, indices, actionArg, extraQueue,
+            { parameterValues, modifierRefs }
+          );
+        } catch (error) {
+          ui.notifications.error(error.message);
+          console.error("Neuroshima | Failed to commit melee action", error);
+          updateActionButtons();
         }
       });
     });
@@ -3197,7 +3206,7 @@ export class MeleeOpposedChat {
         pickBtn.addEventListener("click", e => {
           e.preventDefault();
           e.stopPropagation();
-          const id   = pickBtn.dataset.actionId;
+          const entry = pickBtn.closest(".mdc-beast-action-entry");
           const cost = parseInt(pickBtn.dataset.cost, 10) || 1;
           const budget  = root.querySelectorAll("button.die-chip-mvc.mvc-die-selected.is-success").length;
           let spent = 0;
@@ -3205,8 +3214,8 @@ export class MeleeOpposedChat {
             spent += (parseInt(el.textContent, 10) || 0) * (parseInt(el.closest(".mdc-beast-action-entry")?.dataset.cost, 10) || 1);
           });
           if (spent + cost > budget) return;
-          const qtyEl   = beastQueueSection.querySelector(`.mdc-beast-qty-val[data-action-id="${id}"]`);
-          const badgeEl = beastQueueSection.querySelector(`.mdc-beast-qty-badge[data-action-id="${id}"]`);
+          const qtyEl   = entry?.querySelector(".mdc-beast-qty-val");
+          const badgeEl = entry?.querySelector(".mdc-beast-qty-badge");
           if (!qtyEl) return;
           qtyEl.textContent = (parseInt(qtyEl.textContent, 10) || 0) + 1;
           if (badgeEl) badgeEl.style.display = "";
@@ -3218,9 +3227,9 @@ export class MeleeOpposedChat {
         undoBtn.addEventListener("click", e => {
           e.preventDefault();
           e.stopPropagation();
-          const id      = undoBtn.dataset.actionId;
-          const qtyEl   = beastQueueSection.querySelector(`.mdc-beast-qty-val[data-action-id="${id}"]`);
-          const badgeEl = beastQueueSection.querySelector(`.mdc-beast-qty-badge[data-action-id="${id}"]`);
+          const entry   = undoBtn.closest(".mdc-beast-action-entry");
+          const qtyEl   = entry?.querySelector(".mdc-beast-qty-val");
+          const badgeEl = entry?.querySelector(".mdc-beast-qty-badge");
           if (!qtyEl) return;
           const cur = parseInt(qtyEl.textContent, 10) || 0;
           if (cur > 0) qtyEl.textContent = cur - 1;
@@ -3241,16 +3250,20 @@ export class MeleeOpposedChat {
           const beastQueue = [];
           beastQueueSection.querySelectorAll(".mdc-beast-qty-val").forEach(el => {
             const qty = parseInt(el.textContent, 10) || 0;
-            const actionId = el.dataset.actionId;
-            if (qty > 0 && actionId) {
-              for (let i = 0; i < qty; i++) beastQueue.push(actionId);
+            const entry = el.closest(".mdc-beast-action-entry");
+            const activityId = entry?.dataset.activityId;
+            if (qty > 0 && activityId) {
+              const activityRef = {
+                activityId,
+                sourceItemUuid: entry.dataset.sourceItemUuid || null,
+                sourceEffectUuid: entry.dataset.sourceEffectUuid || null
+              };
+              for (let i = 0; i < qty; i++) beastQueue.push(activityRef);
             }
           });
-          if (game.user.isGM) {
-            await MeleeOpposedChat.applyDuelBatch(message.id, pool, indices, "attack", beastQueue.length ? beastQueue : null);
-          } else if (game.neuroshima?.socket) {
-            await game.neuroshima.socket.executeAsGM("applyDuelBatch", message.id, pool, indices, "attack", beastQueue.length ? beastQueue : null);
-          }
+          await MeleeOpposedChat.commitExchangeAction(
+            message.id, pool, indices, "attack", beastQueue.length ? beastQueue : null
+          );
         });
       }
     }
@@ -3367,11 +3380,9 @@ export class MeleeOpposedChat {
             for (let i = 0; i < qty; i++) trickItems.push({ activityId: id, legacyDamage: dmg });
           }
         });
-        if (game.user.isGM) {
-          await MeleeOpposedChat.applyDuelBatch(message.id, pool, indices, "attack", trickItems.length ? trickItems : null);
-        } else if (game.neuroshima?.socket) {
-          await game.neuroshima.socket.executeAsGM("applyDuelBatch", message.id, pool, indices, "attack", trickItems.length ? trickItems : null);
-        }
+        await MeleeOpposedChat.commitExchangeAction(
+          message.id, pool, indices, "attack", trickItems.length ? trickItems : null
+        );
       });
     }
 
@@ -3407,137 +3418,67 @@ export class MeleeOpposedChat {
     }
   }
 
-  static async applyDuelBatch(messageId, pool, diceIndices, action = null, beastQueue = null, options = {}) {
-    const v2Message = game.messages.get(messageId);
-    const marker = v2Message?.getFlag("neuroshima", "melee");
-    if (marker?.engine === "v2" && marker.sessionId) {
-      const session = await game.neuroshima.melee.get(marker.sessionId, { messageId });
-      if (!session) return;
-      const side = pool === "defender" ? "defender" : "attacker";
-      const selectedDieIds = [...new Set(diceIndices)]
-        .map(index => session.pools?.[side]?.dice?.[index]?.id)
-        .filter(Boolean);
-      const participant = session.participants?.[side];
-      const activity = typeof action === "object" && action
-        ? {
-            activityId: action.activityId,
-            sourceItemUuid: action.sourceEffectUuid
-              ? (action.sourceItemUuid || null)
-              : (action.sourceItemUuid || participant?.weaponUuid || null),
-            sourceEffectUuid: action.sourceEffectUuid || null
-          }
-        : {
-            activityId: action === "defend" ? "defense" : (action || (session.phase === "response" ? "defense" : "attack")),
-            sourceItemUuid: participant?.weaponUuid || null,
-            sourceEffectUuid: null
-          };
-      const queuedSupplements = (beastQueue ?? []).map(entry => {
-        if (entry && typeof entry === "object") return { activityRef: entry, parameterValues: {}, quantity: 1 };
-        const composite = String(entry || "");
-        const separator = composite.indexOf("::");
-        if (separator > 0) {
-          const actorDoc = fromUuidSync(participant?.tokenUuid || participant?.actorUuid);
-          const actor = actorDoc?.actor ?? actorDoc;
-          const item = actor?.items?.get?.(composite.slice(0, separator));
-          return {
-            activityRef: {
-              activityId: composite.slice(separator + 2),
-              sourceItemUuid: item?.uuid || null,
-              sourceEffectUuid: null
-            },
-            parameterValues: {}, quantity: 1
-          };
-        }
-        return { activityRef: { activityId: composite }, parameterValues: {}, quantity: 1 };
-      });
-      return game.neuroshima.melee.dispatch({
-        type: "commitExchangeAction",
-        side,
-        payload: {
-          activity, selectedDieIds,
-          parameterValues: foundry.utils.deepClone(options.parameterValues ?? {}),
-          modifierRefs: foundry.utils.deepClone(options.modifierRefs ?? []),
-          queuedSupplements
-        },
-        sessionId: session.id,
-        messageId,
-        expectedRevision: session.revision,
-        commandId: foundry.utils.randomID()
-      });
-    }
-    const previous = this._duelMutationQueues.get(messageId) ?? Promise.resolve();
-    const next = previous.then(
-      () => this._applyDuelBatchNow(messageId, pool, diceIndices, action, beastQueue),
-      () => this._applyDuelBatchNow(messageId, pool, diceIndices, action, beastQueue)
-    );
-    this._duelMutationQueues.set(messageId, next);
-    try { return await next; }
-    finally { if (this._duelMutationQueues.get(messageId) === next) this._duelMutationQueues.delete(messageId); }
-  }
-
-  static async _applyDuelBatchNow(messageId, pool, diceIndices, action = null, beastQueue = null) {
+  static async commitExchangeAction(messageId, pool, diceIndices, action = null, beastQueue = null, options = {}) {
     const message = game.messages.get(messageId);
-    if (!message) return;
-
-    const state = foundry.utils.deepClone(message.getFlag("neuroshima", "duelCard"));
-    if (!state || state.status !== "picking") return;
-
-    const isOwnerAttacker = state.initiativeOwnerSide === "attacker";
-    const ownerPool       = isOwnerAttacker ? "attacker" : "defender";
-    const responderPool   = isOwnerAttacker ? "defender" : "attacker";
-
-    if (state.waitingFor === "initiativeOwner") {
-      const _committed = await DuelDeclarationEngine.processOwnerCommit(state, {
-        pool, ownerPool, action, diceIndices, beastQueue, message,
-        onRender:           (msg, st) => MeleeOpposedChat._renderDuelCard(msg, st),
-        onInvalidNonCombat: ()        => ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeDuel.DuelNonCombatNeedSuccess"))
-      });
-      if (!_committed) return;
-      return;
+    const marker = message?.getFlag("neuroshima", "melee");
+    if (!isMeleeSessionMarker(marker)) {
+      throw new Error("Ta wiadomość nie jest połączona z aktywną sesją melee.");
     }
-
-    if (state.waitingFor === "responder") {
-      const _responded = await DuelSegmentEngine.processResponder(state, {
-        pool,
-        responderPool,
-        isOwnerAttacker,
-        diceIndices,
-        action,
-        message,
-        onRender:         (msg, st) => MeleeOpposedChat._renderDuelCard(msg, st),
-        onSyncInitiative: (st)      => MeleeOpposedChat._syncInitiativeToTracker(st),
-        onClearManeuvers: (actor)   => MeleeTurnService._clearManeuverConditions(actor)
-      });
-      if (!_responded) return;
-    }
+    const session = await game.neuroshima.melee.get(marker.sessionId, { messageId });
+    if (!session) throw new Error("Nie znaleziono aktywnej sesji melee.");
+    const side = pool === "defender" ? "defender" : "attacker";
+    const selectedDieIds = [...new Set(diceIndices)]
+      .map(index => session.pools?.[side]?.dice?.[index]?.id)
+      .filter(Boolean);
+    const participant = session.participants?.[side];
+    const activity = typeof action === "object" && action
+      ? {
+          activityId: action.activityId,
+          sourceItemUuid: action.sourceEffectUuid
+            ? (action.sourceItemUuid || null)
+            : (action.sourceItemUuid || participant?.weaponUuid || null),
+          sourceEffectUuid: action.sourceEffectUuid || null
+        }
+      : {
+          activityId: action === "defend" ? "defense" : (action || (session.phase === "response" ? "defense" : "attack")),
+          sourceItemUuid: participant?.weaponUuid || null,
+          sourceEffectUuid: null
+        };
+    const queuedSupplements = (beastQueue ?? []).map(entry => ({
+      activityRef: foundry.utils.deepClone(entry),
+      parameterValues: {},
+      quantity: 1
+    }));
+    return game.neuroshima.melee.dispatch({
+      type: "commitExchangeAction",
+      side,
+      payload: {
+        activity, selectedDieIds,
+        parameterValues: foundry.utils.deepClone(options.parameterValues ?? {}),
+        modifierRefs: foundry.utils.deepClone(options.modifierRefs ?? []),
+        queuedSupplements
+      },
+      sessionId: session.id,
+      messageId,
+      expectedRevision: session.revision,
+      commandId: foundry.utils.randomID()
+    });
   }
 
   static async applyDuelPick(messageId, side, dieIdx) {
-    await MeleeOpposedChat.applyDuelBatch(messageId, side, [dieIdx]);
+    await MeleeOpposedChat.commitExchangeAction(messageId, side, [dieIdx]);
   }
 
   static async swapDuelInitiative(messageId) {
     const message = game.messages.get(messageId);
     if (!message) return;
     const marker = message.getFlag("neuroshima", "melee");
-    if (marker?.engine === "v2" && marker.sessionId) {
-      const session = await game.neuroshima.melee.get(marker.sessionId, { messageId });
-      return game.neuroshima.melee.dispatch({
-        type: "swapInitiative", side: null, payload: {}, sessionId: session.id,
-        messageId, expectedRevision: session.revision, commandId: foundry.utils.randomID()
-      });
-    }
-
-    const state = foundry.utils.deepClone(message.getFlag("neuroshima", "duelCard"));
-    if (!state || state.status !== "picking") return;
-    if (state.isGradCios) return;
-
-    state.initiativeOwnerSide = state.initiativeOwnerSide === "attacker" ? "defender" : "attacker";
-    state.committedOwnerIndices = null;
-    state.waitingFor = "initiativeOwner";
-
-    await MeleeOpposedChat._syncInitiativeToTracker(state);
-    await MeleeOpposedChat._renderDuelCard(message, state);
+    if (!isMeleeSessionMarker(marker)) return;
+    const session = await game.neuroshima.melee.get(marker.sessionId, { messageId });
+    return game.neuroshima.melee.dispatch({
+      type: "swapInitiative", side: null, payload: {}, sessionId: session.id,
+      messageId, expectedRevision: session.revision, commandId: foundry.utils.randomID()
+    });
   }
 
   /**
@@ -3551,31 +3492,14 @@ export class MeleeOpposedChat {
     const message = game.messages.get(messageId);
     if (!message) return;
     const marker = message.getFlag("neuroshima", "melee");
-    if (marker?.engine === "v2" && marker.sessionId) {
-      const session = await game.neuroshima.melee.get(marker.sessionId, { messageId });
-      return game.neuroshima.melee.dispatch({
-        type: "undo", side: null, payload: {}, sessionId: session.id,
-        messageId, expectedRevision: session.revision, commandId: foundry.utils.randomID()
-      });
-    }
-
-    const state = foundry.utils.deepClone(message.getFlag("neuroshima", "duelCard"));
-    if (!state?.segmentHistory?.length) return;
+    if (!isMeleeSessionMarker(marker)) return;
+    const session = await game.neuroshima.melee.get(marker.sessionId, { messageId });
+    return game.neuroshima.melee.dispatch({
+      type: "undo", side: null, payload: {}, sessionId: session.id,
+      messageId, expectedRevision: session.revision, commandId: foundry.utils.randomID()
+    });
 
     // Current state stripped of history/future → goes to redo stack
-    const current = foundry.utils.deepClone(state);
-    delete current.segmentHistory;
-    delete current.segmentFuture;
-
-    const prev = state.segmentHistory[state.segmentHistory.length - 1];
-    prev.segmentHistory = state.segmentHistory.slice(0, -1);
-    prev.segmentFuture  = [current, ...(state.segmentFuture || [])];
-
-    game.neuroshima?.log("[melee-opposed-chat] undoDuelSegment", {
-      historyLength: prev.segmentHistory.length,
-      futureLength:  prev.segmentFuture.length
-    });
-    await MeleeOpposedChat._renderDuelCard(message, prev);
   }
 
   /**
@@ -3587,30 +3511,13 @@ export class MeleeOpposedChat {
     const message = game.messages.get(messageId);
     if (!message) return;
     const marker = message.getFlag("neuroshima", "melee");
-    if (marker?.engine === "v2" && marker.sessionId) {
-      const session = await game.neuroshima.melee.get(marker.sessionId, { messageId });
-      return game.neuroshima.melee.dispatch({
-        type: "redo", side: null, payload: {}, sessionId: session.id,
-        messageId, expectedRevision: session.revision, commandId: foundry.utils.randomID()
-      });
-    }
-
-    const state = foundry.utils.deepClone(message.getFlag("neuroshima", "duelCard"));
-    if (!state?.segmentFuture?.length) return;
-
-    const current = foundry.utils.deepClone(state);
-    delete current.segmentHistory;
-    delete current.segmentFuture;
-
-    const next = state.segmentFuture[0];
-    next.segmentHistory = [...(state.segmentHistory || []), current];
-    next.segmentFuture  = state.segmentFuture.slice(1);
-
-    game.neuroshima?.log("[melee-opposed-chat] redoDuelSegment", {
-      historyLength: next.segmentHistory.length,
-      futureLength:  next.segmentFuture.length
+    if (!isMeleeSessionMarker(marker)) return;
+    const session = await game.neuroshima.melee.get(marker.sessionId, { messageId });
+    return game.neuroshima.melee.dispatch({
+      type: "redo", side: null, payload: {}, sessionId: session.id,
+      messageId, expectedRevision: session.revision, commandId: foundry.utils.randomID()
     });
-    await MeleeOpposedChat._renderDuelCard(message, next);
+
   }
 
   static async _syncInitiativeToTracker(state) {
@@ -4362,7 +4269,8 @@ export class MeleeOpposedChat {
 
   /**
    * Fires an onHitScript marked as `immediate: true` right at the moment a trick hit
-   * is determined (during the responder phase of applyDuelBatch), before the duel ends.
+   * is determined during the responder phase of the canonical exchange command,
+   * before the duel ends.
    * Scripts without `immediate` still execute at "Nałóż obrażenia" time.
    * Delegates to MeleeActionRunner.fireImmediateOnHitScript.
    *
@@ -4394,10 +4302,10 @@ export class MeleeOpposedChat {
     if (!message) return;
 
     const marker = message.getFlag("neuroshima", "melee");
-    let v2Session = marker?.engine === "v2" && marker.sessionId
+    let meleeSession = isMeleeSessionMarker(marker)
       ? await game.neuroshima.melee.get(marker.sessionId, { messageId })
       : null;
-    const rd = v2Session?.result ?? message.getFlag("neuroshima", "opposedResult");
+    const rd = meleeSession?.result ?? message.getFlag("neuroshima", "opposedResult");
     if (!rd) return;
     if (rd.applied) {
       ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.AlreadyApplied"));
@@ -4421,14 +4329,14 @@ export class MeleeOpposedChat {
 
     // Reserve the canonical damage operation only after the duel documents
     // resolve, but before either actor is changed.
-    if (v2Session) {
+    if (meleeSession) {
       try {
         const claim = await game.neuroshima.melee.dispatch({
           type: "claimDamage", side: null, payload: { kind: "duel" },
-          sessionId: v2Session.id, messageId, expectedRevision: v2Session.revision,
+          sessionId: meleeSession.id, messageId, expectedRevision: meleeSession.revision,
           commandId: foundry.utils.randomID()
         });
-        v2Session = claim.session;
+        meleeSession = claim.session;
       } catch (error) {
         if (error?.code !== "ALREADY_APPLIED") throw error;
         ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.AlreadyApplied"));
@@ -4494,7 +4402,7 @@ export class MeleeOpposedChat {
           attackerActor, counterResults, counterWoundIds, counterReduced, counterReducedDetails
         );
       }
-      game.neuroshima?.log?.("[applyDuelBatch] berserker counter-hits applied", {
+      game.neuroshima?.log?.("[melee] berserker counter-hits applied", {
         from: defenderActor?.name, to: attackerActor?.name,
         hits: rd.counterHits.length, weapon: defWeapon?.name ?? "unarmed"
       });
@@ -4504,15 +4412,15 @@ export class MeleeOpposedChat {
       const queue = rd.pendingBeastQueue ?? [];
       if (queue.length > 0) {
         await MeleeOpposedChat.applyBeastActions(messageId, queue, { damageClaimed: true });
-        if (!v2Session) {
+        if (!meleeSession) {
           const refreshed = message.getFlag("neuroshima", "opposedResult");
           await message.setFlag("neuroshima", "opposedResult", { ...refreshed, applied: true });
         }
       } else {
-        if (v2Session) {
+        if (meleeSession) {
           await game.neuroshima.melee.dispatch({
             type: "markApplied", side: null, payload: { kind: "duel" },
-            sessionId: v2Session.id, messageId, expectedRevision: v2Session.revision,
+            sessionId: meleeSession.id, messageId, expectedRevision: meleeSession.revision,
             commandId: foundry.utils.randomID()
           });
         } else await message.setFlag("neuroshima", "opposedResult", { ...rd, applied: true });
@@ -4559,10 +4467,10 @@ export class MeleeOpposedChat {
       }
     }
 
-    if (v2Session) {
+    if (meleeSession) {
       await game.neuroshima.melee.dispatch({
         type: "markApplied", side: null, payload: { kind: "duel" },
-        sessionId: v2Session.id, messageId, expectedRevision: v2Session.revision,
+        sessionId: meleeSession.id, messageId, expectedRevision: meleeSession.revision,
         commandId: foundry.utils.randomID()
       });
     } else {
@@ -4826,19 +4734,19 @@ export class MeleeOpposedChat {
     if (!message) return;
 
     const marker = message.getFlag("neuroshima", "melee");
-    let v2Session = marker?.engine === "v2" && marker.sessionId
+    let meleeSession = isMeleeSessionMarker(marker)
       ? await game.neuroshima.melee.get(marker.sessionId, { messageId })
       : null;
-    const hr = v2Session?.hailResult ? {
-      ...v2Session.hailResult,
-      attackerUuid: v2Session.participants.attacker.tokenUuid || v2Session.participants.attacker.actorUuid,
-      defenderUuid: v2Session.participants.defender.tokenUuid || v2Session.participants.defender.actorUuid,
-      weaponId: v2Session.metadata.weaponId ?? null,
-      damage1: v2Session.metadata.damage1,
-      damage2: v2Session.metadata.damage2,
-      damage3: v2Session.metadata.damage3,
-      location: v2Session.metadata.location ?? null,
-      headDamageApplied: v2Session.metadata.headDamageApplied === true
+    const hr = meleeSession?.hailResult ? {
+      ...meleeSession.hailResult,
+      attackerUuid: meleeSession.participants.attacker.tokenUuid || meleeSession.participants.attacker.actorUuid,
+      defenderUuid: meleeSession.participants.defender.tokenUuid || meleeSession.participants.defender.actorUuid,
+      weaponId: meleeSession.metadata.weaponId ?? null,
+      damage1: meleeSession.metadata.damage1,
+      damage2: meleeSession.metadata.damage2,
+      damage3: meleeSession.metadata.damage3,
+      location: meleeSession.metadata.location ?? null,
+      headDamageApplied: meleeSession.metadata.headDamageApplied === true
     } : message.getFlag("neuroshima", "hailResult");
     if (!hr) return;
     if (hr.applied) {
@@ -4857,14 +4765,14 @@ export class MeleeOpposedChat {
 
     // Hail damage has a separate exactly-once ledger entry because it resolves
     // independently from the standard duel path.
-    if (v2Session) {
+    if (meleeSession) {
       try {
         const claim = await game.neuroshima.melee.dispatch({
           type: "claimDamage", side: null, payload: { kind: "hail" },
-          sessionId: v2Session.id, messageId, expectedRevision: v2Session.revision,
+          sessionId: meleeSession.id, messageId, expectedRevision: meleeSession.revision,
           commandId: foundry.utils.randomID()
         });
-        v2Session = claim.session;
+        meleeSession = claim.session;
       } catch (error) {
         if (error?.code !== "ALREADY_APPLIED") throw error;
         ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.AlreadyApplied"));
@@ -4911,10 +4819,10 @@ export class MeleeOpposedChat {
       }
     }
 
-    if (v2Session) {
+    if (meleeSession) {
       await game.neuroshima.melee.dispatch({
         type: "markApplied", side: null, payload: { kind: "hail" },
-        sessionId: v2Session.id, messageId, expectedRevision: v2Session.revision,
+        sessionId: meleeSession.id, messageId, expectedRevision: meleeSession.revision,
         commandId: foundry.utils.randomID()
       });
     } else {
@@ -4940,10 +4848,10 @@ export class MeleeOpposedChat {
     if (!message) return;
 
     const marker = message.getFlag("neuroshima", "melee");
-    let v2Session = marker?.engine === "v2" && marker.sessionId
+    let meleeSession = isMeleeSessionMarker(marker)
       ? await game.neuroshima.melee.get(marker.sessionId, { messageId })
       : null;
-    const rd = v2Session?.result ?? message.getFlag("neuroshima", "opposedResult");
+    const rd = meleeSession?.result ?? message.getFlag("neuroshima", "opposedResult");
     if (!rd) return;
     if (rd.beastActionsApplied) {
       ui.notifications.warn(game.i18n.localize("NEUROSHIMA.BeastAction.AlreadyApplied"));
@@ -4961,14 +4869,14 @@ export class MeleeOpposedChat {
 
     // This method is also reachable directly from the beast-action button. If
     // the ordinary duel handler did not reserve damage first, reserve it here.
-    if (v2Session && options.damageClaimed !== true) {
+    if (meleeSession && options.damageClaimed !== true) {
       try {
         const claim = await game.neuroshima.melee.dispatch({
           type: "claimDamage", side: null, payload: { kind: "duel" },
-          sessionId: v2Session.id, messageId, expectedRevision: v2Session.revision,
+          sessionId: meleeSession.id, messageId, expectedRevision: meleeSession.revision,
           commandId: foundry.utils.randomID()
         });
-        v2Session = claim.session;
+        meleeSession = claim.session;
       } catch (error) {
         if (error?.code !== "ALREADY_APPLIED") throw error;
         ui.notifications.warn(game.i18n.localize("NEUROSHIMA.BeastAction.AlreadyApplied"));
@@ -5006,10 +4914,10 @@ export class MeleeOpposedChat {
       );
     }
 
-    if (v2Session) {
+    if (meleeSession) {
       await game.neuroshima.melee.dispatch({
         type: "markApplied", side: null, payload: { kind: "beast" },
-        sessionId: v2Session.id, messageId, expectedRevision: v2Session.revision,
+        sessionId: meleeSession.id, messageId, expectedRevision: meleeSession.revision,
         commandId: foundry.utils.randomID()
       });
     } else {

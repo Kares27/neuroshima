@@ -13,13 +13,13 @@
  *   - Apply queued-trick damage (successCost tricks from the queue section)
  *
  * Out of scope (handled elsewhere):
- *   - Duel card state mutation (applyDuelBatch / MeleeOpposedChat)
+ *   - canonical melee-session state mutation
  *   - Beast activity effect application (applyBeastActions)
  *   - Damage accumulation display / notifications (applyOpposedDamage)
  *
  * ── Execution flow overview ─────────────────────────────────────────────────
  *
- *  Segment resolves → applyDuelBatch records hitEntry in state.hits
+ *  Segment resolves → the exchange command records hitEntry in state.hits
  *    → MeleeActionRunner.onHit({ state, hitEntry, isOwnerAttacker })
  *        └─ fireImmediateOnHitScript (fires during resolution if trick.immediate)
  *
@@ -57,7 +57,7 @@ export class MeleeActionRunner {
   /**
    * Fire the "immediate" onHitScript for a trick hit entry.
    *
-   * Immediate scripts run at duel RESOLUTION time (inside applyDuelBatch) rather than
+   * Immediate scripts run at duel resolution time rather than
    * at damage-apply time (inside applyOpposedDamage).  Use this timing for effects that
    * must take place before the next segment begins, such as status effects, initiative
    * manipulation, or disarm triggers.

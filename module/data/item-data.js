@@ -169,7 +169,7 @@ export class GearData extends foundry.abstract.TypeDataModel {
   }
 }
 
-/** Declarative fields shared by beast-action and beast-segment activities in melee V2. */
+/** Declarative fields shared by beast-action and beast-segment melee activities. */
 function meleeActivitySchema() {
   const fields = foundry.data.fields;
   return {

@@ -2,7 +2,7 @@
 
     {{!-- ===== Melee Opposed Pending Cards ===== --}}
     {{#each combat.meleePendings as |pending|}}
-        {{#if pending.isV2}}
+        {{#if pending.isMeleeSession}}
         <div class="melee-pending-attacker-card clickable" data-action="openMeleeSession" data-session-id="{{pending.sessionId}}">
             <div class="pending-card-header">
                 <div class="pending-header-main"><i class="fas fa-swords"></i><span>{{pending.attackerName}} → {{pending.defenderName}}</span></div>

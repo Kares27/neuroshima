@@ -742,7 +742,7 @@ export class NeuroshimaActiveEffectData extends foundry.abstract.TypeDataModel {
         }),
         { initial: [] }
       ),
-      // Declarative melee V2 contract. Legacy actionDefs/scriptData remain
+      // Canonical declarative melee contract. Older actionDefs/scriptData remain
       // untouched and are read through the compatibility catalogue.
       melee: new fields.SchemaField({
         stackKey: new fields.StringField({ initial: "", blank: true }),

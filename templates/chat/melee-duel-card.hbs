@@ -104,17 +104,19 @@
             <span class="mdc-beast-budget-remaining">0</span>/<span class="mdc-beast-budget-total">0</span>✦
           </div>
           {{#each ownerBeastActions}}
-          <div class="mdc-beast-action-entry" data-action-id="{{id}}" data-cost="{{successCost}}">
-            <button type="button" class="mdc-beast-pick-btn" data-action-id="{{id}}" data-cost="{{successCost}}" disabled>
+          <div class="mdc-beast-action-entry" data-activity-id="{{activityId}}"
+              data-source-item-uuid="{{sourceItemUuid}}" data-source-effect-uuid="{{sourceEffectUuid}}"
+              data-cost="{{successCost}}">
+            <button type="button" class="mdc-beast-pick-btn" data-cost="{{successCost}}" disabled>
               <span class="mac-icon"><img src="{{img}}" style="width:22px;height:22px;border-radius:3px;object-fit:cover" alt=""></span>
               <span class="mac-body">
                 <span class="mac-label">{{name}}</span>
                 <span class="mac-hint"><span class="mbc-cost-badge">{{successCost}}✦</span>{{#if damage}}<span class="mbc-dmg-badge"> → {{damage}}</span>{{/if}}</span>
               </span>
             </button>
-            <span class="mdc-beast-qty-badge" data-action-id="{{id}}" style="display:none">
-              <span class="mdc-beast-qty-val" data-action-id="{{id}}">0</span>×
-              <button type="button" class="mdc-beast-undo-btn" data-action-id="{{id}}">↩</button>
+            <span class="mdc-beast-qty-badge" style="display:none">
+              <span class="mdc-beast-qty-val">0</span>×
+              <button type="button" class="mdc-beast-undo-btn">↩</button>
             </span>
           </div>
           {{/each}}
@@ -249,7 +251,7 @@
     </div>
     {{/if}}
     {{#if ownerDialogModifiers}}
-    <div class="mdc-dialog-modifiers-section mdc-legacy-dialog-modifiers-section">
+    <div class="mdc-dialog-modifiers-section mdc-script-dialog-modifiers-section">
       <div class="mdc-dialog-mod-header">
         <i class="fas fa-sliders-h"></i>
         <span>Modyfikatory sztuczek</span>
@@ -409,7 +411,7 @@
   <div class="mdc-controls" data-gm-only="true">
     <div class="mdc-action-list">
       {{#each pendingMeleeOutcomes}}
-      <button type="button" class="mdc-action-choice is-ready" data-v2-outcome-id="{{id}}">
+      <button type="button" class="mdc-action-choice is-ready" data-melee-outcome-id="{{id}}">
         <span class="mac-icon"><i class="fas fa-check"></i></span>
         <span class="mac-body"><span class="mac-label">Zatwierdź: {{label}}</span></span>
       </button>

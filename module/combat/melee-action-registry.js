@@ -106,7 +106,7 @@ export class MeleeActionRegistry {
 
   /**
    * Collect success-cost beast-action activities that are affordable given the net success budget.
-   * Used by MeleeOpposedChat.applyDuelBatch when the duel resolves (state.status === "done")
+   * Used by MeleeOpposedChat.commitExchangeAction when the duel resolves (state.status === "done")
    * to populate the list of actions the creature can spend their net successes on.
    *
    * @param {Actor}       actor           - The creature actor
@@ -131,7 +131,7 @@ export class MeleeActionRegistry {
   // ── Queue normalization ────────────────────────────────────────────────────
 
   /**
-   * Split a raw queue array (as passed to applyDuelBatch) into beast activity ids and
+   * Split an imported queue into beast activity ids and normalized trick descriptors.
    * normalized trick action descriptors.
    *
    * Beast entries are raw composite id strings ("itemId::activityId").

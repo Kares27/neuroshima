@@ -3,6 +3,7 @@ import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { EffectActionRuntime } from "../effects/effect-action-runtime.js";
 import { HealingTest } from "../tests.mjs";
 import { renderTooltipSections } from "../helpers/tooltip-renderer.js";
+import { isMeleeSessionMarker } from "../combat/melee-system.js";
 
 /**
  * Extended ChatMessage class with a unified API for rendering chat cards.
@@ -61,7 +62,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
    * Called from the renderChatMessageHTML hook in system.js.
    */
   static onChatAction(html) {
-    // Application V2 compatibility: html can be a HTMLElement or a jQuery object
+    // Foundry v13 compatibility: html can be an HTMLElement or a jQuery object.
     const root = (html instanceof HTMLElement) ? html : html[0];
     if (!root) return;
 
@@ -76,7 +77,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
         event.preventDefault();
         const action = btn.dataset.action;
         const meleeMarker = message.getFlag("neuroshima", "melee");
-        if (meleeMarker?.engine === "v2" && ["meleeOpposedDefend", "hailDefend"].includes(action)) {
+        if (isMeleeSessionMarker(meleeMarker) && ["meleeOpposedDefend", "hailDefend"].includes(action)) {
           return;
         }
         

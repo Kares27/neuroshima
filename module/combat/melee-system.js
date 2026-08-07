@@ -1,5 +1,5 @@
 /**
- * Neuroshima melee engine V2.
+ * Canonical Neuroshima melee engine.
  *
  * This module is deliberately the single domain boundary for melee.  It owns
  * the session schema, activity catalogue, conditions, outcomes, operations,
@@ -12,7 +12,6 @@ import { DuelContext, DuelLifecycle, DuelDeclarationEngine, DuelSegmentEngine } 
 
 export const MELEE_VERSION = 2;
 export const MELEE_FLAG = "meleeSessionsV2";
-export const MELEE_SETTING = "meleeEngineV2";
 export const MELEE_WORLD_STORE_SETTING = "meleeSessionsV2World";
 export const MELEE_SOCKET_COMMAND = "dispatchMeleeCommand";
 export const MELEE_SIDES = Object.freeze(["attacker", "defender"]);
@@ -20,6 +19,18 @@ export const MELEE_PHASES = Object.freeze([
   "awaitingAttackerRoll", "awaitingDefenderRoll", "declaration",
   "response", "resolution", "pendingOutcomes", "complete"
 ]);
+
+/** Canonical chat marker; the older engine value is accepted only on read. */
+export function isMeleeSessionMarker(marker) {
+  return Boolean(marker?.sessionId && (
+    marker.engine == null || ["session", "v2"].includes(marker.engine)
+  ));
+}
+
+/** Canonical test link; the older type is accepted only on read. */
+export function isMeleeSessionLink(link) {
+  return Boolean(link?.sessionId && ["meleeSession", "meleeSessionV2"].includes(link.type));
+}
 
 const clone = value => globalThis.foundry?.utils?.deepClone
   ? foundry.utils.deepClone(value)
@@ -136,7 +147,7 @@ function setMeleePool(session, side, dice) {
   return normalized;
 }
 
-function meleeDieAsLegacy(die) {
+function meleeDieForDuelCard(die) {
   return {
     id: die.id,
     original: die.raw,
@@ -203,8 +214,8 @@ function restoreExchangeSnapshot(session, snapshot) {
 }
 
 /**
- * Runtime-only adapter exposing the proven V1 resolver contract while reading
- * and writing the single canonical MeleeSession. No legacy state is persisted.
+ * Runtime-only projection used by the established duel resolver while reading
+ * and writing the single canonical MeleeSession. No duplicate state is persisted.
  */
 export class MeleeExchangeContext {
   constructor(session) { this.session = session; }
@@ -243,7 +254,7 @@ export class MeleeExchangeContext {
     }
   }
   getInitiativeOwnerSide() { return initiativeSide(this.session); }
-  setInitiativeOwnerSide(side, reason = "v1Resolver") {
+  setInitiativeOwnerSide(side, reason = "duelResolver") {
     transferMeleeInitiative(this.session, this.session.participants[side].actorUuid, reason);
   }
   getCurrentSegment() { return number(this.session.exchange.currentSegment); }
@@ -253,7 +264,7 @@ export class MeleeExchangeContext {
   createSnapshot() { return exchangeSnapshot(this.session); }
   restoreSnapshot(snapshot) { restoreExchangeSnapshot(this.session, snapshot); }
 
-  toLegacyState() {
+  toDuelState() {
     const session = this.session;
     const exchange = session.exchange;
     const ownerSide = this.getInitiativeOwnerSide();
@@ -275,8 +286,8 @@ export class MeleeExchangeContext {
       defenderManeuver: session.metadata.defenderManeuver ?? null,
       weaponId: session.metadata.weaponId ?? null,
       beastItemId: session.metadata.beastItemId ?? null,
-      attackDice: this.getPool("attacker").map(meleeDieAsLegacy),
-      defenseDice: this.getPool("defender").map(meleeDieAsLegacy),
+      attackDice: this.getPool("attacker").map(meleeDieForDuelCard),
+      defenseDice: this.getPool("defender").map(meleeDieForDuelCard),
       attackTarget: session.metadata.attackerTarget ?? 0,
       defenseTarget: session.metadata.defenderTarget ?? 0,
       damage1: declaration?.damageSnapshot?.final?.[1] ?? session.metadata.damage1,
@@ -295,18 +306,18 @@ export class MeleeExchangeContext {
       applied: session.result?.applied === true,
       segmentHistory: exchange.history.map((_snapshot, index) => ({ canonicalSnapshot: index })),
       segmentFuture: exchange.future.map((_snapshot, index) => ({ canonicalSnapshot: index })),
-      declaredAction: declaration?.legacyAction ?? null,
+      declaredAction: declaration?.duelAction ?? null,
       committedTrickId: declaration?.activityInstanceId ?? null,
       committedTrickDamage: declaration?.damageSnapshot?.final?.[declaration?.selectedDieIds?.length] ?? null,
       committedBeastQueue: null,
       committedTrickQueue: null,
       opposedId: session.id,
-      actions: clone(declaration?.legacyActions ?? {}),
+      actions: clone(declaration?.duelActions ?? {}),
       activatedMeleePreRollMods: clone(session.metadata.activatedMeleePreRollMods ?? [])
     };
   }
 
-  applyLegacyState(state) {
+  applyDuelState(state) {
     const session = this.session;
     const exchange = session.exchange;
     const ownerSide = state.initiativeOwnerSide === "defender" ? "defender" : "attacker";
@@ -333,17 +344,17 @@ export class MeleeExchangeContext {
       exchange.declaration.ownerSide = ownerSide;
       exchange.declaration.selectedDieIds = array(state.committedOwnerIndices)
         .map(index => this.getPool(ownerSide)[index]?.id).filter(Boolean);
-      exchange.declaration.legacyAction = state.declaredAction || "attack";
-      exchange.declaration.legacyActions = clone(state.actions ?? {});
+      exchange.declaration.duelAction = state.declaredAction || "attack";
+      exchange.declaration.duelActions = clone(state.actions ?? {});
     } else exchange.declaration = null;
-    this.setInitiativeOwnerSide(ownerSide, "v1Resolver");
+    this.setInitiativeOwnerSide(ownerSide, "duelResolver");
     session.phase = state.status === "done" ? "complete" : state.waitingFor === "responder" ? "response" : "declaration";
     session.status = state.status === "done" ? "complete" : "active";
   }
 }
 
-export function meleeSessionLegacyView(session) {
-  return MeleeExchangeContext.fromSession(session).toLegacyState();
+export function meleeSessionDuelState(session) {
+  return MeleeExchangeContext.fromSession(session).toDuelState();
 }
 
 export function normalizeMeleeSessionData(source) {
@@ -368,11 +379,20 @@ export function normalizeMeleeSessionData(source) {
     session.pools[side] = { diceCount: dice.length, dice };
   }
   if (!session.exchange) {
-    const legacy = session.v1State ? clone(session.v1State) : null;
+    const previousDuelState = session.v1State ? clone(session.v1State) : null;
     session.exchange = createMeleeExchange(Math.min(3,
       meleePoolDice(session, "attacker").length || 3,
       meleePoolDice(session, "defender").length || 3));
-    if (legacy) MeleeExchangeContext.fromSession(session).applyLegacyState(legacy);
+    if (previousDuelState) MeleeExchangeContext.fromSession(session).applyDuelState(previousDuelState);
+  }
+  // Import older declaration keys once at the persistence boundary. Runtime
+  // code only sees the canonical duelAction/duelActions contract.
+  if (session.exchange?.declaration) {
+    const declaration = session.exchange.declaration;
+    declaration.duelAction ??= declaration.legacyAction ?? null;
+    declaration.duelActions ??= clone(declaration.legacyActions ?? {});
+    delete declaration.legacyAction;
+    delete declaration.legacyActions;
   }
   delete session.v1State;
   delete session.segments;
@@ -746,7 +766,7 @@ export function normalizeMeleeActivity(raw = {}, source = {}) {
       approval: raw.automation?.approval || raw.approval || "gm",
       resolver: raw.automation?.resolver || raw.resolverKind || "opposedSuccessPoints"
     },
-    legacy: clone(raw.legacy ?? {})
+    duel: clone(raw.duel ?? raw.legacy ?? {})
   };
 }
 
@@ -807,23 +827,23 @@ export class MeleeActionCatalog {
       normalizeMeleeActivity({
         id: "attack", name: "Atak", kind: "action", category: "attack", timing: "either",
         tags: ["melee", "melee.attack", item?.system?.weaponGroup, item?.system?.weaponType].filter(Boolean),
-        legacy: { action: "attack" },
+        duel: { action: "attack" },
         outcomes: [{
         id: "hit", when: "hit", label: "Trafienie", operations: [{
           type: "damage", target: "opponent", data: { damageProfiles, piercing: number(item?.system?.piercing) }
         }]
         }]
       }, common.source),
-      normalizeMeleeActivity({ id: "defense", name: "Obrona", kind: "reaction", category: "defense", timing: "response", legacy: { action: "defend" }, outcomes: [] }, common.source),
-      normalizeMeleeActivity({ id: "exit", name: "Wyjście ze zwarcia", kind: "action", category: "movement", timing: "declaration", minDice: 1, maxDice: 1, legacy: { action: "exit" },
+      normalizeMeleeActivity({ id: "defense", name: "Obrona", kind: "reaction", category: "defense", timing: "response", duel: { action: "defend" }, outcomes: [] }, common.source),
+      normalizeMeleeActivity({ id: "exit", name: "Wyjście ze zwarcia", kind: "action", category: "movement", timing: "declaration", minDice: 1, maxDice: 1, duel: { action: "exit" },
         outcomes: [{ id: "exit", label: "Wyjście", operations: [{ type: "endEngagement", data: { reason: "exit" } }] }] }, common.source),
-      normalizeMeleeActivity({ id: "flee", name: "Ucieczka", kind: "reaction", category: "movement", timing: "response", minDice: 0, maxDice: 0, legacy: { action: "flee" },
+      normalizeMeleeActivity({ id: "flee", name: "Ucieczka", kind: "reaction", category: "movement", timing: "response", minDice: 0, maxDice: 0, duel: { action: "flee" },
         outcomes: [{ id: "flee", label: "Ucieczka", operations: [{ type: "endEngagement", data: { reason: "flee" } }] }] }, common.source),
-      normalizeMeleeActivity({ id: "nonCombat", name: "Akcja niebojowa", kind: "action", category: "utility", timing: "declaration", legacy: { action: "nonCombat" } }, common.source),
-      normalizeMeleeActivity({ id: "blockExit", name: "Zablokuj wyjście", kind: "reaction", category: "defense", timing: "response", minDice: 1, maxDice: 1, legacy: { action: "blockExit" } }, common.source),
-      normalizeMeleeActivity({ id: "allowExit", name: "Pozwól wyjść", kind: "reaction", category: "utility", timing: "response", minDice: 0, maxDice: 0, legacy: { action: "allowExit" } }, common.source),
-      normalizeMeleeActivity({ id: "seizeInit", name: "Przejmij inicjatywę", kind: "reaction", category: "defense", timing: "response", legacy: { action: "seizeInit" } }, common.source),
-      normalizeMeleeActivity({ id: "interrupt", name: "Przerwij", kind: "reaction", category: "defense", timing: "response", legacy: { action: "interrupt" } }, common.source)
+      normalizeMeleeActivity({ id: "nonCombat", name: "Akcja niebojowa", kind: "action", category: "utility", timing: "declaration", duel: { action: "nonCombat" } }, common.source),
+      normalizeMeleeActivity({ id: "blockExit", name: "Zablokuj wyjście", kind: "reaction", category: "defense", timing: "response", minDice: 1, maxDice: 1, duel: { action: "blockExit" } }, common.source),
+      normalizeMeleeActivity({ id: "allowExit", name: "Pozwól wyjść", kind: "reaction", category: "utility", timing: "response", minDice: 0, maxDice: 0, duel: { action: "allowExit" } }, common.source),
+      normalizeMeleeActivity({ id: "seizeInit", name: "Przejmij inicjatywę", kind: "reaction", category: "defense", timing: "response", duel: { action: "seizeInit" } }, common.source),
+      normalizeMeleeActivity({ id: "interrupt", name: "Przerwij", kind: "reaction", category: "defense", timing: "response", duel: { action: "interrupt" } }, common.source)
     ];
   }
 
@@ -841,26 +861,26 @@ export class MeleeActionCatalog {
       },
       operations: array(activity.operations).length
         ? activity.operations
-        : legacyBeastOperations(item, activity)
+        : fallbackBeastOperations(item, activity)
     }, { kind: "beast", uuid: `${item.uuid}#${activity.id}`, itemUuid: item.uuid }));
   }
 
   static fromEffect(effect) {
     const configured = array(effect?.system?.melee?.grantedActivities);
     const configuredIds = new Set(configured.map(entry => entry.id));
-    const legacy = array(effect?.system?.actionDefs)
+    const compatibilityDefinitions = array(effect?.system?.actionDefs)
       .filter(entry => entry.type !== "result" && !configuredIds.has(entry.id));
     const restrictions = array(effect?.system?.melee?.restrictions);
-    const normalize = (activity, legacyActionDef = false) => normalizeMeleeActivity({
+    const normalize = (activity, compatibilityActionDef = false) => normalizeMeleeActivity({
       ...clone(activity),
       conditions: [...restrictions, ...array(activity.conditions)],
-      legacy: { ...(activity.legacy ?? {}), actionDef: legacyActionDef }
+      duel: { ...(activity.duel ?? activity.legacy ?? {}), actionDef: compatibilityActionDef }
     }, {
       kind: "effect", uuid: `${effect.uuid}#${activity.id}`, effectUuid: effect.uuid
     });
     return [
       ...configured.map(activity => normalize(activity, false)),
-      ...legacy.map(activity => normalize(activity, true))
+      ...compatibilityDefinitions.map(activity => normalize(activity, true))
     ];
   }
 
@@ -919,7 +939,7 @@ export class MeleeActionCatalog {
   }
 }
 
-function legacyBeastOperations(item, activity) {
+function fallbackBeastOperations(item, activity) {
   const operations = [];
   if (activity.damage && activity.damage !== "—") operations.push({
     type: "damage", target: "opponent", data: { damage: activity.damage }
@@ -1065,8 +1085,8 @@ function meleeReusableTriggeringDice(session, side, activity) {
   return new Set(candidates.length ? [candidates[0].id] : []);
 }
 
-function legacyActionForActivity(activity, responder = false) {
-  if (activity.legacy?.action) return activity.legacy.action;
+function duelActionForActivity(activity, responder = false) {
+  if (activity.duel?.action) return activity.duel.action;
   const core = {
     attack: "attack", defense: "defend", flee: "flee", exit: "exit",
     blockExit: "blockExit", allowExit: "allowExit", nonCombat: "nonCombat",
@@ -1179,7 +1199,7 @@ registerMeleeOperation("damage", async context => {
   const data = context.operation.data;
   const damageTier = Math.min(3, Math.max(1, number(context.successPoints, 1)));
   const damage = data.damage || data.damageProfiles?.[damageTier - 1]
-    || context.action.definition.legacy?.damage || "D";
+    || context.action.definition.duel?.damage || "D";
   const attackData = {
     isMelee: true, actorId: context.actor?.id, label: context.action.definition.name,
     damageMelee1: damage, damageMelee2: damage, damageMelee3: damage,
@@ -1461,7 +1481,7 @@ export class MeleeSessionStore {
     }
     const worldSession = game.settings.get("neuroshima", MELEE_WORLD_STORE_SETTING)?.[sessionId] ?? null;
     if (worldSession) return normalizeMeleeSessionData(worldSession);
-    // Read-only compatibility for cards created by an earlier V2 preview.
+    // Read-only import for cards created by the retired preview implementation.
     const message = messageId ? game.messages.get(messageId) : game.messages.find(entry =>
       entry.getFlag("neuroshima", "melee")?.sessionId === sessionId);
     return normalizeMeleeSessionData(message?.getFlag("neuroshima", "meleeSessionV2") ?? null);
@@ -1666,15 +1686,15 @@ export class MeleeCommandService {
       ]) {
         session.metadata.activitySnapshots[activitySide] = MeleeActionCatalog.collect(activityActor, { item: activityWeapon })
           .filter(activity => !["attack", "defense", "exit", "flee", "nonCombat"].includes(activity.id) &&
-            activity.legacy?.actionDef !== true)
+            activity.duel?.actionDef !== true)
           .map(activity => ({ runtimeId: randomId(), definition: clone(activity) }));
       }
       session.metadata.defenderManeuver = command.payload?.maneuver ?? null;
       session.metadata.defenderDamage1 = command.payload?.defenderDamage1 ?? "D";
       session.metadata.defenderDamage2 = command.payload?.defenderDamage2 ?? "L";
       session.metadata.defenderDamage3 = command.payload?.defenderDamage3 ?? "K";
-      const attackDice = meleePoolDice(session, "attacker").map(meleeDieAsLegacy);
-      const defenseDice = dice.map(meleeDieAsLegacy);
+      const attackDice = meleePoolDice(session, "attacker").map(meleeDieForDuelCard);
+      const defenseDice = dice.map(meleeDieForDuelCard);
       if (session.variant === "gradCiosow") {
         session.hailResult = resolveMeleeHail(attackDice, defenseDice, {
           1: session.metadata.damage1, 2: session.metadata.damage2, 3: session.metadata.damage3
@@ -1689,7 +1709,7 @@ export class MeleeCommandService {
           transferMeleeInitiative(session, session.participants.defender.actorUuid, "szachistaYield");
         }
         await DuelLifecycle.start(DuelContext.fromFlag(
-          MeleeExchangeContext.fromSession(session).toLegacyState()
+          MeleeExchangeContext.fromSession(session).toDuelState()
         ));
       }
     }
@@ -1729,8 +1749,8 @@ export class MeleeCommandService {
       session.phase = "awaitingDefenderRoll";
       return { side, reset: false };
     }
-    const attackDice = meleePoolDice(session, "attacker").map(meleeDieAsLegacy);
-    const defenseDice = meleePoolDice(session, "defender").map(meleeDieAsLegacy);
+    const attackDice = meleePoolDice(session, "attacker").map(meleeDieForDuelCard);
+    const defenseDice = meleePoolDice(session, "defender").map(meleeDieForDuelCard);
     if (session.variant === "gradCiosow") {
       session.hailResult = resolveMeleeHail(attackDice, defenseDice, {
         1: session.metadata.damage1, 2: session.metadata.damage2, 3: session.metadata.damage3
@@ -1790,7 +1810,7 @@ export class MeleeCommandService {
       activity = normalizeMeleeActivity({
         id: reference.activityId, name: reference.activityId, kind: "reaction", timing: "response",
         minDice: reference.activityId === "allowExit" ? 0 : 1, maxDice: 3,
-        legacy: { action: reference.activityId }
+        duel: { action: reference.activityId }
       }, { kind: "core", uuid: sourceItem?.uuid || actor.uuid, itemUuid: sourceItem?.uuid || null });
     }
     if (!activity || activity.kind === "modifier") {
@@ -1807,8 +1827,8 @@ export class MeleeCommandService {
       throw new MeleeValidationError("Selected die is unavailable", "DIE_ALREADY_USED");
     }
 
-    const legacyAction = legacyActionForActivity(activity, responder);
-    const allowsNoDice = ["flee", "allowExit"].includes(legacyAction) || number(activity.activation.maxDice) === 0;
+    const duelAction = duelActionForActivity(activity, responder);
+    const allowsNoDice = ["flee", "allowExit"].includes(duelAction) || number(activity.activation.maxDice) === 0;
     if ((!allowsNoDice && selectedDieIds.length < activity.activation.minDice) || selectedDieIds.length > activity.activation.maxDice) {
       throw new MeleeValidationError("Invalid number of dice for activity", "INVALID_DICE_COST");
     }
@@ -1889,11 +1909,10 @@ export class MeleeCommandService {
         quantity,
         definition: supplement
       });
-      instance.occupiedSegments = occupiedSegments;
     }
 
     const adapter = MeleeExchangeContext.fromSession(session);
-    const state = adapter.toLegacyState();
+    const state = adapter.toDuelState();
     const diceIndices = selectedDieIds.map(id => meleePoolDice(session, side).findIndex(die => die.id === id));
     const usedKey = side === "attacker" ? "usedAttackDice" : "usedDefenseDice";
     state[usedKey] = array(state[usedKey]).filter(index => !reusableTriggeringDice.has(meleePoolDice(session, side)[index]?.id));
@@ -1909,9 +1928,10 @@ export class MeleeCommandService {
       session.exchange.history.push(adapter.createSnapshot());
       session.exchange.future = [];
       const instance = createMeleeActionInstance(activity, {
-        side, actorUuid: actor.uuid, selectedDiceIds, segmentIndex,
+        side, actorUuid: actor.uuid, selectedDiceIds: selectedDieIds, segmentIndex,
         targetUuids: [target?.uuid].filter(Boolean), parameters: parameterValues
       });
+      instance.occupiedSegments = occupiedSegments;
       instance.modifierRefs = clone(modifierRefs);
       instance.queuedSupplements = clone(queuedSupplements);
       const damageModifiers = [
@@ -1925,7 +1945,7 @@ export class MeleeCommandService {
       }, damageModifiers);
       session.actionInstances[instance.id] = instance;
       const accepted = await DuelDeclarationEngine.processOwnerCommit(state, {
-        pool: side, ownerPool: ownerSide, action: legacyAction, diceIndices,
+        pool: side, ownerPool: ownerSide, action: duelAction, diceIndices,
         beastQueue: null, message: messageAdapter, onRender: render
       });
       if (!accepted) {
@@ -1933,12 +1953,12 @@ export class MeleeCommandService {
         delete session.actionInstances[instance.id];
         throw new MeleeValidationError("Declaration does not satisfy the melee rules", "INVALID_DECLARATION");
       }
-      adapter.applyLegacyState(state);
+      adapter.applyDuelState(state);
       session.exchange.declaration = {
         ownerSide: side, activityInstanceId: instance.id, activityRef: reference,
         selectedDieIds, parameterValues, modifierRefs,
         queuedSupplements: clone(instance.queuedSupplements), damageSnapshot: clone(instance.damageSnapshot),
-        legacyAction, legacyActions: clone(state.actions ?? {})
+        duelAction, duelActions: clone(state.actions ?? {})
       };
       for (const die of selectedDice) {
         die.state = "reserved";
@@ -1959,7 +1979,7 @@ export class MeleeCommandService {
       throw new MeleeValidationError("Responder must select exactly the declared number of dice", "INVALID_RESPONSE_DICE_COUNT");
     }
     const responseInstance = createMeleeActionInstance(activity, {
-      side, actorUuid: actor.uuid, selectedDiceIds, segmentIndex,
+      side, actorUuid: actor.uuid, selectedDiceIds: selectedDieIds, segmentIndex,
       targetUuids: [target?.uuid].filter(Boolean), parameters: parameterValues
     });
     responseInstance.occupiedSegments = occupiedSegments;
@@ -1968,14 +1988,14 @@ export class MeleeCommandService {
     session.actionInstances[responseInstance.id] = responseInstance;
     const accepted = await DuelSegmentEngine.processResponder(state, {
       pool: side, responderPool: side, isOwnerAttacker: ownerSide === "attacker",
-      diceIndices, action: legacyAction, message: messageAdapter, onRender: render,
+      diceIndices, action: duelAction, message: messageAdapter, onRender: render,
       onSyncInitiative: async () => undefined, onClearManeuvers: async () => undefined
     });
     if (!accepted) {
       delete session.actionInstances[responseInstance.id];
       throw new MeleeValidationError("Response does not satisfy the melee rules", "INVALID_DECLARATION");
     }
-    adapter.applyLegacyState(state);
+    adapter.applyDuelState(state);
     const resolvedSegment = session.exchange.segments[segmentIndex] ?? {};
     resolvedSegment.ownerActionId = ownerInstance.id;
     resolvedSegment.responderActionId = responseInstance.id;
@@ -2073,7 +2093,7 @@ export class MeleeCommandService {
   // registered in the command dispatcher and cannot be reached by runtime UI.
   static async _deprecatedCardAdapter(session, command) {
     const exchangeAdapter = MeleeExchangeContext.fromSession(session);
-    const state = exchangeAdapter.toLegacyState();
+    const state = exchangeAdapter.toDuelState();
     if (!state || state.status !== "picking") {
       throw new MeleeValidationError("Duel is not waiting for a declaration", "WRONG_PHASE");
     }
@@ -2120,7 +2140,7 @@ export class MeleeCommandService {
       if (uses != null && number(session.metadata.activityUses?.[definition.id]) >= number(uses)) {
         throw new MeleeValidationError("Configured activity has no uses remaining", "NO_USES_REMAINING");
       }
-      authoritativeAction = legacyActionForActivity(definition, false);
+      authoritativeAction = duelActionForActivity(definition, false);
     }
     const ownerIndicesBefore = [...(state.committedOwnerIndices ?? [])];
     const runtimeActivityId = wasResponder ? state.committedTrickId : null;
@@ -2159,7 +2179,7 @@ export class MeleeCommandService {
         onClearManeuvers: async () => undefined
       });
     }
-    if (!accepted) throw new MeleeValidationError("Declaration does not satisfy the V1 melee rules", "INVALID_DECLARATION");
+    if (!accepted) throw new MeleeValidationError("Declaration does not satisfy the melee rules", "INVALID_DECLARATION");
     if (submittedSnapshot) {
       session.metadata.activityUses ??= {};
       session.metadata.activityUses[submittedSnapshot.definition.id] =
@@ -2177,11 +2197,11 @@ export class MeleeCommandService {
         targetUuids: [session.participants[targetSide].actorUuid]
       });
       session.actionInstances[instance.id] = instance;
-      const legacyOutcome = state.segments[segmentIndexBefore]?.outcome;
-      const event = legacyOutcome === "hit" ? "hit"
-        : legacyOutcome === "takeover" ? "takeover"
-          : ["blocked", "nothing"].includes(legacyOutcome) ? "miss"
-            : legacyOutcome === "draw" ? "hit" : legacyOutcome;
+      const segmentOutcome = state.segments[segmentIndexBefore]?.outcome;
+      const event = segmentOutcome === "hit" ? "hit"
+        : segmentOutcome === "takeover" ? "takeover"
+          : ["blocked", "nothing"].includes(segmentOutcome) ? "miss"
+            : segmentOutcome === "draw" ? "hit" : segmentOutcome;
       const definitions = [
         ...array(definition.outcomes).filter(outcome => ["used", "onResolve", event].includes(outcome.when)),
         ...(definition.operations.length ? [{
@@ -2206,7 +2226,7 @@ export class MeleeCommandService {
         if (outcome.approval === "automatic") await this._applyOutcome(session, outcome);
       }
     }
-    exchangeAdapter.applyLegacyState(state);
+    exchangeAdapter.applyDuelState(state);
     if (wasResponder) {
       await MeleeEffectService.expire(session, "segmentEnd", { segmentIndex: segmentIndexBefore });
       if (initiativeOwnerBefore !== session.initiative.ownerId) {
@@ -2459,7 +2479,7 @@ export class MeleeMigration {
               successCost: raw.costType === "success" ? number(raw.successCost, 1) : 0,
               segmentCost: raw.costType === "segment" ? number(raw.segmentCost, 1) : 0
             },
-            operations: array(raw.operations).length ? raw.operations : legacyBeastOperations(item, raw)
+            operations: array(raw.operations).length ? raw.operations : fallbackBeastOperations(item, raw)
           }, { kind: "beast", uuid: `${item.uuid}#${raw.id}`, itemUuid: item.uuid });
           return {
             ...raw,
@@ -2548,7 +2568,7 @@ export async function startMeleeSession({
     await MeleeSessionStore.create(session, { combat: game.combat, message });
     await message.update({
       "flags.neuroshima.melee": {
-        engine: "v2", sessionId: session.id, cardType: "pending", renderedRevision: session.revision
+        sessionId: session.id, cardType: "pending", renderedRevision: session.revision
       }
     });
     Hooks.callAll("neuroshimaMeleeSessionUpdated", clone(session), { type: "startSession" }, null);
@@ -2576,22 +2596,17 @@ async function bindMeleeResultMessage(sessionId, messageId, expectedRevision) {
 }
 
 export function registerMeleeSystemSettings() {
-  game.settings.register("neuroshima", MELEE_SETTING, {
-    name: "NEUROSHIMA.Settings.MeleeEngineV2.Name",
-    hint: "NEUROSHIMA.Settings.MeleeEngineV2.Hint",
-    scope: "world", config: false, type: Boolean, default: true
-  });
   game.settings.register("neuroshima", MELEE_WORLD_STORE_SETTING, {
     scope: "world", config: false, type: Object, default: {}
   });
 }
 
-export function isMeleeV2Enabled() {
+export function isMeleeEnabled() {
   return true;
 }
 
 export async function expireMeleeEffects(event, payload = {}, combat = game.combat) {
-  if (!game.user?.isGM || !isMeleeV2Enabled() || !combat) return [];
+  if (!game.user?.isGM || !isMeleeEnabled() || !combat) return [];
   const results = [];
   for (const session of MeleeSessionStore.list(combat)) {
     const revision = session.revision;
@@ -2606,7 +2621,7 @@ export async function expireMeleeEffects(event, payload = {}, combat = game.comb
 export function registerMeleeSystem() {
   const api = {
     version: MELEE_VERSION,
-    enabled: isMeleeV2Enabled,
+    enabled: isMeleeEnabled,
     start: startMeleeSession,
     requestStart: payload => {
       const request = { ...payload, startCommandId: payload?.startCommandId || randomId() };
@@ -2629,7 +2644,7 @@ export function registerMeleeSystem() {
       : game.neuroshima.socket.executeAsGM(MELEE_SOCKET_COMMAND, { ...command, userId: game.user.id }),
     syncTest: async test => {
       const link = test?.context?.opposedLink;
-      if (link?.type !== "meleeSessionV2" || !link.sessionId || !MELEE_SIDES.includes(link.role)) return null;
+      if (!isMeleeSessionLink(link) || !MELEE_SIDES.includes(link.role)) return null;
       const session = await MeleeSessionStore.get(link.sessionId, { messageId: link.messageId });
       if (!session) return null;
       const result = test.result ?? {};
