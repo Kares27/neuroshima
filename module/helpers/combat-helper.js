@@ -31,6 +31,7 @@ export class CombatHelper {
   static async applyDamageToActor(actor, attackData, options = {}) {
     game.neuroshima.group(`CombatHelper | applyDamageToActor: ${actor.name}`);
     const suppressChat = options.suppressChat === true;
+    const withPainResistance = options.withPainResistance !== false;
 
     if (actor.type === "vehicle") {
         const result = await this.applyDamageToVehicle(actor, attackData, options);
@@ -333,7 +334,7 @@ export class CombatHelper {
                 wounds: filteredWounds,
                 location,
                 source: sourceInfo,
-                withPainResistance: true,
+                withPainResistance,
                 suppressChat: true,
                 additionalSystem: { damageCategory }
             });
@@ -355,7 +356,9 @@ export class CombatHelper {
             return { results, woundIds, reducedProjectiles, reducedDetails };
         }
 
-        await this.renderPainResistanceReport(actor, results, woundIds, reducedProjectiles, reducedDetails);
+        if (withPainResistance || reducedProjectiles > 0) {
+          await this.renderPainResistanceReport(actor, results, woundIds, reducedProjectiles, reducedDetails);
+        }
     }
     
     game.neuroshima.groupEnd();

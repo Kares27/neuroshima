@@ -2,6 +2,8 @@ import { NEUROSHIMA } from "../config.js";
 import { TraitBrowserApp } from "../apps/trait-browser.js";
 import { BeastActivitySheet } from "../apps/beast-activity-sheet.js";
 import { MeleeActivityEditor } from "../apps/melee-system-ui.js";
+import { ItemActivitySheet } from "../apps/item-activity-sheet.js";
+import { activitiesFromItem, itemSupportsGeneralActivities } from "../activities/item-activity.js";
 import { installMod, attachMod, detachMod, removeMod, buildInstalledMap, buildModDeltaSummary, getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveWeight, getEffectiveCost, computeWeaponEffective, buildWeaponWriteback } from "../helpers/mod-helpers.js";
 import { buildItemPreviewTooltip } from "../helpers/item-tooltip.js";
 import {
@@ -47,6 +49,9 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       deleteResource: NeuroshimaItemSheet.prototype._onDeleteResource,
       toggleResourceSummary: NeuroshimaItemSheet.prototype._onToggleResourceSummary,
       toggleResourceUnclamped: NeuroshimaItemSheet.prototype._onToggleResourceUnclamped,
+      createActivity: NeuroshimaItemSheet.prototype._onCreateActivity,
+      editActivity: NeuroshimaItemSheet.prototype._onEditActivity,
+      useActivity: NeuroshimaItemSheet.prototype._onUseActivity,
       addRelationRow: NeuroshimaItemSheet.prototype._onAddRelationRow,
       deleteRelationRow: NeuroshimaItemSheet.prototype._onDeleteRelationRow,
       addBlastZone: NeuroshimaItemSheet.prototype._onAddBlastZone,
@@ -277,6 +282,14 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
     const item = this.document;
+    if (Array.isArray(item.system.resources) && item.system.resources.some(resource => !resource.id)) {
+      const normalizedResources = item.system.resources.map(resource => ({
+        ...(resource.toObject?.() ?? resource),
+        id: resource.id || foundry.utils.randomID(),
+        recovery: resource.recovery ?? []
+      }));
+      await item.update({ "system.resources": normalizedResources }, { render: false });
+    }
     context.item = item;
     context.system = item.system;
     context.fields = item.system.schema.fields;
@@ -308,7 +321,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       armor: ["description", "stats", "resources", "effects", "mods"],
       "weapon-mod": ["description", "stats", "resources", "effects"],
       "armor-mod": ["description", "stats", "resources", "effects"],
-      container: ["contents", "description", "stats", "effects"],
+      container: ["contents", "description", "stats", "resources", "effects"],
       "beast-action": ["stats", "description", "effects"],
       "beast-segment": ["stats", "description", "effects"]
     };
@@ -337,6 +350,19 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.enableEncumbrance = game.settings.get("neuroshima", "enableEncumbrance");
     context.usePelletCountLimit = game.settings.get("neuroshima", "usePelletCountLimit");
     context.config = NEUROSHIMA;
+    context.supportsActivities = itemSupportsGeneralActivities(item);
+    context.activities = activitiesFromItem(item).map(activity => ({
+      id: activity.id,
+      type: activity.type,
+      name: activity.name,
+      img: activity.img,
+      typeLabel: CONFIG.NEUROSHIMA.activityTypes?.[activity.type]?.label ?? activity.type,
+      canUse: activity.canUse,
+      uses: activity.data.uses,
+      remaining: activity.data.uses?.max == null || activity.data.uses.max === ""
+        ? null
+        : Math.max(0, Number(activity.data.uses.max) - Number(activity.data.uses.spent ?? 0))
+    }));
 
     // Prepare visual ammo stacks for magazine (reversed for LIFO visualization)
     if (item.type === "magazine") {
@@ -743,7 +769,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
         { id: "contents", group: "primary", label: "NEUROSHIMA.Tabs.Contents" },
         { id: "stats", group: "primary", label: "NEUROSHIMA.Tabs.Stats" },
         { id: "description", group: "primary", label: "NEUROSHIMA.Tabs.Description" },
-        { id: "resources", group: "primary", label: "NEUROSHIMA.Tabs.Resources" },
+        { id: "resources", group: "primary", label: "Użycie" },
         { id: "effects", group: "primary", label: "NEUROSHIMA.Tabs.Effects" },
         { id: "mods", group: "primary", label: "NEUROSHIMA.Tabs.Modifications" }
       ],
@@ -768,7 +794,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     },
     resources: {
       template: "systems/neuroshima/templates/item/item-resources.hbs",
-      scrollable: [".resources-list"]
+      scrollable: [""]
     },
     effects: {
       template: "systems/neuroshima/templates/item/item-effects.hbs",
@@ -1103,7 +1129,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       "weapon-mod": ["description", "stats", "resources", "effects"],
       "armor-mod": ["description", "stats", "resources", "effects"],
       facilities: ["description", "stats", "resources", "effects"],
-      container: ["contents", "description", "stats", "effects"],
+      container: ["contents", "description", "stats", "resources", "effects"],
       "beast-action": ["stats", "description", "effects"],
       "beast-segment": ["stats", "description", "effects"]
     };
@@ -1133,8 +1159,28 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
   async _onAddResource(event, target) {
     const item = this.document;
     const resources = Array.from(item.system.resources ?? []);
-    resources.push({ key: "", label: "", value: 0, min: 0, max: 0, showInSummary: false, unclamped: false });
+    resources.push({
+      id: foundry.utils.randomID(), key: "", label: "", value: 0, min: 0, max: 0,
+      showInSummary: false, unclamped: false, recovery: []
+    });
     await item.update({ "system.resources": resources });
+  }
+
+  async _onCreateActivity() {
+    return ItemActivitySheet.createForItem(this.document);
+  }
+
+  async _onEditActivity(_event, target) {
+    const id = target.dataset.activityId ?? target.closest("[data-activity-id]")?.dataset.activityId;
+    if (id) return ItemActivitySheet.open(this.document, id);
+  }
+
+  async _onUseActivity(_event, target) {
+    const id = target.dataset.activityId ?? target.closest("[data-activity-id]")?.dataset.activityId;
+    const activity = id ? activitiesFromItem(this.document).find(entry => entry.id === id) : null;
+    if (!activity) return;
+    try { await activity.use(); }
+    catch (error) { ui.notifications.error(error.message); console.error("Neuroshima | Activity use failed", error); }
   }
 
   async _onDeleteResource(event, target) {

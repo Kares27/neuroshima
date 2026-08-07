@@ -1,5 +1,6 @@
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { isGearTypeEquippable, normalizeGearType } from "../helpers/gear-types.js";
+import { activitiesFromItem, activityFromItem, itemSupportsGeneralActivities } from "../activities/item-activity.js";
 
 /**
  * Extended Item document class for Neuroshima 1.5.
@@ -17,6 +18,35 @@ import { isGearTypeEquippable, normalizeGearType } from "../helpers/gear-types.j
  *   `containerId` flag (DnD5e-style container pattern).
  */
 export class NeuroshimaItem extends Item {
+  /** General, document-like ways of using this Item. */
+  get activities() { return activitiesFromItem(this); }
+
+  getActivity(activityId) { return activityFromItem(this, activityId); }
+
+  /**
+   * Use the only available Activity or ask the user which Activity to use.
+   * Item type no longer needs to know the concrete behavior.
+   */
+  async use(options = {}) {
+    if (!itemSupportsGeneralActivities(this)) return null;
+    const available = this.activities.filter(activity => activity.canUse);
+    if (!available.length) throw new Error(`Item „${this.name}” nie ma dostępnej Activity.`);
+    if (available.length === 1) return available[0].use(options);
+    const content = `<form class="neuroshima activity-choice-list">${available.map((activity, index) => `
+      <label><input type="radio" name="activityId" value="${activity.id}" ${index === 0 ? "checked" : ""}>
+      <img src="${activity.img}" alt=""><span><strong>${activity.name}</strong><small>${CONFIG.NEUROSHIMA.activityTypes[activity.type]?.label ?? activity.type}</small></span></label>`).join("")}</form>`;
+    const activityId = await foundry.applications.api.DialogV2.wait({
+      window: { title: `Użyj: ${this.name}` }, content,
+      classes: ["neuroshima", "activity-choice-dialog"],
+      buttons: [{
+        action: "use", label: "Użyj", icon: "fa-solid fa-play", default: true,
+        callback: (_event, button) => button.form?.elements?.activityId?.value ?? null
+      }, { action: "cancel", label: "Anuluj", callback: () => null }],
+      rejectClose: false
+    });
+    return activityId ? this.getActivity(activityId)?.use(options) : null;
+  }
+
   /** Whether this Item is allowed to expose and use its equipped state. */
   get isEquippable() {
     if (!("equipped" in (this.system ?? {}))) return false;
@@ -411,8 +441,6 @@ export class NeuroshimaItem extends Item {
     if (!newResources) return;
 
     const currentResources = Array.from(this.system?.resources ?? []);
-    const hasMod = currentResources.some(r => r._fromModId);
-    if (!hasMod) return;
 
     let resourcesArray;
     if (Array.isArray(newResources)) {
@@ -427,8 +455,13 @@ export class NeuroshimaItem extends Item {
 
     const merged = resourcesArray.map((submitted, idx) => {
       const original = currentResources[idx];
-      if (!original?._fromModId) return submitted;
-      return { ...original, value: submitted?.value ?? original.value };
+      const stable = {
+        ...submitted,
+        id: submitted?.id || original?.id || foundry.utils.randomID(),
+        recovery: submitted?.recovery ?? original?.recovery ?? []
+      };
+      if (!original?._fromModId) return stable;
+      return { ...original, ...stable, value: submitted?.value ?? original.value };
     });
 
     foundry.utils.setProperty(changed, "system.resources", merged);

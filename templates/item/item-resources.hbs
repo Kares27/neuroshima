@@ -1,8 +1,8 @@
 <section class="tab resources {{tabs.resources.cssClass}}" data-group="primary" data-tab="resources" data-application-part="resources">
     <div class="section-header">
         <div class="header-title">
-            <i class="fas fa-database"></i>
-            <span>{{localize "NEUROSHIMA.Tabs.Resources"}}</span>
+            <i class="fas fa-bolt"></i>
+            <span>Użycie</span>
         </div>
         {{#if editable}}
         <div class="header-actions">
@@ -13,6 +13,7 @@
         {{/if}}
     </div>
 
+    <div class="usage-subsection-header"><span>Zasoby</span></div>
     {{#if system.resources.length}}
     <div class="item resources-list-header">
         <div class="res-col-id">#</div>
@@ -26,6 +27,7 @@
     <div class="resources-list">
         {{#each system.resources}}
         <div class="item resource-row{{#if this._fromModId}} resource-row-from-mod{{/if}}" data-resource-index="{{@index}}">
+            <input type="hidden" name="system.resources.{{@index}}.id" value="{{this.id}}">
             <div class="res-col-id">
                 <input type="checkbox"
                        name="system.resources.{{@index}}.showInSummary"
@@ -106,5 +108,26 @@
     </div>
     {{else}}
     <p class="empty-list">{{localize "NEUROSHIMA.Resources.Empty"}}</p>
+    {{/if}}
+
+    {{#if supportsActivities}}
+    <div class="usage-subsection-header activity-list-heading">
+        <span>Aktywności</span>
+        {{#if editable}}<button type="button" data-action="createActivity"><i class="fas fa-plus"></i></button>{{/if}}
+    </div>
+    <div class="item-activities-list">
+        {{#each activities}}
+        <article class="item-activity-row" data-activity-id="{{id}}">
+            <button type="button" class="activity-row-main" data-action="editActivity" data-activity-id="{{id}}">
+                <img src="{{img}}" alt="">
+                <span><strong>{{name}}</strong><small>{{typeLabel}}</small></span>
+            </button>
+            {{#unless (eq remaining null)}}<span class="activity-uses-badge">{{remaining}} / {{uses.max}}</span>{{/unless}}
+            <button type="button" class="activity-use-button" data-action="useActivity" data-activity-id="{{id}}" {{#unless canUse}}disabled{{/unless}} data-tooltip="Użyj">
+                <i class="fas fa-play"></i>
+            </button>
+        </article>
+        {{else}}<p class="empty-list">Ten Item nie ma jeszcze żadnej aktywności.</p>{{/each}}
+    </div>
     {{/if}}
 </section>
