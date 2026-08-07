@@ -517,7 +517,11 @@ export class NeuroshimaChatMessage extends ChatMessage {
     const data = message.getFlag("neuroshima", "requiredTestData");
     if (!data) return;
 
-    const actor = game.user.character ?? canvas.tokens?.controlled?.[0]?.actor ?? null;
+    const requiredDocument = data.defenderActorUuid ? await fromUuid(data.defenderActorUuid) : null;
+    const requiredActor = requiredDocument?.actor ?? requiredDocument ?? null;
+    const actor = requiredActor && (game.user.isGM || requiredActor.isOwner)
+      ? requiredActor
+      : canvas.tokens?.controlled?.[0]?.actor ?? game.user.character ?? null;
     if (!actor) {
       ui.notifications.warn(game.i18n.localize("NEUROSHIMA.RequiredTest.NoActor"));
       return;
@@ -544,10 +548,12 @@ export class NeuroshimaChatMessage extends ChatMessage {
     };
 
     let resultCallback = null;
-    if (data.onSuccess || data.onFailure || data.onSuccessEffectUuids?.length || data.onFailureEffectUuids?.length) {
+    if (data.onSuccess || data.onFailure || data.onSuccessEffectUuids?.length || data.onFailureEffectUuids?.length || data.continuation) {
       const successConsequence = data.onSuccess ?? null;
       const failureConsequence = data.onFailure ?? null;
-      resultCallback = async ({ isSuccess }) => {
+      resultCallback = async ({ isSuccess, successPoints, successes }) => {
+        const points = Number(successPoints ?? successes);
+        if (Number.isFinite(points)) isSuccess = points >= Number(data.requiredSuccesses ?? 1);
         if (successConsequence || failureConsequence) {
           const consequence = isSuccess ? successConsequence : failureConsequence;
           if (consequence) {
@@ -559,6 +565,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
         }
         const effectUuids = isSuccess ? (data.onSuccessEffectUuids ?? []) : (data.onFailureEffectUuids ?? []);
         await _applyEffectUuids(effectUuids, actor);
+        await this._resolveRequiredTestContinuation(message, data, isSuccess);
         game.neuroshima?.log("onExecuteRequiredTest | consequence applied", { actorUuid, isSuccess });
       };
     }
@@ -660,6 +667,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       }
     }
 
+    await this._resolveRequiredTestContinuation(message, data, true);
     ui.notifications.info(game.i18n.localize("NEUROSHIMA.RequiredTest.AutoSucceedConfirm"));
     game.neuroshima?.log("[onAutoSucceedRequiredTest] auto-succeed applied", { defenderActorUuid });
   }
@@ -1639,6 +1647,27 @@ export class NeuroshimaChatMessage extends ChatMessage {
       ])
     }));
     return { results: preparedResults, reducedDetails: preparedReducedDetails };
+  }
+
+  static async _resolveRequiredTestContinuation(message, data, isSuccess) {
+    const continuation = data?.continuation;
+    if (continuation?.type !== "meleeActivityTest" || !game.neuroshima?.melee) return;
+    const session = await game.neuroshima.melee.get(continuation.sessionId, { messageId: continuation.messageId });
+    if (!session) return;
+    await game.neuroshima.melee.dispatch({
+      type: "resolveRequiredTest",
+      sessionId: session.id,
+      messageId: session.messageId,
+      side: continuation.side,
+      expectedRevision: session.revision,
+      commandId: `${message.id}:melee-required-test`,
+      payload: {
+        actionInstanceId: continuation.actionInstanceId,
+        operationId: continuation.operationId,
+        requiredTestMessageId: message.id,
+        isSuccess: isSuccess === true
+      }
+    });
   }
 
   /**

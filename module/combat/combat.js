@@ -2955,7 +2955,7 @@ export class MeleeOpposedChat {
     root = root instanceof HTMLElement ? root : root[0];
     if (!root) return;
 
-    const state = message._neuroshimaMeleeV2Session?.v1State
+    const state = message._neuroshimaMeleeV2Session?.legacyView
       ?? message.getFlag("neuroshima", "duelCard");
     if (!state || state.status !== "picking") return;
 
@@ -3042,18 +3042,27 @@ export class MeleeOpposedChat {
         const selected   = [...root.querySelectorAll("button.die-chip-mvc.mvc-die-selected")];
         const indices    = selected.map(c => parseInt(c.dataset.dieIdx, 10)).filter(n => !isNaN(n));
 
-        // Sztuczki gracza (getMeleeActions) mają action-type="trick" z dodatkowymi atrybutami.
-        // Kodujemy jako "trick:ID:damage" aby applyDuelBatch mógł parsować metadane sztuczki.
         let actionArg = actionType;
         if (actionType === "trick") {
-          const trickId     = btn.dataset.trickId     ?? "";
-          const trickDamage = btn.dataset.trickDamage ?? "";
-          actionArg = `trick:${trickId}:${trickDamage}`;
+          actionArg = {
+            activityId: btn.dataset.activityId || btn.dataset.trickId || "",
+            runtimeId: btn.dataset.runtimeId || null,
+            sourceItemUuid: btn.dataset.sourceItemUuid || null,
+            sourceEffectUuid: btn.dataset.sourceEffectUuid || null
+          };
         }
+        const parameterValues = {};
+        const parameterRoot = root.querySelector(`[data-activity-parameters-for="${btn.dataset.runtimeId || btn.dataset.activityId || btn.dataset.trickId || ""}"]`);
+        parameterRoot?.querySelectorAll("[data-parameter-key]").forEach(input => {
+          parameterValues[input.dataset.parameterKey] = input.type === "checkbox" ? input.checked : input.value;
+        });
+        const modifierRefs = [...root.querySelectorAll(".mdc-activity-mod-check:checked")].map(input => ({
+          activityId: input.dataset.activityId,
+          sourceItemUuid: input.dataset.sourceItemUuid || null,
+          sourceEffectUuid: input.dataset.sourceEffectUuid || null
+        }));
 
-        // Jeśli gracz zatwierdza atak i ma aktywną kolejkę sztuczek (successCost > 0),
-        // zbieramy zakolejkowane sztuczki i przekazujemy jako beastQueue z prefiksem "trick:".
-        // applyDuelBatch rozpozna te wpisy i oddzieli je od akcji bestii.
+        // Dodatki do ataku są przekazywane jako typowane referencje Activity.
         let extraQueue = null;
         if (actionType === "attack") {
           const tqs = root.querySelector(".mdc-trick-queue-section");
@@ -3064,7 +3073,7 @@ export class MeleeOpposedChat {
               const id  = el.dataset.trickId;
               const dmg = el.dataset.trickDamage ?? "";
               if (qty > 0 && id) {
-                for (let i = 0; i < qty; i++) trickItems.push(`trick:${id}:${dmg}`);
+                for (let i = 0; i < qty; i++) trickItems.push({ activityId: id, legacyDamage: dmg });
               }
             });
             if (trickItems.length) extraQueue = trickItems;
@@ -3072,13 +3081,13 @@ export class MeleeOpposedChat {
 
           // getMeleeActions dialog modifiers — zaznaczone checkboxy uruchamiają swój skrypt
           // i dodają wypchnięte akcje jako trick-queue entries (aplikowane bezwarunkowo).
-          const dmsSection = root.querySelector(".mdc-dialog-modifiers-section");
+          const dmsSection = root.querySelector(".mdc-legacy-dialog-modifiers-section");
           if (dmsSection) {
             const checkedMods = [...dmsSection.querySelectorAll(".mdc-dialog-mod-check:checked")];
             if (checkedMods.length > 0) {
               try {
                 const { NeuroshimaScript } = await import("../apps/neuroshima-script-engine.js");
-                const duelState = message._neuroshimaMeleeV2Session?.v1State
+                const duelState = message._neuroshimaMeleeV2Session?.legacyView
                   ?? message.getFlag("neuroshima", "duelCard");
                 const ownerUuid = root.querySelector("[data-melee-owner]")?.dataset.meleeOwner;
                 const ownerDocMod = fromUuidSync(ownerUuid);
@@ -3130,7 +3139,7 @@ export class MeleeOpposedChat {
                   for (const a of dialogActions) {
                     if (!a.id || !a.damage) continue;
                     if (!extraQueue) extraQueue = [];
-                    extraQueue.push(`trick:${a.id}:${a.damage}`);
+                    extraQueue.push({ activityId: a.id, legacyDamage: a.damage });
                   }
                 }
               } catch (err) {
@@ -3141,9 +3150,9 @@ export class MeleeOpposedChat {
         }
 
         if (game.user.isGM) {
-          await MeleeOpposedChat.applyDuelBatch(message.id, pool, indices, actionArg, extraQueue);
+          await MeleeOpposedChat.applyDuelBatch(message.id, pool, indices, actionArg, extraQueue, { parameterValues, modifierRefs });
         } else if (game.neuroshima?.socket) {
-          await game.neuroshima.socket.executeAsGM("applyDuelBatch", message.id, pool, indices, actionArg, extraQueue);
+          await game.neuroshima.socket.executeAsGM("applyDuelBatch", message.id, pool, indices, actionArg, extraQueue, { parameterValues, modifierRefs });
         }
       });
     });
@@ -3249,7 +3258,7 @@ export class MeleeOpposedChat {
     // getMeleeActions trick queue — sekcja dla sztuczek gracza z successCost > 0.
     // Budżet = liczba sukcesów wśród zaznaczonych kości (klasa is-success).
     // Gracz wybiera ile razy użyć danej sztuczki; przy zatwierdzeniu "Attack"
-    // kolejka jest kodowana jako "trick:ID:damage" i przekazywana do applyDuelBatch.
+    // Kolejka przechowuje typowane referencje Activity, bez kodowania w stringach.
     const trickQueueSection = root.querySelector(".mdc-trick-queue-section");
 
     const updateTrickQueue = () => {
@@ -3355,7 +3364,7 @@ export class MeleeOpposedChat {
           const id  = el.dataset.trickId;
           const dmg = el.dataset.trickDamage;
           if (qty > 0 && id && dmg) {
-            for (let i = 0; i < qty; i++) trickItems.push(`trick:${id}:${dmg}`);
+            for (let i = 0; i < qty; i++) trickItems.push({ activityId: id, legacyDamage: dmg });
           }
         });
         if (game.user.isGM) {
@@ -3398,16 +3407,58 @@ export class MeleeOpposedChat {
     }
   }
 
-  static async applyDuelBatch(messageId, pool, diceIndices, action = null, beastQueue = null) {
+  static async applyDuelBatch(messageId, pool, diceIndices, action = null, beastQueue = null, options = {}) {
     const v2Message = game.messages.get(messageId);
     const marker = v2Message?.getFlag("neuroshima", "melee");
     if (marker?.engine === "v2" && marker.sessionId) {
       const session = await game.neuroshima.melee.get(marker.sessionId, { messageId });
       if (!session) return;
+      const side = pool === "defender" ? "defender" : "attacker";
+      const selectedDieIds = [...new Set(diceIndices)]
+        .map(index => session.pools?.[side]?.dice?.[index]?.id)
+        .filter(Boolean);
+      const participant = session.participants?.[side];
+      const activity = typeof action === "object" && action
+        ? {
+            activityId: action.activityId,
+            sourceItemUuid: action.sourceEffectUuid
+              ? (action.sourceItemUuid || null)
+              : (action.sourceItemUuid || participant?.weaponUuid || null),
+            sourceEffectUuid: action.sourceEffectUuid || null
+          }
+        : {
+            activityId: action === "defend" ? "defense" : (action || (session.phase === "response" ? "defense" : "attack")),
+            sourceItemUuid: participant?.weaponUuid || null,
+            sourceEffectUuid: null
+          };
+      const queuedSupplements = (beastQueue ?? []).map(entry => {
+        if (entry && typeof entry === "object") return { activityRef: entry, parameterValues: {}, quantity: 1 };
+        const composite = String(entry || "");
+        const separator = composite.indexOf("::");
+        if (separator > 0) {
+          const actorDoc = fromUuidSync(participant?.tokenUuid || participant?.actorUuid);
+          const actor = actorDoc?.actor ?? actorDoc;
+          const item = actor?.items?.get?.(composite.slice(0, separator));
+          return {
+            activityRef: {
+              activityId: composite.slice(separator + 2),
+              sourceItemUuid: item?.uuid || null,
+              sourceEffectUuid: null
+            },
+            parameterValues: {}, quantity: 1
+          };
+        }
+        return { activityRef: { activityId: composite }, parameterValues: {}, quantity: 1 };
+      });
       return game.neuroshima.melee.dispatch({
-        type: "legacyBatch",
-        side: pool,
-        payload: { pool, diceIndices, action, queue: beastQueue },
+        type: "commitExchangeAction",
+        side,
+        payload: {
+          activity, selectedDieIds,
+          parameterValues: foundry.utils.deepClone(options.parameterValues ?? {}),
+          modifierRefs: foundry.utils.deepClone(options.modifierRefs ?? []),
+          queuedSupplements
+        },
         sessionId: session.id,
         messageId,
         expectedRevision: session.revision,
@@ -4343,7 +4394,7 @@ export class MeleeOpposedChat {
     if (!message) return;
 
     const marker = message.getFlag("neuroshima", "melee");
-    const v2Session = marker?.engine === "v2" && marker.sessionId
+    let v2Session = marker?.engine === "v2" && marker.sessionId
       ? await game.neuroshima.melee.get(marker.sessionId, { messageId })
       : null;
     const rd = v2Session?.result ?? message.getFlag("neuroshima", "opposedResult");
@@ -4366,6 +4417,23 @@ export class MeleeOpposedChat {
     if (!defenderActor) {
       ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.DefenderNotFound"));
       return;
+    }
+
+    // Reserve the canonical damage operation only after the duel documents
+    // resolve, but before either actor is changed.
+    if (v2Session) {
+      try {
+        const claim = await game.neuroshima.melee.dispatch({
+          type: "claimDamage", side: null, payload: { kind: "duel" },
+          sessionId: v2Session.id, messageId, expectedRevision: v2Session.revision,
+          commandId: foundry.utils.randomID()
+        });
+        v2Session = claim.session;
+      } catch (error) {
+        if (error?.code !== "ALREADY_APPLIED") throw error;
+        ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.AlreadyApplied"));
+        return;
+      }
     }
 
     const { CombatHelper } = await import("../helpers/combat-helper.js");
@@ -4435,7 +4503,7 @@ export class MeleeOpposedChat {
     if (rd.isBeastAttack) {
       const queue = rd.pendingBeastQueue ?? [];
       if (queue.length > 0) {
-        await MeleeOpposedChat.applyBeastActions(messageId, queue);
+        await MeleeOpposedChat.applyBeastActions(messageId, queue, { damageClaimed: true });
         if (!v2Session) {
           const refreshed = message.getFlag("neuroshima", "opposedResult");
           await message.setFlag("neuroshima", "opposedResult", { ...refreshed, applied: true });
@@ -4758,7 +4826,7 @@ export class MeleeOpposedChat {
     if (!message) return;
 
     const marker = message.getFlag("neuroshima", "melee");
-    const v2Session = marker?.engine === "v2" && marker.sessionId
+    let v2Session = marker?.engine === "v2" && marker.sessionId
       ? await game.neuroshima.melee.get(marker.sessionId, { messageId })
       : null;
     const hr = v2Session?.hailResult ? {
@@ -4785,6 +4853,23 @@ export class MeleeOpposedChat {
     if (!defenderActor) {
       ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.DefenderNotFound"));
       return;
+    }
+
+    // Hail damage has a separate exactly-once ledger entry because it resolves
+    // independently from the standard duel path.
+    if (v2Session) {
+      try {
+        const claim = await game.neuroshima.melee.dispatch({
+          type: "claimDamage", side: null, payload: { kind: "hail" },
+          sessionId: v2Session.id, messageId, expectedRevision: v2Session.revision,
+          commandId: foundry.utils.randomID()
+        });
+        v2Session = claim.session;
+      } catch (error) {
+        if (error?.code !== "ALREADY_APPLIED") throw error;
+        ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.AlreadyApplied"));
+        return;
+      }
     }
 
     const { CombatHelper } = await import("../helpers/combat-helper.js");
@@ -4848,13 +4933,14 @@ export class MeleeOpposedChat {
    *
    * @param {string}   messageId
    * @param {string[]} selectedActionIds   Item IDs of chosen beast actions (may repeat)
+   * @param {{damageClaimed?: boolean}} options Internal hand-off from applyOpposedDamage.
    */
-  static async applyBeastActions(messageId, selectedActionIds) {
+  static async applyBeastActions(messageId, selectedActionIds, options = {}) {
     const message = game.messages.get(messageId);
     if (!message) return;
 
     const marker = message.getFlag("neuroshima", "melee");
-    const v2Session = marker?.engine === "v2" && marker.sessionId
+    let v2Session = marker?.engine === "v2" && marker.sessionId
       ? await game.neuroshima.melee.get(marker.sessionId, { messageId })
       : null;
     const rd = v2Session?.result ?? message.getFlag("neuroshima", "opposedResult");
@@ -4873,6 +4959,23 @@ export class MeleeOpposedChat {
       return;
     }
 
+    // This method is also reachable directly from the beast-action button. If
+    // the ordinary duel handler did not reserve damage first, reserve it here.
+    if (v2Session && options.damageClaimed !== true) {
+      try {
+        const claim = await game.neuroshima.melee.dispatch({
+          type: "claimDamage", side: null, payload: { kind: "duel" },
+          sessionId: v2Session.id, messageId, expectedRevision: v2Session.revision,
+          commandId: foundry.utils.randomID()
+        });
+        v2Session = claim.session;
+      } catch (error) {
+        if (error?.code !== "ALREADY_APPLIED") throw error;
+        ui.notifications.warn(game.i18n.localize("NEUROSHIMA.BeastAction.AlreadyApplied"));
+        return;
+      }
+    }
+
     const { CombatHelper }           = await import("../helpers/combat-helper.js");
     const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
 
@@ -4888,6 +4991,7 @@ export class MeleeOpposedChat {
       ui.notifications.warn(error.message);
       return;
     }
+
     const { allResults, allWoundIds, totalReduced, allReducedDetails, appliedNames } = result;
 
     if (allWoundIds.length > 0 || appliedNames.length > 0) {

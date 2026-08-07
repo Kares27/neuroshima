@@ -57,14 +57,30 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         if (session) game.neuroshima.melee.openMessage(session);
       },
       cancelMeleeSession: async function(event, target) {
+        event.preventDefault();
         event.stopPropagation();
-        const session = await game.neuroshima.melee.get(target.closest("[data-session-id]")?.dataset.sessionId);
-        if (!session) return;
-        await game.neuroshima.melee.dispatch({
-          type: "endSession", side: null, payload: { reason: "cancelled" },
-          sessionId: session.id, messageId: session.messageId,
-          expectedRevision: session.revision, commandId: foundry.utils.randomID()
-        });
+        event.stopImmediatePropagation?.();
+        const sessionId = target.dataset.sessionId
+          ?? target.closest("[data-session-id]")?.dataset.sessionId;
+
+        try {
+          const session = sessionId
+            ? await game.neuroshima.melee.get(sessionId)
+            : null;
+
+          if (session) {
+            await game.neuroshima.melee.dispatch({
+              type: "endSession", side: null, payload: { reason: "cancelled" },
+              sessionId: session.id, messageId: session.messageId,
+              expectedRevision: session.revision, commandId: foundry.utils.randomID()
+            });
+          }
+
+          await this.render({ force: true });
+        } catch (error) {
+          ui.notifications.error(error.message);
+          console.error("Neuroshima | Failed to dismiss creature melee session", error);
+        }
       },
       editImage: async function(event, target) {
         const fp = new FilePicker({ type: "image", callback: src => this.document.update({ img: src }) });
@@ -298,17 +314,8 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
           ? actor.items.filter(i => i.id === itemId && i.type === "beast-action")
           : actor.items.filter(i => i.type === "beast-action");
 
-        const byTier = {};
-        for (const item of sourceItems) {
-          for (const act of (item.system.activities ?? [])) {
-            const t = Math.min(3, Math.max(1, act.successCost ?? 1));
-            if (!byTier[t]) byTier[t] = act.damage || "D";
-          }
-        }
-
-        if (Object.keys(byTier).length === 0) return;
-
         const sourceItem = sourceItems[0];
+        if (!sourceItem) return;
 
         const syntheticWeapon = {
           id: null,
@@ -322,9 +329,11 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
             skill: "experience",
             attackBonus: 0,
             defenseBonus: 0,
-            damageMelee1: byTier[1] ?? byTier[2] ?? byTier[3] ?? "D",
-            damageMelee2: byTier[2] ?? byTier[1] ?? byTier[3] ?? "D",
-            damageMelee3: byTier[3] ?? byTier[2] ?? byTier[1] ?? "D",
+            // The package defines only the roll profile. Damage comes from the
+            // exact typed Activity selected later on the duel card.
+            damageMelee1: "D",
+            damageMelee2: "D",
+            damageMelee3: "D",
             requiredBuild: 0,
             piercing: 0,
             magazine: null,
@@ -1137,7 +1146,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
           isV2: true,
           attackerName: session.participants.attacker.name,
           defenderName: session.participants.defender.name,
-          segment: Number(session.currentSegment ?? 0) + 1,
+          segment: Number(session.exchange?.currentSegment ?? 0) + 1,
           initiativeName: Object.values(session.participants).find(participant =>
             participant.actorUuid === session.initiative.ownerId || participant.tokenUuid === session.initiative.ownerId
           )?.name ?? "?",

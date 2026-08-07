@@ -173,9 +173,17 @@ export class GearData extends foundry.abstract.TypeDataModel {
 function meleeActivitySchema() {
   const fields = foundry.data.fields;
   return {
+    kind: new fields.StringField({ initial: "action", choices: ["action", "modifier", "reaction"] }),
+    category: new fields.StringField({ initial: "attack", blank: true }),
     description: new fields.HTMLField({ initial: "" }),
     tags: new fields.ArrayField(new fields.StringField({ blank: true }), { initial: [] }),
     activation: new fields.ObjectField({ initial: {} }),
+    parameters: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+    test: new fields.ObjectField({ nullable: true, initial: null }),
+    meleeDamage: new fields.ObjectField({ initial: {} }),
+    selectors: new fields.ObjectField({ initial: {} }),
+    changes: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+    priority: new fields.NumberField({ integer: true, initial: 100 }),
     conditions: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
     outcomes: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
     operations: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),

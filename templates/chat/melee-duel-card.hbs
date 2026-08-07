@@ -189,9 +189,12 @@
       {{#if ownerExtraActions}}
         {{#each ownerExtraActions}}
         <button type="button" class="mdc-action-choice mdc-action-choice--trick is-disabled"
-            data-action-type="trick" data-trick-id="{{id}}" data-trick-damage="{{damage}}"
+            data-action-type="trick" data-trick-id="{{id}}" data-activity-id="{{id}}"
+            data-runtime-id="{{runtimeId}}" data-source-item-uuid="{{sourceItemUuid}}"
+            data-source-effect-uuid="{{sourceEffectUuid}}" data-trick-damage="{{damage}}"
             data-pool="{{../ownerPool}}"
             data-min-dice="{{minDice}}" data-max-dice="{{maxDice}}"
+            {{#if exactDice}}data-exact-dice="{{exactDice}}"{{/if}}
             {{#if successCost}}data-min-success="{{successCost}}"{{/if}}
             {{#if gmNote}}data-tooltip="{{gmNote}}"{{/if}} disabled>
           <span class="mac-icon">
@@ -206,12 +209,47 @@
             <span class="mac-counter">0/{{maxDice}}</span>
           </span>
         </button>
+        {{#if parameters.length}}
+        <div class="mdc-activity-parameters" data-activity-parameters-for="{{runtimeId}}">
+          {{#each parameters as |parameter|}}
+          <label><span>{{parameter.label}}</span>
+            {{#if (eq parameter.type "select")}}
+            <select data-parameter-key="{{parameter.key}}">
+              {{#each parameter.choices as |choice|}}<option value="{{choice.value}}" {{#if (eq choice.value parameter.default)}}selected{{/if}}>{{choice.label}}</option>{{/each}}
+            </select>
+            {{else if (eq parameter.type "boolean")}}
+            <input type="checkbox" data-parameter-key="{{parameter.key}}" {{checked parameter.default}}>
+            {{else}}
+            <input type="{{#if (eq parameter.type 'number')}}number{{else}}text{{/if}}" data-parameter-key="{{parameter.key}}" value="{{parameter.default}}">
+            {{/if}}
+          </label>
+          {{/each}}
+        </div>
+        {{/if}}
         {{/each}}
       {{/if}}
       {{/if}}
     </div>
+    {{#if ownerActivityModifiers.length}}
+    <div class="mdc-dialog-modifiers-section mdc-typed-modifiers-section">
+      <div class="mdc-dialog-mod-header"><i class="fas fa-sliders-h"></i><span>Modyfikacje akcji</span></div>
+      {{#each ownerActivityModifiers as |modifier|}}
+      <label class="mdc-dialog-mod-entry">
+        <span class="mdc-dialog-mod-icon">{{#if modifier.img}}<img src="{{modifier.img}}" alt="">{{else}}<i class="fas fa-sliders-h"></i>{{/if}}</span>
+        <span class="mdc-dialog-mod-label">{{modifier.name}}</span>
+        <input type="checkbox" class="mdc-activity-mod-check" data-activity-id="{{modifier.id}}"
+          data-source-item-uuid="{{modifier.sourceItemUuid}}" data-source-effect-uuid="{{modifier.sourceEffectUuid}}">
+      </label>
+      {{/each}}
+    </div>
+    {{/if}}
+    {{#if damageModifierSummary.length}}
+    <div class="mdc-damage-modifier-summary" data-gm-only="true">
+      {{#each damageModifierSummary}}<span>{{sourceName}}: {{tier}} ({{before}} → {{after}})</span>{{/each}}
+    </div>
+    {{/if}}
     {{#if ownerDialogModifiers}}
-    <div class="mdc-dialog-modifiers-section">
+    <div class="mdc-dialog-modifiers-section mdc-legacy-dialog-modifiers-section">
       <div class="mdc-dialog-mod-header">
         <i class="fas fa-sliders-h"></i>
         <span>Modyfikatory sztuczek</span>
@@ -321,7 +359,49 @@
         </span>
       </button>
       {{/if}}
+      {{#each responderExtraActions}}
+      <button type="button" class="mdc-action-choice mdc-action-choice--trick is-disabled"
+          data-action-type="trick" data-trick-id="{{id}}" data-activity-id="{{id}}"
+          data-runtime-id="{{runtimeId}}" data-source-item-uuid="{{sourceItemUuid}}"
+          data-source-effect-uuid="{{sourceEffectUuid}}" data-pool="{{../responderPool}}"
+          data-min-dice="{{minDice}}" data-max-dice="{{maxDice}}"
+          {{#if noDice}}data-no-dice="true"{{else}}data-exact-dice="{{../responderExactDice}}"{{/if}}
+          {{#if successCost}}data-min-success="{{successCost}}"{{/if}}
+          {{#if gmNote}}data-tooltip="{{gmNote}}"{{/if}} disabled>
+        <span class="mac-icon">{{#if img}}<img src="{{img}}" alt="">{{else}}<i class="fas fa-shield-alt"></i>{{/if}}</span>
+        <span class="mac-body"><span class="mac-label">{{name}}</span></span>
+        <span class="mac-meta"><span class="mac-counter">0/{{maxDice}}</span></span>
+      </button>
+      {{#if parameters.length}}
+      <div class="mdc-activity-parameters" data-activity-parameters-for="{{runtimeId}}">
+        {{#each parameters as |parameter|}}
+        <label><span>{{parameter.label}}</span>
+          {{#if (eq parameter.type "select")}}
+          <select data-parameter-key="{{parameter.key}}">{{#each parameter.choices as |choice|}}<option value="{{choice.value}}" {{#if (eq choice.value parameter.default)}}selected{{/if}}>{{choice.label}}</option>{{/each}}</select>
+          {{else if (eq parameter.type "boolean")}}
+          <input type="checkbox" data-parameter-key="{{parameter.key}}" {{checked parameter.default}}>
+          {{else}}
+          <input type="{{#if (eq parameter.type 'number')}}number{{else}}text{{/if}}" data-parameter-key="{{parameter.key}}" value="{{parameter.default}}">
+          {{/if}}
+        </label>
+        {{/each}}
+      </div>
+      {{/if}}
+      {{/each}}
     </div>
+    {{#if responderActivityModifiers.length}}
+    <div class="mdc-dialog-modifiers-section mdc-typed-modifiers-section">
+      <div class="mdc-dialog-mod-header"><i class="fas fa-sliders-h"></i><span>Modyfikacje reakcji</span></div>
+      {{#each responderActivityModifiers as |modifier|}}
+      <label class="mdc-dialog-mod-entry">
+        <span class="mdc-dialog-mod-icon">{{#if modifier.img}}<img src="{{modifier.img}}" alt="">{{else}}<i class="fas fa-sliders-h"></i>{{/if}}</span>
+        <span class="mdc-dialog-mod-label">{{modifier.name}}</span>
+        <input type="checkbox" class="mdc-activity-mod-check" data-activity-id="{{modifier.id}}"
+          data-source-item-uuid="{{modifier.sourceItemUuid}}" data-source-effect-uuid="{{modifier.sourceEffectUuid}}">
+      </label>
+      {{/each}}
+    </div>
+    {{/if}}
   </div>
   {{/if}}
 

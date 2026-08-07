@@ -61,6 +61,10 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     };
 
     this.isPoolRoll = options.isPoolRoll || false;
+    this.fixedMeleeDiceCount = options.fixedMeleeDiceCount == null
+      ? null
+      : Math.min(3, Math.max(1, Number(options.fixedMeleeDiceCount) || 1));
+    this.gradCiosDefense = options.gradCiosDefense === true;
     this.onPoolRoll = options.onRoll;
     this.meleePoolLink = foundry.utils.deepClone(options.meleePoolLink ?? null);
     this.opposedLink = foundry.utils.deepClone(options.opposedLink ?? null);
@@ -133,7 +137,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     const meleeAction     = this.userEntry.meleeAction     ?? this.rollOptions.meleeAction ?? "attack";
     const maneuver        = this.userEntry.maneuver        ?? this.rollOptions.maneuver ?? "none";
     const tempoLevel      = this.userEntry.tempoLevel      ?? this.rollOptions.tempoLevel ?? 1;
-    const meleeDiceCount  = this.userEntry.meleeDiceCount  ?? 3;
+    const meleeDiceCount  = this.fixedMeleeDiceCount ?? this.userEntry.meleeDiceCount ?? 3;
     const aimingLevel     = this.userEntry.aimingLevel     ?? this.rollOptions.aimingLevel ?? 0;
     const burstLevel      = this.userEntry.burstLevel      ?? this.rollOptions.burstLevel ?? 0;
     const useArmorPenalty   = this.userEntry.useArmorPenalty   ?? this.rollOptions.useArmorPenalty   ?? true;
@@ -304,6 +308,8 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     context.tempoLevel      = tempoLevel;
     context.maxTempoLevel   = Math.min(3, Math.max(1, weaponSkillValue));
     context.meleeDiceCount  = meleeDiceCount;
+    context.fixedMeleeDiceCount = this.fixedMeleeDiceCount;
+    context.gradCiosDefense = this.gradCiosDefense;
     context.aimingLevel     = aimingLevel;
     context.burstLevel      = burstLevel;
     context.applyArmorPenalty = useArmorPenalty;
@@ -371,6 +377,24 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
         this._onRangeInput(ev, html);
       });
     });
+
+    // Standard melee always starts with 3k20. Only an attacking Grad Ciosów
+    // session may choose a smaller initial pool; fixed defense pools stay fixed.
+    const gradCheckbox = html.querySelector('[name="gradCios"]');
+    const meleeDiceSlider = html.querySelector('input[type="range"][name="meleeDiceCount"]');
+    if (gradCheckbox && meleeDiceSlider && this.fixedMeleeDiceCount == null) {
+      const syncMeleeDiceControl = () => {
+        meleeDiceSlider.disabled = !gradCheckbox.checked;
+        if (!gradCheckbox.checked) {
+          meleeDiceSlider.value = "3";
+          this.userEntry.meleeDiceCount = 3;
+          const display = html.querySelector('.melee-dice-count-display');
+          if (display) display.innerText = "3";
+        }
+      };
+      gradCheckbox.addEventListener('change', syncMeleeDiceControl);
+      syncMeleeDiceControl();
+    }
 
     const maneuverSelect = html.querySelector('[name="maneuver"]');
     const tempoRow = html.querySelector('.tempo-row');
@@ -573,7 +597,8 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     // tempoLevel    = effective value passed to the roll engine — includes any condition-forced shift.
     const selectedTempo    = formData.maneuver === "increasedTempo" ? (parseInt(formData.tempoLevel) || 1) : 0;
     const tempoLevel       = Math.max(this._conditionTempo, selectedTempo);
-    const meleeDiceCount   = formData.meleeDiceCount !== undefined ? Math.min(3, Math.max(1, parseInt(formData.meleeDiceCount) || 3)) : 3;
+    const meleeDiceCount   = this.fixedMeleeDiceCount
+      ?? (formData.meleeDiceCount !== undefined ? Math.min(3, Math.max(1, parseInt(formData.meleeDiceCount) || 3)) : 3);
     game.neuroshima?.log("[WeaponRollDialog._onRoll] maneuver params", { maneuver: formData.maneuver, tempoLevel, actor: this.actor?.name, isPoolRoll: this.isPoolRoll });
 
     const _userBaseDiff = ue.baseDifficulty ?? this.rollOptions.difficulty ?? "average";

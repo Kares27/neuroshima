@@ -5758,7 +5758,8 @@ export class NeuroshimaScriptRunner {
     defenderActorUuid = "",
     onSuccessEffectUuids = [],
     onFailureEffectUuids = [],
-    whisperToDefender = false
+    whisperToDefender = false,
+    continuation = null
   } = {}) {
     const _normalizeConsequence = (c) => {
       if (!c) return null;
@@ -5815,6 +5816,7 @@ export class NeuroshimaScriptRunner {
             requiredSuccesses, isOpen, baseDifficulty, rollMode,
             onSuccess: successConsequence, onFailure: failureConsequence,
             defenderActorUuid,
+            continuation: continuation ? foundry.utils.deepClone(continuation) : undefined,
             onSuccessEffectUuids: onSuccessEffectUuids.length ? onSuccessEffectUuids : undefined,
             onFailureEffectUuids: onFailureEffectUuids.length ? onFailureEffectUuids : undefined
           }
@@ -5843,8 +5845,9 @@ export class NeuroshimaScriptRunner {
       msgData = ChatMessage.applyRollMode(baseMsg, effectiveRollMode);
     }
 
-    await ChatMessage.create(msgData);
+    const message = await ChatMessage.create(msgData);
     game.neuroshima?.log("postRequiredTest | posted", { title, testType, testKey, requiredSuccesses, isOpen, baseDifficulty, whisperToDefender, defenderActorUuid, onSuccess: successConsequence, onFailure: failureConsequence, onSuccessEffectUuids, onFailureEffectUuids });
+    return message;
   }
 
   /**

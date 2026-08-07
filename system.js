@@ -3105,8 +3105,8 @@ function initializeSocketlib() {
         await MeleeOpposedChat.applyDuelBatch(messageId, side, [dieIdx]);
     });
 
-    game.neuroshima.socket.register("applyDuelBatch", async (messageId, pool, diceIndices, action, beastQueue) => {
-        await MeleeOpposedChat.applyDuelBatch(messageId, pool, diceIndices, action ?? null, beastQueue ?? null);
+    game.neuroshima.socket.register("applyDuelBatch", async (messageId, pool, diceIndices, action, beastQueue, options) => {
+        await MeleeOpposedChat.applyDuelBatch(messageId, pool, diceIndices, action ?? null, beastQueue ?? null, options ?? {});
     });
 
     // Disarm a weapon — unequip the specified weapon from an actor, or auto-find the first

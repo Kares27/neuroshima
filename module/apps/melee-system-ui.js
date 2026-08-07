@@ -6,7 +6,8 @@ import {
   isMeleeV2Enabled,
   buildMeleeRequiredAction,
   meleePoolDice,
-  meleeParticipantFromActor
+  meleeParticipantFromActor,
+  meleeSessionLegacyView
 } from "../combat/melee-system.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
@@ -63,7 +64,11 @@ export class MeleeActivityEditor extends HandlebarsApplicationMixin(foundry.appl
       const condition = activity.conditions[index] ?? {};
       return { index, key: condition.key ?? "", value: condition.value ?? condition.stackKey ?? "" };
     });
-    const meleeModifiers = Array.from(this.document.system?.melee?.modifiers ?? []);
+    const meleeModifiers = Array.from(
+      this.document.documentName === "ActiveEffect"
+        ? (this.document.system?.melee?.modifiers ?? [])
+        : (this.document.getFlag?.("neuroshima", "meleeDamageModifiers") ?? [])
+    );
     return {
       activity,
       activityList: this.activities.map(entry => ({ id: entry.id, name: entry.name || entry.label || entry.id })),
@@ -72,7 +77,7 @@ export class MeleeActivityEditor extends HandlebarsApplicationMixin(foundry.appl
       outcomesJson: JSON.stringify(activity.outcomes, null, 2),
       operationsJson: JSON.stringify(activity.operations, null, 2),
       expiryRulesJson: JSON.stringify(this.document.system?.melee?.expiryRules ?? [], null, 2),
-      modifiersJson: JSON.stringify(this.document.system?.melee?.modifiers ?? [], null, 2),
+      modifiersJson: JSON.stringify(meleeModifiers, null, 2),
       restrictionsJson: JSON.stringify(this.document.system?.melee?.restrictions ?? [], null, 2),
       conditionRows,
       conditionChoices: [
@@ -95,11 +100,27 @@ export class MeleeActivityEditor extends HandlebarsApplicationMixin(foundry.appl
         testKey: activity.test?.key ?? "",
         testDifficulty: activity.test?.difficulty ?? "average"
       },
-      parameter: activity.parameters[0] ?? { key: "", label: "", type: "number", default: 0, min: null, max: null },
+      parameter: (() => {
+        const parameter = activity.parameters[0] ?? { key: "", label: "", type: "number", default: 0, min: null, max: null, choices: [] };
+        return { ...parameter, choicesText: (parameter.choices ?? []).map(choice => `${choice.value}: ${choice.label}`).join(", ") };
+      })(),
+      activityModifier: (() => {
+        const change = activity.changes.find(entry => entry.type === "damageTierShift") ?? {};
+        return {
+          activityTagsText: Array.from(activity.selectors?.activityTags ?? activity.selectors?.tags ?? []).join(", "),
+          weaponTagsText: Array.from(activity.selectors?.weaponTags ?? []).join(", "),
+          tiersText: Array.from(change.tiers ?? [1, 2, 3]).join(", "),
+          value: change.value ?? 1,
+          priority: activity.priority ?? 100
+        };
+      })(),
       modifierTiers: [1, 2, 3].map(tier => {
         const modifier = meleeModifiers.find(entry => Number(entry.tier) === tier);
         return { tier, mode: modifier?.mode ?? "", value: modifier?.value ?? "", priority: modifier?.priority ?? 100 };
       }),
+      modifierTagsText: Array.from(new Set(meleeModifiers.flatMap(modifier =>
+        Array.from(modifier.selector?.tags ?? [])
+      ))).join(", ") || "melee.attack",
       isEffect: this.document.documentName === "ActiveEffect",
       melee: this.document.system?.melee?.toObject?.() ?? this.document.system?.melee ?? {}
     };
@@ -137,15 +158,33 @@ export class MeleeActivityEditor extends HandlebarsApplicationMixin(foundry.appl
       id: this.activityId,
       name: data.name,
       description: data.description,
+      kind: data.kind || "action",
       category: data.category,
       tags: String(data.tags || "").split(",").map(tag => tag.trim()).filter(Boolean),
       activation: {
         role: data.role, timing: data.timing,
         minDice: Number(data.minDice), maxDice: Number(data.maxDice),
+        exactDice: data.exactDice === "" || data.exactDice == null ? null : Number(data.exactDice),
+        committedDice: {
+          min: Number(data.minDice), max: Number(data.maxDice),
+          exact: data.exactDice === "" || data.exactDice == null ? null : Number(data.exactDice)
+        },
         successCost: Number(data.successCost), segmentCost: Number(data.segmentCost),
+        requiredSuccesses: {
+          min: Number(data.successCost),
+          max: data.maxSuccesses === "" || data.maxSuccesses == null ? null : Number(data.maxSuccesses)
+        },
+        occupiedSegments: {
+          mode: data.occupiedSegmentsMode || "selectedDice",
+          value: data.occupiedSegmentsValue === "" || data.occupiedSegmentsValue == null
+            ? null : Number(data.occupiedSegmentsValue)
+        },
         responsePolicy: data.responsePolicy || "exact",
         uses: data.uses === "" || data.uses == null ? null : Number(data.uses),
-        reusableDice: data.reusableDice === true
+        diceReusePolicy: {
+          mode: data.diceReuseMode || "none",
+          trigger: data.diceReuseTrigger || null
+        }
       },
       conditions: conditions.length ? conditions : parse(data.conditionsJson, "Warunki"),
       test: data.testEnabled === true ? {
@@ -157,8 +196,22 @@ export class MeleeActivityEditor extends HandlebarsApplicationMixin(foundry.appl
         type: data.parameterType || "number",
         default: data.parameterDefault,
         min: data.parameterMin === "" ? null : Number(data.parameterMin),
-        max: data.parameterMax === "" ? null : Number(data.parameterMax)
+        max: data.parameterMax === "" ? null : Number(data.parameterMax),
+        choices: String(data.parameterChoices || "").split(",").map(entry => {
+          const [value, ...label] = entry.split(":");
+          return { value: value.trim(), label: (label.join(":").trim() || value.trim()) };
+        }).filter(choice => choice.value)
       }] : [],
+      selectors: {
+        activityTags: String(data.activityModifierTags || "").split(",").map(tag => tag.trim()).filter(Boolean),
+        weaponTags: String(data.activityModifierWeaponTags || "").split(",").map(tag => tag.trim()).filter(Boolean)
+      },
+      changes: (data.kind || "action") === "modifier" ? [{
+        type: "damageTierShift",
+        value: Number(data.activityModifierValue || 0),
+        tiers: String(data.activityModifierTiers || "1,2,3").split(",").map(Number).filter(tier => [1, 2, 3].includes(tier))
+      }] : [],
+      priority: Number(data.activityModifierPriority ?? 100),
       damage: { mode: data.damageMode || "weapon", profile: { 1: data.damage1 || null, 2: data.damage2 || null, 3: data.damage3 || null } },
       outcomes: quickOperation ? [{
         id: foundry.utils.randomID(), when: data.outcomeWhen || "hit", target: quickOperation.target,
@@ -169,10 +222,25 @@ export class MeleeActivityEditor extends HandlebarsApplicationMixin(foundry.appl
     });
     const previous = this.activities.find(entry => entry.id === this.activityId);
     const activity = { ...(previous?.toObject?.() ?? previous ?? {}), ...normalized };
+    if (["beast-action", "beast-segment"].includes(this.document.type)) {
+      activity.meleeDamage = normalized.damage;
+      activity.damage = previous?.damage ?? "";
+    }
     const activities = this.activities.map(entry => entry.id === activity.id ? activity : entry);
     if (!activities.some(entry => entry.id === activity.id)) activities.push(activity);
     if (["beast-action", "beast-segment"].includes(this.document.type)) {
       await this.document.update({ "system.activities": activities });
+      const typedModifiers = [1, 2, 3].map(tier => {
+        const mode = data[`modifierTier${tier}Mode`];
+        if (!mode) return null;
+        return {
+          selector: { tags: String(data.modifierTags || "melee.attack").split(",").map(value => value.trim()).filter(Boolean) },
+          tier, mode, value: data[`modifierTier${tier}Value`],
+          priority: Number(data[`modifierTier${tier}Priority`] ?? 100)
+        };
+      }).filter(Boolean);
+      await this.document.setFlag("neuroshima", "meleeDamageModifiers",
+        typedModifiers.length ? typedModifiers : parse(data.modifiersJson, "Modyfikatory"));
     } else if (this.document.documentName === "ActiveEffect") {
       const typedModifiers = [1, 2, 3].map(tier => {
         const mode = data[`modifierTier${tier}Mode`];
@@ -193,7 +261,22 @@ export class MeleeActivityEditor extends HandlebarsApplicationMixin(foundry.appl
         "system.melee.expiryRules": parse(data.expiryRulesJson, "Wygasanie"),
         "system.melee.grantedActivities": activities
       });
-    } else await this.document.setFlag("neuroshima", "meleeActivities", activities);
+    } else {
+      const typedModifiers = [1, 2, 3].map(tier => {
+        const mode = data[`modifierTier${tier}Mode`];
+        if (!mode) return null;
+        return {
+          selector: { tags: String(data.modifierTags || "melee.attack").split(",").map(value => value.trim()).filter(Boolean) },
+          tier,
+          mode,
+          value: data[`modifierTier${tier}Value`],
+          priority: Number(data[`modifierTier${tier}Priority`] ?? 100)
+        };
+      }).filter(Boolean);
+      await this.document.setFlag("neuroshima", "meleeActivities", activities);
+      await this.document.setFlag("neuroshima", "meleeDamageModifiers",
+        typedModifiers.length ? typedModifiers : parse(data.modifiersJson, "Modyfikatory"));
+    }
     ui.notifications.info("Zapisano definicję Melee V2.");
     this.render({ force: true });
   }
@@ -269,6 +352,7 @@ export class MeleeSessionPresenter {
       defenderName: defender?.name ?? session.participants.defender.name,
       defenderImg: defender?.img ?? "",
       defenderWeapons,
+      canDefend: game.user.isGM || defender?.isOwner === true,
       status
     };
   }
@@ -291,7 +375,8 @@ export class MeleeSessionPresenter {
         if (!rawResult) return;
         const sessionId = foundry.utils.randomID(16);
         const startCommandId = foundry.utils.randomID(16);
-        const attackerParticipant = meleeParticipantFromActor(actor, { weapon });
+        const sourceWeapon = weapon?.beastItemId ? actor.items?.get?.(weapon.beastItemId) ?? weapon : weapon;
+        const attackerParticipant = meleeParticipantFromActor(actor, { weapon: sourceWeapon });
         const defenderParticipant = meleeParticipantFromActor(defender);
         const preview = {
           id: sessionId,
@@ -327,7 +412,7 @@ export class MeleeSessionPresenter {
             },
             metadata: {
               attackerTestMessageId: attackerTest?.message?.id ?? null,
-              weaponId: weapon?.id ?? null,
+              weaponId: sourceWeapon?.id ?? null,
               beastItemId: weapon?.beastItemId ?? null,
               beastActivityId: weapon?.beastActivityId ?? null,
               damage1: rawResult.damageMelee1 ?? weapon?.system?.damageMelee1 ?? "D",
@@ -420,7 +505,7 @@ export class MeleeSessionPresenter {
     let context;
     let cardType;
     if (session.phase === "awaitingDefenderRoll" ||
-        (session.phase === "complete" && session.endReason === "cancelled" && !session.v1State && !session.hailResult)) {
+        (session.phase === "complete" && session.endReason === "cancelled" && !session.hailResult)) {
       template = "systems/neuroshima/templates/chat/melee-opposed-pending.hbs";
       context = await this._pendingContext(session, session.endReason === "cancelled" ? "cancelled" : "pending");
       cardType = "pending";
@@ -453,48 +538,85 @@ export class MeleeSessionPresenter {
           : game.i18n.format("NEUROSHIMA.GradCios.Hit", { n: result.tier, dmg: result.damage })
       };
       cardType = "hail";
-    } else if (session.v1State) {
+    } else if (session.exchange) {
       const { MeleeOpposedChat } = await import("../combat/combat.js");
       const attacker = await this._actor(session.participants.attacker);
       const defender = await this._actor(session.participants.defender);
       template = "systems/neuroshima/templates/chat/melee-duel-card.hbs";
-      context = await MeleeOpposedChat._buildDuelContext(session.v1State, attacker, defender);
+      const legacyView = meleeSessionLegacyView(session);
+      context = await MeleeOpposedChat._buildDuelContext(legacyView, attacker, defender);
       const hasAppliedOutcome = session.result?.applied || session.hailResult?.applied ||
         session.pendingOutcomes.some(outcome => outcome.status === "applied");
       if (hasAppliedOutcome) {
         context.canUndo = false;
         context.canRedo = false;
       }
-      const ownerSide = session.v1State.initiativeOwnerSide;
-      const configuredActivities = (session.metadata.activitySnapshots?.[ownerSide] ?? [])
-        .filter(snapshot => ["either", "owner"].includes(snapshot.definition.activation.role) &&
-          ["either", "declaration"].includes(snapshot.definition.activation.timing))
+      const ownerSide = legacyView.initiativeOwnerSide;
+      const actingSide = session.phase === "response"
+        ? (ownerSide === "attacker" ? "defender" : "attacker")
+        : ownerSide;
+      const actingRole = session.phase === "response" ? "responder" : "owner";
+      const actingTimings = session.phase === "response"
+        ? ["either", "response", "modifyDeclaration"]
+        : ["either", "declaration", "modifyDeclaration", "followUp", "supplement"];
+      const configuredEntries = (session.metadata.activitySnapshots?.[actingSide] ?? [])
+        .filter(snapshot => ["either", actingRole].includes(snapshot.definition.activation.role) &&
+          actingTimings.includes(snapshot.definition.activation.timing))
+        .filter(snapshot => !session.metadata.beastActivityId ||
+          snapshot.definition.source.kind !== "beast" ||
+          snapshot.definition.kind === "modifier" ||
+          snapshot.definition.id === session.metadata.beastActivityId)
         .map(snapshot => ({
-        id: snapshot.runtimeId,
+        id: snapshot.definition.id,
+        runtimeId: snapshot.runtimeId,
+        sourceItemUuid: snapshot.definition.source.itemUuid,
+        sourceEffectUuid: snapshot.definition.source.effectUuid,
+        kind: snapshot.definition.kind,
         name: snapshot.definition.name,
         img: snapshot.definition.img,
         gmNote: snapshot.definition.description,
         minDice: snapshot.definition.activation.minDice,
         maxDice: snapshot.definition.activation.maxDice,
-        successCost: snapshot.definition.activation.successCost,
+        exactDice: snapshot.definition.activation.exactDice,
+        noDice: Number(snapshot.definition.activation.maxDice) === 0,
+        successCost: Math.max(
+          Number(snapshot.definition.activation.successCost ?? 0),
+          Number(snapshot.definition.activation.requiredSuccesses?.min ?? 0)
+        ),
         damage: snapshot.definition.damage?.profile?.[1]
           ?? snapshot.definition.operations?.find(operation => operation.type === "damage")?.data?.damage
-          ?? ""
+          ?? "",
+        parameters: snapshot.definition.parameters
       }));
-      if (configuredActivities.length) {
-        const byId = new Map([...(context.ownerExtraActions ?? []), ...configuredActivities].map(activity => [activity.id, activity]));
+      const configuredActivities = configuredEntries.filter(entry => entry.kind !== "modifier");
+      const configuredModifiers = configuredEntries.filter(entry => entry.kind === "modifier");
+      if (session.phase === "response") {
+        context.responderExtraActions = configuredActivities;
+        context.responderActivityModifiers = configuredModifiers;
+      } else {
+        context.ownerActivityModifiers = configuredModifiers;
+      }
+      if (session.phase !== "response" && configuredActivities.length) {
+        const byId = new Map([...(context.ownerExtraActions ?? []), ...configuredActivities]
+          .map(activity => [activity.runtimeId || `${activity.sourceEffectUuid || activity.sourceItemUuid || "legacy"}::${activity.id}`, activity]));
         context.ownerExtraActions = [...byId.values()];
       }
       context.pendingMeleeOutcomes = (session.pendingOutcomes ?? [])
         .filter(outcome => outcome.status === "pending")
         .map(outcome => ({ id: outcome.id, label: outcome.label }));
+      context.damageModifierSummary = (session.exchange.declaration?.damageSnapshot?.modifiers ?? []).map(modifier => ({
+        sourceName: modifier.sourceName,
+        tier: modifier.tier,
+        before: modifier.before,
+        after: modifier.after
+      }));
       if (session.metadata.beastActivityId && Array.isArray(context.ownerBeastActions)) {
         context.ownerBeastActions = context.ownerBeastActions.filter(activity =>
           activity.id === session.metadata.beastActivityId ||
           String(activity.id).endsWith(`::${session.metadata.beastActivityId}`)
         );
       }
-      cardType = session.v1State.status === "done" ? "result" : "duel";
+      cardType = legacyView.status === "done" ? "result" : "duel";
     } else return null;
     const content = await foundry.applications.handlebars.renderTemplate(template, context);
     if (cardType !== "pending" &&
@@ -561,19 +683,13 @@ export class MeleeSessionPresenter {
     weapon ??= participant.weaponUuid ? await fromUuid(participant.weaponUuid) : null;
     if (["beast-action", "beast-segment"].includes(weapon?.type)) {
       const beastItem = weapon;
-      const byTier = {};
-      for (const activity of beastItem.system.activities ?? []) {
-        const tier = Math.min(3, Math.max(1, Number(activity.successCost ?? activity.segmentCost ?? 1)));
-        byTier[tier] ??= activity.damage || activity.damage1 || "D";
-      }
       weapon = {
-        id: null, name: beastItem.name, img: beastItem.img, type: "weapon",
+        id: null, uuid: beastItem.uuid, beastItemId: beastItem.id,
+        name: beastItem.name, img: beastItem.img, type: "weapon",
         system: {
           weaponType: "melee", attribute: beastItem.system.attribute || "dexterity", skill: "experience",
           attackBonus: 0, defenseBonus: 0, piercing: 0,
-          damageMelee1: byTier[1] ?? byTier[2] ?? byTier[3] ?? "D",
-          damageMelee2: byTier[2] ?? byTier[1] ?? byTier[3] ?? "D",
-          damageMelee3: byTier[3] ?? byTier[2] ?? byTier[1] ?? "D"
+          damageMelee1: "D", damageMelee2: "D", damageMelee3: "D"
         }
       };
     }
@@ -587,6 +703,9 @@ export class MeleeSessionPresenter {
     };
 
     const { NeuroshimaWeaponRollDialog } = await import("./dialogs/weapon-roll-dialog.js");
+    const gradDefenseDice = session.variant === "gradCiosow" && side === "defender"
+      ? Math.min(3, Math.max(1, meleePoolDice(session, "attacker").filter(die => die.isSuccess).length || 1))
+      : null;
     const dialog = new NeuroshimaWeaponRollDialog({
       actor,
       weapon,
@@ -594,6 +713,8 @@ export class MeleeSessionPresenter {
       meleeAction: side === "attacker" ? "attack" : "defense",
       targets: [],
       isPoolRoll: true,
+      fixedMeleeDiceCount: gradDefenseDice ?? (session.variant === "standard" ? 3 : null),
+      gradCiosDefense: gradDefenseDice != null,
       onRoll: async (result, test) => {
         const dice = this._diceFromResult(result);
         try {
@@ -634,6 +755,12 @@ export class MeleeSessionPresenter {
   }
 
   static async activate(root, session, message = null) {
+    if (session.phase === "awaitingDefenderRoll" && !game.user.isGM) {
+      const defender = await this._actor(session.participants.defender);
+      if (defender?.isOwner !== true) {
+        root.querySelectorAll(".defender-options").forEach(element => { element.hidden = true; });
+      }
+    }
     root.querySelectorAll(".melee-opposed-defend-btn").forEach(button => button.addEventListener("click", async event => {
       event.preventDefault();
       event.stopPropagation();
@@ -642,13 +769,18 @@ export class MeleeSessionPresenter {
         ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.AlreadyResolved"));
         return;
       }
+      const defender = await this._actor(latest.participants.defender);
+      if (!game.user.isGM && defender?.isOwner !== true) {
+        ui.notifications.warn("Tylko właściciel obrońcy lub MG może wykonać ten rzut.");
+        return;
+      }
       try {
         await this.openRoll(latest, "defender", button.dataset.weaponId || null);
       } catch (error) {
         ui.notifications.error(error.message);
       }
     }));
-    if (session.v1State && message) {
+    if (session.exchange && message) {
       root.querySelectorAll("[data-v2-outcome-id]").forEach(button => button.addEventListener("click", async event => {
         event.preventDefault();
         event.stopPropagation();
@@ -660,14 +792,14 @@ export class MeleeSessionPresenter {
           expectedRevision: latest.revision, commandId: foundry.utils.randomID()
         });
       }));
-      message._neuroshimaMeleeV2Session = session;
+      message._neuroshimaMeleeV2Session = { ...session, legacyView: meleeSessionLegacyView(session) };
       const { MeleeOpposedChat } = await import("../combat/combat.js");
       MeleeOpposedChat.onRenderDuelCard(root, message);
       return;
     }
     root.querySelectorAll("[data-melee-command]").forEach(button => button.addEventListener("click", async event => {
       event.preventDefault();
-      const type = button.dataset.meleeCommand;
+      let type = button.dataset.meleeCommand;
       const side = button.dataset.side;
       const payload = {};
       if (type === "roll") {
@@ -680,7 +812,7 @@ export class MeleeSessionPresenter {
         return;
       }
       if (type === "approveOutcome") payload.outcomeId = button.dataset.outcomeId;
-      if (["declare", "respond"].includes(type)) {
+      if (type === "commitExchangeAction") {
         const select = root.querySelector(`[data-activity-select="${side}"]`);
         const option = select?.selectedOptions?.[0];
         payload.activity = {
@@ -688,7 +820,9 @@ export class MeleeSessionPresenter {
           sourceItemUuid: option?.dataset.sourceItemUuid || null,
           sourceEffectUuid: option?.dataset.sourceEffectUuid || null
         };
-        payload.diceIds = Array.from(root.querySelectorAll(`[data-die-side="${side}"]:checked`)).map(input => input.value);
+        payload.selectedDieIds = Array.from(root.querySelectorAll(`[data-die-side="${side}"]:checked`)).map(input => input.value);
+        payload.parameterValues = {};
+        payload.modifierRefs = [];
       }
       try {
         await game.neuroshima.melee.dispatch({
@@ -728,7 +862,14 @@ function openMeleeMessage(session) {
 
 function refreshMeleeProjections(session = null) {
   ui.combat?.render?.();
-  for (const app of Object.values(ui.windows ?? {})) {
+  // ApplicationV2 actor sheets live in `applications.instances`; `ui.windows`
+  // only covers the legacy application registry. Read both so ending a melee
+  // session immediately removes its projection from every open Combat tab.
+  const applications = new Set([
+    ...Object.values(ui.windows ?? {}),
+    ...Array.from(foundry.applications?.instances?.values?.() ?? [])
+  ]);
+  for (const app of applications) {
     const actor = app.document?.documentName === "Actor" ? app.document : null;
     if (!actor) continue;
     if (session) {
@@ -757,7 +898,7 @@ async function projectTracker(html) {
       if (!row) continue;
       const badge = document.createElement("span");
       badge.className = "melee-v2-tracker-badge";
-      badge.dataset.tooltip = `${session.participants.attacker.name} → ${session.participants.defender.name}\nSegment ${session.currentSegment + 1}/3\n${requiredAction.waitingText}`;
+      badge.dataset.tooltip = `${session.participants.attacker.name} → ${session.participants.defender.name}\nSegment ${session.exchange.currentSegment + 1}/3\n${requiredAction.waitingText}`;
       badge.dataset.sessionId = session.id;
       const icon = session.initiative.ownerId === participant.actorUuid
         ? "fa-solid fa-swords"

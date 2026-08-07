@@ -110,14 +110,33 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         if (session) game.neuroshima.melee.openMessage(session);
       },
       cancelMeleeSession: async function(event, target) {
+        event.preventDefault();
         event.stopPropagation();
-        const session = await game.neuroshima.melee.get(target.closest("[data-session-id]")?.dataset.sessionId);
-        if (!session) return;
-        await game.neuroshima.melee.dispatch({
-          type: "endSession", side: null, payload: { reason: "cancelled" },
-          sessionId: session.id, messageId: session.messageId,
-          expectedRevision: session.revision, commandId: foundry.utils.randomID()
-        });
+        event.stopImmediatePropagation?.();
+        const sessionId = target.dataset.sessionId
+          ?? target.closest("[data-session-id]")?.dataset.sessionId;
+
+        try {
+          const session = sessionId
+            ? await game.neuroshima.melee.get(sessionId)
+            : null;
+
+          // A missing session means that this is only a stale projection. In
+          // both cases the sheet must be refreshed explicitly: ApplicationV2
+          // actor sheets are not guaranteed to be present in `ui.windows`.
+          if (session) {
+            await game.neuroshima.melee.dispatch({
+              type: "endSession", side: null, payload: { reason: "cancelled" },
+              sessionId: session.id, messageId: session.messageId,
+              expectedRevision: session.revision, commandId: foundry.utils.randomID()
+            });
+          }
+
+          await this.render({ force: true });
+        } catch (error) {
+          ui.notifications.error(error.message);
+          console.error("Neuroshima | Failed to dismiss melee session", error);
+        }
       },
       unloadMagazine: this.prototype._onUnloadMagazine,
       showPatientCard: this.prototype._onShowPatientCard,
@@ -544,7 +563,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
             isV2: true,
             attackerName: session.participants.attacker.name,
             defenderName: session.participants.defender.name,
-            segment: Number(session.currentSegment ?? 0) + 1,
+            segment: Number(session.exchange?.currentSegment ?? 0) + 1,
             initiativeName: Object.values(session.participants).find(participant =>
               participant.actorUuid === session.initiative.ownerId || participant.tokenUuid === session.initiative.ownerId
             )?.name ?? "?",

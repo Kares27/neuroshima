@@ -34,6 +34,35 @@ const array = value => {
   if (value && typeof value[Symbol.iterator] === "function") return [...value];
   return [];
 };
+function meleeRuntimeValues(context = {}) {
+  const selectedDice = array(context.selectedDice);
+  return {
+    parameters: context.parameters ?? context.action?.parameters ?? {},
+    selectedDiceCount: selectedDice.length,
+    selectedSuccesses: selectedDice.filter(die => die.isSuccess).length,
+    occupiedSegments: context.occupiedSegments ?? Math.max(
+      1,
+      selectedDice.length,
+      number(context.activity?.activation?.segmentCost ?? context.action?.definition?.activation?.segmentCost)
+    ),
+    currentSegment: number(context.session?.exchange?.currentSegment),
+    initiativeOwner: context.session?.initiative?.ownerId ?? null
+  };
+}
+function resolveMeleeRuntimeValue(value, context = {}) {
+  if (Array.isArray(value)) return value.map(entry => resolveMeleeRuntimeValue(entry, context));
+  if (value && typeof value === "object") return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [key, resolveMeleeRuntimeValue(entry, context)])
+  );
+  if (typeof value !== "string" || !value.startsWith("@")) return value;
+  const path = value.slice(1).split(".");
+  let resolved = meleeRuntimeValues(context);
+  for (const part of path) {
+    if (!resolved || typeof resolved !== "object" || !Object.hasOwn(resolved, part)) return value;
+    resolved = resolved[part];
+  }
+  return clone(resolved);
+}
 const serializable = value => {
   if (value?.documentName || value?.uuid) {
     return { documentName: value.documentName ?? null, uuid: value.uuid ?? null, id: value.id ?? null };
@@ -132,42 +161,189 @@ export function resolveMeleeHail(attackerDice, defenderDice, damageProfile = {})
   };
 }
 
-function syncPoolsFromLegacyState(session) {
-  const state = session.v1State;
-  if (!state) return;
-  for (const side of MELEE_SIDES) {
-    const used = new Set(side === "attacker" ? state.usedAttackDice : state.usedDefenseDice);
-    const reserved = new Set(
-      state.waitingFor === "responder" &&
-      ((state.initiativeOwnerSide === "attacker") === (side === "attacker"))
-        ? state.committedOwnerIndices ?? []
-        : []
-    );
-    meleePoolDice(session, side).forEach((die, index) => {
-      die.state = used.has(index) ? "spent" : reserved.has(index) ? "reserved" : "available";
-      die.used = die.state === "spent";
-      die.reservedByActionId = die.state === "reserved" ? state.declaredAction ?? "legacy-action" : null;
-      die.spentAtSegment = die.state === "spent" ? state.currentSegment : null;
-    });
+function createMeleeExchange(segmentCount = 3) {
+  return {
+    currentSegment: 0,
+    declaration: null,
+    segments: Array.from({ length: Math.min(3, Math.max(1, number(segmentCount, 3))) }, (_, index) => ({
+      segNum: index + 1,
+      attackVal: null,
+      defenseVal: null,
+      outcome: null,
+      ownerActionId: null,
+      responderActionId: null,
+      ownerDiceIds: [],
+      responderDiceIds: []
+    })),
+    hits: [],
+    counterHits: [],
+    history: [],
+    future: []
+  };
+}
+
+function exchangeSnapshot(session) {
+  return clone({
+    pools: session.pools,
+    initiative: session.initiative,
+    exchange: { ...session.exchange, history: [], future: [] },
+    phase: session.phase,
+    status: session.status,
+    result: session.result ?? null,
+    actionInstances: session.actionInstances,
+    pendingOutcomes: session.pendingOutcomes,
+    actions: session.actions
+  });
+}
+
+function restoreExchangeSnapshot(session, snapshot) {
+  for (const key of ["pools", "initiative", "exchange", "phase", "status", "result", "actionInstances", "pendingOutcomes", "actions"]) {
+    session[key] = clone(snapshot[key]);
   }
-  session.currentSegment = Math.min(2, number(state.currentSegment));
-  const previousOwnerId = session.initiative.ownerId;
-  const nextOwnerId = state.initiativeOwnerSide === "attacker"
-    ? session.participants.attacker.actorUuid
-    : session.participants.defender.actorUuid;
-  session.initiative.ownerId = nextOwnerId;
-  if (previousOwnerId && previousOwnerId !== nextOwnerId) {
-    session.initiative.previousOwnerId = previousOwnerId;
-    session.initiative.reason = "v1Resolver";
-    session.initiative.history ??= [];
-    session.initiative.history.push({
-      ownerId: nextOwnerId, previousOwnerId, reason: "v1Resolver", at: Date.now()
-    });
+}
+
+/**
+ * Runtime-only adapter exposing the proven V1 resolver contract while reading
+ * and writing the single canonical MeleeSession. No legacy state is persisted.
+ */
+export class MeleeExchangeContext {
+  constructor(session) { this.session = session; }
+  static fromSession(session) { return new MeleeExchangeContext(session); }
+
+  getPool(side) { return meleePoolDice(this.session, side); }
+  getDie(side, dieId) { return this.getPool(side).find(die => die.id === dieId) ?? null; }
+  getAvailableDice(side) { return this.getPool(side).filter(die => die.state === "available"); }
+  reserveDice(side, dieIds, actionId) {
+    for (const dieId of dieIds) {
+      const die = this.getDie(side, dieId);
+      if (!die || die.state !== "available") throw new MeleeValidationError("Selected die is unavailable", "DIE_ALREADY_USED");
+      die.state = "reserved";
+      die.reservedByActionId = actionId;
+      die.used = false;
+    }
   }
-  session.phase = state.status === "done"
-    ? "complete"
-    : state.waitingFor === "responder" ? "response" : "declaration";
-  session.status = state.status === "done" ? "complete" : "active";
+  spendDice(side, dieIds, segment = this.getCurrentSegment()) {
+    for (const dieId of dieIds) {
+      const die = this.getDie(side, dieId);
+      if (!die || die.state === "spent") throw new MeleeValidationError("Selected die is unavailable", "DIE_ALREADY_USED");
+      die.state = "spent";
+      die.reservedByActionId = null;
+      die.spentAtSegment = segment;
+      die.used = true;
+    }
+  }
+  releaseDice(side, dieIds) {
+    for (const dieId of dieIds) {
+      const die = this.getDie(side, dieId);
+      if (!die) continue;
+      die.state = "available";
+      die.reservedByActionId = null;
+      die.spentAtSegment = null;
+      die.used = false;
+    }
+  }
+  getInitiativeOwnerSide() { return initiativeSide(this.session); }
+  setInitiativeOwnerSide(side, reason = "v1Resolver") {
+    transferMeleeInitiative(this.session, this.session.participants[side].actorUuid, reason);
+  }
+  getCurrentSegment() { return number(this.session.exchange.currentSegment); }
+  getDeclaration() { return this.session.exchange.declaration; }
+  setDeclaration(declaration) { this.session.exchange.declaration = declaration ? clone(declaration) : null; }
+  resolveSegment(result) { Object.assign(this.session.exchange.segments[this.getCurrentSegment()], clone(result)); }
+  createSnapshot() { return exchangeSnapshot(this.session); }
+  restoreSnapshot(snapshot) { restoreExchangeSnapshot(this.session, snapshot); }
+
+  toLegacyState() {
+    const session = this.session;
+    const exchange = session.exchange;
+    const ownerSide = this.getInitiativeOwnerSide();
+    const declaration = exchange.declaration;
+    const idsToIndices = (side, ids = []) => ids.map(id => this.getPool(side).findIndex(die => die.id === id)).filter(index => index >= 0);
+    const usedIndices = side => this.getPool(side).flatMap((die, index) => die.state === "spent" ? [index] : []);
+    return {
+      status: session.status === "complete" ? "done" : "picking",
+      initiativeOwnerSide: ownerSide,
+      isGradCios: session.variant === "gradCiosow",
+      waitingFor: session.phase === "response" ? "responder" : "initiativeOwner",
+      committedOwnerIndices: declaration ? idsToIndices(declaration.ownerSide, declaration.selectedDieIds) : null,
+      currentSegment: exchange.currentSegment,
+      attackerUuid: session.participants.attacker.actorUuid,
+      attackerTokenUuid: session.participants.attacker.tokenUuid ?? null,
+      defenderUuid: session.participants.defender.actorUuid,
+      defenderTokenUuid: session.participants.defender.tokenUuid ?? null,
+      attackerManeuver: session.metadata.attackerManeuver ?? null,
+      defenderManeuver: session.metadata.defenderManeuver ?? null,
+      weaponId: session.metadata.weaponId ?? null,
+      beastItemId: session.metadata.beastItemId ?? null,
+      attackDice: this.getPool("attacker").map(meleeDieAsLegacy),
+      defenseDice: this.getPool("defender").map(meleeDieAsLegacy),
+      attackTarget: session.metadata.attackerTarget ?? 0,
+      defenseTarget: session.metadata.defenderTarget ?? 0,
+      damage1: declaration?.damageSnapshot?.final?.[1] ?? session.metadata.damage1,
+      damage2: declaration?.damageSnapshot?.final?.[2] ?? session.metadata.damage2,
+      damage3: declaration?.damageSnapshot?.final?.[3] ?? session.metadata.damage3,
+      location: session.metadata.location ?? null,
+      headDamageApplied: session.metadata.headDamageApplied === true,
+      defenderDamage1: session.metadata.defenderDamage1 ?? "D",
+      defenderDamage2: session.metadata.defenderDamage2 ?? "L",
+      defenderDamage3: session.metadata.defenderDamage3 ?? "K",
+      usedAttackDice: usedIndices("attacker"),
+      usedDefenseDice: usedIndices("defender"),
+      segments: clone(exchange.segments),
+      hits: clone(exchange.hits),
+      counterHits: clone(exchange.counterHits),
+      applied: session.result?.applied === true,
+      segmentHistory: exchange.history.map((_snapshot, index) => ({ canonicalSnapshot: index })),
+      segmentFuture: exchange.future.map((_snapshot, index) => ({ canonicalSnapshot: index })),
+      declaredAction: declaration?.legacyAction ?? null,
+      committedTrickId: declaration?.activityInstanceId ?? null,
+      committedTrickDamage: declaration?.damageSnapshot?.final?.[declaration?.selectedDieIds?.length] ?? null,
+      committedBeastQueue: null,
+      committedTrickQueue: null,
+      opposedId: session.id,
+      actions: clone(declaration?.legacyActions ?? {}),
+      activatedMeleePreRollMods: clone(session.metadata.activatedMeleePreRollMods ?? [])
+    };
+  }
+
+  applyLegacyState(state) {
+    const session = this.session;
+    const exchange = session.exchange;
+    const ownerSide = state.initiativeOwnerSide === "defender" ? "defender" : "attacker";
+    const used = {
+      attacker: new Set(array(state.usedAttackDice).map(Number)),
+      defender: new Set(array(state.usedDefenseDice).map(Number))
+    };
+    const committed = new Set(array(state.committedOwnerIndices).map(Number));
+    for (const side of MELEE_SIDES) {
+      this.getPool(side).forEach((die, index) => {
+        const reserved = state.waitingFor === "responder" && side === ownerSide && committed.has(index);
+        die.state = used[side].has(index) ? "spent" : reserved ? "reserved" : "available";
+        die.used = die.state === "spent";
+        die.reservedByActionId = reserved ? (exchange.declaration?.activityInstanceId ?? state.declaredAction) : null;
+        die.spentAtSegment = die.state === "spent" ? number(state.currentSegment) : null;
+      });
+    }
+    exchange.currentSegment = Math.min(2, number(state.currentSegment));
+    exchange.segments = clone(state.segments ?? exchange.segments);
+    exchange.hits = clone(state.hits ?? []);
+    exchange.counterHits = clone(state.counterHits ?? []);
+    if (state.waitingFor === "responder") {
+      exchange.declaration ??= {};
+      exchange.declaration.ownerSide = ownerSide;
+      exchange.declaration.selectedDieIds = array(state.committedOwnerIndices)
+        .map(index => this.getPool(ownerSide)[index]?.id).filter(Boolean);
+      exchange.declaration.legacyAction = state.declaredAction || "attack";
+      exchange.declaration.legacyActions = clone(state.actions ?? {});
+    } else exchange.declaration = null;
+    this.setInitiativeOwnerSide(ownerSide, "v1Resolver");
+    session.phase = state.status === "done" ? "complete" : state.waitingFor === "responder" ? "response" : "declaration";
+    session.status = state.status === "done" ? "complete" : "active";
+  }
+}
+
+export function meleeSessionLegacyView(session) {
+  return MeleeExchangeContext.fromSession(session).toLegacyState();
 }
 
 export function normalizeMeleeSessionData(source) {
@@ -182,8 +358,6 @@ export function normalizeMeleeSessionData(source) {
     resultMessageId: null
   };
   session.actions ??= { declared: [], resolved: [] };
-  session.v1State ??= null;
-  session.future ??= [];
   session.initiative ??= {};
   session.initiative.rolls ??= {};
   session.initiative.history ??= [];
@@ -193,6 +367,20 @@ export function normalizeMeleeSessionData(source) {
     session.pools ??= {};
     session.pools[side] = { diceCount: dice.length, dice };
   }
+  if (!session.exchange) {
+    const legacy = session.v1State ? clone(session.v1State) : null;
+    session.exchange = createMeleeExchange(Math.min(3,
+      meleePoolDice(session, "attacker").length || 3,
+      meleePoolDice(session, "defender").length || 3));
+    if (legacy) MeleeExchangeContext.fromSession(session).applyLegacyState(legacy);
+  }
+  delete session.v1State;
+  delete session.segments;
+  delete session.currentSegment;
+  delete session.declarations;
+  delete session.future;
+  session.commandHistory ??= array(session.history).map(clone);
+  delete session.history;
   return session;
 }
 
@@ -254,17 +442,14 @@ export function createMeleeSession({
       history: [{ ownerId: initiativeOwnerId, previousOwnerId: null, reason: "engagementStart", at: now }]
     },
     pools: { attacker: createEmptyMeleePool(), defender: createEmptyMeleePool() },
-    segments: createMeleeSegments(),
-    currentSegment: 0,
-    declarations: { owner: null, responder: null },
+    exchange: createMeleeExchange(3),
     actions: { declared: [], resolved: [] },
     actionInstances: {},
     pendingOutcomes: [],
     effects: [],
     operationLedger: {},
     commandLedger: {},
-    history: [],
-    future: [],
+    commandHistory: [],
     metadata: clone(metadata),
     createdAt: now,
     updatedAt: now
@@ -308,8 +493,8 @@ export async function buildMeleeRequiredAction(session, user = game.user) {
   const map = {
     awaitingAttackerRoll: { side: "attacker", kind: "roll", label: "Rzut atakującego" },
     awaitingDefenderRoll: { side: "defender", kind: "roll", label: "Rzut obrońcy" },
-    declaration: { side: ownerSide, kind: "declare", label: "Deklaracja akcji" },
-    response: { side: responderSide, kind: "respond", label: "Odpowiedź na akcję" },
+    declaration: { side: ownerSide, kind: "commitExchangeAction", label: "Deklaracja akcji" },
+    response: { side: responderSide, kind: "commitExchangeAction", label: "Odpowiedź na akcję" },
     pendingOutcomes: { side: null, kind: "approve", label: "Zatwierdzenie wyniku przez MG" },
     resolution: { side: null, kind: "advance", label: "Przejście do następnego segmentu" },
     complete: { side: null, kind: "complete", label: "Zwarcie zakończone" }
@@ -386,7 +571,7 @@ export function registerMeleeCondition(key, evaluator, {
 }
 export function evaluateMeleeConditions(conditions, context) {
   const evaluate = raw => {
-    const condition = typeof raw === "string" ? { key: raw } : raw;
+    const condition = resolveMeleeRuntimeValue(typeof raw === "string" ? { key: raw } : raw, context);
     const definition = MeleeConditionRegistry.get(condition?.key);
     if (!definition || definition.validate(condition) !== true) return false;
     return definition.evaluator(context, condition, evaluate);
@@ -431,15 +616,15 @@ registerMeleeCondition("minSuccessPoints", ({ successPoints = 0 }, c) => number(
 registerMeleeCondition("maxSuccessPoints", ({ successPoints = 0 }, c) => number(successPoints) <= number(c.value), { label: "Maksimum sukcesów", fields: numericField, validate: valueRequired });
 registerMeleeCondition("minDice", ({ selectedDice = [] }, c) => selectedDice.length >= number(c.value, 1), { label: "Minimum wybranych kości", fields: numericField, validate: valueRequired });
 registerMeleeCondition("maxDice", ({ selectedDice = [] }, c) => selectedDice.length <= number(c.value, 3), { label: "Maksimum wybranych kości", fields: numericField, validate: valueRequired });
-registerMeleeCondition("freeDice", ({ session, side }, c) => meleePoolDice(session, side).filter(die => die.state !== "spent" || die.reusable).length >= number(c.value), { label: "Wolne kości", fields: numericField, validate: valueRequired });
-registerMeleeCondition("segment", ({ session }, c) => session.currentSegment === number(c.value), { label: "Segment", fields: numericField, validate: valueRequired });
+registerMeleeCondition("freeDice", ({ session, side }, c) => meleePoolDice(session, side).filter(die => die.state === "available").length >= number(c.value), { label: "Wolne kości", fields: numericField, validate: valueRequired });
+registerMeleeCondition("segment", ({ session }, c) => session.exchange.currentSegment === number(c.value), { label: "Segment", fields: numericField, validate: valueRequired });
 registerMeleeCondition("previousHit", ({ session, side }) => {
-  const previous = session.segments[session.currentSegment - 1];
+  const previous = session.exchange.segments[session.exchange.currentSegment - 1];
   const action = session.actionInstances[previous?.ownerActionId];
   return action?.side === side && previous?.outcomeIds?.length > 0;
 }, { label: "Trafienie w poprzednim segmencie" });
 registerMeleeCondition("previousDefense", ({ session, side }) => {
-  const previous = session.segments[session.currentSegment - 1];
+  const previous = session.exchange.segments[session.exchange.currentSegment - 1];
   return [previous?.ownerActionId, previous?.responderActionId]
     .map(id => session.actionInstances[id]).some(action => action?.side === side && action.definition.category === "defense");
 }, { label: "Obrona w poprzednim segmencie" });
@@ -470,7 +655,7 @@ registerMeleeCondition("oncePerOpponent", ({ session, activity, target }) => !Ob
   instance => instance.activityId === activity.id && array(instance.targetUuids).includes(target?.uuid)
 ), { label: "Raz na przeciwnika" });
 registerMeleeCondition("previousSegmentAction", ({ session, side }, c) => {
-  const previous = session.segments[session.currentSegment - 1];
+  const previous = session.exchange.segments[session.exchange.currentSegment - 1];
   return [previous?.ownerActionId, previous?.responderActionId]
     .map(id => session.actionInstances[id]).some(action => action?.side === side && (action.activityId === c.value || action.definition.category === c.value));
 }, { label: "Akcja w poprzednim segmencie", fields: [{ name: "value", type: "text" }], validate: valueRequired });
@@ -479,14 +664,19 @@ registerMeleeCondition("location", ({ location }, c) => location === c.value, { 
 
 export function normalizeMeleeActivity(raw = {}, source = {}) {
   const activation = raw.activation ?? {};
+  const committedDice = activation.committedDice ?? {};
+  const requiredSuccesses = activation.requiredSuccesses ?? {};
+  const occupiedSegments = activation.occupiedSegments ?? {};
   const costs = raw.costs ?? {};
   const availability = raw.availability ?? {};
-  const damage = raw.damage && typeof raw.damage === "object" ? raw.damage : {};
+  const damageSource = raw.meleeDamage ?? raw.damage;
+  const damage = damageSource && typeof damageSource === "object" ? damageSource : {};
   return {
     id: String(raw.id || randomId()),
     name: String(raw.name || raw.label || "Akcja melee"),
     img: raw.img || source.img || null,
     description: String(raw.description || raw.tooltip || ""),
+    kind: ["action", "modifier", "reaction"].includes(raw.kind) ? raw.kind : "action",
     category: raw.category || raw.type || "attack",
     tags: [...new Set(array(raw.tags))],
     source: {
@@ -506,13 +696,27 @@ export function normalizeMeleeActivity(raw = {}, source = {}) {
       timing: activation.timing || raw.timing || "declaration",
       costType: activation.costType || raw.costType || (number(activation.successCost ?? raw.successCost) > 0 ? "success" : "dice"),
       cost: number(activation.cost ?? raw.cost, 0),
-      minDice: number(activation.minDice ?? raw.minDice, 1),
-      maxDice: number(activation.maxDice ?? raw.maxDice, 3),
+      minDice: number(committedDice.min ?? activation.minDice ?? raw.minDice, 1),
+      maxDice: number(committedDice.max ?? activation.maxDice ?? raw.maxDice, 3),
+      exactDice: committedDice.exact ?? activation.exactDice ?? null,
+      committedDice: {
+        min: number(committedDice.min ?? activation.minDice ?? raw.minDice, 1),
+        max: number(committedDice.max ?? activation.maxDice ?? raw.maxDice, 3),
+        exact: committedDice.exact ?? activation.exactDice ?? null
+      },
       segmentCost: number(activation.segmentCost ?? raw.segmentCost, raw.costType === "segment" ? 1 : 0),
       successCost: number(activation.successCost ?? costs.successPoints ?? raw.successCost, raw.costType === "success" ? 1 : 0),
-      responsePolicy: activation.responsePolicy || raw.responsePolicy || "exact",
+      requiredSuccesses: {
+        min: number(requiredSuccesses.min ?? activation.successCost ?? costs.successPoints ?? raw.successCost, 0),
+        max: requiredSuccesses.max ?? null
+      },
+      occupiedSegments: {
+        mode: occupiedSegments.mode || (activation.segmentCost != null ? "fixed" : "selectedDice"),
+        value: occupiedSegments.value ?? activation.segmentCost ?? null
+      },
+      responsePolicy: activation.responsePolicy || raw.responsePolicy || "exactCommittedDice",
       uses: activation.uses ?? raw.uses ?? null,
-      reusableDice: activation.reusableDice === true
+      diceReusePolicy: clone(activation.diceReusePolicy ?? raw.diceReusePolicy ?? { mode: "none", trigger: null })
     },
     parameters: array(raw.parameters).map(parameter => ({
       key: String(parameter.key || randomId()),
@@ -520,7 +724,8 @@ export function normalizeMeleeActivity(raw = {}, source = {}) {
       type: parameter.type || "number",
       default: parameter.default ?? 0,
       min: parameter.min ?? null,
-      max: parameter.max ?? null
+      max: parameter.max ?? null,
+      choices: array(parameter.choices).map(choice => ({ value: choice.value, label: String(choice.label ?? choice.value) }))
     })),
     test: raw.test ? clone(raw.test) : null,
     damage: {
@@ -532,6 +737,9 @@ export function normalizeMeleeActivity(raw = {}, source = {}) {
       }
     },
     conditions: (array(raw.conditions).length ? array(raw.conditions) : array(availability.conditions)).map(clone),
+    selectors: clone(raw.selectors ?? {}),
+    changes: array(raw.changes).map(clone),
+    priority: number(raw.priority, 100),
     outcomes: array(raw.outcomes).map(normalizeOutcomeDefinition),
     operations: array(raw.operations).map(normalizeOperation),
     automation: {
@@ -597,20 +805,25 @@ export class MeleeActionCatalog {
     ];
     return [
       normalizeMeleeActivity({
-        id: "attack", name: "Atak", category: "attack", timing: "either",
-        tags: ["melee", item?.system?.weaponGroup, item?.system?.weaponType].filter(Boolean),
+        id: "attack", name: "Atak", kind: "action", category: "attack", timing: "either",
+        tags: ["melee", "melee.attack", item?.system?.weaponGroup, item?.system?.weaponType].filter(Boolean),
+        legacy: { action: "attack" },
         outcomes: [{
         id: "hit", when: "hit", label: "Trafienie", operations: [{
           type: "damage", target: "opponent", data: { damageProfiles, piercing: number(item?.system?.piercing) }
         }]
         }]
       }, common.source),
-      normalizeMeleeActivity({ id: "defense", name: "Obrona", category: "defense", timing: "either", outcomes: [] }, common.source),
-      normalizeMeleeActivity({ id: "exit", name: "Wyjście ze zwarcia", category: "movement", timing: "either", minDice: 1, maxDice: 1,
+      normalizeMeleeActivity({ id: "defense", name: "Obrona", kind: "reaction", category: "defense", timing: "response", legacy: { action: "defend" }, outcomes: [] }, common.source),
+      normalizeMeleeActivity({ id: "exit", name: "Wyjście ze zwarcia", kind: "action", category: "movement", timing: "declaration", minDice: 1, maxDice: 1, legacy: { action: "exit" },
         outcomes: [{ id: "exit", label: "Wyjście", operations: [{ type: "endEngagement", data: { reason: "exit" } }] }] }, common.source),
-      normalizeMeleeActivity({ id: "flee", name: "Ucieczka", category: "movement", timing: "either", minDice: 1, maxDice: 3,
+      normalizeMeleeActivity({ id: "flee", name: "Ucieczka", kind: "reaction", category: "movement", timing: "response", minDice: 0, maxDice: 0, legacy: { action: "flee" },
         outcomes: [{ id: "flee", label: "Ucieczka", operations: [{ type: "endEngagement", data: { reason: "flee" } }] }] }, common.source),
-      normalizeMeleeActivity({ id: "nonCombat", name: "Akcja niebojowa", category: "utility", timing: "either" }, common.source)
+      normalizeMeleeActivity({ id: "nonCombat", name: "Akcja niebojowa", kind: "action", category: "utility", timing: "declaration", legacy: { action: "nonCombat" } }, common.source),
+      normalizeMeleeActivity({ id: "blockExit", name: "Zablokuj wyjście", kind: "reaction", category: "defense", timing: "response", minDice: 1, maxDice: 1, legacy: { action: "blockExit" } }, common.source),
+      normalizeMeleeActivity({ id: "allowExit", name: "Pozwól wyjść", kind: "reaction", category: "utility", timing: "response", minDice: 0, maxDice: 0, legacy: { action: "allowExit" } }, common.source),
+      normalizeMeleeActivity({ id: "seizeInit", name: "Przejmij inicjatywę", kind: "reaction", category: "defense", timing: "response", legacy: { action: "seizeInit" } }, common.source),
+      normalizeMeleeActivity({ id: "interrupt", name: "Przerwij", kind: "reaction", category: "defense", timing: "response", legacy: { action: "interrupt" } }, common.source)
     ];
   }
 
@@ -743,24 +956,38 @@ function shiftMeleeDamage(value, steps) {
 }
 
 /** Apply deterministic Item/profession/origin modifiers first, then AE modifiers. */
-export function applyMeleeDamageModifiers(actor, activity, profile = {}) {
+export function applyMeleeDamageModifiers(actor, activity, profile = {}, { details = false, selectedModifiers = [] } = {}) {
   const entries = [];
   for (const item of array(actor?.items)) {
     for (const modifier of array(item.system?.melee?.damageModifiers ?? item.getFlag?.("neuroshima", "meleeDamageModifiers"))) {
-      entries.push({ ...clone(modifier), sourceOrder: 1, sourceUuid: item.uuid });
+      entries.push({ ...clone(modifier), sourceOrder: 1, sourceUuid: item.uuid, sourceName: item.name });
     }
   }
   for (const effect of array(actor?.effects).filter(entry => !entry.disabled)) {
     for (const modifier of array(effect.system?.melee?.modifiers).filter(entry => entry.tier != null)) {
-      entries.push({ ...clone(modifier), sourceOrder: 2, sourceUuid: effect.uuid });
+      entries.push({ ...clone(modifier), sourceOrder: 2, sourceUuid: effect.uuid, sourceName: effect.name });
+    }
+  }
+  for (const activityModifier of selectedModifiers) {
+    for (const change of array(activityModifier.changes)) {
+      if (change.type !== "damageTierShift") continue;
+      const tiers = array(change.tiers).length ? array(change.tiers) : [1, 2, 3];
+      for (const tier of tiers) entries.push({
+        selector: {}, tier, mode: number(change.value) >= 0 ? "upgrade" : "downgrade",
+        value: Math.abs(number(change.value)), priority: activityModifier.priority,
+        sourceOrder: 0,
+        sourceUuid: activityModifier.source.uuid || activityModifier.source.itemUuid || activityModifier.source.effectUuid,
+        sourceName: activityModifier.name
+      });
     }
   }
   entries.sort((left, right) =>
-    number(left.sourceOrder) - number(right.sourceOrder) ||
     number(left.priority, 100) - number(right.priority, 100) ||
+    number(left.sourceOrder) - number(right.sourceOrder) ||
     String(left.sourceUuid).localeCompare(String(right.sourceUuid))
   );
   const result = { 1: profile[1], 2: profile[2], 3: profile[3] };
+  const applied = [];
   for (const modifier of entries) {
     const selector = modifier.selector ?? {};
     const tags = array(selector.tags);
@@ -768,14 +995,103 @@ export function applyMeleeDamageModifiers(actor, activity, profile = {}) {
     if (selector.activityIds?.length && !selector.activityIds.includes(activity?.id)) continue;
     for (const tier of [1, 2, 3]) {
       if (modifier.tier != null && number(modifier.tier) !== tier) continue;
+      const before = result[tier];
       const mode = modifier.mode;
       if (mode === "upgrade") result[tier] = shiftMeleeDamage(result[tier], number(modifier.value, 1));
       else if (mode === "downgrade") result[tier] = shiftMeleeDamage(result[tier], -number(modifier.value, 1));
       else if (mode === "replace") result[tier] = modifier.value || result[tier];
       else if (mode === "addSerious" && result[tier] && !String(result[tier]).startsWith("s")) result[tier] = `s${result[tier]}`;
+      if (result[tier] !== before) applied.push({
+        sourceUuid: modifier.sourceUuid,
+        sourceName: modifier.sourceName || modifier.sourceUuid,
+        tier, mode, value: modifier.value,
+        before, after: result[tier], priority: number(modifier.priority, 100)
+      });
     }
   }
-  return result;
+  return details ? { profile: result, modifiers: applied } : result;
+}
+
+function validateMeleeParameterValues(activity, submitted = {}) {
+  const values = {};
+  for (const parameter of array(activity.parameters)) {
+    const value = submitted[parameter.key] ?? parameter.default;
+    if (parameter.type === "number") {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric) || (parameter.min != null && numeric < Number(parameter.min)) ||
+          (parameter.max != null && numeric > Number(parameter.max))) {
+        throw new MeleeValidationError(`Invalid value for ${parameter.label}`, "INVALID_ACTIVITY_PARAMETER");
+      }
+      values[parameter.key] = numeric;
+    } else if (parameter.type === "boolean") values[parameter.key] = value === true || value === "true";
+    else if (parameter.type === "select") {
+      const allowed = array(parameter.choices).map(choice => choice.value);
+      if (!allowed.includes(value)) throw new MeleeValidationError(`Invalid value for ${parameter.label}`, "INVALID_ACTIVITY_PARAMETER");
+      values[parameter.key] = value;
+    } else values[parameter.key] = String(value ?? "");
+  }
+  return values;
+}
+
+function meleeModifierMatches(modifier, activity, item) {
+  const selectors = modifier.selectors ?? {};
+  const activityTags = array(selectors.activityTags ?? selectors.tags);
+  const weaponTags = array(selectors.weaponTags);
+  if (activityTags.length && !activityTags.some(tag => array(activity.tags).includes(tag))) return false;
+  if (array(selectors.activityIds).length && !array(selectors.activityIds).includes(activity.id)) return false;
+  const actualWeaponTags = [
+    ...array(item?.system?.tags), item?.system?.weaponType, item?.system?.weaponGroup
+  ].filter(Boolean);
+  if (weaponTags.length && !weaponTags.some(tag => actualWeaponTags.includes(tag))) return false;
+  return true;
+}
+
+function meleeReusableTriggeringDice(session, side, activity) {
+  const policy = activity.activation?.diceReusePolicy ?? {};
+  if (policy.mode !== "triggeringDie" || policy.trigger !== "initiativeTaken" || initiativeSide(session) !== side) {
+    return new Set();
+  }
+  const previous = array(session.exchange?.segments)
+    .slice(0, number(session.exchange?.currentSegment))
+    .reverse()
+    .find(segment => segment.outcome === "takeover");
+  if (!previous) return new Set();
+  const response = session.actionInstances?.[previous.responderActionId];
+  if (response?.side !== side) return new Set();
+  const candidates = array(previous.responderDiceIds)
+    .map(id => meleePoolDice(session, side).find(die => die.id === id))
+    .filter(die => die?.isSuccess)
+    .sort((left, right) => number(left.modified) - number(right.modified));
+  return new Set(candidates.length ? [candidates[0].id] : []);
+}
+
+function legacyActionForActivity(activity, responder = false) {
+  if (activity.legacy?.action) return activity.legacy.action;
+  const core = {
+    attack: "attack", defense: "defend", flee: "flee", exit: "exit",
+    blockExit: "blockExit", allowExit: "allowExit", nonCombat: "nonCombat",
+    seizeInit: "seizeInit", interrupt: "interrupt"
+  };
+  if (core[activity.id]) return core[activity.id];
+  return responder ? "defend" : "trick";
+}
+
+function meleeDamageSnapshot(actor, activity, baseProfile, selectedModifiers = []) {
+  const base = { 1: baseProfile[1], 2: baseProfile[2], 3: baseProfile[3] };
+  const damageOperation = array(activity.operations).find(operation => operation.type === "damage")
+    ?? array(activity.outcomes).flatMap(outcome => array(outcome.operations)).find(operation => operation.type === "damage");
+  const operationProfiles = damageOperation?.data?.damageProfiles;
+  const operationDamage = damageOperation?.data?.damage ?? null;
+  const activityProfile = {
+    1: activity.damage?.profile?.[1] ?? operationProfiles?.[0] ?? operationDamage ?? base[1],
+    2: activity.damage?.profile?.[2] ?? operationProfiles?.[1] ?? operationDamage ?? base[2],
+    3: activity.damage?.profile?.[3] ?? operationProfiles?.[2] ?? operationDamage ?? base[3]
+  };
+  const resolved = applyMeleeDamageModifiers(actor, activity, activityProfile, {
+    details: true,
+    selectedModifiers
+  });
+  return { base, activity: activityProfile, final: resolved.profile, modifiers: resolved.modifiers };
 }
 
 export const MeleeOperationRegistry = new Map();
@@ -885,11 +1201,18 @@ registerMeleeOperation("modifyDamage", async ({ operation, pendingOutcome }) => 
 });
 registerMeleeOperation("applyEffect", async context => MeleeEffectService.applyFromOperation(context));
 registerMeleeOperation("removeEffect", async context => MeleeEffectService.removeFromOperation(context));
-registerMeleeOperation("requiredTest", async ({ operation, target, actor }) => {
+registerMeleeOperation("requiredTest", async ({ operation, target, actor, session, action, pendingOutcome }) => {
   const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
+  const rollingSide = sideForActor(session, target?.uuid)
+    ?? (action.side === "attacker" ? "defender" : "attacker");
   return NeuroshimaScriptRunner.postRequiredTest({
     ...clone(operation.data), defenderActorUuid: target?.uuid || "",
-    attackerActorUuid: actor?.uuid || "", whisperToDefender: true
+    attackerActorUuid: actor?.uuid || "", whisperToDefender: true,
+    continuation: {
+      type: "meleeActivityTest", sessionId: session.id, messageId: session.messageId,
+      actionInstanceId: action.id, sourceOutcomeId: pendingOutcome?.id ?? null,
+      operationId: operation.id, side: rollingSide
+    }
   });
 });
 registerMeleeOperation("legacyScript", async ({ operation, actor, target, session, action }) => {
@@ -985,7 +1308,7 @@ export class MeleeResolver {
     const pool = meleePoolDice(session, side);
     const selected = [...new Set(ids)].map(id => pool.find(die => die.id === id));
     if (selected.some(die => !die)) throw new MeleeValidationError("Selected die not found", "DIE_NOT_FOUND");
-    if (selected.some(die => die.state === "spent" && !die.reusable)) {
+    if (selected.some(die => die.state === "spent")) {
       throw new MeleeValidationError("A melee die may be used only once", "DIE_ALREADY_USED");
     }
     return selected;
@@ -997,18 +1320,12 @@ export class MeleeOperationRunner {
     if (outcome.status === "applied") return outcome;
     for (let index = 0; index < outcome.operations.length; index++) {
       const sourceOperation = outcome.operations[index];
-      const actionParameters = context.action?.parameters ?? {};
-      const replaceParameters = value => {
-        if (Array.isArray(value)) return value.map(replaceParameters);
-        if (value && typeof value === "object") return Object.fromEntries(
-          Object.entries(value).map(([key, entry]) => [key, replaceParameters(entry)])
-        );
-        if (typeof value === "string" && value.startsWith("@parameters.")) {
-          return actionParameters[value.slice("@parameters.".length)] ?? value;
-        }
-        return value;
-      };
-      const operation = replaceParameters(clone(sourceOperation));
+      const selectedDice = array(context.selectedDice).length
+        ? array(context.selectedDice)
+        : array(context.action?.selectedDiceIds).map(id =>
+            meleePoolDice(session, context.action?.side).find(die => die.id === id)
+          ).filter(Boolean);
+      const operation = resolveMeleeRuntimeValue(clone(sourceOperation), { ...context, session, selectedDice });
       const operationId = `${session.id}:${outcome.id}:${operation.id || index}`;
       if (session.operationLedger[operationId]?.status === "applied") continue;
       if (!evaluateMeleeConditions(operation.conditions, { ...context, session, operation })) continue;
@@ -1074,7 +1391,15 @@ export class MeleeEffectService {
       meleeSessionId: session?.id || null,
       meleeActionInstanceId: action?.id || null,
       meleeOperationId: operation?.id || null,
-      meleeAppliedAt: Date.now()
+      meleeAppliedAt: Date.now(),
+      melee: {
+        sessionId: session?.id || null,
+        actionInstanceId: action?.id || null,
+        activityId: action?.activityId || action?.definition?.id || null,
+        operationId: operation?.id || null,
+        sourceActorUuid: action?.actorUuid || null,
+        sourceItemUuid: action?.definition?.source?.itemUuid || null
+      }
     };
     const [created] = await target.createEmbeddedDocuments("ActiveEffect", [source]);
     if (session && created) session.effects.push({
@@ -1152,7 +1477,7 @@ export class MeleeSessionStore {
       });
     } else {
       if (message) session.messageId = message.id;
-      await this._write(session.id, async () => {
+      await this._write(MELEE_WORLD_STORE_SETTING, async () => {
         const sessions = clone(game.settings.get("neuroshima", MELEE_WORLD_STORE_SETTING) ?? {});
         if (sessions[session.id]) throw new MeleeValidationError("Session already exists", "SESSION_EXISTS");
         sessions[session.id] = clone(session);
@@ -1183,7 +1508,7 @@ export class MeleeSessionStore {
         await combat.update({ [`flags.neuroshima.${MELEE_FLAG}.${session.id}`]: clone(session) });
       });
     } else {
-      await this._write(session.id, async () => {
+      await this._write(MELEE_WORLD_STORE_SETTING, async () => {
         const sessions = clone(game.settings.get("neuroshima", MELEE_WORLD_STORE_SETTING) ?? {});
         const stored = sessions[session.id];
         if (stored && number(stored.revision) !== number(expectedRevision, stored.revision)) {
@@ -1212,7 +1537,9 @@ export function validateMeleeSession(session) {
   if (session?.schemaVersion !== MELEE_VERSION) throw new MeleeValidationError("Unsupported melee session schema");
   if (!MELEE_PHASES.includes(session.phase)) throw new MeleeValidationError("Invalid melee phase");
   if (!Number.isInteger(session.revision) || session.revision < 0) throw new MeleeValidationError("Invalid revision");
-  if (!Array.isArray(session.segments) || session.segments.length !== 3) throw new MeleeValidationError("Melee requires three segments");
+  if (!session.exchange || !Array.isArray(session.exchange.segments) || session.exchange.segments.length < 1 || session.exchange.segments.length > 3) {
+    throw new MeleeValidationError("Melee requires one to three canonical segments");
+  }
   for (const side of MELEE_SIDES) {
     const pool = meleePoolDice(session, side);
     if (pool.length > 3) throw new MeleeValidationError("A submitted pool may contain at most three dice");
@@ -1253,7 +1580,8 @@ export class MeleeCommandService {
     await this._authorize(session, command, user);
     const result = await this._apply(session, command, user);
     session.commandLedger[commandId] = { type: command.type, userId: command.userId, appliedAt: Date.now(), result: clone(result) };
-    session.history.push({ commandId, type: command.type, userId: command.userId, revision: session.revision, at: Date.now() });
+    session.commandHistory ??= [];
+    session.commandHistory.push({ commandId, type: command.type, userId: command.userId, revision: session.revision, at: Date.now() });
     await MeleeSessionStore.save(session, { expectedRevision: command.expectedRevision });
     const message = game.messages.get(session.messageId);
     if (message) await message.update({ "flags.neuroshima.melee.renderedRevision": session.revision });
@@ -1281,15 +1609,14 @@ export class MeleeCommandService {
     switch (command.type) {
       case "submitRoll": return this._submitRoll(session, command);
       case "replaceRoll": return this._replaceRoll(session, command);
-      case "legacyBatch": return this._legacyBatch(session, command);
+      case "commitExchangeAction": return this._commitExchangeAction(session, command);
       case "undo": return this._undo(session);
       case "redo": return this._redo(session);
       case "swapInitiative": return this._swapInitiative(session);
       case "claimDamage": return this._claimDamage(session, command);
       case "markApplied": return this._markApplied(session, command);
-      case "declare": return this._declare(session, command, false);
-      case "respond": return this._declare(session, command, true);
       case "approveOutcome": return this._approveOutcome(session, command);
+      case "resolveRequiredTest": return this._resolveRequiredTest(session, command);
       case "advanceSegment": return this._advanceSegment(session);
       case "endSession": return this._endSession(session, command.payload?.reason);
       default: throw new MeleeValidationError(`Unknown melee command: ${command.type}`, "UNKNOWN_COMMAND");
@@ -1301,6 +1628,15 @@ export class MeleeCommandService {
     const expected = side === "attacker" ? "awaitingAttackerRoll" : "awaitingDefenderRoll";
     if (session.phase !== expected) throw new MeleeValidationError("Roll submitted in the wrong phase", "WRONG_PHASE");
     const dice = setMeleePool(session, side, command.payload?.dice);
+    if (session.variant === "standard" && dice.length !== 3) {
+      throw new MeleeValidationError("Standard melee rolls require exactly three dice", "INVALID_DICE_POOL");
+    }
+    if (session.variant === "gradCiosow" && side === "defender") {
+      const required = Math.min(3, Math.max(1, meleePoolDice(session, "attacker").filter(die => die.isSuccess).length || 1));
+      if (dice.length !== required) {
+        throw new MeleeValidationError(`Hail defense requires exactly ${required} dice`, "INVALID_DICE_POOL");
+      }
+    }
     session.phase = side === "attacker" ? "awaitingDefenderRoll" : "declaration";
     if (command.payload?.testMessageId) {
       session.messages[side === "attacker" ? "attackerRollMessageId" : "defenderRollMessageId"] = command.payload.testMessageId;
@@ -1314,9 +1650,8 @@ export class MeleeCommandService {
       const attackerActor = attackerDocument?.actor ?? attackerDocument;
       const attackerWeapon = session.participants.attacker.weaponUuid
         ? await fromUuid(session.participants.attacker.weaponUuid)
-        : attackerActor?.items?.get?.(session.metadata.weaponId);
-      const attackActivity = MeleeActionCatalog.coreActivities(attackerActor, attackerWeapon)
-        .find(activity => activity.id === "attack");
+        : attackerActor?.items?.get?.(session.metadata.weaponId)
+          ?? attackerActor?.items?.get?.(session.metadata.beastItemId);
       const defenderDocument = await fromUuid(
         session.participants.defender.tokenUuid || session.participants.defender.actorUuid
       );
@@ -1334,14 +1669,10 @@ export class MeleeCommandService {
             activity.legacy?.actionDef !== true)
           .map(activity => ({ runtimeId: randomId(), definition: clone(activity) }));
       }
-      const modifiedDamage = applyMeleeDamageModifiers(attackerActor, attackActivity, {
-        1: session.metadata.damage1,
-        2: session.metadata.damage2,
-        3: session.metadata.damage3
-      });
-      session.metadata.damage1 = modifiedDamage[1];
-      session.metadata.damage2 = modifiedDamage[2];
-      session.metadata.damage3 = modifiedDamage[3];
+      session.metadata.defenderManeuver = command.payload?.maneuver ?? null;
+      session.metadata.defenderDamage1 = command.payload?.defenderDamage1 ?? "D";
+      session.metadata.defenderDamage2 = command.payload?.defenderDamage2 ?? "L";
+      session.metadata.defenderDamage3 = command.payload?.defenderDamage3 ?? "K";
       const attackDice = meleePoolDice(session, "attacker").map(meleeDieAsLegacy);
       const defenseDice = dice.map(meleeDieAsLegacy);
       if (session.variant === "gradCiosow") {
@@ -1352,43 +1683,14 @@ export class MeleeCommandService {
         session.phase = "complete";
       } else {
         const segmentCount = Math.min(3, attackDice.length, defenseDice.length);
-        session.v1State = {
-          status: "picking",
-          initiativeOwnerSide: session.metadata.szachistaYield ? "defender" : "attacker",
-          isGradCios: false,
-          waitingFor: "initiativeOwner",
-          committedOwnerIndices: null,
-          currentSegment: 0,
-          attackerUuid: session.participants.attacker.actorUuid,
-          attackerTokenUuid: session.participants.attacker.tokenUuid ?? null,
-          defenderUuid: session.participants.defender.actorUuid,
-          defenderTokenUuid: session.participants.defender.tokenUuid ?? null,
-          attackerManeuver: session.metadata.attackerManeuver ?? null,
-          defenderManeuver: command.payload?.maneuver ?? null,
-          weaponId: session.metadata.weaponId ?? null,
-          beastItemId: session.metadata.beastItemId ?? null,
-          attackDice, defenseDice,
-          attackTarget: session.metadata.attackerTarget ?? 0,
-          defenseTarget: session.metadata.defenderTarget ?? 0,
-          damage1: session.metadata.damage1,
-          damage2: session.metadata.damage2,
-          damage3: session.metadata.damage3,
-          location: session.metadata.location ?? null,
-          headDamageApplied: session.metadata.headDamageApplied === true,
-          defenderDamage1: command.payload?.defenderDamage1 ?? "D",
-          defenderDamage2: command.payload?.defenderDamage2 ?? "L",
-          defenderDamage3: command.payload?.defenderDamage3 ?? "K",
-          usedAttackDice: [], usedDefenseDice: [],
-          segments: Array.from({ length: segmentCount }, (_, index) => ({
-            segNum: index + 1, attackVal: null, defenseVal: null, outcome: null
-          })),
-          hits: [], counterHits: [], applied: false,
-          segmentHistory: [], segmentFuture: [],
-          opposedId: session.id,
-          activatedMeleePreRollMods: session.metadata.activatedMeleePreRollMods ?? []
-        };
-        await DuelLifecycle.start(DuelContext.fromFlag(session.v1State));
-        syncPoolsFromLegacyState(session);
+        session.exchange = createMeleeExchange(segmentCount);
+        session.phase = "declaration";
+        if (session.metadata.szachistaYield) {
+          transferMeleeInitiative(session, session.participants.defender.actorUuid, "szachistaYield");
+        }
+        await DuelLifecycle.start(DuelContext.fromFlag(
+          MeleeExchangeContext.fromSession(session).toLegacyState()
+        ));
       }
     }
     return { side, dice: clone(dice) };
@@ -1398,11 +1700,31 @@ export class MeleeCommandService {
     const side = command.side;
     if (!MELEE_SIDES.includes(side)) throw new MeleeValidationError("Invalid roll side", "WRONG_SIDE");
     if (session.result?.applied || session.hailResult?.applied ||
-        session.pendingOutcomes.some(outcome => outcome.status === "applied")) {
-      throw new MeleeValidationError("An applied melee result cannot be recalculated", "RESULT_ALREADY_APPLIED");
+        session.pendingOutcomes.some(outcome => outcome.status === "applied") ||
+        Object.values(session.operationLedger ?? {}).some(entry => ["running", "applied"].includes(entry?.status))) {
+      throw new MeleeValidationError("Nie można edytować rzutu, ponieważ wynik tej walki został już zastosowany.", "RESULT_ALREADY_APPLIED");
     }
     const dice = setMeleePool(session, side, command.payload?.dice);
+    if (session.variant === "standard" && dice.length !== 3) {
+      throw new MeleeValidationError("Standard melee rolls require exactly three dice", "INVALID_DICE_POOL");
+    }
     session.metadata[side === "attacker" ? "attackerTarget" : "defenderTarget"] = number(command.payload?.target);
+    if (session.variant === "gradCiosow") {
+      const required = Math.min(3, Math.max(1,
+        meleePoolDice(session, "attacker").filter(die => die.isSuccess).length || 1
+      ));
+      if (side === "defender" && dice.length !== required) {
+        throw new MeleeValidationError(`Hail defense requires exactly ${required} dice`, "INVALID_DICE_POOL");
+      }
+      if (side === "attacker" && meleePoolDice(session, "defender").length !== required) {
+        session.pools.defender = createEmptyMeleePool();
+        session.hailResult = null;
+        session.status = "active";
+        session.phase = "awaitingDefenderRoll";
+        session.operationLedger = {};
+        return { side, reset: true, defenderRerollRequired: true, variant: "gradCiosow" };
+      }
+    }
     if (!meleePoolDice(session, "attacker").length || !meleePoolDice(session, "defender").length) {
       session.phase = "awaitingDefenderRoll";
       return { side, reset: false };
@@ -1417,30 +1739,341 @@ export class MeleeCommandService {
       session.phase = "complete";
       return { side, reset: true, variant: "gradCiosow" };
     }
-    const previous = session.v1State ?? {};
     const segmentCount = Math.min(3, attackDice.length, defenseDice.length);
-    session.v1State = {
-      ...previous,
-      status: "picking", waitingFor: "initiativeOwner", committedOwnerIndices: null,
-      declaredAction: null, currentSegment: 0,
-      attackDice, defenseDice,
-      attackTarget: session.metadata.attackerTarget ?? 0,
-      defenseTarget: session.metadata.defenderTarget ?? 0,
-      usedAttackDice: [], usedDefenseDice: [],
-      segments: Array.from({ length: segmentCount }, (_, index) => ({
-        segNum: index + 1, attackVal: null, defenseVal: null, outcome: null
-      })),
-      hits: [], counterHits: [], applied: false,
-      segmentHistory: [], segmentFuture: []
-    };
+    session.exchange = createMeleeExchange(segmentCount);
+    for (const poolSide of MELEE_SIDES) {
+      for (const die of meleePoolDice(session, poolSide)) {
+        die.state = "available";
+        die.used = false;
+        die.reservedByActionId = null;
+        die.spentAtSegment = null;
+      }
+    }
+    const initialOwnerSide = session.metadata.szachistaYield ? "defender" : "attacker";
+    transferMeleeInitiative(session, session.participants[initialOwnerSide].actorUuid, "rollEdited");
+    session.phase = "declaration";
+    session.status = "active";
     session.result = null;
     session.pendingOutcomes = [];
-    syncPoolsFromLegacyState(session);
+    session.actionInstances = {};
+    session.actions = { declared: [], resolved: [] };
+    session.operationLedger = {};
     return { side, reset: true, variant: "standard" };
   }
 
-  static async _legacyBatch(session, command) {
-    const state = session.v1State;
+  static async _commitExchangeAction(session, command) {
+    if (!["declaration", "response"].includes(session.phase)) {
+      throw new MeleeValidationError("Duel is not waiting for an exchange action", "WRONG_PHASE");
+    }
+    const responder = session.phase === "response";
+    const ownerSide = initiativeSide(session);
+    const side = responder ? (ownerSide === "attacker" ? "defender" : "attacker") : ownerSide;
+    if (command.side !== side) throw new MeleeValidationError("Wrong participant for this phase", "WRONG_SIDE");
+
+    const selectedDieIds = [...new Set(array(command.payload?.selectedDieIds).map(String))];
+    const selectedDice = selectedDieIds.map(id => meleePoolDice(session, side).find(die => die.id === id));
+    if (selectedDice.some(die => !die)) throw new MeleeValidationError("Selected die was not found", "DIE_NOT_FOUND");
+
+    const participant = session.participants[side];
+    const actorDocument = await fromUuid(participant.tokenUuid || participant.actorUuid);
+    const actor = actorDocument?.actor ?? actorDocument;
+    const targetSide = side === "attacker" ? "defender" : "attacker";
+    const targetDocument = await fromUuid(session.participants[targetSide].tokenUuid || session.participants[targetSide].actorUuid);
+    const target = targetDocument?.actor ?? targetDocument;
+    const reference = clone(command.payload?.activity ?? {});
+    const sourceItem = reference.sourceItemUuid ? await fromUuid(reference.sourceItemUuid)
+      : participant.weaponUuid ? await fromUuid(participant.weaponUuid) : null;
+    const requestedId = reference.activityId === "defend" ? "defense" : reference.activityId;
+    let activity = MeleeActionCatalog.findExact(actor, { ...reference, activityId: requestedId }, { item: sourceItem })
+      ?? MeleeActionCatalog.coreActivities(actor, sourceItem).find(entry => entry.id === requestedId);
+    if (!activity && ["blockExit", "allowExit", "seizeInit", "interrupt"].includes(reference.activityId)) {
+      activity = normalizeMeleeActivity({
+        id: reference.activityId, name: reference.activityId, kind: "reaction", timing: "response",
+        minDice: reference.activityId === "allowExit" ? 0 : 1, maxDice: 3,
+        legacy: { action: reference.activityId }
+      }, { kind: "core", uuid: sourceItem?.uuid || actor.uuid, itemUuid: sourceItem?.uuid || null });
+    }
+    if (!activity || activity.kind === "modifier") {
+      throw new MeleeValidationError("Exact melee action was not found", "ACTIVITY_NOT_FOUND", reference);
+    }
+    const requiredRole = responder ? "responder" : "owner";
+    const requiredTiming = responder ? "response" : "declaration";
+    if (!["either", requiredRole].includes(activity.activation.role) ||
+        !["either", requiredTiming].includes(activity.activation.timing)) {
+      throw new MeleeValidationError("Activity is unavailable in this phase", "WRONG_ACTIVITY_TIMING");
+    }
+    const reusableTriggeringDice = meleeReusableTriggeringDice(session, side, activity);
+    if (selectedDice.some(die => die.state !== "available" && !reusableTriggeringDice.has(die.id))) {
+      throw new MeleeValidationError("Selected die is unavailable", "DIE_ALREADY_USED");
+    }
+
+    const legacyAction = legacyActionForActivity(activity, responder);
+    const allowsNoDice = ["flee", "allowExit"].includes(legacyAction) || number(activity.activation.maxDice) === 0;
+    if ((!allowsNoDice && selectedDieIds.length < activity.activation.minDice) || selectedDieIds.length > activity.activation.maxDice) {
+      throw new MeleeValidationError("Invalid number of dice for activity", "INVALID_DICE_COST");
+    }
+    if (activity.activation.exactDice != null && selectedDieIds.length !== number(activity.activation.exactDice)) {
+      throw new MeleeValidationError("Activity requires an exact number of dice", "INVALID_DICE_COST");
+    }
+    const selectedSuccesses = selectedDice.filter(die => die.isSuccess).length;
+    if (selectedSuccesses < activity.activation.successCost) {
+      throw new MeleeValidationError("Activity costs more successes than selected", "INSUFFICIENT_SUCCESSES");
+    }
+    const requiredSuccesses = activity.activation.requiredSuccesses ?? {};
+    if (selectedSuccesses < number(requiredSuccesses.min) ||
+        (requiredSuccesses.max != null && selectedSuccesses > number(requiredSuccesses.max))) {
+      throw new MeleeValidationError("Selected successes do not satisfy the activity", "INSUFFICIENT_SUCCESSES");
+    }
+    const occupiedSegments = activity.activation.occupiedSegments?.mode === "fixed"
+      ? Math.max(1, number(activity.activation.occupiedSegments.value, activity.activation.segmentCost || 1))
+      : Math.max(1, selectedDieIds.length, number(activity.activation.segmentCost));
+    if (session.exchange.currentSegment + occupiedSegments > session.exchange.segments.length) {
+      throw new MeleeValidationError("Not enough melee segments remain", "INSUFFICIENT_SEGMENTS");
+    }
+    if (activity.activation.uses != null &&
+        number(session.metadata.activityUses?.[activity.id]) >= number(activity.activation.uses)) {
+      throw new MeleeValidationError("Configured activity has no uses remaining", "NO_USES_REMAINING");
+    }
+    const parameterValues = validateMeleeParameterValues(activity, command.payload?.parameterValues ?? {});
+    if (!evaluateMeleeConditions(activity.conditions, {
+      session, side, actor, target, item: sourceItem, activity, selectedDice,
+      successPoints: selectedSuccesses, parameters: parameterValues
+    })) throw new MeleeValidationError("Activity conditions are not met", "CONDITIONS_NOT_MET");
+
+    const modifierRefs = array(command.payload?.modifierRefs).map(clone);
+    const selectedModifiers = modifierRefs.map(ref => MeleeActionCatalog.findExact(actor, ref, {
+      item: ref.sourceItemUuid ? fromUuidSync(ref.sourceItemUuid) : sourceItem
+    }));
+    if (selectedModifiers.some(modifier => !modifier || modifier.kind !== "modifier")) {
+      throw new MeleeValidationError("Invalid melee modifier", "INVALID_ACTIVITY_MODIFIER");
+    }
+    if (selectedModifiers.some(modifier =>
+        !["either", requiredRole].includes(modifier.activation.role) ||
+        !["either", "modifyDeclaration", requiredTiming].includes(modifier.activation.timing) ||
+        !meleeModifierMatches(modifier, activity, sourceItem) ||
+        !evaluateMeleeConditions(modifier.conditions, {
+          session, side, actor, target, item: sourceItem, activity,
+          selectedDice, successPoints: selectedSuccesses, parameters: parameterValues
+        }))) {
+      throw new MeleeValidationError("Melee modifier does not match this declaration", "INVALID_ACTIVITY_MODIFIER");
+    }
+
+    const queuedSupplements = [];
+    let queuedSuccessCost = 0;
+    for (const submitted of array(command.payload?.queuedSupplements)) {
+      const quantity = Math.min(10, Math.max(1, number(submitted.quantity, 1)));
+      const supplementRef = clone(submitted.activityRef ?? {});
+      const supplementItem = supplementRef.sourceItemUuid ? await fromUuid(supplementRef.sourceItemUuid) : sourceItem;
+      const supplement = MeleeActionCatalog.findExact(actor, supplementRef, { item: supplementItem });
+      const isSupplement = supplement && (
+        supplement.kind === "modifier" ||
+        supplement.source.kind === "beast" ||
+        ["followUp", "supplement", "modifyDeclaration"].includes(supplement.activation.timing) ||
+        array(supplement.tags).some(tag => ["melee.followUp", "melee.supplement"].includes(tag))
+      );
+      if (!isSupplement) {
+        throw new MeleeValidationError("A standalone action cannot be queued as a supplement", "INVALID_QUEUED_ACTIVITY");
+      }
+      queuedSuccessCost += quantity * number(
+        supplement.activation.successCost ?? supplement.activation.requiredSuccesses?.min,
+        0
+      );
+      const supplementParameters = validateMeleeParameterValues(supplement, submitted.parameterValues ?? {});
+      if (!evaluateMeleeConditions(supplement.conditions, {
+        session, side, actor, target, item: supplementItem, activity: supplement,
+        selectedDice, successPoints: selectedSuccesses, parameters: supplementParameters
+      })) throw new MeleeValidationError("Queued activity conditions are not met", "CONDITIONS_NOT_MET");
+      queuedSupplements.push({
+        activityRef: supplementRef,
+        parameterValues: supplementParameters,
+        quantity,
+        definition: supplement
+      });
+      instance.occupiedSegments = occupiedSegments;
+    }
+
+    const adapter = MeleeExchangeContext.fromSession(session);
+    const state = adapter.toLegacyState();
+    const diceIndices = selectedDieIds.map(id => meleePoolDice(session, side).findIndex(die => die.id === id));
+    const usedKey = side === "attacker" ? "usedAttackDice" : "usedDefenseDice";
+    state[usedKey] = array(state[usedKey]).filter(index => !reusableTriggeringDice.has(meleePoolDice(session, side)[index]?.id));
+    const segmentIndex = adapter.getCurrentSegment();
+    const initiativeBefore = session.initiative.ownerId;
+    const messageAdapter = {
+      id: session.messageId,
+      setFlag: async (_scope, key, value) => { if (key === "opposedResult") session.result = clone(value); }
+    };
+    const render = async () => undefined;
+
+    if (!responder) {
+      session.exchange.history.push(adapter.createSnapshot());
+      session.exchange.future = [];
+      const instance = createMeleeActionInstance(activity, {
+        side, actorUuid: actor.uuid, selectedDiceIds, segmentIndex,
+        targetUuids: [target?.uuid].filter(Boolean), parameters: parameterValues
+      });
+      instance.modifierRefs = clone(modifierRefs);
+      instance.queuedSupplements = clone(queuedSupplements);
+      const damageModifiers = [
+        ...selectedModifiers,
+        ...queuedSupplements.flatMap(entry => entry.definition?.kind === "modifier"
+          ? Array.from({ length: entry.quantity }, () => entry.definition)
+          : [])
+      ];
+      instance.damageSnapshot = meleeDamageSnapshot(actor, activity, {
+        1: session.metadata.damage1, 2: session.metadata.damage2, 3: session.metadata.damage3
+      }, damageModifiers);
+      session.actionInstances[instance.id] = instance;
+      const accepted = await DuelDeclarationEngine.processOwnerCommit(state, {
+        pool: side, ownerPool: ownerSide, action: legacyAction, diceIndices,
+        beastQueue: null, message: messageAdapter, onRender: render
+      });
+      if (!accepted) {
+        session.exchange.history.pop();
+        delete session.actionInstances[instance.id];
+        throw new MeleeValidationError("Declaration does not satisfy the melee rules", "INVALID_DECLARATION");
+      }
+      adapter.applyLegacyState(state);
+      session.exchange.declaration = {
+        ownerSide: side, activityInstanceId: instance.id, activityRef: reference,
+        selectedDieIds, parameterValues, modifierRefs,
+        queuedSupplements: clone(instance.queuedSupplements), damageSnapshot: clone(instance.damageSnapshot),
+        legacyAction, legacyActions: clone(state.actions ?? {})
+      };
+      for (const die of selectedDice) {
+        die.state = "reserved";
+        die.reservedByActionId = instance.id;
+      }
+      session.actions.declared.push(instance.id);
+      session.metadata.activityUses ??= {};
+      session.metadata.activityUses[activity.id] = number(session.metadata.activityUses[activity.id]) + 1;
+      return { accepted: true, phase: session.phase, actionInstanceId: instance.id };
+    }
+
+    const ownerDeclaration = clone(session.exchange.declaration);
+    const ownerInstance = session.actionInstances[ownerDeclaration?.activityInstanceId];
+    if (!ownerDeclaration || !ownerInstance) throw new MeleeValidationError("Owner declaration is missing", "DECLARATION_NOT_FOUND");
+    const responsePolicy = ownerInstance.definition.activation.responsePolicy || "exact";
+    if (["exact", "exactCommittedDice"].includes(responsePolicy) &&
+        selectedDieIds.length !== ownerDeclaration.selectedDieIds.length && !allowsNoDice) {
+      throw new MeleeValidationError("Responder must select exactly the declared number of dice", "INVALID_RESPONSE_DICE_COUNT");
+    }
+    const responseInstance = createMeleeActionInstance(activity, {
+      side, actorUuid: actor.uuid, selectedDiceIds, segmentIndex,
+      targetUuids: [target?.uuid].filter(Boolean), parameters: parameterValues
+    });
+    responseInstance.occupiedSegments = occupiedSegments;
+    responseInstance.modifierRefs = clone(modifierRefs);
+    responseInstance.queuedSupplements = clone(queuedSupplements);
+    session.actionInstances[responseInstance.id] = responseInstance;
+    const accepted = await DuelSegmentEngine.processResponder(state, {
+      pool: side, responderPool: side, isOwnerAttacker: ownerSide === "attacker",
+      diceIndices, action: legacyAction, message: messageAdapter, onRender: render,
+      onSyncInitiative: async () => undefined, onClearManeuvers: async () => undefined
+    });
+    if (!accepted) {
+      delete session.actionInstances[responseInstance.id];
+      throw new MeleeValidationError("Response does not satisfy the melee rules", "INVALID_DECLARATION");
+    }
+    adapter.applyLegacyState(state);
+    const resolvedSegment = session.exchange.segments[segmentIndex] ?? {};
+    resolvedSegment.ownerActionId = ownerInstance.id;
+    resolvedSegment.responderActionId = responseInstance.id;
+    resolvedSegment.ownerDiceIds = clone(ownerDeclaration.selectedDieIds);
+    resolvedSegment.responderDiceIds = clone(selectedDieIds);
+    resolvedSegment.span = Math.max(1, number(ownerInstance.occupiedSegments, ownerInstance.selectedDiceIds.length));
+    for (let offset = 1; offset < resolvedSegment.span; offset++) {
+      const occupied = session.exchange.segments[segmentIndex + offset];
+      if (occupied && occupied.outcome == null) occupied.outcome = "spent";
+    }
+    const requiredNextSegment = segmentIndex + resolvedSegment.span;
+    if (session.exchange.currentSegment < requiredNextSegment) {
+      session.exchange.currentSegment = Math.min(session.exchange.segments.length, requiredNextSegment);
+    }
+    if (requiredNextSegment >= session.exchange.segments.length) {
+      session.phase = "complete";
+      session.status = "complete";
+    }
+    session.actions.resolved.push(ownerInstance.id, responseInstance.id);
+
+    const event = resolvedSegment.outcome === "hit" ? "hit"
+      : resolvedSegment.outcome === "takeover" ? "takeover"
+        : ["blocked", "nothing"].includes(resolvedSegment.outcome) ? "miss"
+          : resolvedSegment.outcome === "draw" ? "hit" : resolvedSegment.outcome;
+    const supplementDefinitions = array(ownerInstance.queuedSupplements).flatMap(supplement =>
+      Array.from({ length: number(supplement.quantity, 1) }, () => supplement.definition)
+    ).filter(definition => definition?.kind !== "modifier");
+    const definitions = [
+      ...array(ownerInstance.definition.outcomes).filter(outcome => ["used", "onResolve", event].includes(outcome.when)),
+      ...(ownerInstance.definition.operations.length ? [{
+        id: `${ownerInstance.activityId}-operations`, label: ownerInstance.definition.name,
+        operations: ownerInstance.definition.operations, approval: ownerInstance.definition.automation.approval
+      }] : []),
+      ...supplementDefinitions.flatMap(definition => [
+        ...array(definition.outcomes).filter(outcome => ["used", "onResolve", event].includes(outcome.when)),
+        ...(definition.operations.length ? [{
+          id: `${definition.id}-operations`, label: definition.name,
+          operations: definition.operations, approval: definition.automation.approval
+        }] : [])
+      ]),
+      ...(ownerInstance.definition.test && (event === "hit" || ownerInstance.definition.category !== "attack") ? [{
+        id: `${ownerInstance.activityId}-required-test`,
+        label: ownerInstance.definition.name,
+        approval: "automatic",
+        operations: [{
+          id: `${ownerInstance.activityId}-required-test`, type: "requiredTest", target: "opponent",
+          data: {
+            title: ownerInstance.definition.name,
+            testType: ownerInstance.definition.test.type || "attribute",
+            testKey: ownerInstance.definition.test.key || "constitution",
+            baseDifficulty: ownerInstance.definition.test.difficulty || "average",
+            requiredSuccesses: number(ownerInstance.definition.test.requiredSuccesses, 1),
+            isOpen: ownerInstance.definition.test.isOpen === true
+          }
+        }]
+      }] : [])
+    ];
+    for (const outcomeDefinition of definitions) {
+      if (!evaluateMeleeConditions(outcomeDefinition.conditions, {
+        session, side: ownerInstance.side, actor, target, item: sourceItem,
+        activity: ownerInstance.definition,
+        selectedDice: ownerInstance.selectedDiceIds.map(id =>
+          meleePoolDice(session, ownerInstance.side).find(die => die.id === id)
+        ).filter(Boolean),
+        successPoints: ownerInstance.selectedDiceIds.filter(id =>
+          meleePoolDice(session, ownerInstance.side).find(die => die.id === id)?.isSuccess
+        ).length,
+        parameters: ownerInstance.parameters
+      })) continue;
+      const operations = array(outcomeDefinition.operations).filter(operation => operation.type !== "damage").map(normalizeOperation);
+      if (!operations.length) continue;
+      const outcome = normalizePendingOutcome({
+        actionInstanceId: ownerInstance.id, label: outcomeDefinition.label || ownerInstance.definition.name,
+        approval: outcomeDefinition.approval === "inherit" ? ownerInstance.definition.automation.approval : outcomeDefinition.approval,
+        operations, data: { difference: 0, location: session.metadata.location ?? null, parameters: ownerInstance.parameters }
+      });
+      session.pendingOutcomes.push(outcome);
+      if (outcome.approval === "automatic") await this._applyOutcome(session, outcome);
+    }
+    await MeleeEffectService.expire(session, "segmentEnd", { segmentIndex });
+    if (initiativeBefore !== session.initiative.ownerId) {
+      await MeleeEffectService.expire(session, "initiativeChange", {
+        previousOwnerId: initiativeBefore, ownerId: session.initiative.ownerId
+      });
+    }
+    if (queuedSuccessCost > selectedSuccesses) {
+      throw new MeleeValidationError("Queued activities cost more successes than selected", "INSUFFICIENT_SUCCESSES");
+    }
+    if (session.status === "complete") await MeleeEffectService.expire(session, "sessionEnd", {});
+    else await MeleeEffectService.expire(session, "segmentStart", { segmentIndex: session.exchange.currentSegment });
+    return { accepted: true, phase: session.phase, actionInstanceId: ownerInstance.id };
+  }
+
+  // Read-only migration aid for cards created by preview builds. It is not
+  // registered in the command dispatcher and cannot be reached by runtime UI.
+  static async _deprecatedCardAdapter(session, command) {
+    const exchangeAdapter = MeleeExchangeContext.fromSession(session);
+    const state = exchangeAdapter.toLegacyState();
     if (!state || state.status !== "picking") {
       throw new MeleeValidationError("Duel is not waiting for a declaration", "WRONG_PHASE");
     }
@@ -1457,13 +2090,13 @@ export class MeleeCommandService {
     const wasResponder = state.waitingFor === "responder";
     const ownerSideBefore = state.initiativeOwnerSide;
     const initiativeOwnerBefore = session.initiative.ownerId;
-    const submittedRuntimeId = !wasResponder && String(command.payload?.action || "").startsWith("trick:")
-      ? String(command.payload.action).split(":")[1]
+    const submittedRuntimeId = !wasResponder && typeof command.payload?.action === "object"
+      ? command.payload.action.runtimeId ?? null
       : null;
     const submittedSnapshot = submittedRuntimeId
       ? array(session.metadata.activitySnapshots?.[ownerSideBefore]).find(entry => entry.runtimeId === submittedRuntimeId)
       : null;
-    let authoritativeAction = command.payload?.action;
+    let authoritativeAction = typeof command.payload?.action === "object" ? "trick" : command.payload?.action;
     if (submittedRuntimeId && submittedSnapshot) {
       const definition = submittedSnapshot.definition;
       const successPoints = selected.filter(die => die.isSuccess).length;
@@ -1487,10 +2120,7 @@ export class MeleeCommandService {
       if (uses != null && number(session.metadata.activityUses?.[definition.id]) >= number(uses)) {
         throw new MeleeValidationError("Configured activity has no uses remaining", "NO_USES_REMAINING");
       }
-      const damage = definition.damage?.profile?.[diceIndices.length]
-        ?? definition.operations?.find(operation => operation.type === "damage")?.data?.damage
-        ?? "";
-      authoritativeAction = `trick:${submittedRuntimeId}:${damage}`;
+      authoritativeAction = legacyActionForActivity(definition, false);
     }
     const ownerIndicesBefore = [...(state.committedOwnerIndices ?? [])];
     const runtimeActivityId = wasResponder ? state.committedTrickId : null;
@@ -1576,7 +2206,7 @@ export class MeleeCommandService {
         if (outcome.approval === "automatic") await this._applyOutcome(session, outcome);
       }
     }
-    syncPoolsFromLegacyState(session);
+    exchangeAdapter.applyLegacyState(state);
     if (wasResponder) {
       await MeleeEffectService.expire(session, "segmentEnd", { segmentIndex: segmentIndexBefore });
       if (initiativeOwnerBefore !== session.initiative.ownerId) {
@@ -1585,63 +2215,59 @@ export class MeleeCommandService {
         });
       }
       if (session.status === "complete") await MeleeEffectService.expire(session, "sessionEnd", {});
-      else await MeleeEffectService.expire(session, "segmentStart", { segmentIndex: session.currentSegment });
+      else await MeleeEffectService.expire(session, "segmentStart", { segmentIndex: session.exchange.currentSegment });
     }
     return { accepted: true, phase: session.phase };
   }
 
   static _undo(session) {
     if (session.result?.applied || session.hailResult?.applied ||
-        session.pendingOutcomes.some(outcome => outcome.status === "applied")) {
+        session.pendingOutcomes.some(outcome => outcome.status === "applied") ||
+        Object.values(session.operationLedger ?? {}).some(entry => ["running", "applied"].includes(entry?.status))) {
       throw new MeleeValidationError("Applied outcomes cannot be undone", "OUTCOME_ALREADY_APPLIED");
     }
-    const state = session.v1State;
-    if (!state?.segmentHistory?.length) throw new MeleeValidationError("Nothing to undo", "NOTHING_TO_UNDO");
-    const current = clone(state);
-    delete current.segmentHistory;
-    delete current.segmentFuture;
-    const previous = clone(state.segmentHistory.at(-1));
-    previous.segmentHistory = state.segmentHistory.slice(0, -1);
-    previous.segmentFuture = [current, ...(state.segmentFuture ?? [])];
-    session.v1State = previous;
-    syncPoolsFromLegacyState(session);
+    const history = array(session.exchange?.history);
+    if (!history.length) throw new MeleeValidationError("Nothing to undo", "NOTHING_TO_UNDO");
+    const current = exchangeSnapshot(session);
+    const previous = clone(history.at(-1));
+    const remainingHistory = history.slice(0, -1);
+    const future = [current, ...array(session.exchange.future).map(clone)];
+    restoreExchangeSnapshot(session, previous);
+    session.exchange.history = remainingHistory;
+    session.exchange.future = future;
     return { undone: true };
   }
 
   static _redo(session) {
     if (session.result?.applied || session.hailResult?.applied ||
-        session.pendingOutcomes.some(outcome => outcome.status === "applied")) {
+        session.pendingOutcomes.some(outcome => outcome.status === "applied") ||
+        Object.values(session.operationLedger ?? {}).some(entry => ["running", "applied"].includes(entry?.status))) {
       throw new MeleeValidationError("Applied outcomes cannot be redone", "OUTCOME_ALREADY_APPLIED");
     }
-    const state = session.v1State;
-    if (!state?.segmentFuture?.length) throw new MeleeValidationError("Nothing to redo", "NOTHING_TO_REDO");
-    const current = clone(state);
-    delete current.segmentHistory;
-    delete current.segmentFuture;
-    const next = clone(state.segmentFuture[0]);
-    next.segmentHistory = [...(state.segmentHistory ?? []), current];
-    next.segmentFuture = state.segmentFuture.slice(1);
-    session.v1State = next;
-    syncPoolsFromLegacyState(session);
+    const future = array(session.exchange?.future);
+    if (!future.length) throw new MeleeValidationError("Nothing to redo", "NOTHING_TO_REDO");
+    const current = exchangeSnapshot(session);
+    const next = clone(future[0]);
+    const history = [...array(session.exchange.history).map(clone), current];
+    restoreExchangeSnapshot(session, next);
+    session.exchange.history = history;
+    session.exchange.future = future.slice(1);
     return { redone: true };
   }
 
   static _swapInitiative(session) {
-    const state = session.v1State;
-    if (!state || state.status !== "picking" || state.isGradCios) {
+    if (session.status !== "active" || session.variant === "gradCiosow") {
       throw new MeleeValidationError("Initiative cannot be swapped now", "WRONG_PHASE");
     }
-    state.initiativeOwnerSide = state.initiativeOwnerSide === "attacker" ? "defender" : "attacker";
-    state.committedOwnerIndices = null;
-    state.waitingFor = "initiativeOwner";
-    transferMeleeInitiative(session,
-      state.initiativeOwnerSide === "attacker"
-        ? session.participants.attacker.actorUuid
-        : session.participants.defender.actorUuid,
-      "gmSwap"
-    );
-    syncPoolsFromLegacyState(session);
-    return { ownerSide: state.initiativeOwnerSide };
+    if (session.exchange.declaration) {
+      const declaration = session.exchange.declaration;
+      MeleeExchangeContext.fromSession(session).releaseDice(declaration.ownerSide, declaration.selectedDieIds);
+      session.exchange.declaration = null;
+      session.phase = "declaration";
+    }
+    const ownerSide = initiativeSide(session) === "attacker" ? "defender" : "attacker";
+    transferMeleeInitiative(session, session.participants[ownerSide].actorUuid, "gmSwap");
+    return { ownerSide };
   }
 
   static _markApplied(session, command) {
@@ -1655,12 +2281,10 @@ export class MeleeCommandService {
       if (session.result.beastActionsApplied) throw new MeleeValidationError("Beast actions were already applied", "ALREADY_APPLIED");
       session.result.beastActionsApplied = true;
       session.result.applied = true;
-      if (session.v1State) session.v1State.applied = true;
     } else {
       if (!session.result) throw new MeleeValidationError("Duel result not found", "RESULT_NOT_FOUND");
       if (session.result.applied) throw new MeleeValidationError("Damage was already applied", "ALREADY_APPLIED");
       session.result.applied = true;
-      if (session.v1State) session.v1State.applied = true;
     }
     const ledgerKey = `${session.id}:damage:${kind === "beast" ? "duel" : kind}`;
     session.operationLedger[ledgerKey] = { status: "applied", appliedAt: Date.now() };
@@ -1680,118 +2304,34 @@ export class MeleeCommandService {
     return { claimed: true, kind };
   }
 
-  static async _declare(session, command, responder) {
-    if (session.phase !== (responder ? "response" : "declaration")) {
-      throw new MeleeValidationError("Action submitted in the wrong phase", "WRONG_PHASE");
-    }
-    const expectedSide = responder
-      ? (initiativeSide(session) === "attacker" ? "defender" : "attacker")
-      : initiativeSide(session);
-    if (command.side !== expectedSide) throw new MeleeValidationError("Wrong participant for this phase", "WRONG_SIDE");
-    const actorDoc = await fromUuid(session.participants[command.side].tokenUuid || session.participants[command.side].actorUuid);
-    const actor = actorDoc?.actor ?? actorDoc;
-    const reference = command.payload?.activity;
-    const activity = MeleeActionCatalog.findExact(actor, reference || {}, {
-      item: reference?.sourceItemUuid ? await fromUuid(reference.sourceItemUuid) : null
-    });
-    if (!activity) throw new MeleeValidationError("Exact melee activity not found", "ACTIVITY_NOT_FOUND", reference);
-    const requiredRole = responder ? "responder" : "owner";
-    if (!["either", requiredRole].includes(activity.activation.role) ||
-        ![responder ? "response" : "declaration", "either"].includes(activity.activation.timing)) {
-      throw new MeleeValidationError("Activity is unavailable in this phase", "WRONG_ACTIVITY_TIMING");
-    }
-    const diceIds = [...new Set(array(command.payload?.diceIds))];
-    const selectedDice = MeleeResolver._selectedDice(session, command.side, diceIds);
-    if (diceIds.length < activity.activation.minDice || diceIds.length > activity.activation.maxDice) {
-      throw new MeleeValidationError("Invalid number of dice for activity", "INVALID_DICE_COST");
-    }
-    const successPoints = selectedDice.filter(die => die.isSuccess).length;
-    if (successPoints < activity.activation.successCost) {
-      throw new MeleeValidationError("Activity costs more successes than selected", "INSUFFICIENT_SUCCESSES");
-    }
-    const occupiedSegments = Math.max(1, diceIds.length, activity.activation.segmentCost);
-    if (session.currentSegment + occupiedSegments > 3) {
-      throw new MeleeValidationError("Not enough segments remain", "INSUFFICIENT_SEGMENTS");
-    }
-    const targetSide = command.side === "attacker" ? "defender" : "attacker";
-    const targetDoc = await fromUuid(session.participants[targetSide].tokenUuid || session.participants[targetSide].actorUuid);
-    const target = targetDoc?.actor ?? targetDoc;
-    if (!evaluateMeleeConditions(activity.conditions, {
-      session, side: command.side, actor, target, activity, selectedDice, successPoints
-    })) throw new MeleeValidationError("Activity conditions are not met", "CONDITIONS_NOT_MET");
-    const instance = createMeleeActionInstance(activity, {
-      side: command.side, actorUuid: actor.uuid, selectedDiceIds: diceIds,
-      segmentIndex: session.currentSegment, targetUuids: [target?.uuid].filter(Boolean)
-    });
-    session.actionInstances[instance.id] = instance;
-    session.actions ??= { declared: [], resolved: [] };
-    session.metadata.activityUses ??= {};
-    session.metadata.activityUses[activity.id] = number(session.metadata.activityUses[activity.id]) + 1;
-    session.declarations[responder ? "responder" : "owner"] = instance.id;
-    session.phase = responder ? "resolution" : "response";
-    if (!responder) {
-      for (const die of selectedDice) {
-        die.state = "reserved";
-        die.reservedByActionId = instance.id;
-        die.used = false;
-      }
-      session.actions.declared.push(instance.id);
-      return clone(instance);
-    }
-
-    const ownerAction = session.actionInstances[session.declarations.owner];
-    const responsePolicy = ownerAction.definition.activation.responsePolicy || "exact";
-    if (responsePolicy === "exact" && instance.selectedDiceIds.length !== ownerAction.selectedDiceIds.length) {
-      throw new MeleeValidationError("Responder must select exactly the declared number of dice", "INVALID_RESPONSE_DICE_COUNT");
-    }
-    const initiativeBefore = session.initiative.ownerId;
-    const resolution = MeleeResolver.resolve(session, ownerAction, instance);
-    if (session.initiative.ownerId !== initiativeBefore) {
-      await MeleeEffectService.expire(session, "initiativeChange", {
-        previousOwnerId: initiativeBefore,
-        ownerId: session.initiative.ownerId
-      });
-    }
-    session.pendingOutcomes.push(...resolution.pending);
-    for (const die of MeleeResolver._selectedDice(session, ownerAction.side, ownerAction.selectedDiceIds)) {
-      die.state = "spent";
-      die.used = true;
-      die.spentAtSegment = session.currentSegment;
-      die.reservedByActionId = null;
-    }
-    for (const die of MeleeResolver._selectedDice(session, instance.side, instance.selectedDiceIds)) {
-      die.state = "spent";
-      die.used = true;
-      die.spentAtSegment = session.currentSegment;
-      die.reservedByActionId = null;
-    }
-    session.actions.resolved.push(ownerAction.id, instance.id);
-    const segment = session.segments[session.currentSegment];
-    segment.ownerActionId = ownerAction.id;
-    segment.responderActionId = instance.id;
-    segment.ownerDiceIds = [...ownerAction.selectedDiceIds];
-    segment.responderDiceIds = [...instance.selectedDiceIds];
-    segment.outcomeIds = resolution.pending.map(outcome => outcome.id);
-    segment.state = "resolved";
-    segment.span = Math.max(1, ownerAction.selectedDiceIds.length, ownerAction.definition.activation.segmentCost);
-    for (let offset = 1; offset < segment.span; offset++) {
-      const occupied = session.segments[session.currentSegment + offset];
-      if (occupied) occupied.state = "resolved";
-    }
-    session.phase = resolution.pending.length ? "pendingOutcomes" : "resolution";
-    for (const outcome of resolution.pending.filter(entry => entry.approval === "automatic")) {
-      await this._applyOutcome(session, outcome);
-    }
-    if (session.pendingOutcomes.every(outcome => outcome.status === "applied")) session.phase = "resolution";
-    return resolution;
-  }
-
   static async _approveOutcome(session, command) {
     const outcome = session.pendingOutcomes.find(entry => entry.id === command.payload?.outcomeId);
     if (!outcome || outcome.status !== "pending") throw new MeleeValidationError("Pending outcome not found", "OUTCOME_NOT_FOUND");
     await this._applyOutcome(session, outcome);
-    if (!session.v1State && session.pendingOutcomes.every(entry => entry.status === "applied")) session.phase = "resolution";
+    if (session.pendingOutcomes.every(entry => entry.status === "applied")) session.phase = "resolution";
     return clone(outcome);
+  }
+
+  static async _resolveRequiredTest(session, command) {
+    const action = session.actionInstances[command.payload?.actionInstanceId];
+    if (!action) throw new MeleeValidationError("Required-test action was not found", "ACTION_NOT_FOUND");
+    const when = command.payload?.isSuccess === true ? "testSuccess" : "testFailure";
+    const definitions = array(action.definition.outcomes).filter(outcome => outcome.when === when);
+    const created = [];
+    for (const definition of definitions) {
+      const outcome = normalizePendingOutcome({
+        id: `${command.payload?.requiredTestMessageId || command.commandId}:${definition.id}`,
+        actionInstanceId: action.id,
+        label: definition.label || action.definition.name,
+        approval: definition.approval === "inherit" ? action.definition.automation.approval : definition.approval,
+        operations: definition.operations,
+        data: { requiredTestSuccess: command.payload?.isSuccess === true }
+      });
+      session.pendingOutcomes.push(outcome);
+      created.push(outcome.id);
+      if (outcome.approval === "automatic") await this._applyOutcome(session, outcome);
+    }
+    return { resolved: true, isSuccess: command.payload?.isSuccess === true, outcomeIds: created };
   }
 
   static async _applyOutcome(session, outcome) {
@@ -1805,37 +2345,29 @@ export class MeleeCommandService {
       actors: { [side]: actorDoc?.actor ?? actorDoc, [targetSide]: targetDoc?.actor ?? targetDoc },
       successPoints: outcome.data.difference, location: outcome.data.location
     });
-    if (session.v1State) {
-      const ownerSide = sideForActor(session, session.initiative.ownerId);
-      if (ownerSide) session.v1State.initiativeOwnerSide = ownerSide;
-    }
     await MeleeEffectService.expire(session, "actionResolved", { actionInstanceId: action.id });
     return result;
   }
 
   static async _advanceSegment(session) {
     if (session.phase !== "resolution") throw new MeleeValidationError("Segment cannot advance yet", "WRONG_PHASE");
-    await MeleeEffectService.expire(session, "segmentEnd", { segmentIndex: session.currentSegment });
-    session.currentSegment += Math.max(1, number(session.segments[session.currentSegment]?.span, 1));
-    session.declarations = { owner: null, responder: null };
-    if (session.currentSegment >= 3 || MELEE_SIDES.every(side => meleePoolDice(session, side).every(die => die.state === "spent" && !die.reusable))) {
+    const currentSegment = session.exchange.currentSegment;
+    await MeleeEffectService.expire(session, "segmentEnd", { segmentIndex: currentSegment });
+    session.exchange.currentSegment += Math.max(1, number(session.exchange.segments[currentSegment]?.span, 1));
+    session.exchange.declaration = null;
+    if (session.exchange.currentSegment >= session.exchange.segments.length ||
+        MELEE_SIDES.every(side => meleePoolDice(session, side).every(die => die.state === "spent"))) {
       return this._endSession(session, "segmentsComplete");
     }
-    session.segments[session.currentSegment].state = "active";
     session.phase = "declaration";
-    await MeleeEffectService.expire(session, "segmentStart", { segmentIndex: session.currentSegment });
-    return { segmentIndex: session.currentSegment };
+    await MeleeEffectService.expire(session, "segmentStart", { segmentIndex: session.exchange.currentSegment });
+    return { segmentIndex: session.exchange.currentSegment };
   }
 
   static async _endSession(session, reason = "manual") {
     session.status = "complete";
     session.phase = "complete";
     session.endReason = reason || "manual";
-    if (session.v1State) {
-      session.v1State.status = "done";
-      session.v1State.waitingFor = null;
-      session.v1State.endReason = session.endReason;
-    }
     await MeleeEffectService.expire(session, "sessionEnd", {});
     return { reason: session.endReason };
   }
@@ -1931,9 +2463,17 @@ export class MeleeMigration {
           }, { kind: "beast", uuid: `${item.uuid}#${raw.id}`, itemUuid: item.uuid });
           return {
             ...raw,
+            kind: normalized.kind,
+            category: normalized.category,
             description: normalized.description,
             tags: normalized.tags,
             activation: normalized.activation,
+            parameters: normalized.parameters,
+            test: normalized.test,
+            meleeDamage: normalized.damage,
+            selectors: normalized.selectors,
+            changes: normalized.changes,
+            priority: normalized.priority,
             conditions: normalized.conditions,
             outcomes: normalized.outcomes,
             operations: normalized.operations,
@@ -2039,7 +2579,7 @@ export function registerMeleeSystemSettings() {
   game.settings.register("neuroshima", MELEE_SETTING, {
     name: "NEUROSHIMA.Settings.MeleeEngineV2.Name",
     hint: "NEUROSHIMA.Settings.MeleeEngineV2.Hint",
-    scope: "world", config: true, type: Boolean, default: true, requiresReload: true
+    scope: "world", config: false, type: Boolean, default: true
   });
   game.settings.register("neuroshima", MELEE_WORLD_STORE_SETTING, {
     scope: "world", config: false, type: Object, default: {}
@@ -2047,8 +2587,7 @@ export function registerMeleeSystemSettings() {
 }
 
 export function isMeleeV2Enabled() {
-  try { return game.settings.get("neuroshima", MELEE_SETTING) === true; }
-  catch (_error) { return false; }
+  return true;
 }
 
 export async function expireMeleeEffects(event, payload = {}, combat = game.combat) {
@@ -2141,7 +2680,7 @@ export async function runMeleeCoreSelfTests() {
   const attacker = { actorUuid: "Actor.a", name: "A" };
   const defender = { actorUuid: "Actor.b", name: "B" };
   const session = createMeleeSession({ attacker, defender });
-  assert(session.segments.length === 3, "three segment invariant");
+  assert(session.exchange.segments.length === 3, "three segment invariant");
   setMeleePool(session, "attacker", [{ raw: 1, isSuccess: true }, { raw: 10 }, { raw: 20 }]);
   assert(meleePoolDice(session, "attacker").length === 3, "three dice invariant");
   meleePoolDice(session, "attacker")[0].state = "spent";
