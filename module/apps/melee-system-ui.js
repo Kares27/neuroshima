@@ -357,7 +357,7 @@ export class MeleeSessionPresenter {
     };
   }
 
-  static async beginAttack(actor, weapon, targetUuid, mode = "opposedPips") {
+  static async beginAttack(actor, weapon, targetUuid, mode = "opposedPips", lifecycle = {}) {
     if (!isMeleeEnabled()) throw new Error("Silnik walki wręcz jest niedostępny.");
     const targetDocument = await fromUuid(targetUuid);
     const defender = targetDocument?.actor ?? targetDocument;
@@ -371,8 +371,13 @@ export class MeleeSessionPresenter {
       targets: [targetUuid],
       lastRoll: actor.system.lastWeaponRoll ?? {},
       isPoolRoll: true,
+      onCancel: () => lifecycle.onCancel?.(),
       onRoll: async (rawResult, attackerTest) => {
-        if (!rawResult) return;
+        if (!rawResult) {
+          const error = new Error("Nie udało się wykonać rzutu ataku wręcz.");
+          lifecycle.onError?.(error);
+          return;
+        }
         const sessionId = foundry.utils.randomID(16);
         const startCommandId = foundry.utils.randomID(16);
         const sourceWeapon = weapon?.beastItemId ? actor.items?.get?.(weapon.beastItemId) ?? weapon : weapon;
@@ -430,9 +435,11 @@ export class MeleeSessionPresenter {
             };
             await attackerTest.updateMessage(attackerTest.message);
           }
+          lifecycle.onComplete?.(started, rawResult, attackerTest);
           return started;
         } catch (error) {
           await message.update({ content: `<div class="neuroshima melee-opposed-card"><p>${error.message}</p></div>` });
+          lifecycle.onError?.(error);
           throw error;
         }
       }

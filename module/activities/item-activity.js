@@ -104,7 +104,7 @@ ActivityConsumptionRegistry.register("activityUses", {
 ActivityConsumptionRegistry.register("itemResource", {
   label: "Zasób Itemu",
   requiresTarget: true,
-  availableForItem: item => Array.isArray(item.system?.resources),
+  availableForItem: item => Array.isArray(item.system?.resources) && item.system.resources.length > 0,
   prepare(activity, target, updates) {
     const amount = Math.max(0, number(target.value, 1));
     const index = updates.resources.findIndex(resource => resource.id === target.target);
@@ -172,7 +172,7 @@ export class NeuroshimaItemActivity {
     return SheetClass?.open?.(this.item, this.id) ?? null;
   }
 
-  render(force = true) { return this.openSheet()?.render?.(force); }
+  render() { return this.openSheet(); }
   toDragData() { return { type: "Activity", uuid: this.uuid, itemUuid: this.item.uuid, activityId: this.id }; }
 
   _validateAvailability(throwError = true) {
@@ -279,32 +279,42 @@ export class NeuroshimaItemActivity {
     return ChatMessage.create(messageData);
   }
 
-  async _applyEffects(targets) {
+  _effectTargets(application, targets) {
+    switch (application.target ?? "target") {
+      case "self": return [this.actor].filter(Boolean);
+      case "selected": return [...(game.user.targets ?? [])].map(token => token.actor).filter(Boolean);
+      case "target":
+      case "manual":
+      default: return targets;
+    }
+  }
+
+  async _applyEffects(targets, when = "use") {
     const applications = (this.data.effects ?? []).map(entry => typeof entry === "string"
       ? { effectId: entry, operation: this.data.effectOperation ?? "apply", target: "target", when: "use" }
-      : entry).filter(entry => (entry.when ?? "use") === "use");
-    const ids = new Set(applications.map(entry => entry.effectId).filter(Boolean));
-    if (!ids.size || !targets.length) return [];
-    if (applications.every(entry => entry.operation === "remove")) {
-      const removed = [];
-      for (const target of targets) {
+      : entry).filter(entry => (entry.when ?? "use") === when && entry.effectId);
+    const changed = [];
+    for (const application of applications) {
+      const effectTargets = this._effectTargets(application, targets);
+      if (application.operation === "remove") {
+        for (const target of effectTargets) {
         if (!target?.isOwner && !game.user.isGM) continue;
         const matches = [...(target.effects ?? [])].filter(effect => {
           const source = effect.getFlag("neuroshima", "itemActivity");
           return source?.itemUuid === this.item.uuid &&
-            source?.activityId === this.id && ids.has(source?.effectId);
+            source?.activityId === this.id && source?.effectId === application.effectId;
         });
         if (!matches.length) continue;
         await target.deleteEmbeddedDocuments("ActiveEffect", matches.map(effect => effect.id));
-        removed.push(...matches);
+          changed.push(...matches);
+        }
+        continue;
       }
-      return removed;
-    }
-    const templates = [...(this.item.effects ?? [])].filter(effect => ids.has(effect.id));
-    const created = [];
-    for (const target of targets) {
-      if (!target?.isOwner && !game.user.isGM) continue;
-      const data = templates.map(effect => {
+      const template = [...(this.item.effects ?? [])].find(effect => effect.id === application.effectId);
+      if (!template) continue;
+      for (const target of effectTargets) {
+        if (!target?.isOwner && !game.user.isGM) continue;
+        const data = [template].map(effect => {
         const copy = effect.toObject();
         delete copy._id;
         copy.disabled = false;
@@ -315,9 +325,10 @@ export class NeuroshimaItemActivity {
         });
         return copy;
       });
-      if (data.length) created.push(...await target.createEmbeddedDocuments("ActiveEffect", data));
+        if (data.length) changed.push(...await target.createEmbeddedDocuments("ActiveEffect", data));
+      }
     }
-    return created;
+    return changed;
   }
 
   async use(options = {}) {
@@ -331,7 +342,17 @@ export class NeuroshimaItemActivity {
     await ActivityConsumptionRegistry.apply(this, preparedConsumption);
     try {
       const result = await this.execute({ ...options, targets });
-      const effects = await this._applyEffects(targets);
+      if (result?.cancelled === true) {
+        await ActivityConsumptionRegistry.refund(this, preparedConsumption);
+        return null;
+      }
+      const outcome = result?.result ?? result;
+      const effects = [...await this._applyEffects(targets, "use")];
+      if (outcome?.success === true) effects.push(...await this._applyEffects(targets, "success"));
+      if (outcome?.success === false) effects.push(...await this._applyEffects(targets, "failure"));
+      if (outcome?.hit === true || Number(outcome?.hitBullets ?? 0) > 0) effects.push(...await this._applyEffects(targets, "hit"));
+      if (outcome?.hit === false || outcome?.miss === true) effects.push(...await this._applyEffects(targets, "miss"));
+      if (outcome?.damageApplied === true) effects.push(...await this._applyEffects(targets, "afterDamage"));
       const message = await this._createMessage(targets);
       return { activity: this, message, effects, result,
         refund: () => ActivityConsumptionRegistry.refund(this, preparedConsumption) };
@@ -427,7 +448,7 @@ export class DamageActivity extends NeuroshimaItemActivity {
         withPainResistance: config.withPainResistance !== false
       }));
     }
-    return results;
+    return { results, success: true, damageApplied: results.length > 0 };
   }
 }
 
@@ -437,19 +458,50 @@ export class AttackActivity extends NeuroshimaItemActivity {
   static metadata = { label: "Atak", hint: "Wykonaj atak istniejącym resolverem broni", img: "icons/svg/sword.svg" };
 
   async execute(context) {
-    const mode = this.data.attack?.mode ?? this.item.system?.weaponType ?? "melee";
-    if (!this.actor) throw new Error("Activity Atak wymaga Itemu osadzonego na Aktorze.");
-    const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
-    const dialog = new NeuroshimaWeaponRollDialog({
-      actor: this.actor,
-      weapon: this.item,
-      rollType: mode === "melee" ? "melee" : mode,
-      targets: [...(game.user.targets ?? [])],
-      activity: this,
-      activityContext: context
+    return NeuroshimaAttackRouter.use(this, context);
+  }
+}
+
+/** Routes Activity attacks into the canonical combat entry points. */
+export class NeuroshimaAttackRouter {
+  static async use(activity, context = {}) {
+    if (!activity.actor) throw new Error("Activity Atak wymaga Itemu osadzonego na Aktorze.");
+    const mode = activity.data.attack?.mode ?? activity.item.system?.weaponType ?? "melee";
+    return mode === "melee" ? this.melee(activity, context) : this.weapon(activity, context, mode);
+  }
+
+  static melee(activity, context) {
+    const target = context.targets?.[0];
+    const targetUuid = target?.token?.uuid ?? target?.uuid;
+    if (!targetUuid) throw new Error("Atak wręcz wymaga jednego celu.");
+    if (typeof game.neuroshima?.melee?.beginAttack !== "function") {
+      throw new Error("Silnik walki wręcz jest niedostępny.");
+    }
+    return new Promise((resolve, reject) => {
+      game.neuroshima.melee.beginAttack(activity.actor, activity.item, targetUuid, "opposedPips", {
+        onComplete: (session, result) => resolve(result ?? session),
+        onCancel: () => resolve({ cancelled: true }),
+        onError: reject
+      }).catch(reject);
     });
-    dialog.render(true);
-    return dialog;
+  }
+
+  static async weapon(activity, _context, mode) {
+    const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
+    return new Promise((resolve, reject) => {
+      const dialog = new NeuroshimaWeaponRollDialog({
+        actor: activity.actor,
+        weapon: activity.item,
+        rollType: mode,
+        targets: [...(game.user.targets ?? [])],
+        isPoolRoll: true,
+        onRoll: (result, test) => result
+          ? resolve(test ?? result)
+          : reject(new Error("Nie udało się wykonać rzutu ataku.")),
+        onCancel: () => resolve({ cancelled: true })
+      });
+      Promise.resolve(dialog.render({ force: true })).catch(reject);
+    });
   }
 }
 
@@ -493,10 +545,7 @@ export function registerItemActivitySystem(systemConfig = {}, sheetClass = null)
 
 export function activityFromItem(item, activityId) {
   if (!itemSupportsGeneralActivities(item)) return null;
-  const data = item.system.activities?.[activityId];
-  if (!data) return null;
-  const ActivityClass = CONFIG.NEUROSHIMA.activityTypes?.[data.type]?.documentClass;
-  return ActivityClass ? new ActivityClass(data, item) : null;
+  return item.activities?.get?.(activityId) ?? null;
 }
 
 export function activitiesFromItem(item) {

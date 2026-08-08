@@ -89,7 +89,11 @@
       </select></label>
       <div class="activity-effect-list">
       {{#each effects}}
-        <label><input type="checkbox" name="effects" value="{{id}}" {{checked selected}}><img src="{{img}}" alt=""><span>{{name}}</span></label>
+        <label><input type="checkbox" name="effects" value="{{id}}" {{checked selected}}><img src="{{img}}" alt=""><span>{{name}}</span>
+          <select name="effect.{{id}}.operation"><option value="apply" {{#if (eq application.operation "apply")}}selected{{/if}}>Nałóż</option><option value="remove" {{#if (eq application.operation "remove")}}selected{{/if}}>Usuń</option></select>
+          <select name="effect.{{id}}.target"><option value="target" {{#if (eq application.target "target")}}selected{{/if}}>Cel</option><option value="self" {{#if (eq application.target "self")}}selected{{/if}}>Wykonujący</option><option value="selected" {{#if (eq application.target "selected")}}selected{{/if}}>Zaznaczeni</option><option value="manual" {{#if (eq application.target "manual")}}selected{{/if}}>Ręczny</option></select>
+          <select name="effect.{{id}}.when"><option value="use" {{#if (eq application.when "use")}}selected{{/if}}>Użycie</option><option value="success" {{#if (eq application.when "success")}}selected{{/if}}>Sukces</option><option value="failure" {{#if (eq application.when "failure")}}selected{{/if}}>Porażka</option><option value="hit" {{#if (eq application.when "hit")}}selected{{/if}}>Trafienie</option><option value="miss" {{#if (eq application.when "miss")}}selected{{/if}}>Pudło</option><option value="afterDamage" {{#if (eq application.when "afterDamage")}}selected{{/if}}>Po obrażeniach</option></select>
+        </label>
       {{else}}<p class="hint">Najpierw dodaj Active Effect do nadrzędnego Itemu.</p>{{/each}}
       </div>
     </fieldset>

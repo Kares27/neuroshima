@@ -1,6 +1,6 @@
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { isGearTypeEquippable, normalizeGearType } from "../helpers/gear-types.js";
-import { activitiesFromItem, activityFromItem, itemSupportsGeneralActivities } from "../activities/item-activity.js";
+import { activitiesFromItem, itemSupportsGeneralActivities } from "../activities/item-activity.js";
 
 /**
  * Extended Item document class for Neuroshima 1.5.
@@ -23,7 +23,7 @@ export class NeuroshimaItem extends Item {
   /** General, document-like ways of using this Item. */
   get activities() { return this.#activities ??= activitiesFromItem(this); }
 
-  getActivity(activityId) { return activityFromItem(this, activityId); }
+  getActivity(activityId) { return this.activities.get(activityId) ?? null; }
 
   /**
    * Use the only available Activity or ask the user which Activity to use.

@@ -66,6 +66,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       : Math.min(3, Math.max(1, Number(options.fixedMeleeDiceCount) || 1));
     this.gradCiosDefense = options.gradCiosDefense === true;
     this.onPoolRoll = options.onRoll;
+    this.onCancel = options.onCancel;
     this.meleePoolLink = foundry.utils.deepClone(options.meleePoolLink ?? null);
     this.opposedLink = foundry.utils.deepClone(options.opposedLink ?? null);
     this.crowdingDexPenalty = options.crowdingDexPenalty || 0;
@@ -668,6 +669,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     };
 
     const submissionOptions = await this._runSubmissionScripts();
+    this._submitted = true;
     this.close();
 
     if (this.isPoolRoll && this.onPoolRoll) {
@@ -818,7 +820,16 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     return test;
   }
 
-  _onCancel(event, target) {
-    this.close();
+  async _onCancel(event, target) {
+    await this.close();
+  }
+
+  async close(options = {}) {
+    const cancelled = !this._submitted && !this._cancelNotified;
+    if (cancelled) this._cancelNotified = true;
+    try { return await super.close(options); }
+    finally {
+      if (cancelled) await this.onCancel?.({ dialog: this });
+    }
   }
 }

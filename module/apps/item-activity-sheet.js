@@ -1,6 +1,5 @@
 import {
   ActivityConsumptionRegistry,
-  activityFromItem,
   createActivityData,
   itemSupportsGeneralActivities
 } from "../activities/item-activity.js";
@@ -9,15 +8,33 @@ const { HandlebarsApplicationMixin } = foundry.applications.api;
 
 export class ItemActivitySheet extends HandlebarsApplicationMixin(foundry.applications.api.ApplicationV2) {
   static instances = new Map();
+  static opening = new Map();
 
-  static open(item, activityId) {
+  static async open(item, activityId) {
     const key = `${item.uuid}::${activityId}`;
-    const existing = this.instances.get(key);
-    if (existing) { existing.bringToTop(); return existing; }
-    const app = new this({ item, activityId });
-    this.instances.set(key, app);
-    app.render(true);
-    return app;
+    let app = this.instances.get(key);
+    if (app?.rendered) { app.bringToFront(); return app; }
+    const pending = this.opening.get(key);
+    if (pending) return pending;
+    if (!app) {
+      app = new this({ item, activityId });
+      this.instances.set(key, app);
+    }
+    const renderPromise = (async () => {
+      // Let the promise enter `opening` before render can fail synchronously.
+      await Promise.resolve();
+      try {
+        await app.render({ force: true });
+        return app;
+      } catch (error) {
+        if (this.instances.get(key) === app) this.instances.delete(key);
+        throw error;
+      } finally {
+        if (this.opening.get(key) === renderPromise) this.opening.delete(key);
+      }
+    })();
+    this.opening.set(key, renderPromise);
+    return renderPromise;
   }
 
   static async createForItem(item) {
@@ -93,7 +110,7 @@ export class ItemActivitySheet extends HandlebarsApplicationMixin(foundry.applic
     }
   };
 
-  get activity() { return activityFromItem(this.item, this.activityId); }
+  get activity() { return this.item.getActivity(this.activityId); }
   get title() { return `${this.activity?.name ?? "Activity"} — ${this.item.name}`; }
 
   async _prepareContext() {
@@ -129,10 +146,14 @@ export class ItemActivitySheet extends HandlebarsApplicationMixin(foundry.applic
       })),
       consumption,
       resources: (this.item.system.resources ?? []).map(resource => ({ ...resource })),
-      effects: [...this.item.effects].map(effect => ({
-        id: effect.id, name: effect.name, img: effect.img,
-        selected: (data.effects ?? []).some(entry => (typeof entry === "string" ? entry : entry.effectId) === effect.id)
-      })),
+      effects: [...this.item.effects].map(effect => {
+        const stored = (data.effects ?? []).find(entry =>
+          (typeof entry === "string" ? entry : entry.effectId) === effect.id);
+        const application = typeof stored === "object" ? stored : {
+          effectId: effect.id, operation: data.effectOperation ?? "apply", target: "target", when: "use"
+        };
+        return { id: effect.id, name: effect.name, img: effect.img, selected: stored != null, application };
+      }),
       effectOperationApply: data.effectOperation !== "remove",
       effectOperationRemove: data.effectOperation === "remove",
       tabs: ["identity", "activation", "effect"].map(id => ({ id, active: id === this.activeTab })),
@@ -199,8 +220,17 @@ export class ItemActivitySheet extends HandlebarsApplicationMixin(foundry.applic
         max: nullableNumber(get("uses.max")),
         recovery: activity.data.uses?.recovery ?? []
       },
-      effects: fd.getAll("effects").map(effectId => ({
-        _id: foundry.utils.randomID(), effectId, operation: "apply", target: "target", when: "use"
+      effects: fd.getAll("effects").map(effectId => {
+        const existing = (activity.data.effects ?? []).find(entry =>
+          (typeof entry === "string" ? entry : entry.effectId) === effectId);
+        return typeof existing === "object" ? existing : {
+          _id: foundry.utils.randomID(), effectId, operation: "apply", target: "target", when: "use"
+        };
+      }).map(application => ({
+        ...application,
+        operation: String(get(`effect.${application.effectId}.operation`) || application.operation || "apply"),
+        target: String(get(`effect.${application.effectId}.target`) || application.target || "target"),
+        when: String(get(`effect.${application.effectId}.when`) || application.when || "use")
       }))
     };
     if (activity.type === "use") data.roll = {
@@ -290,7 +320,11 @@ export class ItemActivitySheet extends HandlebarsApplicationMixin(foundry.applic
   }
 
   async close(options = {}) {
-    ItemActivitySheet.instances.delete(this._key);
-    return super.close(options);
+    const key = this._key;
+    try { return await super.close(options); }
+    finally {
+      if (ItemActivitySheet.instances.get(key) === this) ItemActivitySheet.instances.delete(key);
+      ItemActivitySheet.opening.delete(key);
+    }
   }
 }
