@@ -357,7 +357,7 @@ export class MeleeSessionPresenter {
     };
   }
 
-  static async beginAttack(actor, weapon, targetUuid, mode = "opposedPips", lifecycle = {}) {
+  static async beginAttack(actor, weapon, targetUuid, mode = "opposedPips") {
     if (!isMeleeEnabled()) throw new Error("Silnik walki wręcz jest niedostępny.");
     const targetDocument = await fromUuid(targetUuid);
     const defender = targetDocument?.actor ?? targetDocument;
@@ -371,13 +371,8 @@ export class MeleeSessionPresenter {
       targets: [targetUuid],
       lastRoll: actor.system.lastWeaponRoll ?? {},
       isPoolRoll: true,
-      onCancel: () => lifecycle.onCancel?.(),
       onRoll: async (rawResult, attackerTest) => {
-        if (!rawResult) {
-          const error = new Error("Nie udało się wykonać rzutu ataku wręcz.");
-          lifecycle.onError?.(error);
-          return;
-        }
+        if (!rawResult) return;
         const sessionId = foundry.utils.randomID(16);
         const startCommandId = foundry.utils.randomID(16);
         const sourceWeapon = weapon?.beastItemId ? actor.items?.get?.(weapon.beastItemId) ?? weapon : weapon;
@@ -435,11 +430,9 @@ export class MeleeSessionPresenter {
             };
             await attackerTest.updateMessage(attackerTest.message);
           }
-          lifecycle.onComplete?.(started, rawResult, attackerTest);
           return started;
         } catch (error) {
           await message.update({ content: `<div class="neuroshima melee-opposed-card"><p>${error.message}</p></div>` });
-          lifecycle.onError?.(error);
           throw error;
         }
       }
@@ -959,8 +952,6 @@ export function registerMeleeSystemUI() {
       console.error("Neuroshima | Failed to activate melee chat controls", error);
     });
   });
-  Hooks.on("renderNeuroshimaItemSheet", injectEditorButton);
-  Hooks.on("renderNeuroshimaEffectSheet", injectEditorButton);
   Hooks.on("renderCombatTrackerHTML", (_app, html) => projectTracker(html));
   Hooks.on("renderCombatTracker", (_app, html) => projectTracker(html));
   Hooks.on("neuroshimaMeleeSessionUpdated", session => {
@@ -972,7 +963,6 @@ export function registerMeleeSystemUI() {
     refreshMeleeProjections(session);
   });
   game.neuroshima.melee.beginAttack = (...args) => MeleeSessionPresenter.beginAttack(...args);
-  game.neuroshima.melee.openEditor = (document, activityId) => new MeleeActivityEditor(document, activityId).render(true);
   game.neuroshima.melee.openRoll = (session, side) => MeleeSessionPresenter.openRoll(session, side);
   game.neuroshima.melee.openMessage = session => openMeleeMessage(session);
   game.neuroshima.melee.act = async (session, side) => {

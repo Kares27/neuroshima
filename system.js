@@ -77,13 +77,6 @@ import { GMApplyDamageApp } from "./module/apps/gm/gm-damage-app.js";
 import { GMGroupCheckApp, registerGroupCheckChatListeners } from "./module/apps/gm/gm-group-check-app.js";
 import { GMPayoutApp } from "./module/apps/gm/gm-payout-app.js";
 import { GMReputationApp } from "./module/apps/gm/gm-reputation-app.js";
-import {
-    registerItemActivitySystem,
-    activityFromItem,
-    activitiesFromItem,
-    ActivityConsumptionRegistry
-} from "./module/activities/item-activity.js";
-import { ItemActivitySheet } from "./module/apps/item-activity-sheet.js";
 
 import { NeuroshimaCombatTracker, NeuroshimaTokenRuler, MeleeVanillaChat, MeleeOpposedChat, MeleeStore } from "./module/combat/combat.js";
 import { MeleeCombatApp } from "./module/apps/melee-combat-app.js";
@@ -99,7 +92,6 @@ import { registerMeleeSystemUI } from "./module/apps/melee-system-ui.js";
 // System initialization
 Hooks.once('init', async function() {
     console.log('Neuroshima 1.5 | Inicjalizacja systemu');
-    registerItemActivitySystem(NEUROSHIMA, ItemActivitySheet);
     InteractiveItemTooltip.initialize();
     registerMeleeSystemSettings();
 
@@ -288,12 +280,6 @@ Hooks.once('init', async function() {
         resolveCrewActor,
         NeuroshimaScriptRunner,
         config: NEUROSHIMA,
-        activities: {
-            fromItem: activityFromItem,
-            allFromItem: activitiesFromItem,
-            consumption: ActivityConsumptionRegistry,
-            sheet: ItemActivitySheet
-        },
         log: (...args) => {
             if (game.settings.get("neuroshima", "debugMode")) {
                 console.log("Neuroshima 1.5 |", ...args);
@@ -1188,8 +1174,6 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/item/item-details.hbs",
         "systems/neuroshima/templates/item/item-effects.hbs",
         "systems/neuroshima/templates/item/item-resources.hbs",
-        "systems/neuroshima/templates/apps/item-activity-sheet.hbs",
-        "systems/neuroshima/templates/chat/item-activity-card.hbs",
         "systems/neuroshima/templates/item/parts/weapon-melee.hbs",
         "systems/neuroshima/templates/item/parts/weapon-ranged.hbs",
         "systems/neuroshima/templates/item/parts/weapon-thrown.hbs",

@@ -1,7 +1,0 @@
-<article class="neuroshima item-activity-card">
-  <header><img src="{{activity.img}}" alt=""><div><small>{{typeLabel}}</small><h3>{{activity.name}}</h3><span>{{item.name}}</span></div></header>
-  {{#if chatText}}<div class="activity-chat-text">{{{chatText}}}</div>{{/if}}
-  {{#unless chatText}}{{#if description}}<div class="activity-chat-text">{{{description}}}</div>{{/if}}{{/unless}}
-  {{#if targets.length}}<p><strong>Cele:</strong> {{#each targets}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}</p>{{/if}}
-  {{#unless (eq usesRemaining null)}}<p class="activity-uses"><strong>Pozostałe użycia:</strong> {{usesRemaining}}</p>{{/unless}}
-</article>

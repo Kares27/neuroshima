@@ -18,7 +18,7 @@ function baseSchema() {
     cost: new fields.NumberField({ required: true, initial: 0, min: 0 }),
     quantity: new fields.NumberField({ required: true, integer: true, initial: 1, min: 0 }),
     availability: new fields.NumberField({ required: true, integer: true, initial: 100, min: 0, max: 100 }),
-    ...usageSchema(),
+    resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
     ...testsSchema()
   };
 }
@@ -191,42 +191,6 @@ function meleeActivitySchema() {
   };
 }
 
-/** Stable named resources shared by Item usage and existing script APIs. */
-function resourcesField() {
-  const fields = foundry.data.fields;
-  return new fields.ArrayField(new fields.SchemaField({
-    id: new fields.StringField({ initial: () => foundry.utils.randomID() }),
-    key: new fields.StringField({ initial: "", blank: true }),
-    label: new fields.StringField({ initial: "", blank: true }),
-    value: new fields.NumberField({ initial: 0 }),
-    min: new fields.NumberField({ initial: 0 }),
-    max: new fields.NumberField({ initial: 0 }),
-    unclamped: new fields.BooleanField({ initial: false }),
-    showInSummary: new fields.BooleanField({ initial: false }),
-    recovery: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
-    _fromModId: new fields.StringField({ initial: "", blank: true })
-  }), { initial: [] });
-}
-
-/** General Item Activities keyed by a stable Activity ID. */
-function itemActivitiesField() {
-  return new foundry.data.fields.ObjectField({ initial: {} });
-}
-
-/** One optional pool shared by all Activities owned by an Item. */
-function itemUsesField() {
-  const fields = foundry.data.fields;
-  return new fields.SchemaField({
-    spent: new fields.NumberField({ initial: 0, min: 0 }),
-    max: new fields.NumberField({ initial: null, nullable: true, min: 0 }),
-    recovery: new fields.ArrayField(new fields.ObjectField(), { initial: [] })
-  });
-}
-
-function usageSchema() {
-  return { resources: resourcesField(), uses: itemUsesField(), activities: itemActivitiesField() };
-}
-
 /**
  * Data model for Ammo.
  */
@@ -301,7 +265,7 @@ export class TrickData extends foundry.abstract.TypeDataModel {
     const fields = foundry.data.fields;
     return {
       description: new fields.HTMLField({ initial: "" }),
-    ...usageSchema(),
+    resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
       ...testsSchema()
     };
   }
@@ -376,7 +340,7 @@ export class BeastActionData extends foundry.abstract.TypeDataModel {
     });
     return {
       description: new fields.HTMLField({ initial: "" }),
-      resources: resourcesField(),
+      resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
       ...testsSchema(),
       activities: new fields.ArrayField(activitySchema, { initial: [] })
     };
@@ -443,7 +407,7 @@ export class BeastSegmentData extends foundry.abstract.TypeDataModel {
     });
     return {
       description: new fields.HTMLField({ initial: "" }),
-      resources: resourcesField(),
+      resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
       ...testsSchema(),
       activities: new fields.ArrayField(activitySchema, { initial: [] })
     };
@@ -504,7 +468,7 @@ export class TraitData extends foundry.abstract.TypeDataModel {
       }),
       // Named counters consumed by Active Effect result actions. Keeping them on the
       // Trait makes the resource survive chat-card rerenders and world reloads.
-      ...usageSchema(),
+      resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
       ...testsSchema()
     };
   }
@@ -556,7 +520,7 @@ export class VehicleModData extends foundry.abstract.TypeDataModel {
     return {
       description: new fields.HTMLField({ initial: "" }),
       rules: new fields.HTMLField({ initial: "" }),
-      ...usageSchema(),
+      resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
       ...testsSchema(),
       category: new fields.StringField({
         required: true,
@@ -598,7 +562,7 @@ export class ReputationData extends foundry.abstract.TypeDataModel {
     const fields = foundry.data.fields;
     return {
       description: new fields.HTMLField({ initial: "" }),
-      ...usageSchema(),
+      resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
       ...testsSchema(),
       value: new fields.NumberField({ required: true, integer: true, initial: 0 }),
       overrideRelations: new fields.BooleanField({ initial: false }),
@@ -638,7 +602,7 @@ export class DiseaseData extends foundry.abstract.TypeDataModel {
 
     return {
       description: new fields.HTMLField({ initial: "" }),
-      ...usageSchema(),
+      resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
       ...testsSchema(),
 
       diseaseType: new fields.StringField({
@@ -791,7 +755,7 @@ export class ContainerData extends foundry.abstract.TypeDataModel {
       weight: new fields.NumberField({ required: true, initial: 0, min: 0 }),
       cost: new fields.NumberField({ required: true, initial: 0, min: 0 }),
       availability: new fields.NumberField({ required: true, integer: true, initial: 100, min: 0, max: 100 }),
-      ...usageSchema(),
+      resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
       ...testsSchema(),
       locked: new fields.BooleanField({ initial: false }),
       countWeightToEncumbrance: new fields.BooleanField({ initial: true }),
