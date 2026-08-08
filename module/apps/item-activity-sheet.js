@@ -119,8 +119,10 @@ export class ItemActivitySheet extends HandlebarsApplicationMixin(foundry.applic
       isUse: data.type === "use",
       isTest: data.type === "test",
       isDamage: data.type === "damage",
+      isAttack: data.type === "attack",
       isSkillTest: data.test?.kind === "skill",
       remaining,
+      itemUses: this.item.system.uses ?? { spent: 0, max: null, recovery: [] },
       activationTabs: ["time", "consumption", "targeting"].map(id => ({
         id,
         active: id === this.activeActivationTab
@@ -129,7 +131,7 @@ export class ItemActivitySheet extends HandlebarsApplicationMixin(foundry.applic
       resources: (this.item.system.resources ?? []).map(resource => ({ ...resource })),
       effects: [...this.item.effects].map(effect => ({
         id: effect.id, name: effect.name, img: effect.img,
-        selected: (data.effects ?? []).includes(effect.id)
+        selected: (data.effects ?? []).some(entry => (typeof entry === "string" ? entry : entry.effectId) === effect.id)
       })),
       effectOperationApply: data.effectOperation !== "remove",
       effectOperationRemove: data.effectOperation === "remove",
@@ -188,10 +190,6 @@ export class ItemActivitySheet extends HandlebarsApplicationMixin(foundry.applic
       chatText: String(get("chatText") || ""),
       visibility: String(get("visibility") || "public"),
       effectOperation: String(get("effectOperation") || "apply"),
-      roll: {
-        enabled: get("roll.enabled") === "on",
-        formula: String(get("roll.formula") || activity.data.roll?.formula || "1d20")
-      },
       activation: {
         type: String(get("activation.type") || "manual"),
         target: String(get("activation.target") || "self")
@@ -201,21 +199,30 @@ export class ItemActivitySheet extends HandlebarsApplicationMixin(foundry.applic
         max: nullableNumber(get("uses.max")),
         recovery: activity.data.uses?.recovery ?? []
       },
-      effects: fd.getAll("effects"),
-      test: {
+      effects: fd.getAll("effects").map(effectId => ({
+        _id: foundry.utils.randomID(), effectId, operation: "apply", target: "target", when: "use"
+      }))
+    };
+    if (activity.type === "use") data.roll = {
+      enabled: get("roll.enabled") === "on",
+      formula: String(get("roll.formula") || activity.data.roll?.formula || "1d20")
+    };
+    if (activity.type === "test") data.test = {
         kind: String(get("test.kind") || "attribute"),
         attributeKey: String(get("test.attributeKey") || "dexterity"),
         skillKey: String(get("test.skillKey") || ""),
         difficulty: String(get("test.difficulty") || "average"),
         isOpen: get("test.isOpen") === "on"
-      },
-      damage: {
+      };
+    if (["damage", "attack"].includes(activity.type)) data.damage = {
         damageType: String(get("damage.damageType") || "L"),
         damageCategory: String(get("damage.damageCategory") || "physical"),
         location: String(get("damage.location") || "torso"),
         piercing: Math.max(0, Number(get("damage.piercing") || 0)),
         withPainResistance: get("damage.withPainResistance") === "on"
-      }
+      };
+    if (activity.type === "attack") data.attack = {
+      mode: String(get("attack.mode") || activity.data.attack?.mode || "melee")
     };
     const targets = (activity.data.consumption?.targets ?? []).map((entry, index) => ({
       ...entry,
@@ -225,6 +232,10 @@ export class ItemActivitySheet extends HandlebarsApplicationMixin(foundry.applic
       scaling: false
     }));
     data.consumption = { targets };
+    if (this.item.system.uses) await this.item.update({ "system.uses": {
+      spent: Math.max(0, Number(get("itemUses.spent") || 0)),
+      max: nullableNumber(get("itemUses.max")), recovery: this.item.system.uses.recovery ?? []
+    }}, { render: false });
     await activity.update(data);
     this.render({ force: true });
   }

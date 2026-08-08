@@ -213,8 +213,18 @@ function itemActivitiesField() {
   return new foundry.data.fields.ObjectField({ initial: {} });
 }
 
+/** One optional pool shared by all Activities owned by an Item. */
+function itemUsesField() {
+  const fields = foundry.data.fields;
+  return new fields.SchemaField({
+    spent: new fields.NumberField({ initial: 0, min: 0 }),
+    max: new fields.NumberField({ initial: null, nullable: true, min: 0 }),
+    recovery: new fields.ArrayField(new fields.ObjectField(), { initial: [] })
+  });
+}
+
 function usageSchema() {
-  return { resources: resourcesField(), activities: itemActivitiesField() };
+  return { resources: resourcesField(), uses: itemUsesField(), activities: itemActivitiesField() };
 }
 
 /**

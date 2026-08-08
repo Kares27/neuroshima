@@ -47,6 +47,12 @@
       </div>
         <label><span>Odnawianie</span><select disabled><option>Ręcznie</option></select></label>
       </fieldset>
+      <fieldset><legend>Wspólne użycia Itemu</legend>
+      <div class="activity-uses-grid">
+        <label><span>Maksimum</span><input type="number" min="0" name="itemUses.max" value="{{itemUses.max}}" placeholder="Bez limitu"></label>
+        <label><span>Wydano</span><input type="number" min="0" name="itemUses.spent" value="{{itemUses.spent}}"></label>
+      </div>
+      </fieldset>
       <fieldset><legend>Zużycie <button type="button" data-action="addConsumption"><i class="fa-solid fa-plus"></i></button></legend>
       {{#each consumption}}
       <div class="activity-consumption-row">
@@ -106,13 +112,24 @@
     </fieldset>
     {{/if}}
 
-    {{#if isDamage}}
+    {{#if (or isDamage isAttack)}}
     <fieldset><legend>Konfiguracja obrażeń</legend>
       <label><span>Obrażenia</span><select name="damage.damageType">{{#each damageTypes}}<option value="{{this}}" {{#if (eq this ../activity.damage.damageType)}}selected{{/if}}>{{this}}</option>{{/each}}</select></label>
       <label><span>Kategoria</span><select name="damage.damageCategory">{{#each damageCategories}}<option value="{{key}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select></label>
       <label><span>Lokacja</span><select name="damage.location">{{#each locations}}<option value="{{key}}" {{#if (eq key ../activity.damage.location)}}selected{{/if}}>{{label}}</option>{{/each}}</select></label>
       <label><span>Przebicie</span><input type="number" min="0" name="damage.piercing" value="{{activity.damage.piercing}}"></label>
       <label class="activity-checkbox"><input type="checkbox" name="damage.withPainResistance" {{checked activity.damage.withPainResistance}}><span>Rzut odporności na ból</span></label>
+    </fieldset>
+    {{/if}}
+
+    {{#if isAttack}}
+    <fieldset><legend>Konfiguracja ataku</legend>
+      <label><span>Tryb</span><select name="attack.mode">
+        <option value="melee" {{#if (eq activity.attack.mode "melee")}}selected{{/if}}>Wręcz</option>
+        <option value="ranged" {{#if (eq activity.attack.mode "ranged")}}selected{{/if}}>Dystansowy</option>
+        <option value="thrown" {{#if (eq activity.attack.mode "thrown")}}selected{{/if}}>Rzucany</option>
+        <option value="grenade" {{#if (eq activity.attack.mode "grenade")}}selected{{/if}}>Granat</option>
+      </select></label>
     </fieldset>
     {{/if}}
   </section>

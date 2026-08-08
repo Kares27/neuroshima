@@ -16,7 +16,7 @@ export function createActivityData(type, item) {
   const id = foundry.utils.randomID();
   const metadata = CONFIG.NEUROSHIMA.activityTypes[type];
   if (!metadata) throw new Error(`Nieznany typ Activity: ${type}`);
-  return {
+  const base = {
     _id: id,
     type,
     name: metadata.label,
@@ -29,17 +29,20 @@ export function createActivityData(type, item) {
     uses: { spent: 0, max: null, recovery: [] },
     consumption: { targets: [] },
     effects: [],
-    effectOperation: "apply",
-    roll: { enabled: false, formula: "1d20" },
-    test: {
+    integrations: {},
+    targeting: {}
+  };
+  if (type === "use") base.roll = { enabled: false, formula: "1d20" };
+  if (type === "test") base.test = {
       kind: "attribute", attributeKey: "dexterity", skillKey: "",
       difficulty: "average", isOpen: false
-    },
-    damage: {
+    };
+  if (["damage", "attack"].includes(type)) base.damage = {
       damageType: "L", damageCategory: "physical", location: "torso", piercing: 0,
       withPainResistance: true
-    }
-  };
+    };
+  if (type === "attack") base.attack = { mode: "melee" };
+  return base;
 }
 
 export class ActivityConsumptionRegistry {
@@ -48,7 +51,9 @@ export class ActivityConsumptionRegistry {
   static register(type, handler) { this.types.set(type, handler); }
 
   static prepare(activity) {
-    const updates = { resources: clone(activity.item.system.resources ?? []), quantity: activity.item.system.quantity };
+    const updates = { before: {}, resources: clone(activity.item.system.resources ?? []),
+      itemUses: clone(activity.item.system.uses ?? { spent: 0, max: null, recovery: [] }),
+      quantity: activity.item.system.quantity };
     for (const target of activity.data.consumption?.targets ?? []) {
       const handler = this.types.get(target.type);
       if (!handler) throw new Error(`Nieobsługiwany typ zużycia: ${target.type}`);
@@ -60,12 +65,24 @@ export class ActivityConsumptionRegistry {
   static async apply(activity, prepared) {
     const update = {};
     if (prepared.activityUses) {
+      prepared.before.activityUses = clone(activity.data.uses);
       update[`system.activities.${activity.id}.uses.spent`] = prepared.activityUses.spent;
     }
-    if (prepared.resourcesChanged) update["system.resources"] = prepared.resources;
-    if (prepared.quantityChanged) update["system.quantity"] = prepared.quantity;
+    if (prepared.itemUsesChanged) { prepared.before.itemUses = clone(activity.item.system.uses); update["system.uses"] = prepared.itemUses; }
+    if (prepared.resourcesChanged) { prepared.before.resources = clone(activity.item.system.resources); update["system.resources"] = prepared.resources; }
+    if (prepared.quantityChanged) { prepared.before.quantity = activity.item.system.quantity; update["system.quantity"] = prepared.quantity; }
     if (Object.keys(update).length) await activity.item.update(update);
     if (prepared.activityUses) activity.data.uses = clone(prepared.activityUses);
+  }
+
+  static async refund(activity, prepared) {
+    const update = {};
+    if (prepared.before.activityUses) update[`system.activities.${activity.id}.uses`] = prepared.before.activityUses;
+    if (prepared.before.itemUses) update["system.uses"] = prepared.before.itemUses;
+    if (prepared.before.resources) update["system.resources"] = prepared.before.resources;
+    if (prepared.before.quantity !== undefined) update["system.quantity"] = prepared.before.quantity;
+    if (Object.keys(update).length) await activity.item.update(update);
+    if (prepared.before.activityUses) activity.data.uses = clone(prepared.before.activityUses);
   }
 }
 
@@ -113,6 +130,22 @@ ActivityConsumptionRegistry.register("itemQuantity", {
   }
 });
 
+ActivityConsumptionRegistry.register("itemUses", {
+  label: "Użycia Itemu",
+  requiresTarget: false,
+  availableForItem: item => item.system?.uses != null,
+  prepare(activity, target, updates) {
+    const amount = Math.max(0, number(target.value, 1));
+    const uses = clone(updates.itemUses);
+    const max = uses.max == null || uses.max === "" ? null : Math.max(0, number(uses.max));
+    const available = max == null ? Infinity : Math.max(0, max - number(uses.spent));
+    if (available < amount) throw new Error(`Item „${activity.item.name}” nie ma wystarczającej liczby użyć.`);
+    uses.spent = number(uses.spent) + amount;
+    updates.itemUses = uses;
+    updates.itemUsesChanged = true;
+  }
+});
+
 export class NeuroshimaItemActivity {
   static type = "use";
   static metadata = { label: "Użycie", hint: "Ogólne użycie przedmiotu", img: "icons/svg/upgrade.svg" };
@@ -138,6 +171,9 @@ export class NeuroshimaItemActivity {
     const SheetClass = CONFIG.NEUROSHIMA.activityTypes?.[this.type]?.sheetClass;
     return SheetClass?.open?.(this.item, this.id) ?? null;
   }
+
+  render(force = true) { return this.openSheet()?.render?.(force); }
+  toDragData() { return { type: "Activity", uuid: this.uuid, itemUuid: this.item.uuid, activityId: this.id }; }
 
   _validateAvailability(throwError = true) {
     try {
@@ -244,9 +280,12 @@ export class NeuroshimaItemActivity {
   }
 
   async _applyEffects(targets) {
-    const ids = new Set(this.data.effects ?? []);
+    const applications = (this.data.effects ?? []).map(entry => typeof entry === "string"
+      ? { effectId: entry, operation: this.data.effectOperation ?? "apply", target: "target", when: "use" }
+      : entry).filter(entry => (entry.when ?? "use") === "use");
+    const ids = new Set(applications.map(entry => entry.effectId).filter(Boolean));
     if (!ids.size || !targets.length) return [];
-    if (this.data.effectOperation === "remove") {
+    if (applications.every(entry => entry.operation === "remove")) {
       const removed = [];
       for (const target of targets) {
         if (!target?.isOwner && !game.user.isGM) continue;
@@ -290,10 +329,16 @@ export class NeuroshimaItemActivity {
       throw new Error("Ta Activity wymaga zaznaczonego celu.");
     }
     await ActivityConsumptionRegistry.apply(this, preparedConsumption);
-    const message = await this._createMessage(targets);
-    const effects = await this._applyEffects(targets);
-    const result = await this.execute({ ...options, targets, message, effects });
-    return { activity: this, message, effects, result };
+    try {
+      const result = await this.execute({ ...options, targets });
+      const effects = await this._applyEffects(targets);
+      const message = await this._createMessage(targets);
+      return { activity: this, message, effects, result,
+        refund: () => ActivityConsumptionRegistry.refund(this, preparedConsumption) };
+    } catch (error) {
+      await ActivityConsumptionRegistry.refund(this, preparedConsumption);
+      throw error;
+    }
   }
 
   async execute(_context) { return null; }
@@ -386,12 +431,62 @@ export class DamageActivity extends NeuroshimaItemActivity {
   }
 }
 
+/** Attack delegates to the existing weapon resolver; it does not duplicate combat rules. */
+export class AttackActivity extends NeuroshimaItemActivity {
+  static type = "attack";
+  static metadata = { label: "Atak", hint: "Wykonaj atak istniejącym resolverem broni", img: "icons/svg/sword.svg" };
+
+  async execute(context) {
+    const mode = this.data.attack?.mode ?? this.item.system?.weaponType ?? "melee";
+    if (!this.actor) throw new Error("Activity Atak wymaga Itemu osadzonego na Aktorze.");
+    const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
+    const dialog = new NeuroshimaWeaponRollDialog({
+      actor: this.actor,
+      weapon: this.item,
+      rollType: mode === "melee" ? "melee" : mode,
+      targets: [...(game.user.targets ?? [])],
+      activity: this,
+      activityContext: context
+    });
+    dialog.render(true);
+    return dialog;
+  }
+}
+
+/** Stable, type-indexed pseudo-document collection exposed as Item#activities. */
+export class ActivityCollection extends Map {
+  #byType = new Map();
+
+  constructor(item) {
+    super();
+    for (const data of entries(item.system?.activities)) {
+      const ActivityClass = CONFIG.NEUROSHIMA.activityTypes?.[data.type]?.documentClass;
+      if (!ActivityClass) continue;
+      const activity = new ActivityClass(data, item);
+      this.set(activity.id, activity);
+      const typed = this.#byType.get(activity.type) ?? [];
+      typed.push(activity);
+      this.#byType.set(activity.type, typed);
+    }
+  }
+
+  getByType(type) { return [...(this.#byType.get(type) ?? [])].sort(sortActivities); }
+  get length() { return this.size; }
+  [Symbol.iterator]() { return this.values(); }
+  filter(predicate) { return [...this.values()].filter(predicate); }
+  find(predicate) { return [...this.values()].find(predicate); }
+  map(mapper) { return [...this.values()].sort(sortActivities).map(mapper); }
+}
+
+const sortActivities = (a, b) => number(a.data.sort) - number(b.data.sort);
+
 export function registerItemActivitySystem(systemConfig = {}, sheetClass = null) {
   CONFIG.NEUROSHIMA = Object.assign(CONFIG.NEUROSHIMA ?? {}, systemConfig);
   CONFIG.NEUROSHIMA.activityTypes = {
     use: { ...UseActivity.metadata, type: "use", documentClass: UseActivity, sheetClass, configurable: true },
     test: { ...TestActivity.metadata, type: "test", documentClass: TestActivity, sheetClass, configurable: true },
-    damage: { ...DamageActivity.metadata, type: "damage", documentClass: DamageActivity, sheetClass, configurable: true }
+    damage: { ...DamageActivity.metadata, type: "damage", documentClass: DamageActivity, sheetClass, configurable: true },
+    attack: { ...AttackActivity.metadata, type: "attack", documentClass: AttackActivity, sheetClass, configurable: true }
   };
   CONFIG.NEUROSHIMA.activityConsumptionTypes = ActivityConsumptionRegistry.types;
 }
@@ -405,9 +500,5 @@ export function activityFromItem(item, activityId) {
 }
 
 export function activitiesFromItem(item) {
-  if (!itemSupportsGeneralActivities(item)) return [];
-  return entries(item.system.activities)
-    .map(data => activityFromItem(item, data._id))
-    .filter(Boolean)
-    .sort((a, b) => number(a.data.sort) - number(b.data.sort));
+  return itemSupportsGeneralActivities(item) ? new ActivityCollection(item) : new Map();
 }

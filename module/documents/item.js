@@ -18,8 +18,10 @@ import { activitiesFromItem, activityFromItem, itemSupportsGeneralActivities } f
  *   `containerId` flag (DnD5e-style container pattern).
  */
 export class NeuroshimaItem extends Item {
+  #activities = null;
+
   /** General, document-like ways of using this Item. */
-  get activities() { return activitiesFromItem(this); }
+  get activities() { return this.#activities ??= activitiesFromItem(this); }
 
   getActivity(activityId) { return activityFromItem(this, activityId); }
 
@@ -54,6 +56,7 @@ export class NeuroshimaItem extends Item {
   }
 
   prepareBaseData() {
+    this.#activities = null;
     if (this.actor) {
       NeuroshimaScriptRunner.executeEventSync("prePrepareItem", {
         actor: this.actor,
