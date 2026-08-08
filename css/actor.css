@@ -3907,6 +3907,14 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     margin: 8px 0 0 0;
 }
 
+.neuroshima.sheet.actor-vehicle .vehicle-attr-grid--tab {
+    margin: 0 0 12px;
+    padding: 8px;
+    background: var(--ns-bg-panel);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+}
+
 .neuroshima.sheet.actor-vehicle .vehicle-attr-card {
     display: flex;
     flex-direction: row;
@@ -4281,16 +4289,28 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     background: var(--ns-bg-input, rgba(0,0,0,0.1));
 }
 
-.stat-box.creature-type-stat,
-.stat-box.creature-terrain-stat {
-    flex: 1;
-}
-
 .neuroshima.sheet.actor-creature .header-stats-row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 15px;
     margin-top: 5px;
+}
+
+.neuroshima.sheet.actor-creature .creature-core-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 15px;
+    margin-top: 8px;
+}
+
+.neuroshima.sheet.actor-creature .creature-core-stats .stat-box {
+    min-width: 0;
+    width: 100%;
+    padding: 7px 10px;
+}
+
+.neuroshima.sheet.actor-creature .creature-core-stats .movement-fields {
+    width: 100%;
 }
 
 .neuroshima.sheet.actor-creature .creature-info-row {

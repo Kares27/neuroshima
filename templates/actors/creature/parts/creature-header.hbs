@@ -5,22 +5,7 @@
             <input name="name" type="text" value="{{actor.name}}" placeholder="{{localize 'Name'}}"/>
         </h1>
 
-        <div class="header-stats-row creature-info-row">
-            <div class="stat-box creature-type-stat" title="{{localize 'NEUROSHIMA.Creature.Type'}}">
-                <label>{{localize "NEUROSHIMA.Creature.TypeAbbr"}}</label>
-                <div class="stat-value stat-value-input">
-                    <input type="text" name="system.creatureType" value="{{system.creatureType}}"/>
-                </div>
-            </div>
-            <div class="stat-box creature-terrain-stat" title="{{localize 'NEUROSHIMA.Creature.Terrain'}}">
-                <label>{{localize "NEUROSHIMA.Creature.TerrainAbbr"}}</label>
-                <div class="stat-value stat-value-input">
-                    <input type="text" name="system.terrain" value="{{system.terrain}}"/>
-                </div>
-            </div>
-        </div>
-
-        <div class="header-stats-row">
+        <div class="creature-core-stats">
             <div class="stat-box penalty-summary" data-tooltip-html="{{combat.penaltyTooltip}}" data-tooltip-direction="DOWN">
                 <label>{{localize "NEUROSHIMA.Wound.TotalPenaltyAbbr"}}</label>
                 <div class="stat-value">{{combat.totalCombatPenalty}}%</div>
@@ -40,9 +25,6 @@
                 <label>HP</label>
                 <div class="stat-value">{{combat.totalDamagePoints}} / {{combat.maxHP}}</div>
             </div>
-        </div>
-
-        <div class="header-stats-row creature-movement-row">
             <div class="stat-box movement-summary">
                 <label>{{localize "NEUROSHIMA.Movement.Label"}}</label>
                 <div class="movement-fields">

@@ -1236,8 +1236,7 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/apps/condition-check-editor.hbs",
         "systems/neuroshima/templates/prosemirror/text-colour.hbs",
         "systems/neuroshima/templates/chat/melee-duel-card.hbs",
-        "systems/neuroshima/templates/apps/beast-activity-sheet.hbs",
-        "systems/neuroshima/templates/apps/melee-v2-config.hbs"
+        "systems/neuroshima/templates/apps/beast-activity-sheet.hbs"
     ];
     
     await foundry.applications.handlebars.loadTemplates(templates);

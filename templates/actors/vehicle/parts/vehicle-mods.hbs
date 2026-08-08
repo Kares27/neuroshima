@@ -1,5 +1,26 @@
 <section class="tab vehicle-mods {{tabs.mods.cssClass}}" data-group="primary" data-tab="mods" data-application-part="mods">
 
+    <div class="vehicle-attr-grid vehicle-attr-grid--tab">
+        {{#each vehicleAttributeList as |attr key|}}
+        <div class="vehicle-attr-card">
+            <div class="vehicle-attr-name {{#if (eq key 'durability')}}clickable{{/if}}"
+                {{#if (eq key 'durability')}}data-action="rollDurability" title="{{localize 'NEUROSHIMA.Actions.Roll'}}: {{localize attr.label}}"{{/if}}>
+                {{localize attr.label}}
+            </div>
+            <div class="vehicle-attr-inputs">
+                <div class="vehicle-attr-input-box">
+                    <label>{{localize "NEUROSHIMA.Attributes.BaseAbbr"}}</label>
+                    <input type="number" name="system.attributes.{{key}}" value="{{lookup ../system.attributes key}}" min="0" max="40">
+                </div>
+                <div class="vehicle-attr-input-box">
+                    <label>{{localize "NEUROSHIMA.Attributes.ModifierAbbr"}}</label>
+                    <input type="number" name="system.modifiers.{{key}}" value="{{lookup ../system.modifiers key}}">
+                </div>
+            </div>
+        </div>
+        {{/each}}
+    </div>
+
     <section class="inventory-section">
         <div class="section-header inv-section-header">
             <span>{{localize "NEUROSHIMA.Vehicle.Modifications"}}</span>

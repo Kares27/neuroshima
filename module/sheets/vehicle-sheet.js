@@ -266,7 +266,7 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
     primary: {
       tabs: [
         { id: "crew",      group: "primary", label: "NEUROSHIMA.Tabs.Crew" },
-        { id: "mods",      group: "primary", label: "NEUROSHIMA.Tabs.Modifications" },
+        { id: "mods",      group: "primary", label: "NEUROSHIMA.Tabs.Attributes" },
         { id: "combat",    group: "primary", label: "NEUROSHIMA.Tabs.Combat" },
         { id: "equipment", group: "primary", label: "NEUROSHIMA.Tabs.Inventory" },
         { id: "effects",   group: "primary", label: "NEUROSHIMA.Tabs.Effects" },
