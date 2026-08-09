@@ -10,12 +10,15 @@
         {{#if pending.isMeleeSession}}
         <div class="melee-pending-attacker-card clickable" data-action="openMeleeSession" data-session-id="{{pending.sessionId}}">
             <div class="pending-card-header">
-                <div class="pending-header-main"><i class="fas fa-swords"></i><span>{{pending.attackerName}} → {{pending.defenderName}}</span></div>
-                <span>S{{pending.segment}}</span><a class="pending-dismiss-btn" data-action="cancelMeleeSession" data-session-id="{{pending.sessionId}}" title="Anuluj"><i class="fas fa-times"></i></a>
+                <div class="pending-header-main"><span>{{pending.attackerName}} vs {{pending.defenderName}}</span></div>
+                <a class="pending-dismiss-btn" data-action="cancelMeleeSession" data-session-id="{{pending.sessionId}}" title="Anuluj"><i class="fas fa-times"></i></a>
             </div>
             <div class="pending-card-content">
-                <div class="duel-info"><span>Inicjatywa: {{pending.initiativeName}}</span></div>
-                <p class="pending-status-msg">{{pending.waitingText}}</p>
+                <div class="pending-versus">
+                    <div class="pending-combatant"><img src="{{pending.perspectiveImg}}" alt="{{pending.perspectiveName}}"><span>{{pending.perspectiveName}}</span></div>
+                    <span class="pending-vs">VS</span>
+                    <div class="pending-combatant"><img src="{{pending.opponentImg}}" alt="{{pending.opponentName}}"><span>{{pending.opponentName}}</span></div>
+                </div>
             </div>
         </div>
         {{else}}

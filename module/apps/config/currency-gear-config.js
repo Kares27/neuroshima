@@ -1,4 +1,4 @@
-import { isGearTypeEquippable } from "../../helpers/gear-types.js";
+import { applyCustomGearTypes, GEAR_TYPE_KEYS, isGearTypeEquippable } from "../../helpers/gear-types.js";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
@@ -35,7 +35,9 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
         actions: {
             addCurrencyRow:    CurrencyGearConfig.prototype._onAddCurrency,
             deleteCurrencyRow: CurrencyGearConfig.prototype._onDeleteCurrency,
-            browseCurrencyImg: CurrencyGearConfig.prototype._onBrowseCurrencyImg
+            browseCurrencyImg: CurrencyGearConfig.prototype._onBrowseCurrencyImg,
+            addGearTypeRow:    CurrencyGearConfig.prototype._onAddGearType,
+            deleteGearTypeRow: CurrencyGearConfig.prototype._onDeleteGearType
         }
     };
 
@@ -48,7 +50,8 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
     _loadState() {
         return {
             currencies:   this._loadCurrencies(),
-            builtinMods:  this._loadBuiltinMods()
+            builtinMods:  this._loadBuiltinMods(),
+            customMods:   this._loadCustomMods()
         };
     }
 
@@ -76,6 +79,23 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
         return builtinMods;
     }
 
+    _loadCustomMods() {
+        let entries = [];
+        let modifiers = {};
+        try { entries = JSON.parse(game.settings.get("neuroshima", "customGearTypes") || "[]"); } catch(e) {}
+        try { modifiers = JSON.parse(game.settings.get("neuroshima", "gearTypePriceModifiers") || "{}"); } catch(e) {}
+        return (Array.isArray(entries) ? entries : []).map(label => {
+            const key = String(label ?? "").trim();
+            const mod = modifiers[key];
+            return {
+                key,
+                buy: typeof mod === "number" ? mod : mod?.buy ?? 1,
+                sell: typeof mod === "number" ? mod : mod?.sell ?? 1,
+                equippable: isGearTypeEquippable(key)
+            };
+        });
+    }
+
     async _prepareContext(options) {
         const state = this._pendingState ?? this._loadState();
         const NEUROSHIMA = game.neuroshima.config;
@@ -97,9 +117,16 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
             exchangeRate: c.exchangeRate ?? 1,
             primary:      !!c.primary
         }));
+        const customRows = (state.customMods ?? []).map((row, idx) => ({
+            idx,
+            key: row.key ?? "",
+            buy: Number(row.buy ?? 1).toFixed(2),
+            sell: Number(row.sell ?? 1).toFixed(2),
+            equippable: row.equippable === true
+        }));
         const currencyNameLabel  = game.settings.get("neuroshima", "currencyNameLabel")  || "";
         const currencyValueLabel = game.settings.get("neuroshima", "currencyValueLabel") || "";
-        return { currencies, builtinRows, currencyNameLabel, currencyValueLabel };
+        return { currencies, builtinRows, customRows, currencyNameLabel, currencyValueLabel };
     }
 
     _captureState() {
@@ -133,10 +160,24 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
             };
         }
 
+        const customMods = [];
+        const seenCustomKeys = new Set(GEAR_TYPE_KEYS);
+        for (let i = 0; data[`custom.${i}.key`] !== undefined; i++) {
+            const key = String(data[`custom.${i}.key`] ?? "").trim();
+            if (!key || seenCustomKeys.has(key)) continue;
+            seenCustomKeys.add(key);
+            customMods.push({
+                key,
+                buy: Math.max(0, parseFloat(data[`custom.${i}.buy`]) || 1),
+                sell: Math.max(0, parseFloat(data[`custom.${i}.sell`]) || 1),
+                equippable: checked(data[`custom.${i}.equippable`])
+            });
+        }
+
         const currencyNameLabel  = String(data["currencyNameLabel"]  ?? "").trim();
         const currencyValueLabel = String(data["currencyValueLabel"] ?? "").trim();
 
-        return { currencies, builtinMods, currencyNameLabel, currencyValueLabel };
+        return { currencies, builtinMods, customMods, currencyNameLabel, currencyValueLabel };
     }
 
     async _onRender(context, options) {
@@ -196,6 +237,27 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
         }).render(true);
     }
 
+    async _onAddGearType() {
+        const scrolls = this._saveScrolls();
+        const state = this._captureState();
+        state.customMods.push({ key: "", buy: 1, sell: 1, equippable: false });
+        this._pendingState = state;
+        const gearScroll = this.element?.querySelector(".cgc-geartypes-scroll");
+        scrolls[".cgc-geartypes-scroll"] = gearScroll ? gearScroll.scrollHeight : 0;
+        this._pendingScrolls = scrolls;
+        this.render();
+    }
+
+    async _onDeleteGearType(event, target) {
+        const idx = parseInt(target.dataset.index ?? "-1");
+        if (idx < 0) return;
+        const state = this._captureState();
+        state.customMods.splice(idx, 1);
+        this._pendingState = state;
+        this._pendingScrolls = this._saveScrolls();
+        this.render();
+    }
+
     async _onSubmit(event, form, formData) {
         const state = this._captureState();
 
@@ -206,15 +268,18 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
 
         const allMods = {};
         for (const [key, mod] of Object.entries(state.builtinMods)) allMods[key] = { buy: mod.buy, sell: mod.sell };
+        for (const mod of state.customMods) allMods[mod.key] = { buy: mod.buy, sell: mod.sell };
         await game.settings.set("neuroshima", "gearTypePriceModifiers", JSON.stringify(allMods));
 
         const equippableTypes = {};
         for (const [key, mod] of Object.entries(state.builtinMods)) equippableTypes[key] = mod.equippable === true;
+        for (const mod of state.customMods) equippableTypes[mod.key] = mod.equippable === true;
         await game.settings.set("neuroshima", "equippableGearTypes", JSON.stringify(equippableTypes));
 
-        await game.settings.set("neuroshima", "customGearTypes", "[]");
+        await game.settings.set("neuroshima", "customGearTypes", JSON.stringify(state.customMods.map(mod => mod.key)));
 
         const NEUROSHIMA = game.neuroshima.config;
+        applyCustomGearTypes(NEUROSHIMA, state.customMods.map(mod => mod.key));
 
         // Turning a subtype into non-equippable must immediately remove the
         // equipped state. Item lifecycle hooks then remove equip-transfer

@@ -555,6 +555,10 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       await dm._script.runSubmission({
         actor: this.actor,
         item: this.weapon ?? null,
+        weapon: this.weapon ?? null,
+        rollType: this.rollType,
+        isUnarmed: this.weapon?.isUnarmed === true
+          || this.weapon?.system?.isUnarmed === true,
         options: submissionOptions,
         fields: this._scriptFields,
         flags: this._scriptFlags

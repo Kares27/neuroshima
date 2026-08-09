@@ -303,6 +303,7 @@
     <div class="ctx-row"><span class="ctx-name">await this.sendMessage(content, chatData?)</span><span class="ctx-type">Promise&lt;ChatMessage&gt;</span><span class="ctx-desc">Tworzy wiadomość czatu przypisaną do aktora</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.dialog(content, type?, config?)</span><span class="ctx-type">Promise&lt;any&gt;</span><span class="ctx-desc">Dialog Foundry: "confirm" → true/false, "prompt" → string|null, "input" → dane formularza. Tytuł = nazwa efektu.</span></div>
     <div class="ctx-row"><span class="ctx-name">this.addDialogModifier(label, modifier, description?)</span><span class="ctx-type">void</span><span class="ctx-desc">W triggerze <code>dialog</code> dodaje opisany modyfikator procentowy do panelu bieżącego rzutu.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.isUnarmedWeapon(weapon?)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Rozpoznaje kanoniczne Pięści po jawnej fladze <code>system.isUnarmed</code> (z aliasem runtime <code>isUnarmed</code> i tagiem <code>unarmed</code>). Argument jest opcjonalny: bez niego helper używa broni z aktualnego dialogu lub testu.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.chooseFromList(items, prompt?, title?)</span><span class="ctx-type">Promise&lt;any | null&gt;</span><span class="ctx-desc">Przeszukiwalny wybór jednej pozycji. Element wymaga <code>{ value, label }</code> i może zawierać <code>description</code>, <code>img</code>, <code>tooltipHtml</code> oraz zwykły obiekt <code>rollData</code>. Tooltip obsługuje wzory Foundry <code>[[...]]</code>; dane aktora są dostępne pod <code>@actor</code>. Zwraca <code>value</code> albo <code>null</code> po anulowaniu. Decyzję podejmuje aktywny właściciel aktora, awaryjnie aktywny MG.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.allocatePoints(options)</span><span class="ctx-type">Promise&lt;object | null&gt;</span><span class="ctx-desc">Otwiera u właściwego gracza dialog rozdawania puli. <code>options</code> zawiera m.in. <code>pool</code>, <code>rows</code>, <code>requireExact</code> i opcjonalną lokalną funkcję <code>validate</code>. Zwraca mapę wartości według kluczy wierszy albo <code>null</code>.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.deleteEffect(options?)</span><span class="ctx-type">Promise&lt;boolean&gt;</span><span class="ctx-desc">Usuwa efekt źródłowy przez właściwego wykonawcę/GM. Preferowane nad bezpośrednim <code>this.effect.delete()</code>, gdy skrypt może działać na kliencie bez praw do dokumentu.</span></div>
@@ -650,6 +651,7 @@
       <tr><td><code>args.skill</code></td><td>Object | null</td><td>Obiekt umiejętności: <code>{ name, value, key }</code> lub <code>null</code>.</td></tr>
       <tr><td><code>args.attribute</code></td><td>Object | null</td><td>Obiekt atrybutu: <code>{ name, value, key }</code>.</td></tr>
       <tr><td><code>args.rollType</code></td><td>string</td><td>Typ rzutu: <code>"skill"</code>, <code>"attribute"</code>, <code>"reputation"</code>, <code>"ranged"</code>, <code>"melee"</code>, <code>"initiative"</code>, <code>"healing"</code>.</td></tr>
+      <tr><td><code>args.isUnarmed</code></td><td>boolean</td><td><code>true</code> wyłącznie dla rzutu kanonicznymi Pięściami. Pięści nadal mają <code>args.rollType === "melee"</code>. Flaga jest dostępna również w Hide Script, Activate Script i Submission Script.</td></tr>
       <tr><td><code>args.subtype</code></td><td>string | null</td><td>Podtyp rzutu. Dla reputacji: <code>"skill"</code> albo <code>"simple"</code>.</td></tr>
       <tr><td><code>args.reputation</code></td><td>Object</td><td>Dane bazowe dialogu reputacji (read-only): <code>{ bonus, value, fame }</code>. Dostępne przy <code>args.rollType === "reputation"</code>.</td></tr>
       <tr><td><code>args.difficulty</code></td><td>string</td><td>Klucz bazowej trudności (np. <code>"average"</code>, <code>"hard"</code>).</td></tr>
@@ -670,6 +672,21 @@
 
     </tbody>
   </table>
+
+  <h4>Pięści (unarmed) w skryptach dialogowych</h4>
+  <p>Pięści są zwykłym rzutem melee, a nie osobnym typem rzutu. Do odróżniania ich od miecza lub noża używaj <code>args.isUnarmed</code> albo helpera <code>this.isUnarmedWeapon()</code>. Nie sprawdzaj nazwy broni, braku ID ani umiejętności Bijatyka.</p>
+  <pre><code><span class="cmt">// Dialog Script — premia wyłącznie podczas walki Pięściami</span>
+<span class="kw">if</span> (!args.isUnarmed) <span class="kw">return</span>;
+<span class="kw">this</span>.<span class="fn">addDialogModifier</span>(<span class="str">"Walka bez broni"</span>, <span class="num">10</span>, <span class="str">"Premia z Cechy."</span>);
+
+<span class="cmt">// Równoważny warunek, przydatny także w innych triggerach</span>
+<span class="kw">if</span> (!<span class="kw">this</span>.<span class="fn">isUnarmedWeapon</span>(args.weapon)) <span class="kw">return</span>;</code></pre>
+  <div class="callout info">
+    <strong>Filtrowanie widoczności:</strong><br>
+    tylko Pięści: <code>return !args.isUnarmed;</code><br>
+    całe melee (włącznie z Pięściami): <code>return args.rollType !== "melee";</code><br>
+    tylko broń melee, bez Pięści: <code>return args.rollType !== "melee" || args.isUnarmed;</code>
+  </div>
 
   <div class="example-block">
     <div class="example-header"><span class="trigger-badge">dialog — Submission Script</span> Wymuszenie inicjatywy po zatwierdzeniu dialogu</div>
@@ -1040,11 +1057,13 @@ args.reputation.<span class="fn">modifyCost</span>(-<span class="num">10</span>)
   <!-- preRollTest -->
   <h3 id="trigger-preRollTest">preRollTest / preRollWeaponTest — <em>Pre-Roll Test</em></h3>
   <p><code>preRollTest</code> uruchamia się przed każdym testem. Dla klasy <code>WeaponTest</code> zaraz po nim uruchamia się dodatkowo <code>preRollWeaponTest</code>. Modyfikuj <code>args.test.preData</code>, korzystaj z metod testu i wywołuj <code>args.test.markDirty()</code>, gdy zmiana wymaga ponownego obliczenia.</p>
-  <p>Każdy trigger testowy otrzymuje ten sam obiekt klasy testu w <code>args.test</code> oraz skrót do jego kontekstu w <code>args.context</code>. Dostępne są m.in. <code>cancel()</code>, <code>markDirty()</code>, <code>forceSuccess()</code>, <code>forceFailure()</code>, <code>forceInitiative()</code> i <code>addSuccessPoints()</code>. Broń jest dostępna jako <code>args.test.item</code> lub <code>args.item</code>.</p>
+  <p>Każdy trigger testowy otrzymuje ten sam obiekt klasy testu w <code>args.test</code> oraz skrót do jego kontekstu w <code>args.context</code>. Dostępne są m.in. <code>cancel()</code>, <code>markDirty()</code>, <code>forceSuccess()</code>, <code>forceFailure()</code>, <code>forceInitiative()</code> i <code>addSuccessPoints()</code>. Broń jest dostępna jako <code>args.test.item</code> lub <code>args.item</code>. Dla testów broni dostępne są też bezpośrednio <code>args.rollType</code> (<code>"melee"</code> lub <code>"ranged"</code>) oraz <code>args.isUnarmed</code>.</p>
   <div class="callout info">
     <strong>Rozróżnianie kontekstu:</strong><br>
     <code>args.test.rollClass</code> — nazwa konkretnej klasy, np. <code>"WeaponTest"</code> lub <code>"MeleeWeaponTest"</code>.<br>
-    <code>args.test.rollType</code> — typ zapisany w <code>preData.type</code>, np. <code>"weapon"</code>.<br>
+    <code>args.test.rollType</code> — wewnętrzny typ zapisany w <code>preData.type</code>, np. <code>"weapon"</code>.<br>
+    <code>args.rollType</code> — publiczny kontekst rzutu broni: <code>"melee"</code> albo <code>"ranged"</code>.<br>
+    <code>args.isUnarmed</code> — <code>true</code> tylko dla kanonicznych Pięści; pozostaje dostępne po odtworzeniu testu z ChatMessage.<br>
     <code>args.test.result.isMelee</code> lub <code>args.test.context.isMelee</code> — informacja o walce wręcz.<br>
     <code>args.test.attributeKey</code> i <code>args.test.skillKey</code> — klucze użytego współczynnika i umiejętności.
   </div>
@@ -1052,6 +1071,9 @@ args.reputation.<span class="fn">modifyCost</span>(-<span class="num">10</span>)
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.test.actor</td><td>Actor</td><td>Rzucający aktor</td></tr>
     <tr><td>args.test.item</td><td>Item | null</td><td>Item powiązany z testem; w <code>WeaponTest</code> jest to używana broń.</td></tr>
+    <tr><td>args.rollType</td><td>string</td><td>Publiczny rodzaj rzutu. Dla Pięści wartość nadal wynosi <code>"melee"</code>.</td></tr>
+    <tr><td>args.isUnarmed</td><td>boolean</td><td><code>true</code> dla Pięści, <code>false</code> dla zwykłej broni melee i dystansowej.</td></tr>
+    <tr><td>args.test.context.isUnarmed</td><td>boolean | undefined</td><td>Ta sama flaga zapisana w serializowanym kontekście testu.</td></tr>
     <tr><td>args.test.rollClass</td><td>string</td><td>Nazwa klasy używana także przy serializacji i odtwarzaniu testu.</td></tr>
     <tr><td>args.test.attributeKey</td><td>string | null</td><td>Klucz współczynnika; jego wartość znajduje się w <code>args.test.preData.stat</code>.</td></tr>
     <tr><td>args.test.skillKey</td><td>string | null</td><td>Klucz umiejętności; jej wartość znajduje się w <code>args.test.preData.skill</code>.</td></tr>
@@ -1072,6 +1094,15 @@ args.reputation.<span class="fn">modifyCost</span>(-<span class="num">10</span>)
     <tr><td>args.test.context.meleeAction</td><td>string | undefined</td><td><strong>Tylko przy rzucie melee:</strong> <code>"attack"</code> lub <code>"defense"</code></td></tr>
     <tr><td>args.test.context.options</td><td>object</td><td>Opcje rzutu — tu odczytuj flagi ustawione przez submission script w dialogu</td></tr>
   </tbody></table>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">preRollWeaponTest / rollWeaponTest</span> Reakcja tylko na Pięści</div>
+    <pre><code><span class="cmt">// Działa przed rzutem i po rzucie, również po odtworzeniu testu z karty czatu.</span>
+<span class="kw">if</span> (!args.isUnarmed) <span class="kw">return</span>;
+
+<span class="cmt">// Alternatywnie helper sam pobierze broń z aktualnego testu:</span>
+<span class="kw">if</span> (!<span class="kw">this</span>.<span class="fn">isUnarmedWeapon</span>()) <span class="kw">return</span>;</code></pre>
+  </div>
 
   <div class="example-block">
     <div class="example-header"><span class="trigger-badge">preRollTest</span> Pasywna kara +20% do WSZYSTKICH rzutów (zmęczenie, Flash)</div>

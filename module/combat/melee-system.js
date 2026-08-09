@@ -2532,6 +2532,32 @@ export async function startMeleeSession({
       return existing;
     }
 
+    // A participant may have only one unanswered melee invitation. Starting a
+    // fresh weapon roll replaces stale waiting cards instead of accumulating
+    // parallel pending sessions on either actor sheet.
+    const participantIds = new Set([
+      attacker?.actorUuid, attacker?.tokenUuid,
+      defender?.actorUuid, defender?.tokenUuid
+    ].filter(Boolean));
+    const stalePendings = MeleeSessionStore.list(game.combat).filter(candidate =>
+      candidate.status === "active"
+      && candidate.phase === "awaitingDefenderRoll"
+      && Object.values(candidate.participants ?? {}).some(participant =>
+        participantIds.has(participant.actorUuid) || participantIds.has(participant.tokenUuid)
+      )
+    );
+    for (const stale of stalePendings) {
+      await MeleeCommandService.dispatch({
+        type: "endSession",
+        sessionId: stale.id,
+        messageId: stale.messageId,
+        expectedRevision: stale.revision,
+        commandId: `${startCommandId}:replace-pending:${stale.id}`,
+        userId: game.user.id,
+        payload: { reason: "cancelled" }
+      });
+    }
+
     const session = createMeleeSession({
       id, attacker, defender, initiativeOwnerId,
       combatId: game.combat?.id ?? null,

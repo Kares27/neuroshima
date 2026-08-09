@@ -8770,10 +8770,10 @@ li.chat-message.message.flexcol > .message-content {
     align-items: center;
 }
 
-/* Item category row grid: Name/Label | Equippable | Buy | Sell */
+/* Item category row grid: Name/Label | Equippable | Buy | Sell | Delete */
 .neuroshima.currency-gear-config .cgc-geartype-cols {
     display: grid;
-    grid-template-columns: 2.3fr 0.8fr 1fr 1fr;
+    grid-template-columns: 2.3fr 0.8fr 1fr 1fr 28px;
     gap: 4px;
     align-items: center;
 }

@@ -3481,7 +3481,9 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 .neuroshima.sheet.actor .melee-pending-defender-card .pending-card-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
+    position: relative;
+    min-height: 32px;
     padding: 6px 10px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
@@ -3503,6 +3505,10 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: #e74c3c;
+    justify-content: center;
+    width: 100%;
+    padding: 0 24px;
+    text-align: center;
 }
 
 .neuroshima.sheet.actor .melee-pending-defender-card .pending-header-main {
@@ -3530,6 +3536,10 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     cursor: pointer;
     transition: all 0.15s;
     flex-shrink: 0;
+    position: absolute;
+    right: 7px;
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 .neuroshima.sheet.actor .melee-pending-attacker-card .pending-dismiss-btn:hover,
@@ -3542,6 +3552,48 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 .neuroshima.sheet.actor .melee-pending-defender-card .pending-card-content {
     display: block;
     padding: 8px 10px;
+}
+
+.neuroshima.sheet.actor .pending-versus {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 14px;
+    padding: 4px 10px;
+}
+
+.neuroshima.sheet.actor .pending-combatant {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+    gap: 5px;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.78em;
+    text-align: center;
+}
+
+.neuroshima.sheet.actor .pending-combatant img {
+    width: 54px;
+    height: 54px;
+    border: 2px solid rgba(255, 255, 255, 0.28);
+    border-radius: 50%;
+    object-fit: cover;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.neuroshima.sheet.actor .pending-combatant span {
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.neuroshima.sheet.actor .pending-vs {
+    color: #f39c12;
+    font-size: 1.05em;
+    font-weight: bold;
+    text-shadow: 0 0 7px rgba(243, 156, 18, 0.4);
 }
 
 .neuroshima.sheet.actor .melee-pending-attacker-card .attacker-row {

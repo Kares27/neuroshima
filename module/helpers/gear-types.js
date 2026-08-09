@@ -20,10 +20,33 @@ export const GEAR_TYPE_KEYS = Object.freeze([
 
 const GEAR_TYPE_KEY_SET = new Set(GEAR_TYPE_KEYS);
 
+function isKnownGearType(key) {
+  if (GEAR_TYPE_KEY_SET.has(key)
+    || Object.prototype.hasOwnProperty.call(globalThis.game?.neuroshima?.config?.gearTypes ?? {}, key)) return true;
+  try {
+    const custom = JSON.parse(globalThis.game?.settings?.get?.("neuroshima", "customGearTypes") || "[]");
+    return Array.isArray(custom) && custom.includes(key);
+  } catch (_error) {
+    return false;
+  }
+}
+
+/** Apply the exact, case-sensitive custom category labels to the runtime map. */
+export function applyCustomGearTypes(config, entries = []) {
+  if (!config?.gearTypes) return;
+  for (const key of Object.keys(config.gearTypes)) {
+    if (!GEAR_TYPE_KEY_SET.has(key) && key === config.gearTypes[key]) delete config.gearTypes[key];
+  }
+  for (const entry of Array.isArray(entries) ? entries : []) {
+    const key = String(entry ?? "").trim();
+    if (key && !GEAR_TYPE_KEY_SET.has(key)) config.gearTypes[key] = key;
+  }
+}
+
 /** Normalize missing, legacy, and custom categories to the canonical fallback. */
 export function normalizeGearType(gearType) {
   const value = String(gearType ?? "").trim();
-  return GEAR_TYPE_KEY_SET.has(value) ? value : "misc";
+  return isKnownGearType(value) ? value : "misc";
 }
 
 /**
@@ -47,7 +70,7 @@ export function parseEquippableGearTypes(raw) {
 
   const result = { ...DEFAULT_EQUIPPABLE_GEAR_TYPES };
   for (const [key, value] of Object.entries(saved)) {
-    if (GEAR_TYPE_KEY_SET.has(key)) result[key] = value === true;
+    if (isKnownGearType(key)) result[key] = value === true;
   }
   return result;
 }

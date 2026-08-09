@@ -572,12 +572,22 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
             return Object.values(session.participants ?? {}).some(participant =>
               participant.actorUuid === actor.uuid || participant.tokenUuid === actor.token?.uuid
             );
-          }).map(session => ({
+          }).sort((left, right) => Number(right.updatedAt ?? right.createdAt ?? 0) - Number(left.updatedAt ?? left.createdAt ?? 0))
+          .slice(0, 1).map(session => {
+            const matchesAttacker = session.participants.attacker.actorUuid === actor.uuid ||
+              session.participants.attacker.tokenUuid === actor.token?.uuid;
+            const perspective = matchesAttacker ? session.participants.attacker : session.participants.defender;
+            const opponent = matchesAttacker ? session.participants.defender : session.participants.attacker;
+            return {
             id: session.id,
             sessionId: session.id,
             isMeleeSession: true,
             attackerName: session.participants.attacker.name,
             defenderName: session.participants.defender.name,
+            perspectiveName: perspective.name,
+            perspectiveImg: perspective.img,
+            opponentName: opponent.name,
+            opponentImg: opponent.img,
             segment: Number(session.exchange?.currentSegment ?? 0) + 1,
             initiativeName: Object.values(session.participants).find(participant =>
               participant.actorUuid === session.initiative.ownerId || participant.tokenUuid === session.initiative.ownerId
@@ -589,11 +599,11 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
                 : session.phase === "declaration"
                   ? "Oczekuje na deklarację"
                   : "Rozstrzyganie",
-            matchesAttacker: session.participants.attacker.actorUuid === actor.uuid ||
-              session.participants.attacker.tokenUuid === actor.token?.uuid,
+            matchesAttacker,
             matchesDefender: session.participants.defender.actorUuid === actor.uuid ||
               session.participants.defender.tokenUuid === actor.token?.uuid
-          }));
+          };
+          });
         }
         // Primary: read from combat flag
         // Also cross-check the chat message status: if the message is already "resolved"
@@ -659,7 +669,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
             });
           }
         }
-        return fromCombat;
+        return fromCombat.slice(-1);
       })()
     };
 

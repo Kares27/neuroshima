@@ -1140,12 +1140,22 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       ? game.neuroshima.melee.list().filter(session => session.status === "active" &&
         Object.values(session.participants ?? {}).some(participant =>
           participant.actorUuid === actor.uuid || participant.tokenUuid === actor.token?.uuid
-        )).map(session => ({
+        )).sort((left, right) => Number(right.updatedAt ?? right.createdAt ?? 0) - Number(left.updatedAt ?? left.createdAt ?? 0))
+        .slice(0, 1).map(session => {
+          const matchesAttacker = session.participants.attacker.actorUuid === actor.uuid ||
+            session.participants.attacker.tokenUuid === actor.token?.uuid;
+          const perspective = matchesAttacker ? session.participants.attacker : session.participants.defender;
+          const opponent = matchesAttacker ? session.participants.defender : session.participants.attacker;
+          return {
           id: session.id,
           sessionId: session.id,
           isMeleeSession: true,
           attackerName: session.participants.attacker.name,
           defenderName: session.participants.defender.name,
+          perspectiveName: perspective.name,
+          perspectiveImg: perspective.img,
+          opponentName: opponent.name,
+          opponentImg: opponent.img,
           segment: Number(session.exchange?.currentSegment ?? 0) + 1,
           initiativeName: Object.values(session.participants).find(participant =>
             participant.actorUuid === session.initiative.ownerId || participant.tokenUuid === session.initiative.ownerId
@@ -1153,11 +1163,11 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
           waitingText: session.phase === "awaitingDefenderRoll"
             ? `Oczekuje na obronę: ${session.participants.defender.name}`
             : session.phase === "response" ? "Oczekuje na odpowiedź" : "Oczekuje na deklarację",
-          matchesAttacker: session.participants.attacker.actorUuid === actor.uuid ||
-            session.participants.attacker.tokenUuid === actor.token?.uuid,
+          matchesAttacker,
           matchesDefender: session.participants.defender.actorUuid === actor.uuid ||
             session.participants.defender.tokenUuid === actor.token?.uuid
-        }))
+        };
+        })
       : Object.values(game.combat?.getFlag("neuroshima", "meleePendings") || {})
       .filter(p => {
         if (!p.active) return false;
@@ -1211,7 +1221,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       movement2:          (system.movement ?? 0) * 2,
       movement3:          (system.movement ?? 0) * 3,
       wounds:             items.filter(i => i.type === "wound"),
-      meleePendings:      meleePendingsFromCombat
+      meleePendings:      meleePendingsFromCombat.slice(-1)
     };
     context.effectiveRadiationResistance = getEffectiveRadiationResistance(actor);
 

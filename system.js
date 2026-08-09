@@ -12,6 +12,7 @@ import { NeuroshimaCreatureSheet } from "./module/sheets/creature-sheet.js";
 import { NeuroshimaVehicleSheet } from "./module/sheets/vehicle-sheet.js";
 import { NeuroshimaHomeBaseSheet } from "./module/sheets/home-base-sheet.js";
 import {
+    applyCustomGearTypes,
     DEFAULT_EQUIPPABLE_GEAR_TYPES,
     isGearTypeEquippable,
     normalizeGearType
@@ -1300,6 +1301,13 @@ Hooks.once("ready", async () => {
             });
         }
     }
+});
+
+Hooks.once("ready", () => {
+    try {
+        const custom = JSON.parse(game.settings.get("neuroshima", "customGearTypes") || "[]");
+        applyCustomGearTypes(game.neuroshima.config, custom);
+    } catch(e) {}
 });
 
 Hooks.once("ready", () => {
