@@ -517,6 +517,15 @@
                 "Saved": "Ustawienia walki zostały zapisane.",
                 "VisibilityTitle": "Uprawnienia i Widoczność"
             },
+            "UnarmedDamage": {
+                "Title": "Obrażenia Pięści",
+                "BuildTo": "Budowa do",
+                "Success1": "1 sukces",
+                "Success2": "2 sukcesy",
+                "Success3": "3 sukcesy",
+                "Add": "Dodaj próg",
+                "Reset": "Przywróć domyślne"
+            },
             "DistanceConfig": {
                 "Title": "Ustawienia Odległości",
                 "Label": "Skonfiguruj Odległości",
@@ -1042,7 +1051,6 @@
                 "flee": "Ucieczka! (cios w plecy)",
                 "exit": "Wyjście z walki!",
                 "blocked": "Wyjście zablokowane",
-                "seizeInit": "Przejęcie inicjatywy",
                 "interrupted": "Akcja przerwana!",
                 "nonCombat": "Akcja udana",
                 "spent": "–"
@@ -1061,7 +1069,6 @@
             "DuelFlee": "Ucieknij (cios w plecy)",
             "DuelAllowExit": "Pozwól wyjść",
             "DuelBlockExit": "Zablokuj wyjście",
-            "DuelSeizeInit": "Przejmij inicjatywę",
             "DuelInterrupt": "Przerwij akcję",
             "DuelOwnerAttacks": "atakuje",
             "DuelOwnerExits": "wychodzi z walki",
@@ -1075,7 +1082,6 @@
             "DuelHintFlee": "automatyczny cios w plecy",
             "DuelHintBlockExit": "1 kość, aby zablokować",
             "DuelHintAllowExit": "pozwól mu opuścić walkę",
-            "DuelHintSeizeInit": "tyle kości ile wydał inicjator",
             "DuelHintInterrupt": "co najmniej 1 kość",
             "RollGroupNPCInit": "Rzuć inicjatywę dla BN",
             "SetInitiativeOwner": "Ustaw jako właściciela inicjatywy (kliknij ponownie, aby cofnąć)",

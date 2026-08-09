@@ -70,6 +70,36 @@
             </div>
             <p class="notes">{{localize "NEUROSHIMA.Settings.MeleeBonusMode.Hint"}}</p>
         </div>
+
+        <div class="unarmed-damage-config">
+            <h4>{{localize "NEUROSHIMA.Settings.UnarmedDamage.Title"}}</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>{{localize "NEUROSHIMA.Settings.UnarmedDamage.BuildTo"}}</th>
+                        <th>{{localize "NEUROSHIMA.Settings.UnarmedDamage.Success1"}}</th>
+                        <th>{{localize "NEUROSHIMA.Settings.UnarmedDamage.Success2"}}</th>
+                        <th>{{localize "NEUROSHIMA.Settings.UnarmedDamage.Success3"}}</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each unarmedDamageTable}}
+                    <tr data-unarmed-row="{{index}}">
+                        <td><input type="number" name="unarmedDamageTable.{{index}}.maxBuild" value="{{maxBuildValue}}" placeholder="∞"></td>
+                        <td><select name="unarmedDamageTable.{{index}}.damage1">{{#each damageChoices}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{value}}</option>{{/each}}</select></td>
+                        <td><select name="unarmedDamageTable.{{index}}.damage2">{{#each damage2Choices}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{value}}</option>{{/each}}</select></td>
+                        <td><select name="unarmedDamageTable.{{index}}.damage3">{{#each damage3Choices}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{value}}</option>{{/each}}</select></td>
+                        <td><button type="button" data-action="removeUnarmedThreshold" data-tooltip="{{localize 'NEUROSHIMA.Actions.Delete'}}"><i class="fas fa-trash"></i></button></td>
+                    </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+            <div class="unarmed-damage-actions">
+                <button type="button" data-action="addUnarmedThreshold"><i class="fas fa-plus"></i> {{localize "NEUROSHIMA.Settings.UnarmedDamage.Add"}}</button>
+                <button type="button" data-action="resetUnarmedThresholds"><i class="fas fa-rotate-left"></i> {{localize "NEUROSHIMA.Settings.UnarmedDamage.Reset"}}</button>
+            </div>
+        </div>
     </div>
 
     <div class="config-section">

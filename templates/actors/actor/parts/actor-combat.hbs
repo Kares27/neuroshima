@@ -83,10 +83,11 @@
             <div class="weapons-group all-weapons">
                 <div class="section-header melee-header">
                     <div class="header-left-controls">
-                        <i class="fas fa-fist-raised"></i>
-                        <input type="number" name="system.combat.meleeInitiative" value="{{combat.meleeInitiative}}" class="melee-initiative-input" title="{{localize 'NEUROSHIMA.MeleeOpposed.Initiative'}}" />
-                        <a class="roll-melee-initiative" data-action="rollMeleeInitiative" title="{{localize 'NEUROSHIMA.MeleeOpposed.RollInitiative'}}">
-                            <i class="fas fa-dice"></i>
+                        <a class="roll-unarmed-melee" data-action="rollUnarmedMelee" data-tooltip-html="{{combat.unarmed.tooltip}}" data-tooltip-direction="UP">
+                            <i class="fas fa-fist-raised"></i>
+                        </a>
+                        <a class="roll-melee-initiative" data-action="rollMeleeInitiative" data-tooltip="{{localize 'NEUROSHIMA.MeleeOpposed.RollInitiative'}}" data-tooltip-direction="UP">
+                            <i class="fas fa-bolt"></i>
                         </a>
                     </div>
                     <span class="header-label">{{localize "NEUROSHIMA.Items.Fields.Weapons"}}</span>

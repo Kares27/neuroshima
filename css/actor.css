@@ -784,30 +784,36 @@
 .neuroshima.sheet.actor .combat-section .section-header .header-left-controls {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 10px;
 }
 
-.neuroshima.sheet.actor .combat-section .section-header .melee-initiative-input {
-    width: 45px;
-    height: 22px;
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 3px;
-    text-align: center;
-    font-weight: bold;
-    font-size: 1em;
-    margin: 0 5px;
-}
-
+.neuroshima.sheet.actor .combat-section .section-header .roll-unarmed-melee,
 .neuroshima.sheet.actor .combat-section .section-header .roll-melee-initiative {
     cursor: pointer;
     color: rgba(255, 255, 255, 0.8);
-    transition: color 0.2s;
+    display: inline-grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.2);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+    transition: color 0.2s, border-color 0.2s, background-color 0.2s, transform 0.15s;
 }
 
+.neuroshima.sheet.actor .combat-section .section-header .roll-unarmed-melee:hover,
 .neuroshima.sheet.actor .combat-section .section-header .roll-melee-initiative:hover {
     color: white;
+    border-color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.14);
+    transform: translateY(-1px);
+}
+
+.neuroshima.sheet.actor .combat-section .section-header .roll-unarmed-melee:active,
+.neuroshima.sheet.actor .combat-section .section-header .roll-melee-initiative:active {
+    transform: translateY(0);
 }
 
 .neuroshima.sheet.actor .combat-section .section-header .header-label {

@@ -8,6 +8,7 @@ import {
   meleeParticipantFromActor,
   meleeSessionDuelState
 } from "../combat/melee-system.js";
+import { createUnarmedWeapon } from "../combat/unarmed.js";
 
 
 export class MeleeSessionPresenter {
@@ -139,7 +140,9 @@ export class MeleeSessionPresenter {
       const participant = session.participants[side];
       const doc = await fromUuid(participant.tokenUuid || participant.actorUuid);
       const actor = doc?.actor ?? doc;
-      const weapon = participant.weaponUuid ? await fromUuid(participant.weaponUuid) : null;
+      const weapon = participant.weaponUuid
+        ? await fromUuid(participant.weaponUuid)
+        : participant.isUnarmed ? createUnarmedWeapon(actor) : null;
       activities[side] = actor ? MeleeActionCatalog.collect(actor, { item: weapon }).map(activity => ({
         ...activity,
         sourceItemUuid: activity.source.itemUuid,
@@ -250,7 +253,7 @@ export class MeleeSessionPresenter {
       const actingTimings = session.phase === "response"
         ? ["either", "response", "modifyDeclaration"]
         : ["either", "declaration", "modifyDeclaration", "followUp", "supplement"];
-      const configuredEntries = (session.metadata.activitySnapshots?.[actingSide] ?? [])
+      const configuredEntries = (session.phase === "response" ? [] : (session.metadata.activitySnapshots?.[actingSide] ?? []))
         .filter(snapshot => ["either", actingRole].includes(snapshot.definition.activation.role) &&
           actingTimings.includes(snapshot.definition.activation.timing))
         .filter(snapshot => !session.metadata.beastActivityId ||
@@ -281,12 +284,7 @@ export class MeleeSessionPresenter {
       }));
       const configuredActivities = configuredEntries.filter(entry => entry.kind !== "modifier");
       const configuredModifiers = configuredEntries.filter(entry => entry.kind === "modifier");
-      if (session.phase === "response") {
-        context.responderExtraActions = configuredActivities;
-        context.responderActivityModifiers = configuredModifiers;
-      } else {
-        context.ownerActivityModifiers = configuredModifiers;
-      }
+      if (session.phase !== "response") context.ownerActivityModifiers = configuredModifiers;
       if (session.phase !== "response" && configuredActivities.length) {
         const byId = new Map([...(context.ownerExtraActions ?? []), ...configuredActivities]
           .map(activity => [activity.runtimeId || `${activity.sourceEffectUuid || activity.sourceItemUuid || "legacy"}::${activity.id}`, activity]));
@@ -369,8 +367,10 @@ export class MeleeSessionPresenter {
     const actor = actorDoc?.actor ?? actorDoc;
     if (!actor) throw new Error("Nie udało się odnaleźć Aktora dla rzutu melee.");
 
-    let weapon = weaponId ? actor.items?.get?.(weaponId) : null;
-    weapon ??= participant.weaponUuid ? await fromUuid(participant.weaponUuid) : null;
+    const explicitlyUnarmed = weaponId === "";
+    let weapon = explicitlyUnarmed ? createUnarmedWeapon(actor) : weaponId ? actor.items?.get?.(weaponId) : null;
+    weapon ??= participant.isUnarmed ? createUnarmedWeapon(actor)
+      : participant.weaponUuid ? await fromUuid(participant.weaponUuid) : null;
     if (["beast-action", "beast-segment"].includes(weapon?.type)) {
       const beastItem = weapon;
       weapon = {
@@ -383,14 +383,7 @@ export class MeleeSessionPresenter {
         }
       };
     }
-    weapon ??= {
-      id: null, name: "Walka bez broni", img: actor.img, type: "weapon",
-      system: {
-        weaponType: "melee", attribute: "dexterity", skill: "melee",
-        attackBonus: 0, defenseBonus: 0, piercing: 0,
-        damageMelee1: "D", damageMelee2: "D", damageMelee3: "D"
-      }
-    };
+    weapon ??= createUnarmedWeapon(actor);
 
     const { NeuroshimaWeaponRollDialog } = await import("./dialogs/weapon-roll-dialog.js");
     const gradDefenseDice = session.variant === "gradCiosow" && side === "defender"
@@ -403,7 +396,7 @@ export class MeleeSessionPresenter {
       meleeAction: side === "attacker" ? "attack" : "defense",
       targets: [],
       isPoolRoll: true,
-      fixedMeleeDiceCount: gradDefenseDice ?? (session.variant === "standard" ? 3 : null),
+      fixedMeleeDiceCount: null,
       gradCiosDefense: gradDefenseDice != null,
       onRoll: async (result, test) => {
         const dice = this._diceFromResult(result);
@@ -417,6 +410,7 @@ export class MeleeSessionPresenter {
               maneuver: result.maneuver ?? null,
               testMessageId: test?.message?.id ?? null,
               weaponUuid: weapon?.uuid ?? null,
+              isUnarmed: weapon?.isUnarmed === true,
               defenderDamage1: weapon?.system?.damageMelee1 ?? "D",
               defenderDamage2: weapon?.system?.damageMelee2 ?? "L",
               defenderDamage3: weapon?.system?.damageMelee3 ?? "K"
@@ -475,7 +469,7 @@ export class MeleeSessionPresenter {
         return;
       }
       try {
-        await this.openRoll(latest, "defender", button.dataset.weaponId || null);
+        await this.openRoll(latest, "defender", button.dataset.weaponId ?? null);
       } catch (error) {
         ui.notifications.error(error.message);
       }

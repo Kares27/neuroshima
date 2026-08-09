@@ -22,6 +22,7 @@ import { MeleeActionRegistry } from "./melee-action-registry.js";
 import { MeleeActionRunner }   from "./melee-action-runner.js";
 import { DuelContext, DuelSegmentContext, DuelLifecycle, MeleeAction, DuelActionPipeline, DuelDamageEngine, DuelDeclarationEngine, DuelSegmentEngine, DuelBeastActionEngine } from "./combat-api.js";
 import { isMeleeSessionLink, isMeleeSessionMarker } from "./melee-system.js";
+import { createUnarmedWeapon } from "./unarmed.js";
 
 /**
  * Custom Token Ruler for Neuroshima 1.5.
@@ -1370,36 +1371,16 @@ export class MeleeOpposedChat {
     }
 
     // Resolve the weapon: prefer synthetic (beast action), then clicked, then equipped, then any melee
-    let defWeapon = syntheticWeapon ?? (weaponId ? defenderActor.items.get(weaponId) : null);
-    if (!defWeapon) {
+    const explicitlyUnarmed = weaponId === "";
+    let defWeapon = syntheticWeapon
+      ?? (explicitlyUnarmed ? createUnarmedWeapon(defenderActor) : weaponId ? defenderActor.items.get(weaponId) : null);
+    if (!defWeapon && !explicitlyUnarmed) {
       defWeapon = defenderActor.items.find(
         i => i.type === "weapon" && i.system.weaponType === "melee" && i.system.equipped
       ) ?? defenderActor.items.find(i => i.type === "weapon" && i.system.weaponType === "melee");
     }
 
-    // Unarmed fallback — synthetic brawl weapon, opens dialog normally
-    if (!defWeapon) {
-      defWeapon = {
-        id: null,
-        name: game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.Unarmed"),
-        img: "systems/neuroshima/assets/img/weapon-melee.svg",
-        type: "weapon",
-        system: {
-          weaponType: "melee",
-          attribute: "dexterity",
-          skill: "brawl",
-          attackBonus: 0,
-          defenseBonus: 0,
-          damageMelee1: "D",
-          damageMelee2: "L",
-          damageMelee3: "C",
-          requiredBuild: 0,
-          piercing: 0,
-          magazine: null,
-          jamming: 20
-        }
-      };
-    }
+    if (!defWeapon) defWeapon = createUnarmedWeapon(defenderActor);
 
     const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
     const lastRoll = defenderActor.system.lastWeaponRoll ?? {};
@@ -2631,6 +2612,17 @@ export class MeleeOpposedChat {
     const ownerPool        = isOwnerAttacker ? "attacker" : "defender";
     const responderPool    = isOwnerAttacker ? "defender" : "attacker";
     const committedIndices = committedOwnerIndices || [];
+    const ownerUsedDice = new Set(isOwnerAttacker ? (usedAttackDice || []) : (usedDefenseDice || []));
+    const responderUsedDice = new Set(isOwnerAttacker ? (usedDefenseDice || []) : (usedAttackDice || []));
+    const ownerDicePool = isOwnerAttacker ? (attackDice || []) : (defenseDice || []);
+    const responderDicePool = isOwnerAttacker ? (defenseDice || []) : (attackDice || []);
+    const remainingSegments = Math.max(0, (segments || []).length - Number(currentSegment || 0));
+    const ownerMaxDice = Math.min(
+      3,
+      remainingSegments,
+      ownerDicePool.filter((_die, index) => !ownerUsedDice.has(index)).length,
+      responderDicePool.filter((_die, index) => !responderUsedDice.has(index)).length
+    );
 
     const gradCiosVisibleAttackSet = (isGradCios && ownerPool === "attacker")
       ? isOwnerTurn
@@ -2784,7 +2776,13 @@ export class MeleeOpposedChat {
     if (ownerActor && !ownerIsCreature && status === "picking" && isOwnerTurn) {
       const _pipeline = new DuelActionPipeline();
       await _pipeline.collect(DuelContext.fromFlag(state), null);
-      ownerExtraActions = _pipeline.descriptors.length ? _pipeline.descriptors : null;
+      const availableDescriptors = _pipeline.descriptors
+        .map(descriptor => ({
+          ...descriptor,
+          maxDice: Math.min(Number(descriptor.maxDice ?? 3), ownerMaxDice)
+        }))
+        .filter(descriptor => Number(descriptor.minDice ?? 1) <= descriptor.maxDice);
+      ownerExtraActions = availableDescriptors.length ? availableDescriptors : null;
       if (Object.keys(_pipeline.onHitMap).length > 0) {
         state.trickOnHitScripts = { ...(state.trickOnHitScripts ?? {}), ..._pipeline.onHitMap };
       }
@@ -2881,6 +2879,8 @@ export class MeleeOpposedChat {
       isOwnerAttacker, isOwnerTurn, isResponderTurn,
       ownerPool, responderPool, ownerActorUuid, responderActorUuid,
       committedOwnerCount: committedIndices.length,
+      ownerMaxDice,
+      selectionLimit: isResponderTurn ? responderExactDice : ownerMaxDice,
       damageTiers, confirmOwnerLabel, canSwapInit, isGradCios: isGradCios || false,
       ownerDeclaredAttack, ownerDeclaredExit, ownerDeclaredNonCombat, ownerDeclaredTrick, ownerDeclaredAttackOrTrick,
       responderConfirmActionType, responderConfirmLabel, responderExactDice,
@@ -3027,6 +3027,9 @@ export class MeleeOpposedChat {
       chip.addEventListener("click", e => {
         e.preventDefault();
         e.stopPropagation();
+        const selectionLimit = Number(root.dataset.selectionLimit ?? 3);
+        const selectedCount = root.querySelectorAll("button.die-chip-mvc.mvc-die-selected").length;
+        if (!chip.classList.contains("mvc-die-selected") && selectedCount >= selectionLimit) return;
         chip.classList.toggle("mvc-die-selected");
         updateActionButtons();
         updateBeastQueue();
@@ -4584,20 +4587,7 @@ export class MeleeOpposedChat {
       i => i.type === "weapon" && i.system.weaponType === "melee" && i.system.equipped
     ) ?? defenderActor.items.find(i => i.type === "weapon" && i.system.weaponType === "melee");
 
-    if (!defWeapon) {
-      defWeapon = {
-        id: null,
-        name: game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.Unarmed"),
-        img:  "systems/neuroshima/assets/img/weapon-melee.svg",
-        type: "weapon",
-        system: {
-          weaponType: "melee", attribute: "dexterity", skill: "brawl",
-          attackBonus: 0, defenseBonus: 0,
-          damageMelee1: "D", damageMelee2: "L", damageMelee3: "C",
-          requiredBuild: 0, piercing: 0, magazine: null, jamming: 20
-        }
-      };
-    }
+    if (!defWeapon) defWeapon = createUnarmedWeapon(defenderActor);
 
     const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
     const lastRoll = defenderActor.system.lastWeaponRoll ?? {};

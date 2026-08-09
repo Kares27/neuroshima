@@ -514,6 +514,15 @@
                 "Saved": "Combat settings saved.",
                 "VisibilityTitle": "Permissions & Visibility"
             },
+            "UnarmedDamage": {
+                "Title": "Unarmed Damage",
+                "BuildTo": "Build up to",
+                "Success1": "1 success",
+                "Success2": "2 successes",
+                "Success3": "3 successes",
+                "Add": "Add threshold",
+                "Reset": "Restore defaults"
+            },
             "DistanceConfig": {
                 "Title": "Distance Settings",
                 "Label": "Configure Distances",
@@ -918,7 +927,6 @@
                 "flee": "Flee! (back hit)",
                 "exit": "Exit combat!",
                 "blocked": "Exit blocked",
-                "seizeInit": "Initiative seized",
                 "interrupted": "Action interrupted!",
                 "nonCombat": "Action succeeded",
                 "spent": "–"
@@ -937,7 +945,6 @@
             "DuelFlee": "Flee (back hit)",
             "DuelAllowExit": "Allow exit",
             "DuelBlockExit": "Block exit",
-            "DuelSeizeInit": "Seize initiative",
             "DuelInterrupt": "Interrupt action",
             "DuelOwnerAttacks": "attacks",
             "DuelOwnerExits": "exits combat",
@@ -951,7 +958,6 @@
             "DuelHintFlee": "automatic back hit",
             "DuelHintBlockExit": "1 die to block",
             "DuelHintAllowExit": "let them leave",
-            "DuelHintSeizeInit": "match owner's dice count",
             "DuelHintInterrupt": "at least 1 die",
             "RollGroupNPCInit": "Roll NPC Initiative",
             "SetInitiativeOwner": "Set as initiative owner (click again to clear)",

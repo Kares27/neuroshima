@@ -72,6 +72,30 @@ export function renderTooltipSections(sections = []) {
   return `<div class="ns-roll-tooltip">${renderedSections}</div>`;
 }
 
+/** Build the shared d1-d3 result section used by roll tooltips. */
+export function buildDiceTooltipSection(result = {}) {
+  const rawResults = Array.isArray(result.rawResults) ? result.rawResults : [];
+  const dice = Array.isArray(result.modifiedResults) && result.modifiedResults.length
+    ? result.modifiedResults
+    : rawResults.map((value, index) => ({ original: value, modified: value, index }));
+  if (!dice.length) return null;
+
+  return {
+    title: "NEUROSHIMA.Tooltip.Dice",
+    rows: dice.slice(0, 3).map((die, index) => {
+      const original = Number(die.original ?? rawResults[index] ?? die.modified ?? 0);
+      const modified = Number(die.modified ?? original);
+      return {
+        label: globalThis.game?.i18n?.format?.("NEUROSHIMA.Tooltip.Die", { index: index + 1 })
+          ?? `d${index + 1}`,
+        value: modified !== original ? `${original} → ${modified}` : original,
+        state: die.ignored ? "ignored" : die.isSuccess === true ? "success"
+          : die.isSuccess === false ? "failure" : null
+      };
+    })
+  };
+}
+
 /**
  * Render a value breakdown with named effect/item/script sources.
  */

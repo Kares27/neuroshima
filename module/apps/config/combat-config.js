@@ -1,3 +1,9 @@
+import {
+    DEFAULT_UNARMED_DAMAGE_TABLE,
+    UNARMED_DAMAGE_TYPES,
+    normalizeUnarmedDamageTable
+} from "../../combat/unarmed.js";
+
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
 /**
@@ -14,8 +20,8 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
             resizable: true
         },
         position: {
-            width: 450,
-            height: 560
+            width: 620,
+            height: 700
         },
         form: {
             handler: async function(event, form, formData) {
@@ -23,6 +29,11 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
             },
             submitOnChange: false,
             closeOnSubmit: true
+        },
+        actions: {
+            addUnarmedThreshold: CombatConfig.prototype._onAddUnarmedThreshold,
+            removeUnarmedThreshold: CombatConfig.prototype._onRemoveUnarmedThreshold,
+            resetUnarmedThresholds: CombatConfig.prototype._onResetUnarmedThresholds
         }
     };
 
@@ -44,8 +55,21 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
             4: game.i18n.localize("NEUROSHIMA.Settings.Roles.Gamemaster")
         };
 
-        return {
-            config: {
+        const normalizedUnarmedDamageTable = normalizeUnarmedDamageTable(
+            this._unarmedDamageTable ?? game.settings.get("neuroshima", "unarmedDamageTable")
+        );
+        const unarmedDamageTable = (normalizedUnarmedDamageTable.length
+            ? normalizedUnarmedDamageTable
+            : DEFAULT_UNARMED_DAMAGE_TABLE).map((row, index) => ({
+            ...row,
+            index,
+            maxBuildValue: row.maxBuild ?? "",
+            damageChoices: UNARMED_DAMAGE_TYPES.map(value => ({ value, selected: value === row.damage1 })),
+            damage2Choices: UNARMED_DAMAGE_TYPES.map(value => ({ value, selected: value === row.damage2 })),
+            damage3Choices: UNARMED_DAMAGE_TYPES.map(value => ({ value, selected: value === row.damage3 }))
+        }));
+
+        const config = {
                 usePelletCountLimit: game.settings.get("neuroshima", "usePelletCountLimit"),
                 allowCombatShift: game.settings.get("neuroshima", "allowCombatShift"),
                 allowPainResistanceShift: game.settings.get("neuroshima", "allowPainResistanceShift"),
@@ -57,9 +81,65 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
                 combatActionsMinRole: game.settings.get("neuroshima", "combatActionsMinRole"),
                 unjamMinRole: game.settings.get("neuroshima", "unjamMinRole"),
                 fireCorrection: game.settings.get("neuroshima", "fireCorrection")
-            },
-            roleOptions: roleOptions
+            };
+
+        return {
+            config: { ...config, ...(this._configDraft ?? {}) },
+            roleOptions: roleOptions,
+            unarmedDamageTable
         };
+    }
+
+    _readUnarmedDamageTable() {
+        const rows = Array.from(this.element?.querySelectorAll?.("[data-unarmed-row]") ?? []).map(row => ({
+            maxBuild: row.querySelector('[name$=".maxBuild"]')?.value ?? null,
+            damage1: row.querySelector('[name$=".damage1"]')?.value,
+            damage2: row.querySelector('[name$=".damage2"]')?.value,
+            damage3: row.querySelector('[name$=".damage3"]')?.value
+        }));
+        const normalized = normalizeUnarmedDamageTable(rows);
+        return normalized.length ? normalized : DEFAULT_UNARMED_DAMAGE_TABLE.map(row => ({ ...row }));
+    }
+
+    _readConfigDraft() {
+        const value = name => this.element?.querySelector?.(`[name="${name}"]`);
+        return {
+            usePelletCountLimit: value("usePelletCountLimit")?.checked === true,
+            allowCombatShift: value("allowCombatShift")?.checked === true,
+            allowPainResistanceShift: value("allowPainResistanceShift")?.checked === true,
+            meleeBonusMode: value("meleeBonusMode")?.value,
+            meleeCombatType: value("meleeCombatType")?.value,
+            doubleSkillAction: value("doubleSkillAction")?.checked === true,
+            damageApplicationMinRole: Number(value("damageApplicationMinRole")?.value),
+            painResistanceMinRole: Number(value("painResistanceMinRole")?.value),
+            combatActionsMinRole: Number(value("combatActionsMinRole")?.value),
+            unjamMinRole: Number(value("unjamMinRole")?.value),
+            fireCorrection: value("fireCorrection")?.checked === true
+        };
+    }
+
+    _onAddUnarmedThreshold() {
+        this._configDraft = this._readConfigDraft();
+        const rows = this._readUnarmedDamageTable();
+        const finite = rows.filter(row => row.maxBuild !== null);
+        const nextMax = (finite.at(-1)?.maxBuild ?? 8) + 2;
+        rows.push({ maxBuild: nextMax, damage1: "sD", damage2: "sD", damage3: "sD" });
+        this._unarmedDamageTable = normalizeUnarmedDamageTable(rows);
+        this.render({ force: true });
+    }
+
+    _onRemoveUnarmedThreshold(_event, target) {
+        this._configDraft = this._readConfigDraft();
+        const rows = this._readUnarmedDamageTable();
+        rows.splice(Number(target.closest("[data-unarmed-row]")?.dataset.unarmedRow), 1);
+        this._unarmedDamageTable = normalizeUnarmedDamageTable(rows);
+        this.render({ force: true });
+    }
+
+    _onResetUnarmedThresholds() {
+        this._configDraft = this._readConfigDraft();
+        this._unarmedDamageTable = DEFAULT_UNARMED_DAMAGE_TABLE.map(row => ({ ...row }));
+        this.render({ force: true });
     }
 
     /**
@@ -86,7 +166,8 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
                 game.settings.set("neuroshima", "painResistanceMinRole", Number(data.painResistanceMinRole)),
                 game.settings.set("neuroshima", "combatActionsMinRole", Number(data.combatActionsMinRole)),
                 game.settings.set("neuroshima", "unjamMinRole", Number(data.unjamMinRole)),
-                game.settings.set("neuroshima", "fireCorrection", !!data.fireCorrection)
+                game.settings.set("neuroshima", "fireCorrection", !!data.fireCorrection),
+                game.settings.set("neuroshima", "unarmedDamageTable", this._readUnarmedDamageTable())
             ];
             
             await Promise.all(updates);

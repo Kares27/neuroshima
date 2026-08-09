@@ -50,6 +50,7 @@ import {
 } from "./module/helpers/tooltip-renderer.js";
 import { EncumbranceConfig } from "./module/apps/config/encumbrance-config.js";
 import { CombatConfig } from "./module/apps/config/combat-config.js";
+import { DEFAULT_UNARMED_DAMAGE_TABLE } from "./module/combat/unarmed.js";
 import { DistanceConfig, DEFAULT_DISTANCE_PENALTIES } from "./module/apps/config/distance-config.js";
 import { HealingConfig } from "./module/apps/config/healing-config.js";
 import { ConditionConfig, applyConditionsToStatusEffects, getConditions } from "./module/apps/config/condition-config.js";
@@ -813,6 +814,13 @@ Hooks.once('init', async function() {
         type: Boolean,
         default: false,
         requiresReload: false
+    });
+
+    game.settings.register("neuroshima", "unarmedDamageTable", {
+        scope: "world",
+        config: false,
+        type: Array,
+        default: DEFAULT_UNARMED_DAMAGE_TABLE.map(row => ({ ...row }))
     });
 
     game.settings.register("neuroshima", "distancePenalties", {

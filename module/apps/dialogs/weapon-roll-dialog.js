@@ -378,24 +378,6 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       });
     });
 
-    // Standard melee always starts with 3k20. Only an attacking Grad Ciosów
-    // session may choose a smaller initial pool; fixed defense pools stay fixed.
-    const gradCheckbox = html.querySelector('[name="gradCios"]');
-    const meleeDiceSlider = html.querySelector('input[type="range"][name="meleeDiceCount"]');
-    if (gradCheckbox && meleeDiceSlider && this.fixedMeleeDiceCount == null) {
-      const syncMeleeDiceControl = () => {
-        meleeDiceSlider.disabled = !gradCheckbox.checked;
-        if (!gradCheckbox.checked) {
-          meleeDiceSlider.value = "3";
-          this.userEntry.meleeDiceCount = 3;
-          const display = html.querySelector('.melee-dice-count-display');
-          if (display) display.innerText = "3";
-        }
-      };
-      gradCheckbox.addEventListener('change', syncMeleeDiceControl);
-      syncMeleeDiceControl();
-    }
-
     const maneuverSelect = html.querySelector('[name="maneuver"]');
     const tempoRow = html.querySelector('.tempo-row');
     if (maneuverSelect && tempoRow) {

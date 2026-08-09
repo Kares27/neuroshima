@@ -2,7 +2,7 @@ import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { EffectActionRuntime } from "../effects/effect-action-runtime.js";
 import { HealingTest } from "../tests.mjs";
-import { renderTooltipSections } from "../helpers/tooltip-renderer.js";
+import { buildDiceTooltipSection, renderTooltipSections } from "../helpers/tooltip-renderer.js";
 import { isMeleeSessionMarker } from "../combat/melee-system.js";
 
 /**
@@ -220,7 +220,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
    * `btn.dataset.weaponId` is the defender's item ID (empty string = unarmed).
    */
   static async onMeleeOpposedDefend(event, btn, message) {
-    const weaponId = btn.dataset.weaponId || null;
+    const weaponId = btn.dataset.weaponId ?? null;
     const { MeleeOpposedChat } = await import("../combat/combat.js");
     await MeleeOpposedChat.defendFromChat(message.id, weaponId);
   }
@@ -1575,10 +1575,13 @@ export class NeuroshimaChatMessage extends ChatMessage {
    * reduced rows cannot silently fall back to the legacy dice tooltip.
    */
   static _preparePainTooltipData(results = [], reducedDetails = []) {
-    const preparedResults = results.map(result => ({
-      ...result,
-      tooltipHtml: result.tooltipHtml || renderTooltipSections([
-        {
+    const preparedResults = results.map(result => {
+      const diceSection = buildDiceTooltipSection(result);
+      return {
+        ...result,
+        tooltipHtml: result.tooltipHtml || renderTooltipSections([
+          ...(diceSection ? [diceSection] : []),
+          {
           title: "NEUROSHIMA.Tooltip.PainResistanceSection",
           rows: [
             { label: "NEUROSHIMA.Tooltip.Wound", value: result.name ?? "" },
@@ -1611,8 +1614,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
               state: result.isPassed ? "success" : "failure"
             }
           ]
-        },
-        {
+          },
+          {
           kind: "threshold",
           rows: [{
             label: "NEUROSHIMA.Tooltip.PainPenalty",
@@ -1621,9 +1624,10 @@ export class NeuroshimaChatMessage extends ChatMessage {
             emphasis: true,
             state: Number(result.penalty ?? 0) > 0 ? "penalty" : "success"
           }]
-        }
-      ])
-    }));
+          }
+        ])
+      };
+    });
     const preparedReducedDetails = reducedDetails.map(detail => ({
       ...detail,
       tooltipHtml: detail.tooltipHtml || renderTooltipSections([

@@ -1469,6 +1469,17 @@ export class DuelDeclarationEngine {
   }) {
     if (pool !== ownerPool) return false;
 
+    const isOwnerAttacker = state.initiativeOwnerSide === "attacker";
+    const ownerDicePool = isOwnerAttacker ? state.attackDice : state.defenseDice;
+    const responderDicePool = isOwnerAttacker ? state.defenseDice : state.attackDice;
+    const responderUsed = new Set(isOwnerAttacker
+      ? (state.usedDefenseDice || [])
+      : (state.usedAttackDice || []));
+    const remainingSegments = Math.max(0, (state.segments?.length || 0) - Number(state.currentSegment || 0));
+    const responderDiceAvailable = responderDicePool.filter((_die, index) => !responderUsed.has(index)).length;
+    const declarationLimit = Math.min(3, remainingSegments, responderDiceAvailable);
+    if (diceIndices.length > declarationLimit) return false;
+
     const snapshot = foundry.utils.deepClone(state);
     delete snapshot.segmentHistory;
     delete snapshot.segmentFuture;
@@ -1476,9 +1487,7 @@ export class DuelDeclarationEngine {
     state.segmentHistory.push(snapshot);
     state.segmentFuture = [];
 
-    const isOwnerAttacker = state.initiativeOwnerSide === "attacker";
     const rawAction       = action || "attack";
-    const ownerDicePool   = isOwnerAttacker ? state.attackDice : state.defenseDice;
 
     const isTrick = rawAction.startsWith("trick:");
     let declaredAction       = rawAction;
@@ -1734,19 +1743,6 @@ export class DuelSegmentEngine {
         state.usedDefenseDice = [...(state.usedDefenseDice || []), ...ownerIndices];
       }
       outcome = "exit";
-
-    } else if (declaredAction === "nonCombat" && responderAction === "seizeInit") {
-      if (pool !== responderPool) return false;
-      if (diceIndices.length !== N) return false;
-      state.initiativeOwnerSide = isOwnerAttacker ? "defender" : "attacker";
-      if (isOwnerAttacker) {
-        state.usedAttackDice  = [...(state.usedAttackDice  || []), ...ownerIndices];
-        state.usedDefenseDice = [...(state.usedDefenseDice || []), ...diceIndices];
-      } else {
-        state.usedDefenseDice = [...(state.usedDefenseDice || []), ...ownerIndices];
-        state.usedAttackDice  = [...(state.usedAttackDice  || []), ...diceIndices];
-      }
-      outcome = "seizeInit";
 
     } else {
       if (pool !== responderPool) return false;

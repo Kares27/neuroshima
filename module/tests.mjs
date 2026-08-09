@@ -1,5 +1,5 @@
 import { NEUROSHIMA } from "./config.js";
-import { renderTooltipSections } from "./helpers/tooltip-renderer.js";
+import { buildDiceTooltipSection, renderTooltipSections } from "./helpers/tooltip-renderer.js";
 
 export const DIFFICULTY_ORDER = Object.freeze([
   "easy", "average", "problematic", "hard", "veryHard",
@@ -955,6 +955,7 @@ export class NeuroshimaTestBase {
 
   getTooltipSections() {
     const result = this.result;
+    const diceSection = buildDiceTooltipSection(result);
     const penaltyLabels = {
       base: "NEUROSHIMA.Tooltip.BaseDifficulty",
       mod: "NEUROSHIMA.Tooltip.Modifier",
@@ -1002,6 +1003,7 @@ export class NeuroshimaTestBase {
           { label: "NEUROSHIMA.Tooltip.BaseDifficulty", value: game.i18n.localize(result.baseDifficultyLabel ?? "") }
         ]
       },
+      ...(diceSection ? [diceSection] : []),
       { title: "NEUROSHIMA.Tooltip.Penalties", rows: penaltyRows },
       {
         kind: "threshold",

@@ -5440,6 +5440,45 @@ li.chat-message.message.flexcol > .message-content {
     justify-content: flex-end;
 }
 
+.neuroshima-config .unarmed-damage-config h4 {
+    margin: 10px 0 6px;
+    color: var(--ns-text-accent);
+}
+
+.neuroshima-config .unarmed-damage-config table {
+    width: 100%;
+    table-layout: fixed;
+}
+
+.neuroshima-config .unarmed-damage-config th,
+.neuroshima-config .unarmed-damage-config td {
+    padding: 3px;
+    text-align: center;
+}
+
+.neuroshima-config .unarmed-damage-config input,
+.neuroshima-config .unarmed-damage-config select {
+    width: 100%;
+}
+
+.neuroshima-config .unarmed-damage-config th:last-child,
+.neuroshima-config .unarmed-damage-config td:last-child {
+    width: 36px;
+}
+
+.neuroshima-config .unarmed-damage-config td:last-child button {
+    width: 30px;
+    margin: 0;
+    padding: 0;
+}
+
+.neuroshima-config .unarmed-damage-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+    margin-top: 8px;
+}
+
 .neuroshima-config .notes,
 .neuroshima.reputation-settings .notes,
 .neuroshima.condition-config .notes {

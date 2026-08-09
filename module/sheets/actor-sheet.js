@@ -28,6 +28,7 @@ import {
   collectSkillEffectSources,
   renderTooltipSections
 } from "../helpers/tooltip-renderer.js";
+import { createUnarmedWeapon, getUnarmedDamageProfile } from "../combat/unarmed.js";
 
 function _collectArmorBonusByEffect(actor) {
   const byLoc = {};
@@ -102,6 +103,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       toggleActive: this.prototype._onToggleActive,
       configureHP: this.prototype._onConfigureHP,
       rollWeapon: this.prototype._onRollWeapon,
+      rollUnarmedMelee: this.prototype._onRollUnarmedMelee,
       rollMeleeInitiative: this.prototype._onRollMeleeInitiative,
       respondToOpposed: this.prototype._onRespondToOpposed,
       dismissOpposed: this.prototype._onDismissOpposed,
@@ -519,6 +521,15 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     const weapons = this._prepareCombatWeapons(items);
     const unjamMinRole = game.settings.get("neuroshima", "unjamMinRole") ?? 4;
     const canUnjam = game.user.isGM || game.user.role >= unjamMinRole;
+    const unarmed = getUnarmedDamageProfile(actor);
+    const unarmedTooltip = renderTooltipSections([
+      {
+        title: "NEUROSHIMA.Tooltip.WeaponSection",
+        rows: [
+          { label: "NEUROSHIMA.Tooltip.Damage", value: `${unarmed.damage1} / ${unarmed.damage2} / ${unarmed.damage3}` }
+        ]
+      }
+    ]);
     context.combat = {
       armor: items.filter(i => i.type === "armor" && i.system.equipped),
       weapons: weapons,
@@ -534,6 +545,10 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       penaltyTooltip: penaltyTooltip,
       totalDamagePoints: system.combat.totalDamagePoints,
       meleeInitiative: system.combat.meleeInitiative || 0,
+      unarmed: {
+        ...unarmed,
+        tooltip: unarmedTooltip
+      },
       movement: system.movement ?? 2,
       movement2: (system.movement ?? 2) * 2,
       movement3: (system.movement ?? 2) * 3,
@@ -2434,6 +2449,17 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
    * Handle rolling a weapon attack.
    */
   async _onRollWeapon(event, target) {
+    const itemId = target.closest(".item")?.dataset.itemId;
+    const weapon = this.document.items.get(itemId);
+    if (!weapon) return;
+    return this._rollWeapon(weapon, event);
+  }
+
+  async _onRollUnarmedMelee(event) {
+    return this._rollWeapon(createUnarmedWeapon(this.document), event);
+  }
+
+  async _rollWeapon(weapon, event = null) {
     if (event) {
         event.preventDefault();
         event.stopPropagation();
@@ -2447,13 +2473,6 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     }
     this._isRolling = true;
 
-    const itemId = target.closest(".item")?.dataset.itemId;
-    const weapon = this.document.items.get(itemId);
-    if (!weapon) {
-        this._isRolling = false;
-        return;
-    }
-    
     try {
         game.neuroshima.group(`_onRollWeapon: ${weapon.name}`);
         game.neuroshima.log("Initializing weapon roll");
@@ -2600,7 +2619,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
                         opposedChatMessageId: opposeFlag.messageId
                     };
                     const { MeleeOpposedChat } = await import("../combat/combat.js");
-                    await MeleeOpposedChat.openDefenseDialog(this.document, syntheticPending, weapon.id);
+                    await MeleeOpposedChat.openDefenseDialog(this.document, syntheticPending, weapon.id, weapon.isSynthetic ? weapon : null);
                     this._isRolling = false;
                     return;
                 }
@@ -2628,7 +2647,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
                 const pendingMsgData = pendingMsg?.getFlag("neuroshima", "opposedChat");
                 if (["pending", "awaitingDefender"].includes(pendingMsgData?.status)) {
                     const { MeleeOpposedChat } = await import("../combat/combat.js");
-                    await MeleeOpposedChat.openDefenseDialog(this.document, opposedPending, weapon.id);
+                    await MeleeOpposedChat.openDefenseDialog(this.document, opposedPending, weapon.id, weapon.isSynthetic ? weapon : null);
                     this._isRolling = false;
                     return;
                 }

@@ -9,6 +9,7 @@
  */
 
 import { DuelContext, DuelLifecycle, DuelDeclarationEngine, DuelSegmentEngine } from "./combat-api.js";
+import { createUnarmedWeapon } from "./unarmed.js";
 
 export const MELEE_VERSION = 2;
 export const MELEE_FLAG = "meleeSessionsV2";
@@ -485,6 +486,7 @@ function normalizeParticipant(participant, side) {
     name: String(participant.name || side),
     img: participant.img || null,
     weaponUuid: participant.weaponUuid || null,
+    isUnarmed: participant.isUnarmed === true,
     beastItemUuid: participant.beastItemUuid || null
   };
 }
@@ -555,6 +557,7 @@ export function meleeParticipantFromActor(actor, { weapon = null } = {}) {
     name: actor.name,
     img: actor.img,
     weaponUuid: weapon?.uuid ?? null,
+    isUnarmed: weapon?.isUnarmed === true,
     beastItemUuid: ["beast-action", "beast-segment"].includes(weapon?.type) ? weapon.uuid : null
   };
 }
@@ -842,7 +845,6 @@ export class MeleeActionCatalog {
       normalizeMeleeActivity({ id: "nonCombat", name: "Akcja niebojowa", kind: "action", category: "utility", timing: "declaration", duel: { action: "nonCombat" } }, common.source),
       normalizeMeleeActivity({ id: "blockExit", name: "Zablokuj wyjście", kind: "reaction", category: "defense", timing: "response", minDice: 1, maxDice: 1, duel: { action: "blockExit" } }, common.source),
       normalizeMeleeActivity({ id: "allowExit", name: "Pozwól wyjść", kind: "reaction", category: "utility", timing: "response", minDice: 0, maxDice: 0, duel: { action: "allowExit" } }, common.source),
-      normalizeMeleeActivity({ id: "seizeInit", name: "Przejmij inicjatywę", kind: "reaction", category: "defense", timing: "response", duel: { action: "seizeInit" } }, common.source),
       normalizeMeleeActivity({ id: "interrupt", name: "Przerwij", kind: "reaction", category: "defense", timing: "response", duel: { action: "interrupt" } }, common.source)
     ];
   }
@@ -1090,7 +1092,7 @@ function duelActionForActivity(activity, responder = false) {
   const core = {
     attack: "attack", defense: "defend", flee: "flee", exit: "exit",
     blockExit: "blockExit", allowExit: "allowExit", nonCombat: "nonCombat",
-    seizeInit: "seizeInit", interrupt: "interrupt"
+    interrupt: "interrupt"
   };
   if (core[activity.id]) return core[activity.id];
   return responder ? "defend" : "trick";
@@ -1648,20 +1650,15 @@ export class MeleeCommandService {
     const expected = side === "attacker" ? "awaitingAttackerRoll" : "awaitingDefenderRoll";
     if (session.phase !== expected) throw new MeleeValidationError("Roll submitted in the wrong phase", "WRONG_PHASE");
     const dice = setMeleePool(session, side, command.payload?.dice);
-    if (session.variant === "standard" && dice.length !== 3) {
-      throw new MeleeValidationError("Standard melee rolls require exactly three dice", "INVALID_DICE_POOL");
-    }
-    if (session.variant === "gradCiosow" && side === "defender") {
-      const required = Math.min(3, Math.max(1, meleePoolDice(session, "attacker").filter(die => die.isSuccess).length || 1));
-      if (dice.length !== required) {
-        throw new MeleeValidationError(`Hail defense requires exactly ${required} dice`, "INVALID_DICE_POOL");
-      }
+    if (dice.length < 1 || dice.length > 3) {
+      throw new MeleeValidationError("Melee rolls require from one to three dice", "INVALID_DICE_POOL");
     }
     session.phase = side === "attacker" ? "awaitingDefenderRoll" : "declaration";
     if (command.payload?.testMessageId) {
       session.messages[side === "attacker" ? "attackerRollMessageId" : "defenderRollMessageId"] = command.payload.testMessageId;
     }
-    if (command.payload?.weaponUuid) session.participants[side].weaponUuid = command.payload.weaponUuid;
+    session.participants[side].weaponUuid = command.payload?.weaponUuid || null;
+    session.participants[side].isUnarmed = command.payload?.isUnarmed === true;
     if (side === "defender") {
       session.metadata.defenderTarget = number(command.payload?.target);
       const attackerDocument = await fromUuid(
@@ -1671,14 +1668,15 @@ export class MeleeCommandService {
       const attackerWeapon = session.participants.attacker.weaponUuid
         ? await fromUuid(session.participants.attacker.weaponUuid)
         : attackerActor?.items?.get?.(session.metadata.weaponId)
-          ?? attackerActor?.items?.get?.(session.metadata.beastItemId);
+          ?? attackerActor?.items?.get?.(session.metadata.beastItemId)
+          ?? (session.participants.attacker.isUnarmed ? createUnarmedWeapon(attackerActor) : null);
       const defenderDocument = await fromUuid(
         session.participants.defender.tokenUuid || session.participants.defender.actorUuid
       );
       const defenderActor = defenderDocument?.actor ?? defenderDocument;
       const defenderWeapon = session.participants.defender.weaponUuid
         ? await fromUuid(session.participants.defender.weaponUuid)
-        : null;
+        : session.participants.defender.isUnarmed ? createUnarmedWeapon(defenderActor) : null;
       session.metadata.activitySnapshots = {};
       for (const [activitySide, activityActor, activityWeapon] of [
         ["attacker", attackerActor, attackerWeapon],
@@ -1725,26 +1723,10 @@ export class MeleeCommandService {
       throw new MeleeValidationError("Nie można edytować rzutu, ponieważ wynik tej walki został już zastosowany.", "RESULT_ALREADY_APPLIED");
     }
     const dice = setMeleePool(session, side, command.payload?.dice);
-    if (session.variant === "standard" && dice.length !== 3) {
-      throw new MeleeValidationError("Standard melee rolls require exactly three dice", "INVALID_DICE_POOL");
+    if (dice.length < 1 || dice.length > 3) {
+      throw new MeleeValidationError("Melee rolls require from one to three dice", "INVALID_DICE_POOL");
     }
     session.metadata[side === "attacker" ? "attackerTarget" : "defenderTarget"] = number(command.payload?.target);
-    if (session.variant === "gradCiosow") {
-      const required = Math.min(3, Math.max(1,
-        meleePoolDice(session, "attacker").filter(die => die.isSuccess).length || 1
-      ));
-      if (side === "defender" && dice.length !== required) {
-        throw new MeleeValidationError(`Hail defense requires exactly ${required} dice`, "INVALID_DICE_POOL");
-      }
-      if (side === "attacker" && meleePoolDice(session, "defender").length !== required) {
-        session.pools.defender = createEmptyMeleePool();
-        session.hailResult = null;
-        session.status = "active";
-        session.phase = "awaitingDefenderRoll";
-        session.operationLedger = {};
-        return { side, reset: true, defenderRerollRequired: true, variant: "gradCiosow" };
-      }
-    }
     if (!meleePoolDice(session, "attacker").length || !meleePoolDice(session, "defender").length) {
       session.phase = "awaitingDefenderRoll";
       return { side, reset: false };
@@ -1802,11 +1784,12 @@ export class MeleeCommandService {
     const target = targetDocument?.actor ?? targetDocument;
     const reference = clone(command.payload?.activity ?? {});
     const sourceItem = reference.sourceItemUuid ? await fromUuid(reference.sourceItemUuid)
-      : participant.weaponUuid ? await fromUuid(participant.weaponUuid) : null;
+      : participant.weaponUuid ? await fromUuid(participant.weaponUuid)
+        : participant.isUnarmed ? createUnarmedWeapon(actor) : null;
     const requestedId = reference.activityId === "defend" ? "defense" : reference.activityId;
     let activity = MeleeActionCatalog.findExact(actor, { ...reference, activityId: requestedId }, { item: sourceItem })
       ?? MeleeActionCatalog.coreActivities(actor, sourceItem).find(entry => entry.id === requestedId);
-    if (!activity && ["blockExit", "allowExit", "seizeInit", "interrupt"].includes(reference.activityId)) {
+    if (!activity && ["blockExit", "allowExit", "interrupt"].includes(reference.activityId)) {
       activity = normalizeMeleeActivity({
         id: reference.activityId, name: reference.activityId, kind: "reaction", timing: "response",
         minDice: reference.activityId === "allowExit" ? 0 : 1, maxDice: 3,

@@ -1,4 +1,4 @@
-<div class="melee-duel-card neuroshima">
+<div class="melee-duel-card neuroshima" data-selection-limit="{{selectionLimit}}">
 
   <div class="mdc-header">
     <div class="mdc-fighter{{#if isOwnerAttacker}} mdc-fighter--init{{/if}}">
@@ -141,27 +141,27 @@
         </button>
         <button type="button" class="mdc-action-choice is-disabled"
             data-action-type="nonCombat" data-pool="{{ownerPool}}"
-            data-min-dice="1" data-max-dice="3" data-need-success="true"
+            data-min-dice="1" data-max-dice="{{ownerMaxDice}}" data-need-success="true"
             data-tooltip="NEUROSHIMA.MeleeDuel.DuelHintNonCombat" disabled>
           <span class="mac-icon"><i class="fas fa-comment-alt"></i></span>
           <span class="mac-body">
             <span class="mac-label">{{localize "NEUROSHIMA.MeleeDuel.DuelActionNonCombat"}}</span>
           </span>
           <span class="mac-meta">
-            <span class="mac-counter">0/3</span>
+            <span class="mac-counter">0/{{ownerMaxDice}}</span>
           </span>
         </button>
       {{else}}
       <button type="button" class="mdc-action-choice is-disabled"
           data-action-type="attack" data-pool="{{ownerPool}}"
-          data-min-dice="1" data-max-dice="3"
+          data-min-dice="1" data-max-dice="{{ownerMaxDice}}"
           data-tooltip="NEUROSHIMA.MeleeDuel.DuelHintAttack" disabled>
         <span class="mac-icon"><i class="fas fa-swords"></i></span>
         <span class="mac-body">
           <span class="mac-label">{{localize "NEUROSHIMA.MeleeDuel.DuelActionAttack"}}</span>
         </span>
         <span class="mac-meta">
-          <span class="mac-counter">0/3</span>
+          <span class="mac-counter">0/{{ownerMaxDice}}</span>
         </span>
       </button>
       <button type="button" class="mdc-action-choice is-disabled"
@@ -178,14 +178,14 @@
       </button>
       <button type="button" class="mdc-action-choice is-disabled"
           data-action-type="nonCombat" data-pool="{{ownerPool}}"
-          data-min-dice="1" data-max-dice="3" data-need-success="true"
+          data-min-dice="1" data-max-dice="{{ownerMaxDice}}" data-need-success="true"
           data-tooltip="NEUROSHIMA.MeleeDuel.DuelHintNonCombat" disabled>
         <span class="mac-icon"><i class="fas fa-comment-alt"></i></span>
         <span class="mac-body">
           <span class="mac-label">{{localize "NEUROSHIMA.MeleeDuel.DuelActionNonCombat"}}</span>
         </span>
         <span class="mac-meta">
-          <span class="mac-counter">0/3</span>
+          <span class="mac-counter">0/{{ownerMaxDice}}</span>
         </span>
       </button>
       {{#if ownerExtraActions}}
@@ -337,18 +337,6 @@
       {{/if}}
       {{#if ownerDeclaredNonCombat}}
       <button type="button" class="mdc-action-choice is-disabled"
-          data-action-type="seizeInit" data-pool="{{responderPool}}"
-          data-exact-dice="{{committedOwnerCount}}"
-          data-tooltip="NEUROSHIMA.MeleeDuel.DuelHintSeizeInit" disabled>
-        <span class="mac-icon"><i class="fas fa-bolt"></i></span>
-        <span class="mac-body">
-          <span class="mac-label">{{localize "NEUROSHIMA.MeleeDuel.DuelSeizeInit"}}</span>
-        </span>
-        <span class="mac-meta">
-          <span class="mac-counter">0/{{committedOwnerCount}}</span>
-        </span>
-      </button>
-      <button type="button" class="mdc-action-choice is-disabled"
           data-action-type="interrupt" data-pool="{{responderPool}}"
           data-min-dice="1"
           data-tooltip="NEUROSHIMA.MeleeDuel.DuelHintInterrupt" disabled>
@@ -361,49 +349,7 @@
         </span>
       </button>
       {{/if}}
-      {{#each responderExtraActions}}
-      <button type="button" class="mdc-action-choice mdc-action-choice--trick is-disabled"
-          data-action-type="trick" data-trick-id="{{id}}" data-activity-id="{{id}}"
-          data-runtime-id="{{runtimeId}}" data-source-item-uuid="{{sourceItemUuid}}"
-          data-source-effect-uuid="{{sourceEffectUuid}}" data-pool="{{../responderPool}}"
-          data-min-dice="{{minDice}}" data-max-dice="{{maxDice}}"
-          {{#if noDice}}data-no-dice="true"{{else}}data-exact-dice="{{../responderExactDice}}"{{/if}}
-          {{#if successCost}}data-min-success="{{successCost}}"{{/if}}
-          {{#if gmNote}}data-tooltip="{{gmNote}}"{{/if}} disabled>
-        <span class="mac-icon">{{#if img}}<img src="{{img}}" alt="">{{else}}<i class="fas fa-shield-alt"></i>{{/if}}</span>
-        <span class="mac-body"><span class="mac-label">{{name}}</span></span>
-        <span class="mac-meta"><span class="mac-counter">0/{{maxDice}}</span></span>
-      </button>
-      {{#if parameters.length}}
-      <div class="mdc-activity-parameters" data-activity-parameters-for="{{runtimeId}}">
-        {{#each parameters as |parameter|}}
-        <label><span>{{parameter.label}}</span>
-          {{#if (eq parameter.type "select")}}
-          <select data-parameter-key="{{parameter.key}}">{{#each parameter.choices as |choice|}}<option value="{{choice.value}}" {{#if (eq choice.value parameter.default)}}selected{{/if}}>{{choice.label}}</option>{{/each}}</select>
-          {{else if (eq parameter.type "boolean")}}
-          <input type="checkbox" data-parameter-key="{{parameter.key}}" {{checked parameter.default}}>
-          {{else}}
-          <input type="{{#if (eq parameter.type 'number')}}number{{else}}text{{/if}}" data-parameter-key="{{parameter.key}}" value="{{parameter.default}}">
-          {{/if}}
-        </label>
-        {{/each}}
-      </div>
-      {{/if}}
-      {{/each}}
     </div>
-    {{#if responderActivityModifiers.length}}
-    <div class="mdc-dialog-modifiers-section mdc-typed-modifiers-section">
-      <div class="mdc-dialog-mod-header"><i class="fas fa-sliders-h"></i><span>Modyfikacje reakcji</span></div>
-      {{#each responderActivityModifiers as |modifier|}}
-      <label class="mdc-dialog-mod-entry">
-        <span class="mdc-dialog-mod-icon">{{#if modifier.img}}<img src="{{modifier.img}}" alt="">{{else}}<i class="fas fa-sliders-h"></i>{{/if}}</span>
-        <span class="mdc-dialog-mod-label">{{modifier.name}}</span>
-        <input type="checkbox" class="mdc-activity-mod-check" data-activity-id="{{modifier.id}}"
-          data-source-item-uuid="{{modifier.sourceItemUuid}}" data-source-effect-uuid="{{modifier.sourceEffectUuid}}">
-      </label>
-      {{/each}}
-    </div>
-    {{/if}}
   </div>
   {{/if}}
 
