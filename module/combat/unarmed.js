@@ -57,6 +57,7 @@ export function createUnarmedWeapon(actor) {
     type: "weapon",
     actor,
     system: {
+      isUnarmed: true,
       weaponType: "melee",
       attribute: "dexterity",
       skill: "brawl",

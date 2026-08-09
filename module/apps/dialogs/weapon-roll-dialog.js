@@ -177,6 +177,8 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     this.actor,
     {
       rollType: this.rollType,
+      isUnarmed: this.weapon?.isUnarmed === true
+        || this.weapon?.system?.isUnarmed === true,
       meleeAction,
       weapon: this.weapon,
       skill: weaponSkillObj,
@@ -697,6 +699,8 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
   async _executeWeaponTest(params) {
     const { actor, weapon } = params;
     const isMelee = weapon.system.weaponType === "melee";
+    const isUnarmed = weapon?.isUnarmed === true
+      || weapon?.system?.isUnarmed === true;
     const TestClass = isMelee ? MeleeWeaponTest : RangedWeaponTest;
     const meleeAction = params.meleeAction ?? "attack";
     const maneuver = params.maneuver ?? "none";
@@ -766,6 +770,8 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       context: {
         isCombat: true,
         isMelee,
+        isUnarmed,
+        rollType: this.rollType,
         meleePoolLink: foundry.utils.deepClone(
           params.meleePoolLink ?? this.meleePoolLink ?? null
         ),

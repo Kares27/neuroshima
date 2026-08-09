@@ -319,6 +319,33 @@ export class NeuroshimaScript {
     return (args?.action?.sourceEffectUuid ?? null) === this.effect.uuid;
   }
 
+  /**
+   * Return true when a weapon is the actor's canonical unarmed weapon.
+   * With no argument, resolve it from the currently executing dialog or test.
+   * `isUnarmed` is authoritative; the tag supports selectors and compatible
+   * custom synthetic weapons.
+   *
+   * @param {object|null} weapon
+   * @returns {boolean}
+   *
+   * @example
+   * if (!this.isUnarmedWeapon(args.weapon)) return;
+   * this.addDialogModifier("Walka bez broni", 10, "Premia z Cechy.");
+   *
+   * @example
+   * if (!this.isUnarmedWeapon()) return;
+   */
+  isUnarmedWeapon(weapon = null) {
+    const candidate = weapon
+      ?? this._currentArgs?.weapon
+      ?? this._currentArgs?.test?.item
+      ?? this._currentArgs?.item
+      ?? null;
+    return candidate?.system?.isUnarmed === true
+      || candidate?.isUnarmed === true
+      || candidate?.system?.tags?.includes?.("unarmed") === true;
+  }
+
   // ── Notifications ────────────────────────────────────────────────────────
 
   notification(content, type = "info") {

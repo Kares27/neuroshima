@@ -549,6 +549,10 @@ export class NeuroshimaTestBase {
     return {
       actor: this.actor,
       item: this.item,
+      rollType: this.context?.rollType ?? this.rollType,
+      isUnarmed: this.context?.isUnarmed === true
+        || this.item?.isUnarmed === true
+        || this.item?.system?.isUnarmed === true,
       test: this,
       context: this.context,
       eventContext: {},
