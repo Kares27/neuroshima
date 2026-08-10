@@ -1,4 +1,11 @@
 <div class="flexcol ammo-stats">
+    <div class="form-group row-group">
+        <label>{{localize "NEUROSHIMA.Items.Fields.AmmoCategory"}}</label>
+        <select name="system.ammoCategory">
+            <option value="standard" {{#if (eq system.ammoCategory "standard")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Ammo.Category.Standard"}}</option>
+            <option value="launcher" {{#if (eq system.ammoCategory "launcher")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Ammo.Category.Launcher"}}</option>
+        </select>
+    </div>
     <div class="form-group row-group caliber-group">
         <label>{{localize "NEUROSHIMA.Items.Fields.Caliber"}}</label>
         <input type="text" name="system.caliber" value="{{system.caliber}}" list="caliber-list-{{item.id}}"/>
@@ -11,6 +18,38 @@
 
     <hr>
 
+    {{#if (eq system.ammoCategory "launcher")}}
+    <div class="form-group row-group">
+        <label>{{localize "NEUROSHIMA.Items.Fields.PayloadType"}}</label>
+        <select name="system.payloadType">
+            <option value="standard" {{#if (eq system.payloadType "standard")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Ammo.Payload.Standard"}}</option>
+            <option value="blast" {{#if (eq system.payloadType "blast")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Ammo.Payload.Blast"}}</option>
+            <option value="area" {{#if (eq system.payloadType "area")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Ammo.Payload.Area"}}</option>
+            <option value="antiArmor" {{#if (eq system.payloadType "antiArmor")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Ammo.Payload.AntiArmor"}}</option>
+        </select>
+    </div>
+    <div class="grid grid-4col">
+        <div class="form-group row-group"><label>{{localize "NEUROSHIMA.Items.Fields.Damage"}}</label><select name="system.damage">{{selectOptions damageTypes selected=system.damage localize=true}}</select></div>
+        <div class="form-group row-group"><label>{{localize "NEUROSHIMA.Items.Fields.DamageCategory"}}</label><select name="system.damageCategory">{{#each damageCategories as |cat key|}}<option value="{{key}}" {{#if (eq ../system.damageCategory key)}}selected{{/if}}>{{localize cat.label}}</option>{{/each}}</select></div>
+        <div class="form-group row-group"><label>{{localize "NEUROSHIMA.Items.Fields.PiercingAbbr"}}</label><input type="number" name="system.piercing" value="{{system.piercing}}" min="0"/></div>
+        <div class="form-group row-group"><label>{{localize "NEUROSHIMA.Items.Fields.Jamming"}}</label><input type="number" name="system.jamming" value="{{system.jamming}}" min="0" max="20"/></div>
+    </div>
+    {{#if (eq system.payloadType "blast")}}
+    <fieldset class="blast-zones-section">
+        <legend>{{localize "NEUROSHIMA.Items.Fields.BlastZones"}}</legend>
+        {{#each system.blastZones as |zone|}}
+        <div class="grid grid-5col blast-zone-row">
+            <input type="number" name="system.blastZones.{{@index}}.radius" value="{{zone.radius}}" min="1"/>
+            <select name="system.blastZones.{{@index}}.damage">{{selectOptions @root.blastDamageTypesFull selected=zone.damage localize=true}}</select>
+            <input type="number" name="system.blastZones.{{@index}}.shrapnel" value="{{zone.shrapnel}}" min="0"/>
+            <label><input type="checkbox" name="system.blastZones.{{@index}}.knockdown" {{checked zone.knockdown}}/> {{localize "NEUROSHIMA.Grenade.Knockdown"}}</label>
+            <a data-action="removeBlastZone" data-zone-index="{{@index}}"><i class="fas fa-trash"></i></a>
+        </div>
+        {{/each}}
+        <a data-action="addBlastZone"><i class="fas fa-plus"></i> {{localize "NEUROSHIMA.Grenade.AddZone"}}</a>
+    </fieldset>
+    {{/if}}
+    {{else}}
     <div class="ammo-columns-container flexrow">
         {{!-- Left Column: Override Stats --}}
         <div class="ammo-column override-column flex1">
@@ -113,4 +152,5 @@
             {{/if}}
         </div>
     </div>
+    {{/if}}
 </div>

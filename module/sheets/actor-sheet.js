@@ -30,6 +30,7 @@ import {
   renderTooltipSections
 } from "../helpers/tooltip-renderer.js";
 import { createUnarmedWeapon, getUnarmedDamageProfile } from "../combat/unarmed.js";
+import { AmmunitionResolver, createAmmoSnapshot } from "../combat/ammunition-resolver.js";
 
 function _collectArmorBonusByEffect(actor) {
   const byLoc = {};
@@ -293,7 +294,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         return c;
       }),
       weaponsMelee: topItems.filter(i => i.type === "weapon" && i.system.weaponType === "melee"),
-      weaponsRanged: topItems.filter(i => i.type === "weapon" && i.system.weaponType === "ranged"),
+      weaponsRanged: topItems.filter(i => i.type === "weapon" && ["ranged", "launcher"].includes(i.system.weaponType)),
       weaponsThrown: topItems.filter(i => i.type === "weapon" && (i.system.weaponType === "thrown" || i.system.weaponType === "grenade")),
       armor: topItems.filter(i => i.type === "armor"),
       gear: topItems.filter(i => i.type === "gear"),
@@ -1710,7 +1711,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
     // If the target is not a magazine, check if it is a ranged weapon with an assigned magazine
     if (targetItem && targetItem.type !== "magazine") {
-        if (targetItem.type === "weapon" && targetItem.system.weaponType === "ranged" && targetItem.system.magazine) {
+        if (targetItem.type === "weapon" && ["ranged", "launcher"].includes(targetItem.system.weaponType) && targetItem.system.magazine) {
             targetItem = this.document.items.get(targetItem.system.magazine);
         }
     }
@@ -1953,6 +1954,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
           name: ammo.name,
           img: ammo.img,
           quantity: amount,
+          ammoSnapshot: createAmmoSnapshot(ammo),
           overrides: {
               enabled: ammo.system.isOverride,
               damage: ammo.system.overrideDamage ? ammo.system.damage : null,
@@ -2039,7 +2041,8 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
                   img: stack.img || "systems/neuroshima/assets/img/ammo.svg",
                   system: {
                       quantity: stack.quantity,
-                      caliber: magazine.system.caliber,
+                      ...(stack.ammoSnapshot ?? {}),
+                      caliber: stack.ammoSnapshot?.caliber ?? magazine.system.caliber,
                       // Restore stats from the saved magazine stack entry
                       isOverride: stack.overrides?.enabled || false,
                       overrideDamage: !!stack.overrides?.damage,
@@ -2492,6 +2495,17 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         const wData = weapon.system;
         const isRanged = wData.weaponType === "ranged";
         const isThrown = wData.weaponType === "thrown";
+        const isLauncher = wData.weaponType === "launcher";
+
+        if (isLauncher) {
+            const ammunition = AmmunitionResolver.resolve(this.document, weapon, 1);
+            if (!ammunition.valid) {
+                ui.notifications.warn(game.i18n.localize(ammunition.reason === "noMagazine"
+                  ? "NEUROSHIMA.Notifications.NoMagazineSelected"
+                  : "NEUROSHIMA.Notifications.OutOfAmmo"));
+                throw new Error(ammunition.reason);
+            }
+        }
 
         if ((isRanged || isThrown) && wData.caliber) {
             if (!wData.magazine) {
@@ -3865,7 +3879,8 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
     const isMagazine = item.type === 'magazine';
     const isContainer = item.type === 'container';
-    const canGenerateMagazine = item.type === 'weapon' && item.system.weaponType === 'ranged';
+    const canGenerateMagazine = item.type === 'weapon' && (item.system.weaponType === 'ranged'
+      || (item.system.weaponType === 'launcher' && ['magazine', 'either'].includes(item.system.ammoFeed)));
     const menuItems = [
       { action: 'edit',      icon: 'fas fa-edit',    label: game.i18n.localize('Edit') },
       { action: 'post',      icon: 'fas fa-comment',  label: game.i18n.localize('NEUROSHIMA.ContextMenu.PostToChat') },

@@ -134,6 +134,11 @@ export class NeuroshimaItem extends Item {
             action: "grenade",
             label: game.i18n.localize("NEUROSHIMA.Items.Type.WeaponGrenade"),
             callback: (event, button, dialog) => "grenade"
+          },
+          {
+            action: "launcher",
+            label: game.i18n.localize("NEUROSHIMA.Items.Type.WeaponLauncher"),
+            callback: (event, button, dialog) => "launcher"
           }
         ],
         classes: ["neuroshima", "dialog-vertical"],
@@ -149,6 +154,7 @@ export class NeuroshimaItem extends Item {
             if (weaponType === "ranged") weaponUpdates.img = "systems/neuroshima/assets/img/weapon-ranged.svg";
             else if (weaponType === "thrown") weaponUpdates.img = "systems/neuroshima/assets/img/weapon-throwable.svg";
             else if (weaponType === "grenade") weaponUpdates.img = "systems/neuroshima/assets/img/grenade.svg";
+            else if (weaponType === "launcher") weaponUpdates.img = "systems/neuroshima/assets/img/weapon-ranged.svg";
             else weaponUpdates.img = "systems/neuroshima/assets/img/weapon-melee.svg";
         }
         if (weaponType === "grenade") {

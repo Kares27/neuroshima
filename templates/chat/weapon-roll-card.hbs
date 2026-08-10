@@ -156,6 +156,14 @@
     </div>
     {{/if}}
 
+    {{#if isLauncherBlast}}
+    <div class="grenade-template-section">
+        <button type="button" data-action="placeGrenadeTemplate">
+            <i class="fas fa-burst"></i> {{localize "NEUROSHIMA.Grenade.PlaceTemplate"}}
+        </button>
+    </div>
+    {{/if}}
+
     {{#unless isMelee}}
     <div class="apply-damage-section">
         <div class="damage-application-header collapsible-toggle">

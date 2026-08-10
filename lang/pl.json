@@ -1364,6 +1364,7 @@
                 "WeaponRanged": "Broń Dystansowa",
                 "WeaponThrown": "Broń Miotana",
                 "WeaponGrenade": "Granat",
+                "WeaponLauncher": "Wyrzutnia",
                 "Armor": "Pancerz",
                 "Gear": "Przedmiot",
                 "Trick": "Sztuczka",
@@ -1406,6 +1407,14 @@
             },
             "Empty": "Brak przedmiotów.",
             "GearSection": "Przedmioty",
+            "Ammo": {
+                "Category": { "Standard": "Zwykła", "Launcher": "Do wyrzutni" },
+                "Payload": { "Standard": "Standardowy", "Blast": "Wybuchowy", "Area": "Obszarowy", "AntiArmor": "Przeciwpancerny" }
+            },
+            "Launcher": {
+                "Type": { "Grenade": "Granatnik", "Rocket": "Rakietowa", "Mortar": "Moździerz", "Other": "Inna" },
+                "Feed": { "Direct": "Bezpośrednio", "Magazine": "Magazynek", "Either": "Oba źródła", "Integrated": "Integralna" }
+            },
             "Fields": {
                 "Weight": "Waga",
                 "Cost": "Koszt",
@@ -1423,6 +1432,11 @@
                 "Range": "Zasięg",
                 "AmmoType": "Amunicja",
                 "Ammo": "Amunicja",
+                "AmmoCategory": "Kategoria amunicji",
+                "PayloadType": "Typ ładunku",
+                "LauncherType": "Typ wyrzutni",
+                "AmmoFeed": "Zasilanie amunicją",
+                "AmmoFeedMode": "Aktywne źródło",
                 "Attribute": "Atrybut",
                 "Skill": "Umiejętność",
                 "AttackBonus": "Bonus do ataku",

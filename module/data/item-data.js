@@ -33,6 +33,20 @@ function equipableSchema() {
   };
 }
 
+/** Blast-zone schema shared by grenades and launcher ammunition. */
+export function blastZonesField() {
+  const fields = foundry.data.fields;
+  return new fields.ArrayField(
+    new fields.SchemaField({
+      radius: new fields.NumberField({ integer: true, initial: 1, min: 1 }),
+      damage: new fields.StringField({ initial: "L", choices: ["none", "D", "L", "C", "K", "sD", "sL", "sC", "sK"] }),
+      knockdown: new fields.BooleanField({ initial: false }),
+      shrapnel: new fields.NumberField({ integer: true, initial: 0, min: 0 })
+    }),
+    { initial: [] }
+  );
+}
+
 /**
  * Data model for Weapons.
  */
@@ -45,7 +59,7 @@ export class WeaponData extends foundry.abstract.TypeDataModel {
       weaponType: new fields.StringField({ 
         required: true, 
         initial: "melee", 
-        choices: ["melee", "ranged", "thrown", "grenade"] 
+        choices: ["melee", "ranged", "thrown", "grenade", "launcher"]
       }),
       attribute: new fields.StringField({ initial: "dexterity" }),
       skill: new fields.StringField({ initial: "brawl" }),
@@ -62,6 +76,10 @@ export class WeaponData extends foundry.abstract.TypeDataModel {
       damage: new fields.StringField({ initial: "L" }),
       caliber: new fields.StringField({ initial: "" }),
       magazine: new fields.StringField({ initial: "" }),
+      directAmmo: new fields.StringField({ initial: "" }),
+      launcherType: new fields.StringField({ initial: "grenade", choices: ["grenade", "rocket", "mortar", "other"] }),
+      ammoFeed: new fields.StringField({ initial: "direct", choices: ["direct", "magazine", "either", "integrated"] }),
+      ammoFeedMode: new fields.StringField({ initial: "direct", choices: ["direct", "magazine"] }),
       piercing: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       fireRate: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       fireRateOptions: new fields.ArrayField(
@@ -91,15 +109,7 @@ export class WeaponData extends foundry.abstract.TypeDataModel {
       // Grenade specific
       freeThrowDistance: new fields.NumberField({ integer: true, initial: 10, min: 1 }),
       useBuildBonus: new fields.BooleanField({ initial: true }),
-      blastZones: new fields.ArrayField(
-        new fields.SchemaField({
-          radius:    new fields.NumberField({ integer: true, initial: 1, min: 1 }),
-          damage:    new fields.StringField({ initial: "L", choices: ["none","D","L","C","K","sD","sL","sC","sK"] }),
-          knockdown: new fields.BooleanField({ initial: false }),
-          shrapnel:  new fields.NumberField({ integer: true, initial: 0, min: 0 })
-        }),
-        { initial: [] }
-      ),
+      blastZones: blastZonesField(),
       mods: new fields.ObjectField({ initial: {} })
     };
   }
@@ -216,6 +226,8 @@ export class AmmoData extends foundry.abstract.TypeDataModel {
     const fields = foundry.data.fields;
     return {
       ...baseSchema(),
+      ammoCategory: new fields.StringField({ initial: "standard", choices: ["standard", "launcher"] }),
+      payloadType: new fields.StringField({ initial: "standard", choices: ["standard", "blast", "area", "antiArmor"] }),
       caliber: new fields.StringField({ initial: "" }),
       isOverride: new fields.BooleanField({ initial: false }),
       overrideDamage: new fields.BooleanField({ initial: false }),
@@ -245,7 +257,8 @@ export class AmmoData extends foundry.abstract.TypeDataModel {
             distance: new fields.NumberField({ initial: 20, min: 0 }), 
             damage: new fields.StringField({ initial: "D" }) 
         })
-      })
+      }),
+      blastZones: blastZonesField()
     };
   }
 }
@@ -261,7 +274,7 @@ export class MagazineData extends foundry.abstract.TypeDataModel {
       ...equipableSchema(),
       caliber: new fields.StringField({ initial: "" }),
       capacity: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
-      // contents: Array of { ammoId, name, quantity, overrides: { damage, piercing, jamming } }
+      // contents: Array of { ammoId, name, quantity, ammoSnapshot, overrides }
       contents: new fields.ArrayField(new fields.ObjectField(), { initial: [] })
     };
   }

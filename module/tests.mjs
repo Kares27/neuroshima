@@ -1,5 +1,6 @@
 import { NEUROSHIMA } from "./config.js";
 import { buildDiceTooltipSection, renderTooltipSections } from "./helpers/tooltip-renderer.js";
+import { AmmunitionResolver, PayloadResolver } from "./combat/ammunition-resolver.js";
 
 export const DIFFICULTY_ORDER = Object.freeze([
   "easy", "average", "problematic", "hard", "veryHard",
@@ -1711,7 +1712,7 @@ export class RangedWeaponTest extends WeaponTest {
   }
 
   static bulletsForBurst(weapon, burstLevel = 0, selectedFireRate = null) {
-    if (weapon?.system?.weaponType === "thrown") return 1;
+    if (["thrown", "launcher"].includes(weapon?.system?.weaponType)) return 1;
     const rate = Math.max(1, Number(selectedFireRate ?? weapon?.system?.fireRate ?? 1));
     return [1, rate, rate * 3, rate * 6][Number(burstLevel)] ?? 1;
   }
@@ -1724,6 +1725,35 @@ export class RangedWeaponTest extends WeaponTest {
   }
 
   static planAmmunition(actor, weapon, requested) {
+    if (weapon?.system?.weaponType === "launcher") {
+      const resolved = AmmunitionResolver.resolve(actor, weapon, requested);
+      const plan = {
+        ...resolved,
+        damage: weapon?.system?.damage ?? "D",
+        piercing: Number(weapon?.system?.piercing ?? 0),
+        jamming: Number(weapon?.system?.jamming ?? 20),
+        damageCategory: weapon?.system?.damageCategory ?? "physical"
+      };
+      plan.bulletSequence = (resolved.bulletSequence ?? []).map(entry => {
+        const snapshot = entry.ammoSnapshot ?? {};
+        const overrides = entry.overrides ?? {};
+        const launcherAmmo = snapshot.ammoCategory === "launcher";
+        const enabled = snapshot.isOverride === true || overrides.enabled === true;
+        const ammoData = {
+          ...snapshot,
+          damage: launcherAmmo ? snapshot.damage : (enabled && (snapshot.overrideDamage || overrides.damage) ? (snapshot.damage || overrides.damage) : plan.damage),
+          damageCategory: launcherAmmo ? snapshot.damageCategory : (enabled && snapshot.overrideDamageCategory ? snapshot.damageCategory : plan.damageCategory),
+          piercing: launcherAmmo ? snapshot.piercing : (enabled && (snapshot.overridePiercing || overrides.piercing != null) ? (snapshot.piercing ?? overrides.piercing) : plan.piercing),
+          jamming: launcherAmmo ? snapshot.jamming : (enabled && (snapshot.overrideJamming || overrides.jamming != null) ? (snapshot.jamming ?? overrides.jamming) : plan.jamming)
+        };
+        return {
+          ...entry,
+          ...ammoData,
+          payload: PayloadResolver.resolve(ammoData)
+        };
+      });
+      return plan;
+    }
     const magazineId = weapon?.system?.magazine;
     const magazine = magazineId ? actor?.items?.get(magazineId) : null;
     const plan = {
@@ -1810,6 +1840,8 @@ export class RangedWeaponTest extends WeaponTest {
       jammingThreshold: Math.min(Number(this.item.system.jamming ?? 20), Number(plan.jamming ?? 20)),
       burstHitStep: Number(this.preData.burstHitStep ?? this.context.burstHitStep ?? 1),
       magazineId: plan.magazineId,
+      ammoId: plan.ammoItem?.id ?? plan.bulletSequence?.[0]?.ammoId ?? null,
+      ammunitionSourceType: plan.sourceType ?? null,
       fireRate: Number(this.preData.fireRate ?? this.context.fireRate ?? this.item.system.fireRate ?? 1)
     });
   }
@@ -1875,6 +1907,19 @@ export class RangedWeaponTest extends WeaponTest {
       hitBullets: hits.length,
       isCritFailure: this.result.isCritFailure || jammed
     });
+    const launcherPayload = this.item?.system?.weaponType === "launcher"
+      ? sequence[0]?.payload
+      : null;
+    if (launcherPayload?.payloadType === "blast") {
+      const zones = [...(launcherPayload.blastZones ?? [])]
+        .sort((a, b) => Number(a.radius) - Number(b.radius));
+      Object.assign(this.result, {
+        isLauncher: true,
+        isLauncherBlast: true,
+        blastZones: zones,
+        templateRadius: zones.length ? Math.max(...zones.map(zone => Number(zone.radius) || 0)) : 0
+      });
+    }
     this.computeFireCorrection();
     return this;
   }
@@ -1912,6 +1957,8 @@ export class RangedWeaponTest extends WeaponTest {
       await plan.magazine.update({ "system.contents": plan.magazineUpdateData });
     } else if (plan.ammoItem && plan.ammoItemQuantity != null) {
       await plan.ammoItem.update({ "system.quantity": plan.ammoItemQuantity });
+    } else if (plan.weapon && plan.weaponCapacity != null) {
+      await plan.weapon.update({ "system.capacity": plan.weaponCapacity });
     }
   }
 
@@ -1928,11 +1975,24 @@ export class RangedWeaponTest extends WeaponTest {
     if (magazine?.type === "magazine") {
       const contents = clone(magazine.system.contents ?? []);
       for (const bullet of sequence) {
-        const stack = contents.find(entry => entry.name === bullet.name);
+        const stack = contents.find(entry => entry.name === bullet.name
+          && JSON.stringify(entry.ammoSnapshot ?? {}) === JSON.stringify(bullet.ammoSnapshot ?? {}));
         if (stack) stack.quantity = Number(stack.quantity ?? 0) + 1;
-        else contents.push({ name: bullet.name, quantity: 1 });
+        else contents.push({
+          ammoId: bullet.ammoId ?? null,
+          name: bullet.name,
+          quantity: 1,
+          ammoSnapshot: clone(bullet.ammoSnapshot ?? {}),
+          overrides: clone(bullet.overrides ?? {})
+        });
       }
       await magazine.update({ "system.contents": contents });
+    } else if (this.result.ammunitionSourceType === "direct") {
+      const ammo = this.result.ammoId ? this.actor?.items?.get(this.result.ammoId) : null;
+      if (!ammo) return false;
+      await ammo.update({ "system.quantity": Number(ammo.system.quantity ?? 0) + sequence.length });
+    } else if (this.result.ammunitionSourceType === "integrated" && this.item) {
+      await this.item.update({ "system.capacity": Number(this.item.system.capacity ?? 0) + sequence.length });
     }
     await message.setFlag("neuroshima", "ammoRefunded", true);
     return true;

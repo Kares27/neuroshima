@@ -1336,6 +1336,7 @@
                 "WeaponRanged": "Ranged Weapon",
                 "WeaponThrown": "Thrown Weapon",
                 "WeaponGrenade": "Grenade",
+                "WeaponLauncher": "Launcher",
                 "Armor": "Armor",
                 "Gear": "Item",
                 "Trick": "Trick",
@@ -1378,6 +1379,14 @@
             },
             "Empty": "No items.",
             "GearSection": "Items",
+            "Ammo": {
+                "Category": { "Standard": "Standard", "Launcher": "Launcher" },
+                "Payload": { "Standard": "Standard", "Blast": "Blast", "Area": "Area", "AntiArmor": "Anti-armor" }
+            },
+            "Launcher": {
+                "Type": { "Grenade": "Grenade launcher", "Rocket": "Rocket", "Mortar": "Mortar", "Other": "Other" },
+                "Feed": { "Direct": "Direct", "Magazine": "Magazine", "Either": "Either", "Integrated": "Integrated" }
+            },
             "Fields": {
                 "Weight": "Weight",
                 "Cost": "Cost",
@@ -1395,6 +1404,11 @@
                 "Range": "Range",
                 "AmmoType": "Ammunition",
                 "Ammo": "Ammo",
+                "AmmoCategory": "Ammunition Category",
+                "PayloadType": "Payload Type",
+                "LauncherType": "Launcher Type",
+                "AmmoFeed": "Ammunition Feed",
+                "AmmoFeedMode": "Active Source",
                 "Attribute": "Attribute",
                 "Skill": "Skill",
                 "AttackBonus": "Attack Bonus",

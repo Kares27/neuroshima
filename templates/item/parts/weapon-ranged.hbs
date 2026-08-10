@@ -1,4 +1,35 @@
 <div class="flexcol" style="gap: 8px;">
+    {{#if isLauncher}}
+    <div class="secondary-box grid grid-3col">
+        <div class="form-group row-group">
+            <label>{{localize "NEUROSHIMA.Items.Fields.LauncherType"}}</label>
+            <select name="system.launcherType">
+                <option value="grenade" {{#if (eq system.launcherType "grenade")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Launcher.Type.Grenade"}}</option>
+                <option value="rocket" {{#if (eq system.launcherType "rocket")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Launcher.Type.Rocket"}}</option>
+                <option value="mortar" {{#if (eq system.launcherType "mortar")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Launcher.Type.Mortar"}}</option>
+                <option value="other" {{#if (eq system.launcherType "other")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Launcher.Type.Other"}}</option>
+            </select>
+        </div>
+        <div class="form-group row-group">
+            <label>{{localize "NEUROSHIMA.Items.Fields.AmmoFeed"}}</label>
+            <select name="system.ammoFeed">
+                <option value="direct" {{#if (eq system.ammoFeed "direct")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Launcher.Feed.Direct"}}</option>
+                <option value="magazine" {{#if (eq system.ammoFeed "magazine")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Launcher.Feed.Magazine"}}</option>
+                <option value="either" {{#if (eq system.ammoFeed "either")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Launcher.Feed.Either"}}</option>
+                <option value="integrated" {{#if (eq system.ammoFeed "integrated")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Launcher.Feed.Integrated"}}</option>
+            </select>
+        </div>
+        {{#if (eq system.ammoFeed "either")}}
+        <div class="form-group row-group">
+            <label>{{localize "NEUROSHIMA.Items.Fields.AmmoFeedMode"}}</label>
+            <select name="system.ammoFeedMode">
+                <option value="direct" {{#if (eq system.ammoFeedMode "direct")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Launcher.Feed.Direct"}}</option>
+                <option value="magazine" {{#if (eq system.ammoFeedMode "magazine")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Launcher.Feed.Magazine"}}</option>
+            </select>
+        </div>
+        {{/if}}
+    </div>
+    {{/if}}
     {{!-- Atrybut, Umiejętność, Mod Broni (3 kolumny obok siebie) --}}
     <div class="secondary-box">
         <div class="grid grid-4col">
@@ -89,7 +120,7 @@
         </div>
 
         {{!-- "Wszystkie" is an override; disabled individual values remain stored. --}}
-        <fieldset class="fire-modes-section">
+        {{#unless isLauncher}}<fieldset class="fire-modes-section">
             <legend>{{localize "NEUROSHIMA.Items.Fields.FireModes"}}</legend>
             <div class="fire-modes-table">
                 <div class="fire-mode-column fire-mode-all-column">
@@ -128,10 +159,22 @@
                     <div class="fire-mode-modifier-field"><input type="number" name="system.fireModeModifiers.fullAuto" value="{{system.fireModeModifiers.fullAuto}}" data-dtype="Number" step="1"/></div>
                 </div>
             </div>
-        </fieldset>
+        </fieldset>{{/unless}}
     </div>
 
     {{!-- Magazynek (na dole) --}}
+    {{#if launcherUsesDirect}}
+    <div class="secondary-box">
+        <div class="form-group row-group">
+            <label>{{localize "NEUROSHIMA.Items.Fields.Ammo"}}</label>
+            <select name="system.directAmmo">
+                <option value="">{{localize "NEUROSHIMA.Items.Fields.None"}}</option>
+                {{#each availableAmmo as |ammo|}}<option value="{{ammo.id}}" title="{{ammo.tooltip}}" {{#if (eq ../system.directAmmo ammo.id)}}selected{{/if}}>{{ammo.name}}</option>{{/each}}
+            </select>
+        </div>
+    </div>
+    {{/if}}
+    {{#if showMagazineSelector}}
     <div class="secondary-box">
         <div class="form-group row-group">
             <label>{{localize "NEUROSHIMA.Items.Fields.Magazine"}}</label>
@@ -143,4 +186,5 @@
             </select>
         </div>
     </div>
+    {{/if}}
 </div>

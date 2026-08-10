@@ -432,6 +432,10 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
     // Skill and Magazine filtering
     if (item.type === "weapon") {
+      context.isLauncher = item.system.weaponType === "launcher";
+      context.launcherUsesDirect = context.isLauncher && ["direct", "either"].includes(item.system.ammoFeed);
+      context.launcherUsesMagazine = context.isLauncher && ["magazine", "either"].includes(item.system.ammoFeed);
+      context.showMagazineSelector = !context.isLauncher || context.launcherUsesMagazine;
       const isCreature = item.actor?.type === "creature";
       const selectedAttr = item.system.attribute || "dexterity";
       const skillGroups = NEUROSHIMA.skillConfiguration[selectedAttr] || {};
@@ -465,7 +469,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
       // Populate magazines or ammo if owned by actor
       if (item.actor) {
-        if (item.system.weaponType === "ranged") {
+        if (item.system.weaponType === "ranged" || (context.isLauncher && context.launcherUsesMagazine)) {
           const magazines = item.actor.items.filter(i => 
             i.type === "magazine" && 
             (i.system.caliber === item.system.caliber || !item.system.caliber)
@@ -479,9 +483,11 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
               tooltip: tooltip
             };
           });
-        } else if (item.system.weaponType === "thrown") {
+        }
+        if (item.system.weaponType === "thrown" || (context.isLauncher && context.launcherUsesDirect)) {
           const ammo = item.actor.items.filter(i => 
             i.type === "ammo" && 
+            (!context.isLauncher || (i.system.ammoCategory ?? "standard") === "launcher") &&
             (i.system.caliber === item.system.caliber || !item.system.caliber)
           );
           context.availableAmmo = ammo.map(a => {
@@ -1194,7 +1200,9 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
   async _onAddBlastZone(event, target) {
     const item = this.document;
-    if (item.type !== "weapon" || item.system.weaponType !== "grenade") return;
+    const supportsBlast = (item.type === "weapon" && item.system.weaponType === "grenade")
+      || (item.type === "ammo" && item.system.ammoCategory === "launcher" && item.system.payloadType === "blast");
+    if (!supportsBlast) return;
     const zones = foundry.utils.deepClone(item.system.blastZones ?? []);
     const maxRadius = zones.reduce((m, z) => Math.max(m, z.radius ?? 0), 0);
     zones.push({ radius: maxRadius + 1, damage: "L", knockdown: false, shrapnel: 0 });
@@ -1203,7 +1211,9 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
   async _onRemoveBlastZone(event, target) {
     const item = this.document;
-    if (item.type !== "weapon" || item.system.weaponType !== "grenade") return;
+    const supportsBlast = (item.type === "weapon" && item.system.weaponType === "grenade")
+      || (item.type === "ammo" && item.system.ammoCategory === "launcher" && item.system.payloadType === "blast");
+    if (!supportsBlast) return;
     const idx = parseInt(target.dataset.zoneIndex ?? "-1");
     if (idx < 0) return;
     const zones = foundry.utils.deepClone(item.system.blastZones ?? []);

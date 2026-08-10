@@ -129,6 +129,10 @@
                 {{> "systems/neuroshima/templates/item/parts/weapon-ranged.hbs"}}
              {{/if}}
 
+             {{#if (eq system.weaponType "launcher")}}
+                {{> "systems/neuroshima/templates/item/parts/weapon-ranged.hbs"}}
+             {{/if}}
+
              {{#if (eq system.weaponType "thrown")}}
                 {{> "systems/neuroshima/templates/item/parts/weapon-thrown.hbs"}}
              {{/if}}
