@@ -87,6 +87,48 @@
                 <input type="number" name="system.defenseBonus" value="{{system.defenseBonus}}" data-dtype="Number" {{#if isModded}}disabled{{/if}}/>
             </div>
         </div>
+
+        {{!-- "Wszystkie" is an override; disabled individual values remain stored. --}}
+        <fieldset class="fire-modes-section">
+            <legend>{{localize "NEUROSHIMA.Items.Fields.FireModes"}}</legend>
+            <div class="fire-modes-table">
+                <div class="fire-mode-column fire-mode-all-column">
+                    <label class="fire-mode-checkbox fire-mode-all">
+                        <input type="checkbox" name="system.fireModes.all" {{checked system.fireModes.all}}/>
+                        <span class="fire-mode-label">{{localize "NEUROSHIMA.Items.Fields.FireModeAll"}}</span>
+                    </label>
+                    <div class="fire-mode-modifier-label">{{localize "NEUROSHIMA.Items.Fields.FireModeModifiers"}}</div>
+                </div>
+                <div class="fire-mode-column">
+                    <label class="fire-mode-checkbox">
+                        <input type="checkbox" name="system.fireModes.single" {{checked system.fireModes.single}} {{#if system.fireModes.all}}disabled{{/if}}/>
+                        <span class="fire-mode-label">{{localize "NEUROSHIMA.Items.Fields.FireModeSingle"}}</span>
+                    </label>
+                    <div class="fire-mode-modifier-field"><input type="number" name="system.fireModeModifiers.single" value="{{system.fireModeModifiers.single}}" data-dtype="Number" step="1"/></div>
+                </div>
+                <div class="fire-mode-column">
+                    <label class="fire-mode-checkbox">
+                        <input type="checkbox" name="system.fireModes.shortBurst" {{checked system.fireModes.shortBurst}} {{#if system.fireModes.all}}disabled{{/if}}/>
+                        <span class="fire-mode-label">{{localize "NEUROSHIMA.Items.Fields.FireModeShort"}}</span>
+                    </label>
+                    <div class="fire-mode-modifier-field"><input type="number" name="system.fireModeModifiers.shortBurst" value="{{system.fireModeModifiers.shortBurst}}" data-dtype="Number" step="1"/></div>
+                </div>
+                <div class="fire-mode-column">
+                    <label class="fire-mode-checkbox">
+                        <input type="checkbox" name="system.fireModes.longBurst" {{checked system.fireModes.longBurst}} {{#if system.fireModes.all}}disabled{{/if}}/>
+                        <span class="fire-mode-label">{{localize "NEUROSHIMA.Items.Fields.FireModeLong"}}</span>
+                    </label>
+                    <div class="fire-mode-modifier-field"><input type="number" name="system.fireModeModifiers.longBurst" value="{{system.fireModeModifiers.longBurst}}" data-dtype="Number" step="1"/></div>
+                </div>
+                <div class="fire-mode-column">
+                    <label class="fire-mode-checkbox">
+                        <input type="checkbox" name="system.fireModes.fullAuto" {{checked system.fireModes.fullAuto}} {{#if system.fireModes.all}}disabled{{/if}}/>
+                        <span class="fire-mode-label">{{localize "NEUROSHIMA.Items.Fields.FireModeFull"}}</span>
+                    </label>
+                    <div class="fire-mode-modifier-field"><input type="number" name="system.fireModeModifiers.fullAuto" value="{{system.fireModeModifiers.fullAuto}}" data-dtype="Number" step="1"/></div>
+                </div>
+            </div>
+        </fieldset>
     </div>
 
     {{!-- Magazynek (na dole) --}}

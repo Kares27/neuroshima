@@ -270,7 +270,7 @@
                     <span class="gear-stat-label">{{localize "NEUROSHIMA.Items.Fields.GearType"}}</span>
                     <select name="system.gearType">
                         {{#each gearTypes as |label key|}}
-                        <option value="{{key}}" {{#if (eq ../system.gearType key)}}selected{{/if}}>{{localize label}}</option>
+                        <option value="{{key}}" {{#if (eq ../gearTypeValue key)}}selected{{/if}}>{{localize label}}</option>
                         {{/each}}
                     </select>
                 </label>

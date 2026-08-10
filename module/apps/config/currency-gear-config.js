@@ -1,4 +1,9 @@
-import { applyCustomGearTypes, GEAR_TYPE_KEYS, isGearTypeEquippable } from "../../helpers/gear-types.js";
+import {
+    applyCustomGearTypes,
+    GEAR_TYPE_KEYS,
+    isGearTypeEquippable,
+    reconcileGearTypes
+} from "../../helpers/gear-types.js";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
@@ -281,19 +286,9 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
         const NEUROSHIMA = game.neuroshima.config;
         applyCustomGearTypes(NEUROSHIMA, state.customMods.map(mod => mod.key));
 
-        // Turning a subtype into non-equippable must immediately remove the
-        // equipped state. Item lifecycle hooks then remove equip-transfer
-        // mirrors and dispatch equipToggle(false) through the normal path.
-        for (const actor of game.actors) {
-            try {
-                const updates = actor.items
-                    .filter(item => item.type === "gear" && item.system.equipped && !isGearTypeEquippable(item.system.gearType, equippableTypes))
-                    .map(item => ({ _id: item.id, "system.equipped": false }));
-                if (updates.length) await actor.updateEmbeddedDocuments("Item", updates);
-            } catch (error) {
-                console.warn("Neuroshima | Gear equipability reconciliation failed", actor.uuid, error);
-            }
-        }
+        // Persist both equipability changes and the canonical `misc` fallback
+        // for Items whose custom category has just been removed.
+        await reconcileGearTypes({ equippableTypes });
 
         if (game.modules.get("item-piles")?.active) {
             try {

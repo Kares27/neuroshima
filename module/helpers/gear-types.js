@@ -91,3 +91,61 @@ export function isGearTypeEquippable(gearType, map = null) {
   const types = map ?? getEquippableGearTypes();
   return types[normalizeGearType(gearType)] === true;
 }
+
+/**
+ * Persist the canonical fallback after custom categories are removed.
+ * Both world Items and embedded Items (including unlinked-token Actors) are
+ * reconciled so their stored value cannot be rendered as the first <select>
+ * option merely because the former category no longer exists.
+ */
+export async function reconcileGearTypes({ equippableTypes = null } = {}) {
+  const actors = new Map();
+  for (const actor of globalThis.game?.actors ?? []) actors.set(actor.uuid, actor);
+  for (const scene of globalThis.game?.scenes ?? []) {
+    for (const token of scene.tokens ?? []) {
+      if (token.actor) actors.set(token.actor.uuid, token.actor);
+    }
+  }
+
+  for (const actor of actors.values()) {
+    try {
+      const updates = actor.items
+        .filter(item => item.type === "gear")
+        .map(item => {
+          const normalized = normalizeGearType(item.system.gearType);
+          const update = { _id: item.id };
+          if (normalized !== item.system.gearType) update["system.gearType"] = normalized;
+          if (item.system.equipped && !isGearTypeEquippable(normalized, equippableTypes)) {
+            update["system.equipped"] = false;
+          }
+          return Object.keys(update).length > 1 ? update : null;
+        })
+        .filter(Boolean);
+      if (updates.length) await actor.updateEmbeddedDocuments("Item", updates);
+    } catch (error) {
+      globalThis.game?.neuroshima?.warn?.("[gear types] Embedded Item reconciliation failed", {
+        actor: actor.uuid,
+        error
+      });
+    }
+  }
+
+  for (const item of globalThis.game?.items ?? []) {
+    if (item.type !== "gear") continue;
+    const normalized = normalizeGearType(item.system.gearType);
+    const update = {};
+    if (normalized !== item.system.gearType) update["system.gearType"] = normalized;
+    if (item.system.equipped && !isGearTypeEquippable(normalized, equippableTypes)) {
+      update["system.equipped"] = false;
+    }
+    if (!Object.keys(update).length) continue;
+    try {
+      await item.update(update);
+    } catch (error) {
+      globalThis.game?.neuroshima?.warn?.("[gear types] World Item reconciliation failed", {
+        item: item.uuid,
+        error
+      });
+    }
+  }
+}

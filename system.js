@@ -15,7 +15,8 @@ import {
     applyCustomGearTypes,
     DEFAULT_EQUIPPABLE_GEAR_TYPES,
     isGearTypeEquippable,
-    normalizeGearType
+    normalizeGearType,
+    reconcileGearTypes
 } from "./module/helpers/gear-types.js";
 import { NeuroshimaItemSheet } from "./module/sheets/item-sheet.js";
 import { NeuroshimaEffectSheet } from "./module/sheets/neuroshima-effect-sheet.js";
@@ -1303,10 +1304,11 @@ Hooks.once("ready", async () => {
     }
 });
 
-Hooks.once("ready", () => {
+Hooks.once("ready", async () => {
     try {
         const custom = JSON.parse(game.settings.get("neuroshima", "customGearTypes") || "[]");
         applyCustomGearTypes(game.neuroshima.config, custom);
+        if (game.user.isGM) await reconcileGearTypes();
     } catch(e) {}
 });
 

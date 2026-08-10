@@ -1,4 +1,5 @@
 import { NEUROSHIMA } from "../config.js";
+import { createLoadedMagazineFromWeapon } from "../helpers/ammunition.js";
 import { NeuroshimaDice } from "../helpers/dice.js";
 import { NeuroshimaItem } from "../documents/item.js";
 import { NeuroshimaWeaponRollDialog } from "../apps/dialogs/weapon-roll-dialog.js";
@@ -3864,11 +3865,15 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
     const isMagazine = item.type === 'magazine';
     const isContainer = item.type === 'container';
+    const canGenerateMagazine = item.type === 'weapon' && item.system.weaponType === 'ranged';
     const menuItems = [
       { action: 'edit',      icon: 'fas fa-edit',    label: game.i18n.localize('Edit') },
       { action: 'post',      icon: 'fas fa-comment',  label: game.i18n.localize('NEUROSHIMA.ContextMenu.PostToChat') },
       { action: 'duplicate', icon: 'fas fa-copy',     label: game.i18n.localize('NEUROSHIMA.ContextMenu.Duplicate') },
     ];
+    if (canGenerateMagazine) {
+      menuItems.push({ action: 'generateMagazine', icon: 'fas fa-boxes-stacked', label: game.i18n.localize('NEUROSHIMA.ContextMenu.GenerateLoadedMagazine') });
+    }
     if (isMagazine) {
       menuItems.push({ action: 'unload', icon: 'fas fa-eject', label: game.i18n.localize('NEUROSHIMA.Actions.Unload') });
     }
@@ -3897,12 +3902,13 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     });
 
     menu.querySelectorAll('.context-item').forEach(li => {
-      li.addEventListener('click', (e) => {
+      li.addEventListener('click', async (e) => {
         e.stopPropagation();
         const action = li.dataset.action;
         if (action === 'edit')           item.sheet.render(true);
         else if (action === 'post')      this._postItemToChat(itemId);
         else if (action === 'duplicate') item.clone({}, { save: true, parent: this.document });
+        else if (action === 'generateMagazine') await createLoadedMagazineFromWeapon(this.document, item);
         else if (action === 'unload')    this._onUnloadMagazine(e, itemId);
         else if (action === 'toggleLock') item.update({ "system.locked": !item.system.locked });
         else if (action === 'delete')    item.deleteDialog();

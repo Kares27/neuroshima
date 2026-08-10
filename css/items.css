@@ -363,6 +363,161 @@
     padding: 10px;
 }
 
+.neuroshima.sheet.item fieldset.fire-modes-section {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 9px 8px 8px !important;
+    margin: 0;
+    border: 0 !important;
+    border-top: 1px dashed var(--ns-border-main) !important;
+    border-radius: 0 !important;
+}
+
+.neuroshima.sheet.item fieldset.fire-modes-section > legend {
+    width: auto;
+    padding: 0 12px;
+    margin: 0 auto;
+    font-size: 0.82em;
+    line-height: 1;
+    letter-spacing: 0.08em;
+    text-align: center;
+}
+
+.neuroshima.sheet.item .fire-modes-table {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: stretch;
+    width: 100%;
+    margin: 0;
+}
+
+.neuroshima.sheet.item .fire-mode-column {
+    display: grid;
+    grid-template-rows: 28px 30px;
+    align-items: center;
+    justify-items: center;
+    min-width: 0;
+    padding: 0 6px;
+}
+
+.neuroshima.sheet.item .fire-mode-column + .fire-mode-column {
+    border-left: 1px dotted color-mix(in srgb, var(--ns-border-main) 72%, transparent);
+}
+
+.neuroshima.sheet.item .fire-mode-checkbox {
+    display: inline-flex;
+    position: relative;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    width: 100%;
+    min-height: 24px;
+    min-width: 0;
+    margin: 0;
+    cursor: pointer;
+    font-size: 0.78em;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.neuroshima.sheet.item .fire-mode-checkbox input[type="checkbox"] {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    margin: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none;
+}
+
+.neuroshima.sheet.item .fire-mode-checkbox .fire-mode-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 24px;
+    margin: 0;
+    padding: 3px 5px 2px;
+    overflow: hidden;
+    border: 1px solid #625b68;
+    border-radius: 3px;
+    background: #312b35;
+    color: var(--ns-text-main);
+    line-height: 1;
+    text-align: center;
+    text-overflow: ellipsis;
+    transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+}
+
+.neuroshima.sheet.item .fire-mode-checkbox:not(:has(input:disabled)):hover .fire-mode-label {
+    border-color: #a77438;
+    background: #3b3239;
+}
+
+.neuroshima.sheet.item .fire-mode-checkbox input[type="checkbox"]:checked ~ .fire-mode-label {
+    border-color: #d99635;
+    background: #b97322;
+    color: #171318;
+    text-shadow: none;
+}
+
+.neuroshima.sheet.item .fire-mode-checkbox input[type="checkbox"]:focus-visible ~ .fire-mode-label {
+    outline: 1px solid #e7c17d;
+    outline-offset: 2px;
+}
+
+.neuroshima.sheet.item .fire-mode-checkbox:has(input:disabled) {
+    cursor: default;
+    opacity: 0.58;
+}
+
+.neuroshima.sheet.item .fire-mode-checkbox input[type="checkbox"]:disabled {
+    cursor: default;
+    filter: grayscale(0.65);
+}
+
+.neuroshima.sheet.item .fire-mode-modifier-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 30px;
+    overflow: hidden;
+    font-size: 0.74em;
+    font-weight: 700;
+    font-family: 'SpecialElite', serif;
+    line-height: 1;
+    letter-spacing: 0.025em;
+    text-align: center;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.neuroshima.sheet.item .fire-mode-modifier-field {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 30px;
+}
+
+.neuroshima.sheet.item .fire-mode-modifier-field input[type="number"] {
+    box-sizing: border-box;
+    width: min(64px, 88%);
+    height: 24px;
+    margin: 0;
+    padding: 2px 6px;
+    border-color: color-mix(in srgb, var(--ns-border-main) 70%, transparent);
+    text-align: center;
+}
+
+.neuroshima.sheet.item .fire-mode-modifier-field input[type="number"]:focus {
+    border-color: #d99635;
+    box-shadow: 0 0 4px rgba(232, 154, 45, 0.35);
+}
+
 .neuroshima.sheet.item:not(.beast-activity-sheet) fieldset {
     background: transparent;
     border: 1px solid var(--ns-border-main);

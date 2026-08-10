@@ -968,6 +968,7 @@ export class NeuroshimaTestBase {
       disease: "NEUROSHIMA.Tooltip.Disease",
       effects: "NEUROSHIMA.Roll.Effects",
       weapon: "NEUROSHIMA.Tooltip.Weapon",
+      fireMode: "NEUROSHIMA.Roll.FireModeModifier",
       location: "NEUROSHIMA.Tooltip.Location",
       distance: "NEUROSHIMA.Tooltip.Distance",
       movingShooter: "NEUROSHIMA.Tooltip.MovingShooter",
@@ -1627,6 +1628,7 @@ export class WeaponTest extends AttackTest {
       maneuver: this.preData.maneuver ?? this.context.maneuver ?? "none",
       diceCount: this.diceCount,
       burstLevel: Number(this.preData.burstLevel ?? this.context.burstLevel ?? 0),
+      fireRate: Number(this.preData.fireRate ?? this.context.fireRate ?? this.item?.system?.fireRate ?? 1),
       distance: Number(this.preData.distance ?? this.context.distance ?? 0),
       jammingThreshold: Number(this.preData.jammingThreshold ?? this.item?.system?.jamming ?? 20),
       bulletsFired: Number(this.preData.bulletsFired ?? 0),
@@ -1648,6 +1650,7 @@ export class WeaponTest extends AttackTest {
         rows: [
           { label: "NEUROSHIMA.Tooltip.WeaponType", value: this.result.weaponType ?? "" },
           { label: "NEUROSHIMA.Tooltip.BurstLevel", value: this.result.burstLevel ?? 0 },
+          { label: "NEUROSHIMA.Items.Fields.FireRate", value: this.result.fireRate ?? 0 },
           { label: "NEUROSHIMA.Roll.BulletsFired", value: this.result.bulletsFired ?? 0 },
           { label: "NEUROSHIMA.Tooltip.HitBullets", value: this.result.hitBullets ?? 0 },
           { label: "NEUROSHIMA.Tooltip.Damage", value: this.result.damage ?? "" },
@@ -1707,9 +1710,9 @@ export class RangedWeaponTest extends WeaponTest {
     return user?.isGM === true || result?.burstShiftGranted === true;
   }
 
-  static bulletsForBurst(weapon, burstLevel = 0) {
+  static bulletsForBurst(weapon, burstLevel = 0, selectedFireRate = null) {
     if (weapon?.system?.weaponType === "thrown") return 1;
-    const rate = Math.max(1, Number(weapon?.system?.fireRate ?? 1));
+    const rate = Math.max(1, Number(selectedFireRate ?? weapon?.system?.fireRate ?? 1));
     return [1, rate, rate * 3, rate * 6][Number(burstLevel)] ?? 1;
   }
 
@@ -1791,7 +1794,7 @@ export class RangedWeaponTest extends WeaponTest {
     }
     if (!this.actor || !this.item) return;
     const requested = Number(this.preData.bulletsFired)
-      || this.constructor.bulletsForBurst(this.item, this.result.burstLevel);
+      || this.constructor.bulletsForBurst(this.item, this.result.burstLevel, this.result.fireRate);
     const plan = this.constructor.planAmmunition(this.actor, this.item, requested);
     this._ammunitionPlan = plan;
     if (!plan.valid) {
@@ -1807,7 +1810,7 @@ export class RangedWeaponTest extends WeaponTest {
       jammingThreshold: Math.min(Number(this.item.system.jamming ?? 20), Number(plan.jamming ?? 20)),
       burstHitStep: Number(this.preData.burstHitStep ?? this.context.burstHitStep ?? 1),
       magazineId: plan.magazineId,
-      fireRate: Number(this.item.system.fireRate ?? 1)
+      fireRate: Number(this.preData.fireRate ?? this.context.fireRate ?? this.item.system.fireRate ?? 1)
     });
   }
 
@@ -1947,8 +1950,9 @@ export class RangedWeaponTest extends WeaponTest {
   async refundBurstLevel(targetLevel) {
     const currentLevel = Number(this.result.burstLevel ?? this.preData.burstLevel ?? 0);
     const level = Math.clamp(Number(targetLevel), 0, currentLevel);
-    const currentBullets = this.constructor.bulletsForBurst(this.item, currentLevel);
-    const targetBullets = this.constructor.bulletsForBurst(this.item, level);
+    const fireRate = Number(this.result.fireRate ?? this.preData.fireRate ?? this.item?.system?.fireRate ?? 1);
+    const currentBullets = this.constructor.bulletsForBurst(this.item, currentLevel, fireRate);
+    const targetBullets = this.constructor.bulletsForBurst(this.item, level, fireRate);
     const count = Math.max(0, Math.min(currentBullets - targetBullets, this.result.bulletSequence?.length ?? 0));
     if (!count) return 0;
     const bullets = this.result.bulletSequence.slice(-count);
@@ -1986,8 +1990,9 @@ export class RangedWeaponTest extends WeaponTest {
     const currentLevel = Number(this.result.burstLevel ?? this.preData.burstLevel ?? 0);
     const originalLevel = Number(this.preData.originalBurstLevel ?? this.preData.burstLevel ?? currentLevel);
     const level = Math.clamp(Number(targetLevel), currentLevel, originalLevel);
-    const count = this.constructor.bulletsForBurst(this.item, level)
-      - this.constructor.bulletsForBurst(this.item, currentLevel);
+    const fireRate = Number(this.result.fireRate ?? this.preData.fireRate ?? this.item?.system?.fireRate ?? 1);
+    const count = this.constructor.bulletsForBurst(this.item, level, fireRate)
+      - this.constructor.bulletsForBurst(this.item, currentLevel, fireRate);
     if (count <= 0) return 0;
     const plan = this.constructor.planAmmunition(this.actor, this.item, count);
     if (!plan.valid || plan.bulletsFired !== count) return 0;

@@ -309,6 +309,8 @@
             "DistancePenaltyFull": "Distance Modifier",
             "Aiming": "Aiming",
             "Burst": "Burst",
+            "FireMode": "Fire Mode",
+            "FireModeModifier": "Fire Mode Modifier",
             "BurstSingle": "Single",
             "BurstShort": "Short burst",
             "BurstLong": "Long burst",
@@ -386,7 +388,8 @@
         "ContextMenu": {
             "Options": "Options",
             "PostToChat": "Post to Chat",
-            "Duplicate": "Duplicate"
+            "Duplicate": "Duplicate",
+            "GenerateLoadedMagazine": "Generate ammunition"
         },
         "Actions": {
             "Attack": "Attack",
@@ -1152,6 +1155,9 @@
             "SelectTargetOrPoint": "Select a target on the map (LMB) to measure distance. RMB to cancel.",
             "NoActorTokenOnCanvas": "No active token found for your character on the map.",
             "MagazineFull": "Magazine is already full.",
+            "GeneratedMagazineMissingCaliber": "Set the weapon caliber first.",
+            "GeneratedMagazineInvalidCapacity": "Weapon capacity must be at least 1.",
+            "LoadedMagazineGenerated": "Created a full magazine ({capacity}) for {weapon}.",
             "AmmoLoaded": "Loaded {amount}x {ammo} into {mag}.",
             "AmmoRefunded": "Refunded {amount}x ammo to {name}.",
             "DamageApplied": "Applied {count} wounds to {name}.",
@@ -1322,6 +1328,8 @@
         },
         "Items": {
             "ExportedToSidebar": "Item \"{name}\" added to the items sidebar.",
+            "GeneratedMagazineName": "Magazine — {weapon}",
+            "GeneratedAmmoName": "Ammunition {caliber}",
             "Type": {
                 "Weapon": "Weapon",
                 "WeaponMelee": "Melee Weapon",
@@ -1407,6 +1415,13 @@
                 "PiercingAbbr": "PP",
                 "FireRate": "Fire Rate",
                 "FireRateAbbr": "Rate",
+                "FireModes": "Fire Modes",
+                "FireModeModifiers": "Modifiers",
+                "FireModeAll": "All",
+                "FireModeSingle": "Single",
+                "FireModeShort": "Short",
+                "FireModeLong": "Long",
+                "FireModeFull": "Full Auto",
                 "Capacity": "Capacity",
                 "Jamming": "Jamming",
                 "JammingAbbr": "Jam.",

@@ -3241,6 +3241,39 @@ li.chat-message.message.flexcol > .message-content {
     margin-top: 2px;
 }
 
+/* Aiming and fire-mode controls are equal halves of the ranged controls row. */
+.neuroshima.roll-dialog .rd-sliders-row > .form-group,
+.neuroshima.roll-dialog .rd-sliders-row > .rd-fire-controls {
+    box-sizing: border-box;
+    flex: 1 1 0;
+    width: 0;
+    min-width: 0;
+}
+
+.neuroshima.roll-dialog .rd-fire-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 5px 8px;
+}
+
+.neuroshima.roll-dialog .rd-fire-controls select {
+    width: 100%;
+    min-width: 0;
+}
+
+.neuroshima.roll-dialog .rd-fire-controls .form-group {
+    margin: 0;
+}
+
+.neuroshima.roll-dialog .rd-fire-controls .rd-fire-rate {
+    min-width: 74px;
+}
+
+.neuroshima.roll-dialog .rd-fire-controls .slider-hint {
+    grid-column: 1 / -1;
+}
+
 /* --- Inputs column form-groups --- */
 .neuroshima.roll-dialog .rd-inputs-col .form-group {
     display: flex;

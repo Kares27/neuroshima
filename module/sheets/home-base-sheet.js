@@ -1,4 +1,5 @@
 import { getConditions } from "../apps/config/condition-config.js";
+import { createLoadedMagazineFromWeapon } from "../helpers/ammunition.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
 
 export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {
@@ -388,11 +389,15 @@ export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {
     document.querySelectorAll('.ns-item-ctx-menu').forEach(el => el.remove());
 
     const isContainer = item.type === 'container';
+    const canGenerateMagazine = item.type === 'weapon' && item.system.weaponType === 'ranged';
     const menuItems = [
       { action: 'edit',      icon: 'fas fa-edit',   label: game.i18n.localize('Edit') },
       { action: 'post',      icon: 'fas fa-comment', label: game.i18n.localize('NEUROSHIMA.ContextMenu.PostToChat') },
       { action: 'duplicate', icon: 'fas fa-copy',    label: game.i18n.localize('NEUROSHIMA.ContextMenu.Duplicate') },
     ];
+    if (canGenerateMagazine) {
+      menuItems.push({ action: 'generateMagazine', icon: 'fas fa-boxes-stacked', label: game.i18n.localize('NEUROSHIMA.ContextMenu.GenerateLoadedMagazine') });
+    }
     if (isContainer && game.user.isGM) {
       const locked = item.system.locked;
       menuItems.push({ action: 'toggleLock', icon: locked ? 'fas fa-lock-open' : 'fas fa-lock', label: game.i18n.localize(locked ? 'NEUROSHIMA.Container.Unlock' : 'NEUROSHIMA.Container.Lock') });
@@ -427,6 +432,7 @@ export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {
           await NeuroshimaChatMessage.postItemToChat(item, { actor: this.document });
         }
         else if (action === 'duplicate') item.clone({}, { save: true, parent: this.document });
+        else if (action === 'generateMagazine') await createLoadedMagazineFromWeapon(this.document, item);
         else if (action === 'toggleLock') item.update({ "system.locked": !item.system.locked });
         else if (action === 'delete') item.deleteDialog();
         menu.remove();

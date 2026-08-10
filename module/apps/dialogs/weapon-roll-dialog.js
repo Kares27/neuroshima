@@ -22,6 +22,42 @@ function calculateLocationPenalty(weaponType, locationKey) {
   return Number(NEUROSHIMA.bodyLocations?.[locationKey]?.modifiers?.[weaponType] ?? 0);
 }
 
+export const FIRE_MODE_DEFINITIONS = Object.freeze([
+  { key: "single", value: 0, label: "NEUROSHIMA.Roll.BurstSingle" },
+  { key: "shortBurst", value: 1, label: "NEUROSHIMA.Roll.BurstShort" },
+  { key: "longBurst", value: 2, label: "NEUROSHIMA.Roll.BurstLong" },
+  { key: "fullAuto", value: 3, label: "NEUROSHIMA.Roll.BurstFull" }
+]);
+
+export function getAvailableFireModes(weapon) {
+  const modes = weapon?.system?.fireModes ?? {};
+  const all = modes.all === true;
+  const available = FIRE_MODE_DEFINITIONS.filter(mode => all || modes[mode.key] === true);
+  return available.length ? available : [FIRE_MODE_DEFINITIONS[0]];
+}
+
+export function getFireModeKey(level) {
+  return FIRE_MODE_DEFINITIONS.find(mode => mode.value === Number(level))?.key ?? "single";
+}
+
+export function getFireModeModifier(weapon, level) {
+  return Number(weapon?.system?.fireModeModifiers?.[getFireModeKey(level)] ?? 0);
+}
+
+function normalizeFireModeLevel(weapon, level) {
+  const allowed = getAvailableFireModes(weapon).map(mode => mode.value);
+  const numericLevel = Number(level);
+  return allowed.includes(numericLevel) ? numericLevel : allowed[0];
+}
+
+function getFireRateOptions(weapon) {
+  const baseRate = Math.max(1, Number(weapon?.system?.fireRate ?? 1));
+  return [...new Set([baseRate, ...(weapon?.system?.fireRateOptions ?? [])]
+    .map(Number)
+    .filter(rate => Number.isInteger(rate) && rate > 0))]
+    .sort((a, b) => a - b);
+}
+
 /**
  * Dialog for weapon rolls (ranged and melee).
  * Uses WFRP-inspired re-render pattern: userEntry tracks user overrides,
@@ -48,6 +84,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       tempoLevel: lastRoll.tempoLevel || 1,
       aimingLevel: this.rollType === "melee" ? 2 : (lastRoll.aimingLevel || 0),
       burstLevel: 0,
+      fireRate: Number(lastRoll.fireRate ?? this.weapon?.system?.fireRate ?? 1),
       percentageModifier: lastRoll.percentageModifier || 0,
       useArmorPenalty: lastRoll.useArmorPenalty ?? true,
       useWoundPenalty: lastRoll.useWoundPenalty ?? true,
@@ -139,7 +176,14 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     const tempoLevel      = this.userEntry.tempoLevel      ?? this.rollOptions.tempoLevel ?? 1;
     const meleeDiceCount  = this.fixedMeleeDiceCount ?? this.userEntry.meleeDiceCount ?? 3;
     const aimingLevel     = this.userEntry.aimingLevel     ?? this.rollOptions.aimingLevel ?? 0;
-    const burstLevel      = this.userEntry.burstLevel      ?? this.rollOptions.burstLevel ?? 0;
+    const fireModeOptions = getAvailableFireModes(this.weapon);
+    const burstLevel = normalizeFireModeLevel(
+      this.weapon,
+      this.userEntry.burstLevel ?? this.rollOptions.burstLevel ?? 0
+    );
+    const fireRateOptions = getFireRateOptions(this.weapon);
+    let fireRate = Number(this.userEntry.fireRate ?? this.rollOptions.fireRate ?? this.weapon?.system?.fireRate ?? 1);
+    if (!fireRateOptions.includes(fireRate)) fireRate = fireRateOptions[0];
     const useArmorPenalty   = this.userEntry.useArmorPenalty   ?? this.rollOptions.useArmorPenalty   ?? true;
     const useWoundPenalty   = this.userEntry.useWoundPenalty   ?? this.rollOptions.useWoundPenalty   ?? true;
     const useDiseasePenalty = this.userEntry.useDiseasePenalty ?? this.rollOptions.useDiseasePenalty ?? true;
@@ -189,6 +233,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       distanceModifier: distancePenalty,
       aimingLevel,
       burstLevel,
+      fireRate,
       movingTargetPenalty: this.targetMovedPenalty,
       movingShooterPenalty: this.shooterMovedPenalty
     },
@@ -207,6 +252,11 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
         const locationPenalty = calculateLocationPenalty(this.weapon.system.weaponType, effectiveHitLocation);
         const weaponModifier = this.userEntry.weaponModifier
           ?? ((this.weapon?.system?.weaponModifier ?? 0) + (sf.weaponModifier || 0));
+        let effectiveBurstLevel = burstLevel;
+        if (sf.burstLevelOverride != null) {
+          effectiveBurstLevel = Math.min(effectiveBurstLevel, Number(sf.burstLevelOverride));
+        }
+        const fireModeModifier = getFireModeModifier(this.weapon, effectiveBurstLevel);
         const isMelee = this.rollType === "melee";
         const allowCombatShift = game.settings.get("neuroshima", "allowCombatShift");
         const effectiveTempoShift = isMelee
@@ -232,6 +282,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
               useDiseasePenalty ? actorDiseasePenalty + (sf.diseasePenalty || 0) : 0,
               useEffectPenalty ? actorEffectPenalty + (sf.effectPenalty || 0) : 0,
               useWeaponModifier ? weaponModifier : 0,
+              fireModeModifier,
               locationPenalty,
               distancePenalty,
               Number(this.shooterMovedPenalty ?? 0),
@@ -314,6 +365,13 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     context.gradCiosDefense = this.gradCiosDefense;
     context.aimingLevel     = aimingLevel;
     context.burstLevel      = burstLevel;
+    context.fireModeOptions = fireModeOptions.map(mode => ({
+      ...mode,
+      label: game.i18n.localize(mode.label)
+    }));
+    context.fireRate = fireRate;
+    context.fireRateOptions = fireRateOptions.map(value => ({ value, label: String(value) }));
+    context.hasFireRateOptions = fireRateOptions.length > 1;
     context.applyArmorPenalty = useArmorPenalty;
     context.applyWoundPenalty = useWoundPenalty;
     context.rollMode        = rollMode;
@@ -440,6 +498,9 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     const aimingLevel    = formData.aimingLevel     !== undefined ? parseInt(formData.aimingLevel)   : (this.userEntry.aimingLevel   ?? this.rollOptions.aimingLevel   ?? 0);
     let burstLevel       = formData.burstLevel       !== undefined ? parseInt(formData.burstLevel)    : (this.userEntry.burstLevel    ?? 0);
     if (this._scriptFields?.burstLevelOverride != null) burstLevel = Math.min(burstLevel, this._scriptFields.burstLevelOverride);
+    burstLevel = normalizeFireModeLevel(this.weapon, burstLevel);
+    const fireRate       = Number(formData.fireRate ?? this.userEntry.fireRate ?? this.rollOptions.fireRate ?? this.weapon?.system?.fireRate ?? 1);
+    const fireModeModifier = getFireModeModifier(this.weapon, burstLevel);
     const tempoLevel     = formData.tempoLevel      !== undefined ? parseInt(formData.tempoLevel)    : (this.userEntry.tempoLevel    ?? this.rollOptions.tempoLevel    ?? 1);
     const maneuver       = formData.maneuver        || (this.userEntry.maneuver ?? this.rollOptions.maneuver ?? "none");
     const isMelee        = this.rollType === "melee";
@@ -477,6 +538,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       + diseasePenalty
       + effectPenalty
       + weaponModifier
+      + fireModeModifier
       + locationPenalty
       + distancePenalty
       + movingShooterPenalty
@@ -537,7 +599,16 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     const burstDisplay       = html.querySelector('.burst-display');
     const bulletsCountDisplay= html.querySelector('.bullets-count');
     if (burstDisplay)        burstDisplay.innerText = burstLevel;
-    if (bulletsCountDisplay) bulletsCountDisplay.innerText = RangedWeaponTest.bulletsForBurst(this.weapon, burstLevel);
+    if (bulletsCountDisplay) bulletsCountDisplay.innerText = RangedWeaponTest.bulletsForBurst(this.weapon, burstLevel, fireRate);
+    const fireModeSummary = html.querySelector('.fire-mode-summary-value');
+    if (fireModeSummary) {
+      const definition = FIRE_MODE_DEFINITIONS.find(mode => mode.value === burstLevel)
+        ?? FIRE_MODE_DEFINITIONS[0];
+      const label = game.i18n.localize(definition.label);
+      fireModeSummary.textContent = fireModeModifier === 0
+        ? label
+        : `${label} (${fireModeModifier > 0 ? "+" : ""}${fireModeModifier}%)`;
+    }
 
     const tempoDisplay     = html.querySelector('.tempo-display');
     const tempoShiftDisplay= html.querySelector('.tempo-shift');
@@ -580,6 +651,9 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     const totalSkillBonus  = parseInt(formData.skillBonus)       || 0;
     let burstLevel         = formData.burstLevel  !== undefined ? parseInt(formData.burstLevel)  : 0;
     if (sf?.burstLevelOverride != null) burstLevel = Math.min(burstLevel, sf.burstLevelOverride);
+    burstLevel = normalizeFireModeLevel(this.weapon, burstLevel);
+    const fireRate         = Number(formData.fireRate ?? ue.fireRate ?? this.rollOptions.fireRate ?? this.weapon?.system?.fireRate ?? 1);
+    const fireModeModifier = getFireModeModifier(this.weapon, burstLevel);
     const aimingLevel      = formData.aimingLevel !== undefined ? parseInt(formData.aimingLevel) : (ue.aimingLevel ?? this.rollOptions.aimingLevel ?? 0);
     // selectedTempo = what the user explicitly chose in the dialog (saved to lastWeaponRoll for recall).
     // tempoLevel    = effective value passed to the roll engine — includes any condition-forced shift.
@@ -607,6 +681,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
         useEffectPenalty:  !!formData.useEffectPenalty,
         weaponModifier:    parseInt(formData.weaponModifier) || 0,
         useWeaponModifier: !!formData.useWeaponModifier,
+        fireRate,
         rollMode:          formData.rollMode
       }
     });
@@ -622,6 +697,8 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       meleeDiceCount:  meleeDiceCount,
       aimingLevel:     aimingLevel,
       burstLevel:      burstLevel,
+      fireRate:        fireRate,
+      fireModeModifier,
       difficulty:      _effectiveDiff,
       hitLocation:     formData.hitLocation,
       modifier:        totalModifier,
@@ -756,6 +833,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
           disease: params.applyDisease === false ? 0 : Number(params.diseasePenalty ?? 0),
           effects: params.applyEffects === false ? 0 : Number(params.effectPenalty ?? 0),
           weapon: Number(params.weaponModifier ?? 0),
+          fireMode: Number(params.fireModeModifier ?? 0),
           location: locationPenalty,
           distance: Number(params.distancePenalty ?? 0),
           movingShooter: Number(params.movingShooterPenalty ?? 0),
@@ -768,7 +846,8 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
         maximumDifficulty: params.maximumDifficulty ?? null,
         finalDifficultyShift: Number(params.finalDifficultyShift ?? 0),
         fixedDice: Array.isArray(params.fixedDice) ? [...params.fixedDice] : null,
-        bulletsFired: isMelee ? 0 : RangedWeaponTest.bulletsForBurst(weapon, params.burstLevel),
+        fireRate: isMelee ? 0 : Number(params.fireRate ?? weapon.system.fireRate ?? 1),
+        bulletsFired: isMelee ? 0 : RangedWeaponTest.bulletsForBurst(weapon, params.burstLevel, params.fireRate),
         annotations: [...(params.annotations ?? [])]
       },
       context: {
@@ -788,6 +867,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
         maneuver,
         hitLocation: location,
         burstLevel: Number(params.burstLevel ?? 0),
+        fireRate: isMelee ? 0 : Number(params.fireRate ?? weapon.system.fireRate ?? 1),
         burstHitStep: Number(params.burstHitStep ?? 1),
         distance: Number(params.distance ?? 0),
         applyArmor: params.applyArmor === true,

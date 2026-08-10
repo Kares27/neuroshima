@@ -312,6 +312,8 @@
             "DistancePenaltyFull": "Modyfikator Odległości",
             "Aiming": "Celowanie",
             "Burst": "Seria",
+            "FireMode": "Tryb ognia",
+            "FireModeModifier": "Modyfikator trybu",
             "BurstSingle": "Pojedyncza",
             "BurstShort": "Krótka seria",
             "BurstLong": "Długa seria",
@@ -389,7 +391,8 @@
         "ContextMenu": {
             "Options": "Opcje",
             "PostToChat": "Wyślij na czat",
-            "Duplicate": "Duplikuj"
+            "Duplicate": "Duplikuj",
+            "GenerateLoadedMagazine": "Wygeneruj amunicję"
         },
         "Actions": {
             "Attack": "Atak",
@@ -1179,6 +1182,9 @@
             "SelectTargetOrPoint": "Wybierz cel na mapie (LPM), aby zmierzyć dystans. PPM, aby anulować.",
             "NoActorTokenOnCanvas": "Nie znaleziono aktywnego tokena Twojej postaci na mapie.",
             "MagazineFull": "Magazynek jest już pełny.",
+            "GeneratedMagazineMissingCaliber": "Najpierw ustaw kaliber broni.",
+            "GeneratedMagazineInvalidCapacity": "Pojemność broni musi wynosić co najmniej 1.",
+            "LoadedMagazineGenerated": "Utworzono pełny magazynek ({capacity}) dla broni {weapon}.",
             "AmmoLoaded": "Załadowano {amount}x {ammo} do {mag}.",
             "AmmoRefunded": "Zwrócono {amount} szt. amunicji do {name}.",
             "DamageApplied": "Nałożono {count} ran na {name}.",
@@ -1350,6 +1356,8 @@
         },
         "Items": {
             "ExportedToSidebar": "Przedmiot \"{name}\" dodany do biblioteki przedmiotów.",
+            "GeneratedMagazineName": "Magazynek — {weapon}",
+            "GeneratedAmmoName": "Amunicja {caliber}",
             "Type": {
                 "Weapon": "Broń",
                 "WeaponMelee": "Broń Ręczna",
@@ -1435,6 +1443,13 @@
                 "PiercingAbbr": "PP",
                 "FireRate": "Szybkostrzelność",
                 "FireRateAbbr": "Szybkostrz.",
+                "FireModes": "Tryby ognia",
+                "FireModeModifiers": "Modyfikatory",
+                "FireModeAll": "Wszystkie",
+                "FireModeSingle": "Pojedynczy",
+                "FireModeShort": "Krótka",
+                "FireModeLong": "Długa",
+                "FireModeFull": "Ciągły",
                 "Capacity": "Pojemność",
                 "Jamming": "Zacięcie",
                 "JammingAbbr": "Zac.",

@@ -97,6 +97,7 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
       lastWeaponRoll: new fields.SchemaField({
         percentageModifier: new fields.NumberField({ integer: true, initial: 0 }),
         difficulty: new fields.StringField({ initial: "average" }),
+        fireRate: new fields.NumberField({ integer: true, initial: 1, min: 1 }),
         useArmorPenalty: new fields.BooleanField({ initial: true }),
         useWoundPenalty: new fields.BooleanField({ initial: true }),
         isOpen: new fields.BooleanField({ initial: false })
@@ -482,6 +483,7 @@ export class NeuroshimaCreatureData extends NeuroshimaActorData {
       lastWeaponRoll: new fields.SchemaField({
         percentageModifier: new fields.NumberField({ integer: true, initial: 0 }),
         difficulty:         new fields.StringField({ initial: "average" }),
+        fireRate:           new fields.NumberField({ integer: true, initial: 1, min: 1 }),
         useArmorPenalty:    new fields.BooleanField({ initial: false }),
         useWoundPenalty:    new fields.BooleanField({ initial: true }),
         isOpen:             new fields.BooleanField({ initial: false })

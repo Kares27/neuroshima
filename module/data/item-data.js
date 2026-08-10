@@ -64,6 +64,23 @@ export class WeaponData extends foundry.abstract.TypeDataModel {
       magazine: new fields.StringField({ initial: "" }),
       piercing: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       fireRate: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      fireRateOptions: new fields.ArrayField(
+        new fields.NumberField({ integer: true, min: 1 }),
+        { initial: [] }
+      ),
+      fireModes: new fields.SchemaField({
+        all: new fields.BooleanField({ initial: false }),
+        single: new fields.BooleanField({ initial: true }),
+        shortBurst: new fields.BooleanField({ initial: false }),
+        longBurst: new fields.BooleanField({ initial: false }),
+        fullAuto: new fields.BooleanField({ initial: false })
+      }),
+      fireModeModifiers: new fields.SchemaField({
+        single: new fields.NumberField({ integer: true, initial: 0 }),
+        shortBurst: new fields.NumberField({ integer: true, initial: 0 }),
+        longBurst: new fields.NumberField({ integer: true, initial: 0 }),
+        fullAuto: new fields.NumberField({ integer: true, initial: 0 })
+      }),
       capacity: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       jamming: new fields.NumberField({ integer: true, initial: 20, min: 0, max: 20 }),
       jammed: new fields.BooleanField({ initial: false }),

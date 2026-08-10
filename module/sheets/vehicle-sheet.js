@@ -1,4 +1,5 @@
 import { NEUROSHIMA } from "../config.js";
+import { createLoadedMagazineFromWeapon } from "../helpers/ammunition.js";
 import { getConditions } from "../apps/config/condition-config.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
 import { buildBreakdownTooltip } from "../helpers/tooltip-renderer.js";
@@ -628,12 +629,16 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
 
     document.querySelectorAll('.ns-item-ctx-menu').forEach(el => el.remove());
 
+    const canGenerateMagazine = item.type === 'weapon' && item.system.weaponType === 'ranged';
     const menuItems = [
       { action: 'edit',      icon: 'fas fa-edit',    label: game.i18n.localize('Edit') },
       { action: 'post',      icon: 'fas fa-comment',  label: game.i18n.localize('NEUROSHIMA.ContextMenu.PostToChat') },
       { action: 'duplicate', icon: 'fas fa-copy',     label: game.i18n.localize('NEUROSHIMA.ContextMenu.Duplicate') },
       { action: 'delete',    icon: 'fas fa-trash',    label: game.i18n.localize('Delete') }
     ];
+    if (canGenerateMagazine) {
+      menuItems.splice(-1, 0, { action: 'generateMagazine', icon: 'fas fa-boxes-stacked', label: game.i18n.localize('NEUROSHIMA.ContextMenu.GenerateLoadedMagazine') });
+    }
 
     const menu = document.createElement('nav');
     menu.className = 'ns-item-ctx-menu context-menu themed theme-dark';
@@ -663,6 +668,7 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
           await NeuroshimaChatMessage.postItemToChat(item, { actor: this.document });
         }
         else if (action === 'duplicate') item.clone({}, { save: true, parent: this.document });
+        else if (action === 'generateMagazine') await createLoadedMagazineFromWeapon(this.document, item);
         else if (action === 'delete') item.deleteDialog();
         menu.remove();
       });

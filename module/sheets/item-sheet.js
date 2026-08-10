@@ -1,6 +1,7 @@
 import { NEUROSHIMA } from "../config.js";
 import { TraitBrowserApp } from "../apps/trait-browser.js";
 import { BeastActivitySheet } from "../apps/beast-activity-sheet.js";
+import { normalizeGearType } from "../helpers/gear-types.js";
 import { installMod, attachMod, detachMod, removeMod, buildInstalledMap, buildModDeltaSummary, getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveWeight, getEffectiveCost, computeWeaponEffective, buildWeaponWriteback } from "../helpers/mod-helpers.js";
 import { buildItemPreviewTooltip } from "../helpers/item-tooltip.js";
 import {
@@ -379,9 +380,12 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     }
     context.typeLabel = `NEUROSHIMA.Items.Type.${typeLabelKey}`;
 
-    if (item.type === "gear" && item.system.gearType && item.system.gearType !== "misc") {
-      const i18nKey = NEUROSHIMA.gearTypes[item.system.gearType];
-      context.gearTypeLabel = i18nKey ? game.i18n.localize(i18nKey) : item.system.gearType;
+    if (item.type === "gear") {
+      context.gearTypeValue = normalizeGearType(item.system.gearType);
+    }
+    if (item.type === "gear" && context.gearTypeValue !== "misc") {
+      const i18nKey = NEUROSHIMA.gearTypes[context.gearTypeValue];
+      context.gearTypeLabel = i18nKey ? game.i18n.localize(i18nKey) : context.gearTypeValue;
     }
 
     if (item.type === "money") {
