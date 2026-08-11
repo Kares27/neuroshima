@@ -10,14 +10,14 @@ function measureDistance(first, second) {
   return canvas.grid.measurePath([{ x: a.x, y: a.y }, { x: b.x, y: b.y }]).distance;
 }
 
-function grenadePenalty(distance, build, useBuildBonus) {
+function grenadePenalty(distance, build, useBuildBonus = true) {
   const config = game.neuroshima?.config ?? NEUROSHIMA;
   const baseRange = config.grenadeBaseRange ?? 10;
   if (distance <= baseRange) return 0;
   const raw = Math.round((distance - baseRange) * (config.grenadeDistanceMultiplier ?? 3));
   const tier = useBuildBonus
     ? config.grenadeConstitutionBonuses?.find(entry =>
-        build >= entry.minBuild && build <= entry.maxBuild)
+      build >= entry.minBuild && build <= entry.maxBuild)
     : null;
   return Math.max(0, raw - Number(tier?.bonus ?? 0));
 }
@@ -25,7 +25,7 @@ function grenadePenalty(distance, build, useBuildBonus) {
 export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
   constructor(options = {}) {
     super(options);
-    this.weapon = options.weapon;
+    this.grenade = options.grenade;
 
     this.rollOptions = {
       distance:          options.distance          ?? 0,
@@ -60,13 +60,13 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
   };
 
   get title() {
-    return `${game.i18n.localize("NEUROSHIMA.Grenade.RollTitle")}: ${this.weapon?.name ?? ""}`;
+    return `${game.i18n.localize("NEUROSHIMA.Grenade.RollTitle")}: ${this.grenade?.name ?? ""}`;
   }
 
   async _prepareContext(options) {
     const ctx = await super._prepareContext(options);
     const actor  = this.actor;
-    const wData  = this.weapon?.system ?? {};
+    const gData  = this.grenade?.system ?? {};
 
     const actorWoundPenalty   = actor?.system?.combat?.totalWoundPenalty ?? 0;
     const actorArmorPenalty   = actor?.system?.combat?.totalArmorPenalty ?? 0;
@@ -94,18 +94,18 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
     }
 
     const build        = actor?.system?.attributes?.constitution ?? 0;
-    const useBuildBonus = wData.useBuildBonus !== false;
-    const distancePenalty = this.userEntry.distancePenalty ?? grenadePenalty(distance, build, useBuildBonus);
+    const distancePenalty = this.userEntry.distancePenalty
+      ?? grenadePenalty(distance, build, gData.useBuildBonus !== false);
 
-    const weaponAttrKey  = wData.attribute || "dexterity";
-    const weaponSkillKey = wData.skill || "throwing";
+    const weaponAttrKey  = gData.attribute || "dexterity";
+    const weaponSkillKey = gData.skill || "throwing";
     const weaponAttrObj  = { name: weaponAttrKey, value: actor?.system?.attributeTotals?.[weaponAttrKey] ?? 0, key: weaponAttrKey };
     const weaponSkillObj = { name: weaponSkillKey, value: actor?.system?.skills?.[weaponSkillKey]?.value ?? 0, key: weaponSkillKey };
 
     const targetActors = Array.from(game.user.targets || []).map(t => t.actor).filter(Boolean);
     const { dialogModifiers, scriptFields, effectPenaltyBreakdown } = await NeuroshimaScriptRunner.computeDialogFields(
       actor,
-      { rollType: "grenade", weapon: this.weapon, skill: weaponSkillObj, attribute: weaponAttrObj, difficulty: baseDifficulty, distance, distanceModifier: distancePenalty },
+      { rollType: "grenade", item: this.grenade, grenade: this.grenade, skill: weaponSkillObj, attribute: weaponAttrObj, difficulty: baseDifficulty, distance, distanceModifier: distancePenalty },
       this.selectedModifierIds,
       this.unselectedModifierIds,
       targetActors,
@@ -143,13 +143,13 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
     const cfg = game.neuroshima?.config ?? {};
     const baseRange  = cfg.grenadeBaseRange ?? 10;
     const multiplier = cfg.grenadeDistanceMultiplier ?? 3;
-    const blastZones = wData.blastZones ?? [];
+    const blastZones = gData.blastZones ?? [];
     const maxRange   = blastZones.length > 0 ? Math.max(...blastZones.map(z => z.radius ?? 0)) : 0;
 
     const totalDiseasePenalty = actorDiseasePenalty + (scriptFields.diseasePenalty || 0);
 
     ctx.actor           = actor;
-    ctx.weapon          = this.weapon;
+    ctx.grenade         = this.grenade;
     ctx.rollOptions     = this.rollOptions;
     ctx.modifier        = userModifier + (scriptFields.modifier || 0);
     ctx.attributeBonus  = userAttrBonus + (scriptFields.attributeBonus || 0);
@@ -229,10 +229,10 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
     const finalDiffEl = html.querySelector('.final-difficulty');
     if (finalDiffEl) finalDiffEl.textContent = diffLabel;
 
-    const weaponAttrKey = this.weapon?.system?.attribute || "dexterity";
+    const weaponAttrKey = this.grenade?.system?.attribute || "dexterity";
     const attrTotal = (Number(this.actor?.system?.attributeTotals?.[weaponAttrKey]) || 0)
       + (parseInt(html.querySelector('[name="attributeBonus"]')?.value) || 0);
-    const skillKey  = this.weapon?.system?.skill || "throwing";
+    const skillKey  = this.grenade?.system?.skill || "throwing";
     const skillVal  = Number(this.actor?.system?.skills?.[skillKey]?.value) || 0;
     const finalTarget = attrTotal + (baseDiff?.mod ?? 0);
     const targetEl = html.querySelector('.final-target');
@@ -273,7 +273,7 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
 
     const params = {
       actor:              this.actor,
-      weapon:             this.weapon,
+      grenade:            this.grenade,
       distance,
       distancePenalty,
       modifier,
@@ -290,12 +290,12 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
       autoSuccess:        sf.autoSuccess === true,
       annotations:        sf.annotations || []
     };
-    const attributeKey = this.weapon.system.attribute || "dexterity";
-    const skillKey = this.weapon.system.skill || "throwing";
-    const submissionOptions = await this._runSubmissionScripts(this.weapon, {});
+    const attributeKey = this.grenade?.system?.attribute || "dexterity";
+    const skillKey = this.grenade?.system?.skill || "throwing";
+    const submissionOptions = await this._runSubmissionScripts(this.grenade, {});
     const test = new GrenadeTest({
       actor: this.actor,
-      item: this.weapon,
+      item: this.grenade,
       attribute: {
         key: attributeKey,
         value: Number(this.actor.system.attributeTotals?.[attributeKey]
@@ -307,7 +307,7 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
         value: Number(this.actor.system.skills?.[skillKey]?.value ?? 0)
       },
       preData: {
-        label: this.weapon.name,
+        label: this.grenade.name,
         attributeBonus: Number(params.attributeBonus ?? 0),
         skillBonus: Number(params.skillBonus ?? 0),
         annotations: [...(params.annotations ?? [])],
@@ -331,7 +331,8 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
         grenadeData: {
           distance: Number(params.distance ?? 0),
           distancePenalty: Number(params.distancePenalty ?? 0),
-          blastZones: [...(this.weapon.system.blastZones ?? [])]
+          damageCategory: this.grenade.system.damageCategory ?? "physical",
+          blastZones: [...(this.grenade.system.blastZones ?? [])]
         },
         options: submissionOptions,
         eventArgs: { options: submissionOptions }
@@ -344,7 +345,7 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
     const result = { ...test.result, message: test.message };
 
     if (result?.remainingQuantity === 0) {
-      ui.notifications.warn(game.i18n.format("NEUROSHIMA.Grenade.QuantityEmpty", { name: this.weapon.name }));
+      ui.notifications.warn(game.i18n.format("NEUROSHIMA.Grenade.QuantityEmpty", { name: this.grenade.name }));
     }
 
     await this.close();

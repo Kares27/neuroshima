@@ -12,6 +12,7 @@
         },
         "Item": {
             "weapon": "Broń",
+            "grenade": "Granat",
             "armor": "Pancerz",
             "gear": "Przedmiot",
             "trick": "Sztuczka",
@@ -757,7 +758,9 @@
                 "RemoveTier": "Usuń",
                 "ThrowParams": "Parametry Rzutu",
                 "BaseRange": "Zasięg Bazowy (m)",
-                "DistanceMultiplier": "Mnożnik Odległości"
+                "DistanceMultiplier": "Mnożnik Odległości",
+                "DeleteTemplateAfterDamage": "Usuń template po nałożeniu obrażeń",
+                "DeleteTemplateAfterDamageHint": "Po zastosowaniu obrażeń usuwa z mapy template powiązany z tą kartą rzutu granatem."
             },
             "DamageCategoryConfig": {
                 "Label": "Typy Obrażeń",
@@ -1180,6 +1183,7 @@
         },
         "Notifications": {
             "SelectTargetOrPoint": "Wybierz cel na mapie (LPM), aby zmierzyć dystans. PPM, aby anulować.",
+            "SelectTemplatePoint": "Wybierz miejsce szablonu na mapie (LPM). PPM, aby anulować.",
             "NoActorTokenOnCanvas": "Nie znaleziono aktywnego tokena Twojej postaci na mapie.",
             "MagazineFull": "Magazynek jest już pełny.",
             "GeneratedMagazineMissingCaliber": "Najpierw ustaw kaliber broni.",
@@ -1194,6 +1198,8 @@
             "OutOfAmmo": "Brak amunicji typu {name}!",
             "NoTokensSelectedOrTargeted": "Nie wybrano ani nie namierzono żadnych tokenów.",
             "NoMagazineSelected": "Nie wybrano magazynka dla tej broni!",
+            "AmmoCategoryMismatch": "Magazynek zawiera już inny rodzaj amunicji. Nie można mieszać zwykłych pocisków z pociskami do wyrzutni.",
+            "AmmoCaliberMismatch": "Kaliber amunicji nie pasuje do kalibru magazynka.",
             "ActorNotFound": "Nie znaleziono aktora powiązanego z tym rzutem.",
             "Jamming": "ZACIĘCIE",
             "DamageReversed": "Wycofano {count} ran u {name}.",
@@ -1364,6 +1370,7 @@
                 "WeaponRanged": "Broń Dystansowa",
                 "WeaponThrown": "Broń Miotana",
                 "WeaponGrenade": "Granat",
+                "Grenade": "Granat",
                 "WeaponLauncher": "Wyrzutnia",
                 "Armor": "Pancerz",
                 "Gear": "Przedmiot",
@@ -1392,6 +1399,7 @@
             },
             "AddType": {
                 "Weapon": "broń",
+                "Grenade": "granat",
                 "Armor": "pancerz",
                 "Gear": "przedmiot",
                 "Trick": "atut",
@@ -1408,12 +1416,7 @@
             "Empty": "Brak przedmiotów.",
             "GearSection": "Przedmioty",
             "Ammo": {
-                "Category": { "Standard": "Zwykła", "Launcher": "Do wyrzutni" },
-                "Payload": { "Standard": "Standardowy", "Blast": "Wybuchowy", "Area": "Obszarowy", "AntiArmor": "Przeciwpancerny" }
-            },
-            "Launcher": {
-                "Type": { "Grenade": "Granatnik", "Rocket": "Rakietowa", "Mortar": "Moździerz", "Other": "Inna" },
-                "Feed": { "Direct": "Bezpośrednio", "Magazine": "Magazynek", "Either": "Oba źródła", "Integrated": "Integralna" }
+                "Category": { "Standard": "Zwykła", "Launcher": "Do wyrzutni" }
             },
             "Fields": {
                 "Weight": "Waga",
@@ -1433,10 +1436,6 @@
                 "AmmoType": "Amunicja",
                 "Ammo": "Amunicja",
                 "AmmoCategory": "Kategoria amunicji",
-                "PayloadType": "Typ ładunku",
-                "LauncherType": "Typ wyrzutni",
-                "AmmoFeed": "Zasilanie amunicją",
-                "AmmoFeedMode": "Aktywne źródło",
                 "Attribute": "Atrybut",
                 "Skill": "Umiejętność",
                 "AttackBonus": "Bonus do ataku",
@@ -1453,6 +1452,7 @@
                 "MeleeDamageTypes": "Rodzaj obrażeń",
                 "WeaponSubtype": "Typ broni",
                 "Magazine": "Magazynek",
+                "LauncherAmmunition": "Amunicja / Magazynek",
                 "Piercing": "Punkty Przebicia",
                 "PiercingAbbr": "PP",
                 "FireRate": "Szybkostrzelność",

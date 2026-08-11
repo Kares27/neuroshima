@@ -59,7 +59,10 @@ export class WeaponData extends foundry.abstract.TypeDataModel {
       weaponType: new fields.StringField({ 
         required: true, 
         initial: "melee", 
-        choices: ["melee", "ranged", "thrown", "grenade", "launcher"]
+        // "grenade" is accepted only so Foundry can deserialize legacy worlds
+        // before the ready-hook migration changes those documents to type
+        // "grenade". It is never exposed by the creation dialog or weapon UI.
+        choices: ["melee", "ranged", "thrown", "launcher", "grenade"]
       }),
       attribute: new fields.StringField({ initial: "dexterity" }),
       skill: new fields.StringField({ initial: "brawl" }),
@@ -77,9 +80,6 @@ export class WeaponData extends foundry.abstract.TypeDataModel {
       caliber: new fields.StringField({ initial: "" }),
       magazine: new fields.StringField({ initial: "" }),
       directAmmo: new fields.StringField({ initial: "" }),
-      launcherType: new fields.StringField({ initial: "grenade", choices: ["grenade", "rocket", "mortar", "other"] }),
-      ammoFeed: new fields.StringField({ initial: "direct", choices: ["direct", "magazine", "either", "integrated"] }),
-      ammoFeedMode: new fields.StringField({ initial: "direct", choices: ["direct", "magazine"] }),
       piercing: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       fireRate: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       fireRateOptions: new fields.ArrayField(
@@ -106,11 +106,23 @@ export class WeaponData extends foundry.abstract.TypeDataModel {
       requiredBuild: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       damageCategory: new fields.StringField({ initial: "physical" }),
 
-      // Grenade specific
-      freeThrowDistance: new fields.NumberField({ integer: true, initial: 10, min: 1 }),
-      useBuildBonus: new fields.BooleanField({ initial: true }),
-      blastZones: blastZonesField(),
       mods: new fields.ObjectField({ initial: {} })
+    };
+  }
+}
+
+/** Data model for hand grenades. Throwing rules belong to GrenadeTest. */
+export class GrenadeData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      ...baseSchema(),
+      ...equipableSchema(),
+      attribute: new fields.StringField({ initial: "dexterity" }),
+      skill: new fields.StringField({ initial: "throwing" }),
+      useBuildBonus: new fields.BooleanField({ initial: true }),
+      damageCategory: new fields.StringField({ initial: "physical" }),
+      blastZones: blastZonesField()
     };
   }
 }
@@ -227,7 +239,6 @@ export class AmmoData extends foundry.abstract.TypeDataModel {
     return {
       ...baseSchema(),
       ammoCategory: new fields.StringField({ initial: "standard", choices: ["standard", "launcher"] }),
-      payloadType: new fields.StringField({ initial: "standard", choices: ["standard", "blast", "area", "antiArmor"] }),
       caliber: new fields.StringField({ initial: "" }),
       isOverride: new fields.BooleanField({ initial: false }),
       overrideDamage: new fields.BooleanField({ initial: false }),
@@ -272,6 +283,7 @@ export class MagazineData extends foundry.abstract.TypeDataModel {
     return {
       ...baseSchema(),
       ...equipableSchema(),
+      ammoCategory: new fields.StringField({ initial: "standard", choices: ["standard", "launcher"] }),
       caliber: new fields.StringField({ initial: "" }),
       capacity: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       // contents: Array of { ammoId, name, quantity, ammoSnapshot, overrides }
@@ -413,15 +425,7 @@ export class BeastSegmentData extends foundry.abstract.TypeDataModel {
       range:                   new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       freeThrowDistance:       new fields.NumberField({ integer: true, initial: 10, min: 1 }),
       useBuildBonus:           new fields.BooleanField({ initial: true }),
-      blastZones:              new fields.ArrayField(
-        new fields.SchemaField({
-          radius:    new fields.NumberField({ integer: true, initial: 1, min: 1 }),
-          damage:    new fields.StringField({ initial: "L", choices: ["none","D","L","C","K","sD","sL","sC","sK"] }),
-          knockdown: new fields.BooleanField({ initial: false }),
-          shrapnel:  new fields.NumberField({ integer: true, initial: 0, min: 0 })
-        }),
-        { initial: [] }
-      ),
+      blastZones:              blastZonesField(),
       effectIds:               new fields.ArrayField(new fields.StringField(), { initial: [] }),
       testRequired:            new fields.BooleanField({ initial: false }),
       testType:                new fields.StringField({ initial: "attribute", choices: ["attribute", "skill"] }),

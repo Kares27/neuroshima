@@ -5,7 +5,7 @@ import { NeuroshimaItem } from "./module/documents/item.js";
 import { NeuroshimaChatMessage } from "./module/documents/chat-message.js";
 import { NeuroshimaActiveEffect, NeuroshimaActiveEffectData } from "./module/documents/active-effect.js";
 import { NeuroshimaActorData, NeuroshimaNPCData, NeuroshimaCreatureData, NeuroshimaVehicleData, HomeBaseData } from "./module/data/actor-data.js";
-import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, TraitData, WoundData, BeastActionData, BeastSegmentData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData, MoneyData, ReputationData, DiseaseData, WeaponModData, ArmorModData, FacilitiesData, ContainerData } from "./module/data/item-data.js";
+import { WeaponData, GrenadeData, ArmorData, GearData, AmmoData, MagazineData, TrickData, TraitData, WoundData, BeastActionData, BeastSegmentData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData, MoneyData, ReputationData, DiseaseData, WeaponModData, ArmorModData, FacilitiesData, ContainerData } from "./module/data/item-data.js";
 import { NeuroshimaActorSheet } from "./module/sheets/actor-sheet.js";
 import { NeuroshimaNPCSheet } from "./module/sheets/npc-sheet.js";
 import { NeuroshimaCreatureSheet } from "./module/sheets/creature-sheet.js";
@@ -397,6 +397,7 @@ Hooks.once('init', async function() {
     CONFIG.Actor.dataModels.homeBase = HomeBaseData;
     CONFIG.ActiveEffect.dataModels.base = NeuroshimaActiveEffectData;
     CONFIG.Item.dataModels.weapon = WeaponData;
+    CONFIG.Item.dataModels.grenade = GrenadeData;
     CONFIG.Item.dataModels.armor = ArmorData;
     CONFIG.Item.dataModels.gear = GearData;
     CONFIG.Item.dataModels.ammo = AmmoData;
@@ -565,7 +566,7 @@ Hooks.once('init', async function() {
 
     foundry.documents.collections.Items.unregisterSheet("core", foundry.appv1.sheets.ItemSheet);
     foundry.documents.collections.Items.registerSheet("neuroshima", NeuroshimaItemSheet, {
-        types: ["weapon", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-action", "beast-segment", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money", "reputation", "disease", "weapon-mod", "armor-mod", "facilities", "container"],
+        types: ["weapon", "grenade", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-action", "beast-segment", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money", "reputation", "disease", "weapon-mod", "armor-mod", "facilities", "container"],
         makeDefault: true,
         label: "NEUROSHIMA.Sheet.Item"
     });
@@ -954,6 +955,13 @@ Hooks.once('init', async function() {
         default: 3
     });
 
+    game.settings.register("neuroshima", "grenadeDeleteTemplateAfterDamage", {
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: true
+    });
+
     game.settings.register("neuroshima", "reputationTestMode", {
         name: "NEUROSHIMA.Settings.ReputationTestMode.Name",
         hint: "NEUROSHIMA.Settings.ReputationTestMode.Hint",
@@ -1176,6 +1184,7 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/actors/actor/parts/actor-inventory.hbs",
         "systems/neuroshima/templates/actors/parts/gear-category-groups.hbs",
         "systems/neuroshima/templates/actors/parts/effect-manual-actions.hbs",
+        "systems/neuroshima/templates/actors/parts/grenade-inventory-section.hbs",
         "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs",
         "systems/neuroshima/templates/actors/actor/parts/wounds-paper-doll.hbs",
         "systems/neuroshima/templates/actors/actor/parts/wounds-list.hbs",
@@ -1187,7 +1196,8 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/item/parts/weapon-melee.hbs",
         "systems/neuroshima/templates/item/parts/weapon-ranged.hbs",
         "systems/neuroshima/templates/item/parts/weapon-thrown.hbs",
-        "systems/neuroshima/templates/item/parts/weapon-grenade.hbs",
+        "systems/neuroshima/templates/item/parts/grenade-details.hbs",
+        "systems/neuroshima/templates/item/parts/blast-zones.hbs",
         "systems/neuroshima/templates/item/parts/ammo-details.hbs",
         "systems/neuroshima/templates/item/parts/wound-details.hbs",
         "systems/neuroshima/templates/item/parts/vehicle-damage-details.hbs",

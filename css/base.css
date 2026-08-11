@@ -5545,6 +5545,37 @@ li.chat-message.message.flexcol > .message-content {
     padding-right: 4px;
 }
 
+.neuroshima.grenade-config .grenade-cleanup-option {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 0;
+    padding: 8px 10px;
+    border: 1px solid var(--ns-border-light);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.neuroshima.grenade-config .grenade-cleanup-option input[type="checkbox"] {
+    flex: 0 0 18px;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+}
+
+.neuroshima.grenade-config .grenade-cleanup-option > span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.neuroshima.grenade-config .grenade-cleanup-option small {
+    color: var(--ns-text-secondary, #aaa);
+    font-weight: normal;
+    line-height: 1.25;
+}
+
 /* Damage Category Config */
 .neuroshima.damage-category-config .damage-category-config-form {
     display: flex;

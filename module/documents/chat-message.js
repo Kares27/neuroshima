@@ -1153,8 +1153,10 @@ export class NeuroshimaChatMessage extends ChatMessage {
       return;
     }
 
+    const serializedTest = message.getFlag("neuroshima", "test") ?? null;
+    const grenadeRollData = serializedTest?.result ?? {};
     const grenadeResults = message.getFlag("neuroshima", "grenadeResults")
-      ?? message.getFlag("neuroshima", "test")?.result?.blastResults
+      ?? grenadeRollData.blastResults
       ?? [];
     if (!grenadeResults.length) return;
 
@@ -1164,8 +1166,24 @@ export class NeuroshimaChatMessage extends ChatMessage {
     const { CombatHelper } = await import("../helpers/combat-helper.js");
 
     const grenadeLabel = message.getFlag("neuroshima", "grenadeLabel")
-      ?? message.getFlag("neuroshima", "test")?.result?.label
-      ?? game.i18n.localize("NEUROSHIMA.Items.Type.Weapon");
+      ?? grenadeRollData.label
+      ?? game.i18n.localize("NEUROSHIMA.Items.Type.Grenade");
+    const isLauncherBlast = grenadeRollData.isLauncherBlast === true
+      || grenadeRollData.isLauncher === true;
+
+    // A dedicated grenade remains the source of every resulting damage packet.
+    // UUIDs are essential for synthetic token actors; IDs keep old cards valid.
+    const grenadeDamageContext = {
+      actorId: grenadeRollData.actorId ?? null,
+      actorUuid: serializedTest?.preData?.actorUuid ?? null,
+      weaponId: grenadeRollData.weaponId ?? null,
+      weaponUuid: serializedTest?.preData?.itemUuid ?? null,
+      weaponType: isLauncherBlast ? "launcher" : "grenade",
+      damageCategory: grenadeRollData.damageCategory ?? "physical",
+      isMelee: false,
+      isGrenade: true,
+      isLauncher: isLauncherBlast
+    };
 
     const NS         = game.neuroshima?.config ?? {};
     const bodyLocs   = NS.bodyLocations ?? {};
@@ -1198,11 +1216,10 @@ export class NeuroshimaChatMessage extends ChatMessage {
 
       if (result.damage && result.damage !== "none" && result.locationKey) {
         const attackData = {
+          ...grenadeDamageContext,
           damage:         result.damage,
           finalLocation:  result.locationKey,
           label:          grenadeLabel,
-          isMelee:        false,
-          isGrenade:      true,
           piercing:       0,
           hitBulletsData: [{ damage: result.damage, piercing: 0, successPoints: 1 }]
         };
@@ -1233,11 +1250,10 @@ export class NeuroshimaChatMessage extends ChatMessage {
 
         if (sDmg) {
           const sAttack = {
+            ...grenadeDamageContext,
             damage:         sDmg,
             finalLocation:  sLoc.key,
             label:          grenadeLabel + " (fragment)",
-            isMelee:        false,
-            isGrenade:      true,
             piercing:       0,
             hitBulletsData: [{ damage: sDmg, piercing: 0, successPoints: 1 }]
           };
@@ -1303,22 +1319,35 @@ export class NeuroshimaChatMessage extends ChatMessage {
 
     await message.setFlag("neuroshima", "damageApplied", true);
 
-    const serializedTest = foundry.utils.deepClone(message.getFlag("neuroshima", "test"));
-    const grenadeRollData = serializedTest?.result;
-    if (serializedTest?.preData?.rollClass && grenadeRollData) {
-      const updatedData = { ...grenadeRollData, damageApplied: true };
-      serializedTest.result = updatedData;
+    const updatedSerializedTest = foundry.utils.deepClone(serializedTest);
+    const updatedGrenadeRollData = updatedSerializedTest?.result;
+    if (updatedSerializedTest?.preData?.rollClass && updatedGrenadeRollData) {
+      const updatedData = { ...updatedGrenadeRollData, damageApplied: true };
+      updatedSerializedTest.result = updatedData;
       const newContent = await this._renderTemplate(
         "systems/neuroshima/templates/chat/grenade-roll-card.hbs",
         updatedData
       );
       await message.update({
         content: newContent,
-        "flags.neuroshima.test": serializedTest
+        "flags.neuroshima.test": updatedSerializedTest
       });
     } else {
       btn.textContent = "✓ " + game.i18n.localize("NEUROSHIMA.Grenade.BlastDamageApplied");
       btn.classList.add("applied");
+    }
+
+    // Cleanup is scoped by grenadeMessageId, so templates belonging to other
+    // grenade rolls or unrelated measured templates are never removed.
+    if (game.settings.get("neuroshima", "grenadeDeleteTemplateAfterDamage")) {
+      try {
+        await this._deleteExistingGrenadeTemplates(message.id);
+      } catch (error) {
+        game.neuroshima?.warn?.("[grenade] Unable to remove template after damage", {
+          messageId: message.id,
+          error
+        });
+      }
     }
   }
 

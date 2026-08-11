@@ -39,7 +39,7 @@ import { collectTraitSnapshots } from "./trait-snapshot.js";
 import { normalizeEffectPenaltyChanges } from "./effect-penalty.js";
 import { GEAR_TYPE_KEYS, normalizeGearType } from "./gear-types.js";
 
-const CURRENT_SCHEMA_VERSION = "1.8";
+const CURRENT_SCHEMA_VERSION = "2.1";
 
 export function registerMigrationHook() {
     Hooks.once("ready", async () => {
@@ -52,7 +52,21 @@ export function registerMigrationHook() {
             stored = "0.0";
         }
 
-        if (_versionGte(stored, CURRENT_SCHEMA_VERSION)) return;
+        if (_versionGte(stored, CURRENT_SCHEMA_VERSION)) {
+            // Legacy Item JSON can be imported after the versioned migration
+            // has already completed. Keep a cheap live-document guard so such
+            // imports cannot remain weaponType=grenade until the next release.
+            try {
+                const converted = await _sweepLiveLegacyGrenades();
+                if (converted > 0) {
+                    console.log(`Neuroshima | Converted ${converted} late-imported legacy grenade document(s).`);
+                }
+            } catch (err) {
+                console.error("Neuroshima | Late legacy grenade sweep failed:", err);
+                ui.notifications.error(game.i18n.localize("NEUROSHIMA.Migration.Failed"), { permanent: true });
+            }
+            return;
+        }
 
         ui.notifications.info(
             game.i18n.format("NEUROSHIMA.Migration.Starting", { version: CURRENT_SCHEMA_VERSION }),
@@ -68,6 +82,12 @@ export function registerMigrationHook() {
             if (!_versionGte(stored, "1.6")) await _migrate_1_5_to_1_6();
             if (!_versionGte(stored, "1.7")) await _migrate_1_6_to_1_7();
             if (!_versionGte(stored, "1.8")) await _migrate_1_7_to_1_8();
+            if (!_versionGte(stored, "1.9")) await _migrate_1_8_to_1_9();
+            // Dedicated post-refactor pass. This deliberately repeats legacy
+            // grenade discovery so worlds which saved schema 1.9 while the
+            // refactor was being developed cannot retain weapon-type grenades.
+            if (!_versionGte(stored, "2.0")) await _migrate_1_9_to_2_0();
+            if (!_versionGte(stored, "2.1")) await _migrate_2_0_to_2_1();
 
             await game.settings.set("neuroshima", "schemaVersion", CURRENT_SCHEMA_VERSION);
             ui.notifications.info(game.i18n.localize("NEUROSHIMA.Migration.Done"));
@@ -89,15 +109,15 @@ function _allActors() {
     const seen = new Set();
     const result = [];
     for (const actor of game.actors) {
-        seen.add(actor.id);
+        seen.add(actor.uuid);
         result.push(actor);
     }
     for (const scene of game.scenes) {
         for (const token of scene.tokens) {
             if (token.isLinked) continue;
             const a = token.actor;
-            if (!a || seen.has(a.id)) continue;
-            seen.add(a.id);
+            if (!a || seen.has(a.uuid)) continue;
+            seen.add(a.uuid);
             result.push(a);
         }
     }
@@ -504,6 +524,234 @@ async function _migrate_1_7_to_1_8() {
     }
 }
 
+// ─── Migration 1.8 → 1.9: dedicated grenades and launcher ammunition ───────
+
+const GRENADE_BASE_FIELDS = [
+    "description", "weight", "cost", "quantity", "availability", "resources", "tests", "equipped"
+];
+
+/** Convert the former weaponType=grenade document without carrying weapon-only data forward. */
+async function _migrateLegacyGrenade(item) {
+    const source = item?._source?.system ?? {};
+    if (item?.type !== "weapon" || source.weaponType !== "grenade") return false;
+
+    const system = {};
+    for (const key of GRENADE_BASE_FIELDS) {
+        if (source[key] !== undefined) system[key] = foundry.utils.deepClone(source[key]);
+    }
+    system.attribute = source.attribute ?? "dexterity";
+    system.skill = source.skill ?? "throwing";
+    system.equipped = source.equipped === true;
+    system.useBuildBonus = source.useBuildBonus !== false;
+    system.damageCategory = source.damageCategory ?? "physical";
+    system.blastZones = foundry.utils.deepClone(source.blastZones ?? []);
+
+    await item.update(
+        { type: "grenade", system },
+        { diff: false, recursive: false, neuroshimaGrenadeMigration: true }
+    );
+    return true;
+}
+
+/** Convert legacy grenade Items already loaded in the live world/token collections. */
+async function _sweepLiveLegacyGrenades() {
+    let converted = 0;
+    for (const item of _allWorldItems()) {
+        if (await _migrateLegacyGrenade(item)) converted += 1;
+    }
+    for (const actor of _allActors()) {
+        for (const item of actor.items ?? []) {
+            if (await _migrateLegacyGrenade(item)) converted += 1;
+        }
+    }
+    return converted;
+}
+
+/** Remove legacy launcher configuration and preserve exactly one selected ammunition source. */
+async function _migrateLegacyLauncher(item) {
+    const source = item?._source?.system ?? {};
+    if (item?.type !== "weapon" || source.weaponType !== "launcher") return false;
+
+    const directAmmo = String(source.directAmmo ?? "");
+    const magazine = String(source.magazine ?? "");
+    const feed = source.ammoFeed ?? "";
+    const mode = feed === "either" ? (source.ammoFeedMode ?? "direct") : feed;
+    const updates = {
+        "system.-=launcherType": null,
+        "system.-=ammoFeed": null,
+        "system.-=ammoFeedMode": null,
+        "system.-=blastZones": null,
+        "system.-=freeThrowDistance": null,
+        "system.-=useBuildBonus": null
+    };
+
+    if (directAmmo && magazine) {
+        if (mode === "magazine") updates["system.directAmmo"] = "";
+        else updates["system.magazine"] = "";
+    }
+
+    await item.update(updates, { neuroshimaLauncherMigration: true });
+    return true;
+}
+
+/** Launcher ammunition owns its blast data; obsolete payloadType no longer controls resolution. */
+async function _migrateLegacyLauncherAmmo(item) {
+    const source = item?._source?.system ?? {};
+    if (item?.type !== "ammo" || source.ammoCategory !== "launcher") return false;
+
+    const updates = { "system.-=payloadType": null };
+    if (source.payloadType && source.payloadType !== "blast") {
+        // Area/anti-armour were different mechanics. Never manufacture blast
+        // zones for them during migration merely because the field disappeared.
+        updates["system.blastZones"] = [];
+    }
+    await item.update(updates, { neuroshimaLauncherMigration: true });
+    return true;
+}
+
+/** Infer magazine category from its stored projectile snapshots. */
+async function _migrateMagazineCategory(item) {
+    if (item?.type !== "magazine") return false;
+    const source = item._source?.system ?? {};
+    if (["standard", "launcher"].includes(source.ammoCategory)) return false;
+
+    const contents = Array.isArray(source.contents) ? source.contents : [];
+    const launcher = contents.some(stack =>
+        stack?.ammoSnapshot?.ammoCategory === "launcher"
+        || stack?.ammoCategory === "launcher"
+    );
+    await item.update(
+        { "system.ammoCategory": launcher ? "launcher" : "standard" },
+        { neuroshimaLauncherMigration: true }
+    );
+    return true;
+}
+
+async function _migrateGrenadeLauncherDocument(document) {
+    const items = document?.documentName === "Item"
+        ? [document]
+        : Array.from(document?.items ?? []);
+    for (const item of items) {
+        // Changing the document type invalidates the old object instance for
+        // subsequent schema operations, so this conversion must run alone.
+        if (await _migrateLegacyGrenade(item)) continue;
+        await _migrateLegacyLauncher(item);
+        await _migrateLegacyLauncherAmmo(item);
+        await _migrateMagazineCategory(item);
+    }
+}
+
+async function _migrate_1_8_to_1_9() {
+    console.log("Neuroshima | Running migration 1.8 -> 1.9 (grenades and launchers)");
+    for (const item of _allWorldItems()) await _migrateGrenadeLauncherDocument(item);
+    for (const actor of _allActors()) await _migrateGrenadeLauncherDocument(actor);
+
+    const packs = game.packs?.contents ?? Array.from(game.packs ?? []);
+    for (const pack of packs.filter(pack => {
+        const type = pack.metadata?.type ?? pack.documentName;
+        const owned = pack.metadata?.packageType === "world"
+            || pack.metadata?.system === "neuroshima"
+            || pack.collection?.startsWith("neuroshima.");
+        return owned && ["Actor", "Item"].includes(type);
+    })) {
+        const wasLocked = pack.locked;
+        try {
+            if (wasLocked) await pack.configure({ locked: false });
+            for (const document of await pack.getDocuments()) {
+                await _migrateGrenadeLauncherDocument(document);
+            }
+        } finally {
+            if (wasLocked) await pack.configure({ locked: true });
+        }
+    }
+}
+
+/**
+ * Final post-refactor grenade sweep.
+ *
+ * Covers every live Item document location supported by Foundry: world Items,
+ * embedded Items of world actors, embedded Items of unlinked token actors, and
+ * Neuroshima/world Actor and Item compendia. Converted documents keep their
+ * IDs, flags, ownership, effects and images; only type and system data change.
+ */
+async function _migrate_1_9_to_2_0() {
+    console.log("Neuroshima | Running migration 1.9 -> 2.0 (final legacy grenade sweep)");
+    let converted = 0;
+
+    converted += await _sweepLiveLegacyGrenades();
+
+    const packs = game.packs?.contents ?? Array.from(game.packs ?? []);
+    for (const pack of packs.filter(pack => {
+        const type = pack.metadata?.type ?? pack.documentName;
+        const owned = pack.metadata?.packageType === "world"
+            || pack.metadata?.system === "neuroshima"
+            || pack.collection?.startsWith("neuroshima.");
+        return owned && ["Actor", "Item"].includes(type);
+    })) {
+        const wasLocked = pack.locked;
+        try {
+            if (wasLocked) await pack.configure({ locked: false });
+            for (const document of await pack.getDocuments()) {
+                if (document.documentName === "Item") {
+                    if (await _migrateLegacyGrenade(document)) converted += 1;
+                    continue;
+                }
+                for (const item of document.items ?? []) {
+                    if (await _migrateLegacyGrenade(item)) converted += 1;
+                }
+            }
+        } finally {
+            if (wasLocked) await pack.configure({ locked: true });
+        }
+    }
+
+    console.log(`Neuroshima | Final legacy grenade sweep converted ${converted} document(s).`);
+}
+
+/** Persist the configurable throw fields restored to the dedicated GrenadeData model. */
+async function _normalizeGrenadeRollFields(item) {
+    if (item?.type !== "grenade") return false;
+    const source = item._source?.system ?? {};
+    const updates = {};
+    if (source.attribute == null) updates["system.attribute"] = "dexterity";
+    if (source.skill == null) updates["system.skill"] = "throwing";
+    if (source.useBuildBonus == null) updates["system.useBuildBonus"] = true;
+    if (!Object.keys(updates).length) return false;
+    await item.update(updates, { neuroshimaGrenadeMigration: true });
+    return true;
+}
+
+async function _migrate_2_0_to_2_1() {
+    console.log("Neuroshima | Running migration 2.0 -> 2.1 (grenade throw configuration)");
+    for (const item of _allWorldItems()) await _normalizeGrenadeRollFields(item);
+    for (const actor of _allActors()) {
+        for (const item of actor.items ?? []) await _normalizeGrenadeRollFields(item);
+    }
+
+    const packs = game.packs?.contents ?? Array.from(game.packs ?? []);
+    for (const pack of packs.filter(pack => {
+        const type = pack.metadata?.type ?? pack.documentName;
+        const owned = pack.metadata?.packageType === "world"
+            || pack.metadata?.system === "neuroshima"
+            || pack.collection?.startsWith("neuroshima.");
+        return owned && ["Actor", "Item"].includes(type);
+    })) {
+        const wasLocked = pack.locked;
+        try {
+            if (wasLocked) await pack.configure({ locked: false });
+            for (const document of await pack.getDocuments()) {
+                if (document.documentName === "Item") {
+                    await _normalizeGrenadeRollFields(document);
+                } else {
+                    for (const item of document.items ?? []) await _normalizeGrenadeRollFields(item);
+                }
+            }
+        } finally {
+            if (wasLocked) await pack.configure({ locked: true });
+        }
+    }
+}
+
 /** Return a read-only inventory of canonical Active Effect triggers in use. */
 export function auditEffectTriggers() {
     const report = { documents: 0, effects: 0, scripts: 0, triggers: {} };
@@ -548,6 +796,7 @@ function _isEmpty(obj) {
 export async function normalizeActor(actor) {
     if (!game.user.isGM) return;
     await _migrate_1_1_normalizeActorMods(actor);
+    await _migrateGrenadeLauncherDocument(actor);
     await _repairStoredSystemData(actor);
     for (const item of actor.items) {
         try { await _normalizeGearItem(item); } catch (_) {}
@@ -575,6 +824,7 @@ export async function normalizeAll() {
     for (const actor of _allActors()) {
         try {
             await _migrate_1_1_normalizeActorMods(actor);
+            await _migrateGrenadeLauncherDocument(actor);
             await _repairStoredSystemData(actor);
             for (const item of actor.items) {
                 try { await _normalizeGearItem(item); } catch (_) {}
@@ -588,6 +838,7 @@ export async function normalizeAll() {
 
     for (const item of _allWorldItems()) {
         try {
+            await _migrateGrenadeLauncherDocument(item);
             await _normalizeGearItem(item);
             await _migrate_1_1_normalizeWorldItemMods(item);
             await _repairStoredSystemData(item);

@@ -10,6 +10,7 @@ import {
   traitSnapshotPreview
 } from "../helpers/trait-snapshot.js";
 import { openTraitSnapshotItemSheet } from "../apps/trait-snapshot-item-editor.js";
+import { getMagazineAmmoCategory } from "../combat/ammunition-resolver.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ItemSheetV2 } = foundry.applications.sheets;
@@ -261,12 +262,51 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     super(options);
   }
 
+  /** Convert the launcher's single UI selector into its persisted source fields. */
+  _launcherAmmunitionUpdate(selection) {
+    const value = String(selection ?? "");
+    const separator = value.indexOf(":");
+    const sourceType = separator >= 0 ? value.slice(0, separator) : "";
+    const sourceId = separator >= 0 ? value.slice(separator + 1) : "";
+    return {
+      "system.directAmmo": sourceType === "ammo" ? sourceId : "",
+      "system.magazine": sourceType === "magazine" ? sourceId : ""
+    };
+  }
+
+  /** @override */
+  async _onChangeForm(formConfig, event) {
+    const input = event.target;
+    const name = input?.getAttribute?.("name") ?? input?.name;
+    if (
+      name === "launcherAmmoSelection"
+      && this.document.type === "weapon"
+      && this.document.system.weaponType === "launcher"
+    ) {
+      // Persist immediately. The selector itself is only a presentation field
+      // and is not part of the Item data model.
+      return this.document.update(this._launcherAmmunitionUpdate(input.value));
+    }
+    return super._onChangeForm(formConfig, event);
+  }
+
   /**
    * Synthetic trait copies are complete in-memory Item documents whose writes
    * are persisted by trait-snapshot-item-editor. Core ItemSheetV2 otherwise
    * treats them as new documents and rejects form submission.
    */
   async _processSubmitData(event, form, submitData) {
+    if (
+      this.document.type === "weapon"
+      && this.document.system.weaponType === "launcher"
+      && Object.hasOwn(submitData, "launcherAmmoSelection")
+    ) {
+      // The sheet exposes one selector while the ammunition resolver retains
+      // its explicit, backward-compatible direct/magazine source fields.
+      Object.assign(submitData, this._launcherAmmunitionUpdate(submitData.launcherAmmoSelection));
+      delete submitData.launcherAmmoSelection;
+    }
+
     if (this.document._isTraitSnapshotDraft) {
       return this.document.update(submitData);
     }
@@ -281,6 +321,27 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.system = item.system;
     context.fields = item.system.schema.fields;
     context.source = item.system.toObject();
+
+    // Imported and freshly migrated legacy grenades can have no persisted
+    // system keys. GrenadeData supplies defaults at runtime; expose an explicit
+    // render-safe view as well so the Stats part never becomes an empty sheet.
+    if (item.type === "grenade") {
+      context.system = {
+        ...context.source,
+        description: item.system.description ?? "",
+        weight: Number(item.system.weight ?? 0),
+        cost: Number(item.system.cost ?? 0),
+        quantity: Number(item.system.quantity ?? 1),
+        availability: Number(item.system.availability ?? 100),
+        resources: Array.from(item.system.resources ?? []),
+        tests: item.system.tests?.toObject?.() ?? item.system.tests ?? { value: "" },
+        attribute: item.system.attribute ?? "dexterity",
+        skill: item.system.skill ?? "throwing",
+        useBuildBonus: item.system.useBuildBonus !== false,
+        damageCategory: item.system.damageCategory ?? "physical",
+        blastZones: Array.from(item.system.blastZones ?? [])
+      };
+    }
 
     const LEVELS = CONST.DOCUMENT_OWNERSHIP_LEVELS;
     const userLevel = item.getUserLevel(game.user);
@@ -305,6 +366,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       money: ["description", "stats", "effects"],
       reputation: ["description", "stats", "resources", "effects"],
       weapon: ["description", "stats", "resources", "effects", "mods"],
+      grenade: ["description", "stats", "resources", "effects"],
       armor: ["description", "stats", "resources", "effects", "mods"],
       "weapon-mod": ["description", "stats", "resources", "effects"],
       "armor-mod": ["description", "stats", "resources", "effects"],
@@ -359,7 +421,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
     const unjamMinRole = game.settings.get("neuroshima", "unjamMinRole") ?? 4;
     context.canUnjam = game.user.isGM || game.user.role >= unjamMinRole;
-    context.isJammedWeapon = item.type === "weapon" && item.system.weaponType !== "grenade" && "jammed" in item.system;
+    context.isJammedWeapon = item.type === "weapon" && "jammed" in item.system;
 
     // Non-countable item types have no quantity, cost, or weight
     const NON_COUNTABLE = ["wound", "vehicle-damage", "vehicle-mod", "beast-action", "beast-segment", "specialization", "origin", "profession", "trick", "trait", "reputation", "disease", "facilities"];
@@ -399,7 +461,6 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.blastDamageTypes = NEUROSHIMA.blastDamageTypes;
     context.blastDamageTypesFull = NEUROSHIMA.blastDamageTypesFull;
     context.weaponSubtypes = NEUROSHIMA.weaponSubtypes;
-    context.grenadeTypes = NEUROSHIMA.grenadeTypes;
     context.gearTypes = NEUROSHIMA.gearTypes;
     context.locations = NEUROSHIMA.locations;
     context.vehicleLocations    = NEUROSHIMA.vehicleLocations;
@@ -430,12 +491,9 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     }
     context.worldCalibers = Array.from(worldCalibers).sort();
 
-    // Skill and Magazine filtering
-    if (item.type === "weapon") {
-      context.isLauncher = item.system.weaponType === "launcher";
-      context.launcherUsesDirect = context.isLauncher && ["direct", "either"].includes(item.system.ammoFeed);
-      context.launcherUsesMagazine = context.isLauncher && ["magazine", "either"].includes(item.system.ammoFeed);
-      context.showMagazineSelector = !context.isLauncher || context.launcherUsesMagazine;
+    // Attribute-dependent skill choices are shared by weapons and grenades.
+    if (["weapon", "grenade"].includes(item.type)) {
+      context.isLauncher = item.type === "weapon" && item.system.weaponType === "launcher";
       const isCreature = item.actor?.type === "creature";
       const selectedAttr = item.system.attribute || "dexterity";
       const skillGroups = NEUROSHIMA.skillConfiguration[selectedAttr] || {};
@@ -464,16 +522,22 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       } else {
         context.selectedSkill = item.system.skill;
       }
-      context.availableMagazines = {};
-      context.availableAmmo = {};
+    }
+
+    // Magazine/ammunition selectors are weapon-only.
+    if (item.type === "weapon") {
+      context.availableMagazines = [];
+      context.availableAmmo = [];
 
       // Populate magazines or ammo if owned by actor
       if (item.actor) {
-        if (item.system.weaponType === "ranged" || (context.isLauncher && context.launcherUsesMagazine)) {
-          const magazines = item.actor.items.filter(i => 
-            i.type === "magazine" && 
-            (i.system.caliber === item.system.caliber || !item.system.caliber)
-          );
+        if (["ranged", "launcher"].includes(item.system.weaponType)) {
+          const expectedCategory = context.isLauncher ? "launcher" : "standard";
+          const magazines = item.actor.items.filter(i => {
+            if (i.type !== "magazine") return false;
+            if (getMagazineAmmoCategory(i) !== expectedCategory) return false;
+            return !item.system.caliber || i.system.caliber === item.system.caliber;
+          });
           context.availableMagazines = magazines.map(mag => {
             const contents = mag.system.contents || [];
             const tooltip = contents.length > 0 ? [...contents].reverse().map(c => `• ${c.name} (x${c.quantity})`).join("\n") : game.i18n.localize("NEUROSHIMA.Items.Fields.None");
@@ -484,15 +548,17 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
             };
           });
         }
-        if (item.system.weaponType === "thrown" || (context.isLauncher && context.launcherUsesDirect)) {
+        if (item.system.weaponType === "thrown" || context.isLauncher) {
           const ammo = item.actor.items.filter(i => 
             i.type === "ammo" && 
-            (!context.isLauncher || (i.system.ammoCategory ?? "standard") === "launcher") &&
+            ((i.system.ammoCategory ?? "standard") === (context.isLauncher ? "launcher" : "standard")) &&
             (i.system.caliber === item.system.caliber || !item.system.caliber)
           );
           context.availableAmmo = ammo.map(a => {
             let tooltip = `${game.i18n.localize("NEUROSHIMA.Items.Fields.Quantity")}: ${a.system.quantity}`;
-            if (a.system.isOverride) {
+            // Launcher ammunition behaves like a grenade: its blast zones are
+            // authoritative, so direct-hit damage and PP overrides are hidden.
+            if (a.system.isOverride && (a.system.ammoCategory ?? "standard") !== "launcher") {
               const mods = [];
               if (a.system.overrideDamage) mods.push(`Obr: ${a.system.damage}`);
               if (a.system.overridePiercing) mods.push(`PP: ${a.system.piercing}`);
@@ -506,6 +572,14 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
             };
           });
         }
+      }
+
+      if (context.isLauncher) {
+        context.launcherAmmoSelection = item.system.directAmmo
+          ? `ammo:${item.system.directAmmo}`
+          : item.system.magazine
+            ? `magazine:${item.system.magazine}`
+            : "";
       }
     }
 
@@ -827,7 +901,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       this._headerToggles.locked = btn;
     }
 
-    if (item.type === "weapon" && item.system.weaponType !== "grenade" && "jammed" in item.system && canUnjam) {
+    if (item.type === "weapon" && "jammed" in item.system && canUnjam) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "header-control jam-toggle-btn";
@@ -1105,9 +1179,8 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       profession: ["description", "stats", "effects"],
       money: ["description", "stats", "effects"],
       reputation: ["description", "stats", "resources", "effects"],
-      weapon: item.system?.weaponType === "grenade"
-        ? ["description", "stats", "resources", "effects"]
-        : ["description", "stats", "resources", "effects", "mods"],
+      weapon: ["description", "stats", "resources", "effects", "mods"],
+      grenade: ["description", "stats", "resources", "effects"],
       armor: ["description", "stats", "resources", "effects", "mods"],
       "weapon-mod": ["description", "stats", "resources", "effects"],
       "armor-mod": ["description", "stats", "resources", "effects"],
@@ -1200,8 +1273,8 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
   async _onAddBlastZone(event, target) {
     const item = this.document;
-    const supportsBlast = (item.type === "weapon" && item.system.weaponType === "grenade")
-      || (item.type === "ammo" && item.system.ammoCategory === "launcher" && item.system.payloadType === "blast");
+    const supportsBlast = item.type === "grenade"
+      || (item.type === "ammo" && item.system.ammoCategory === "launcher");
     if (!supportsBlast) return;
     const zones = foundry.utils.deepClone(item.system.blastZones ?? []);
     const maxRadius = zones.reduce((m, z) => Math.max(m, z.radius ?? 0), 0);
@@ -1211,8 +1284,8 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
   async _onRemoveBlastZone(event, target) {
     const item = this.document;
-    const supportsBlast = (item.type === "weapon" && item.system.weaponType === "grenade")
-      || (item.type === "ammo" && item.system.ammoCategory === "launcher" && item.system.payloadType === "blast");
+    const supportsBlast = item.type === "grenade"
+      || (item.type === "ammo" && item.system.ammoCategory === "launcher");
     if (!supportsBlast) return;
     const idx = parseInt(target.dataset.zoneIndex ?? "-1");
     if (idx < 0) return;

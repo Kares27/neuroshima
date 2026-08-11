@@ -702,6 +702,81 @@
     text-align: center;
 }
 
+/* Grenade build bonus follows the same label/control rhythm as weapon stats. */
+.neuroshima.sheet.item .grenade-details .grenade-build-bonus-toggle {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    margin: 0;
+}
+
+.neuroshima.sheet.item .grenade-details .grenade-build-bonus-control {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: auto;
+    min-height: 32px;
+    margin: 0;
+    font-size: 0.8em;
+    font-weight: bold;
+    line-height: 1.2;
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.neuroshima.sheet.item .grenade-details .grenade-build-bonus-control input[type="checkbox"] {
+    flex: 0 0 20px;
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--ns-color-accent, #d99635);
+}
+
+/* Keep all blast-zone headings and controls on one shared column grid. */
+.neuroshima.sheet.item .grenade-blast-zones .blast-zone-header,
+.neuroshima.sheet.item .grenade-blast-zones .blast-zone-row {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr) 62px 94px 26px;
+    align-items: center;
+    gap: 5px;
+}
+
+.neuroshima.sheet.item .grenade-blast-zones .blast-zone-header > *,
+.neuroshima.sheet.item .grenade-blast-zones .blast-zone-row > * {
+    box-sizing: border-box;
+    min-width: 0;
+    width: 100%;
+    text-align: center;
+}
+
+.neuroshima.sheet.item .grenade-blast-zones .blast-zone-row input[type="number"],
+.neuroshima.sheet.item .grenade-blast-zones .blast-zone-row select {
+    width: 100%;
+}
+
+.neuroshima.sheet.item .grenade-blast-zones .blast-zone-row input[type="number"] {
+    text-align: center;
+}
+
+.neuroshima.sheet.item .grenade-blast-zones .blast-zone-col-knockdown,
+.neuroshima.sheet.item .grenade-blast-zones .blast-zone-col-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.neuroshima.sheet.item .grenade-blast-zones .blast-zone-col-knockdown input[type="checkbox"] {
+    flex: 0 0 18px;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+}
+
 .neuroshima.sheet.item .damage-horizontal-grid {
     display: flex;
     flex-direction: row;
@@ -984,6 +1059,33 @@
 }
 
 /* Pellet Section Styles */
+.neuroshima.sheet.item .ammo-primary-grid {
+    align-items: start;
+    gap: 10px;
+    width: 100%;
+}
+
+.neuroshima.sheet.item .ammo-primary-grid .form-group.row-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    margin: 0;
+}
+
+.neuroshima.sheet.item .ammo-primary-grid .form-group.row-group > label {
+    width: 100%;
+    margin: 0;
+    font-weight: bold;
+    text-align: center;
+}
+
+.neuroshima.sheet.item .ammo-primary-grid input,
+.neuroshima.sheet.item .ammo-primary-grid select {
+    width: 100%;
+}
+
 .neuroshima.sheet.item .ammo-columns-container {
     gap: 15px;
     align-items: flex-start;

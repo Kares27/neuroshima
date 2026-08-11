@@ -1,4 +1,4 @@
-<div class="neuroshima roll-card weapon-roll-card {{rollMode}}" 
+<div class="neuroshima roll-card weapon-roll-card {{#if isLauncherBlast}}grenade-roll-card launcher-roll-card{{/if}} {{rollMode}}" 
     data-weapon-id="{{weaponId}}"
     data-actor-id="{{actorId}}"
     data-hit-bullets="{{hitBullets}}"
@@ -34,7 +34,7 @@
         </div>
     </header>
     <hr class="dotted-hr">
-    <div class="weapon-details">
+    {{#unless isLauncher}}<div class="weapon-details">
         {{#if (gt bulletsFired 1)}}
         <div class="detail-item js-bullets-row">
             <span class="label">Pociski:</span>
@@ -57,7 +57,7 @@
             <span class="value"><strong>{{totalPelletSP}}xD</strong></span>
         </div>
         {{/if}}
-    </div>
+    </div>{{/unless}}
 
     <div class="dice-results-grid">
         {{#each modifiedResults}}
@@ -157,14 +157,19 @@
     {{/if}}
 
     {{#if isLauncherBlast}}
-    <div class="grenade-template-section">
-        <button type="button" data-action="placeGrenadeTemplate">
-            <i class="fas fa-burst"></i> {{localize "NEUROSHIMA.Grenade.PlaceTemplate"}}
+    <div class="grenade-place-template-row">
+        <button type="button" class="grenade-place-template-btn" data-action="placeGrenadeTemplate"
+                data-radius="{{templateRadius}}"
+                data-actor-id="{{actorId}}"
+                data-tooltip="{{localize 'NEUROSHIMA.Grenade.PlaceTemplateTooltip'}}"
+                data-tooltip-direction="UP">
+            <i class="fas fa-bullseye"></i>
+            {{localize "NEUROSHIMA.Grenade.PlaceTemplate"}}
         </button>
     </div>
     {{/if}}
 
-    {{#unless isMelee}}
+    {{#unless (or isMelee isLauncher)}}
     <div class="apply-damage-section">
         <div class="damage-application-header collapsible-toggle">
             <span>{{localize "NEUROSHIMA.Roll.ApplyDamage"}}</span>

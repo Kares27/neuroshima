@@ -530,25 +530,19 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         }
 
         if (weaponType === "grenade") {
-          const grenadeWeapon = {
+          const grenade = {
             id:     item.id,
             name:   act.name || item.name,
             img:    act.img  || item.img,
-            type:   "weapon",
+            type:   "grenade",
             actor:  null,
             system: {
-              weaponType:        "grenade",
-              attribute:         attrKey,
-              skill:             "throwing",
-              damageCategory:    act.damageCategory || "physical",
-              freeThrowDistance: act.freeThrowDistance ?? 10,
-              useBuildBonus:     act.useBuildBonus !== false,
-              blastZones:        act.blastZones ?? [],
-              skipMagazineCheck: true
+              damageCategory: act.damageCategory || "physical",
+              blastZones: act.blastZones ?? []
             }
           };
           const { NeuroshimaGrenadeRollDialog } = await import("../apps/dialogs/grenade-roll-dialog.js");
-          const grenadeDialog = new NeuroshimaGrenadeRollDialog({ actor, weapon: grenadeWeapon });
+          const grenadeDialog = new NeuroshimaGrenadeRollDialog({ actor, grenade });
           grenadeDialog.render(true);
           return;
         }
@@ -996,6 +990,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       weaponsMelee:   topItems.filter(i => i.type === "weapon" && i.system.weaponType === "melee"),
       weaponsRanged:  topItems.filter(i => i.type === "weapon" && i.system.weaponType === "ranged"),
       weaponsThrown:  topItems.filter(i => i.type === "weapon" && i.system.weaponType === "thrown"),
+      grenades:       topItems.filter(i => i.type === "grenade"),
       armor:          armorItems,
       gear:           topItems.filter(i => i.type === "gear"),
       hasWearableGear: topItems.some(i => i.type === "gear" && i.isEquippable),

@@ -11,6 +11,13 @@
                 <input type="number" name="distanceMultiplier" value="{{distanceMultiplier}}" min="1" step="1"/>
             </div>
         </div>
+        <label class="grenade-cleanup-option">
+            <input type="checkbox" name="deleteTemplateAfterDamage" {{checked deleteTemplateAfterDamage}}/>
+            <span>
+                <strong>{{localize "NEUROSHIMA.Settings.GrenadeConfig.DeleteTemplateAfterDamage"}}</strong>
+                <small>{{localize "NEUROSHIMA.Settings.GrenadeConfig.DeleteTemplateAfterDamageHint"}}</small>
+            </span>
+        </label>
     </div>
     <div class="config-section">
         <div class="grenade-config-header-row">

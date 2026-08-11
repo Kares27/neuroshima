@@ -282,10 +282,6 @@ export const NEUROSHIMA = {
             shotguns: "NEUROSHIMA.WeaponSubtype.shotguns"
         }
     },
-    grenadeTypes: {
-        offensive: "NEUROSHIMA.Grenade.Type.Offensive",
-        defensive: "NEUROSHIMA.Grenade.Type.Defensive"
-    },
     gearTypes: {
         stimulants:  "NEUROSHIMA.GearType.stimulants",
         fuel:        "NEUROSHIMA.GearType.fuel",

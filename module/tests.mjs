@@ -1,6 +1,6 @@
 import { NEUROSHIMA } from "./config.js";
 import { buildDiceTooltipSection, renderTooltipSections } from "./helpers/tooltip-renderer.js";
-import { AmmunitionResolver, PayloadResolver } from "./combat/ammunition-resolver.js";
+import { AmmunitionResolver } from "./combat/ammunition-resolver.js";
 
 export const DIFFICULTY_ORDER = Object.freeze([
   "easy", "average", "problematic", "hard", "veryHard",
@@ -1729,27 +1729,19 @@ export class RangedWeaponTest extends WeaponTest {
       const resolved = AmmunitionResolver.resolve(actor, weapon, requested);
       const plan = {
         ...resolved,
-        damage: weapon?.system?.damage ?? "D",
-        piercing: Number(weapon?.system?.piercing ?? 0),
+        damage: null,
+        piercing: 0,
         jamming: Number(weapon?.system?.jamming ?? 20),
-        damageCategory: weapon?.system?.damageCategory ?? "physical"
+        damageCategory: resolved.bulletSequence?.[0]?.ammoSnapshot?.damageCategory ?? "physical"
       };
       plan.bulletSequence = (resolved.bulletSequence ?? []).map(entry => {
         const snapshot = entry.ammoSnapshot ?? {};
-        const overrides = entry.overrides ?? {};
-        const launcherAmmo = snapshot.ammoCategory === "launcher";
-        const enabled = snapshot.isOverride === true || overrides.enabled === true;
-        const ammoData = {
-          ...snapshot,
-          damage: launcherAmmo ? snapshot.damage : (enabled && (snapshot.overrideDamage || overrides.damage) ? (snapshot.damage || overrides.damage) : plan.damage),
-          damageCategory: launcherAmmo ? snapshot.damageCategory : (enabled && snapshot.overrideDamageCategory ? snapshot.damageCategory : plan.damageCategory),
-          piercing: launcherAmmo ? snapshot.piercing : (enabled && (snapshot.overridePiercing || overrides.piercing != null) ? (snapshot.piercing ?? overrides.piercing) : plan.piercing),
-          jamming: launcherAmmo ? snapshot.jamming : (enabled && (snapshot.overrideJamming || overrides.jamming != null) ? (snapshot.jamming ?? overrides.jamming) : plan.jamming)
-        };
         return {
           ...entry,
-          ...ammoData,
-          payload: PayloadResolver.resolve(ammoData)
+          damage: null,
+          damageCategory: snapshot.damageCategory ?? "physical",
+          piercing: 0,
+          jamming: plan.jamming
         };
       });
       return plan;
@@ -1877,7 +1869,8 @@ export class RangedWeaponTest extends WeaponTest {
       ? Math.min(this.result.bulletsFired, despiteJamBullets)
       : this.result.bulletsFired;
     const hits = [];
-    if (this.result.success && mayFire) {
+    const isLauncher = this.item?.system?.weaponType === "launcher";
+    if (this.result.success && mayFire && !isLauncher) {
       for (let index = 0; index < limit; index++) {
         if (this.result.successPoints <= Math.floor(index / Math.max(1, this.result.burstHitStep))) break;
         const bullet = sequence[index] ?? sequence[0];
@@ -1907,15 +1900,18 @@ export class RangedWeaponTest extends WeaponTest {
       hitBullets: hits.length,
       isCritFailure: this.result.isCritFailure || jammed
     });
-    const launcherPayload = this.item?.system?.weaponType === "launcher"
-      ? sequence[0]?.payload
+    const launcherAmmo = isLauncher
+      ? sequence[0]?.ammoSnapshot
       : null;
-    if (launcherPayload?.payloadType === "blast") {
-      const zones = [...(launcherPayload.blastZones ?? [])]
+    if (launcherAmmo) {
+      const zones = [...(launcherAmmo.blastZones ?? [])]
         .sort((a, b) => Number(a.radius) - Number(b.radius));
       Object.assign(this.result, {
         isLauncher: true,
-        isLauncherBlast: true,
+        isLauncherBlast: zones.length > 0,
+        damage: null,
+        piercing: 0,
+        damageCategory: launcherAmmo.damageCategory ?? "physical",
         blastZones: zones,
         templateRadius: zones.length ? Math.max(...zones.map(zone => Number(zone.radius) || 0)) : 0
       });
@@ -1991,8 +1987,6 @@ export class RangedWeaponTest extends WeaponTest {
       const ammo = this.result.ammoId ? this.actor?.items?.get(this.result.ammoId) : null;
       if (!ammo) return false;
       await ammo.update({ "system.quantity": Number(ammo.system.quantity ?? 0) + sequence.length });
-    } else if (this.result.ammunitionSourceType === "integrated" && this.item) {
-      await this.item.update({ "system.capacity": Number(this.item.system.capacity ?? 0) + sequence.length });
     }
     await message.setFlag("neuroshima", "ammoRefunded", true);
     return true;
@@ -2186,6 +2180,7 @@ export class GrenadeTest extends AttackTest {
       deviationMetres: this.result.success ? 0 : failureMargin * (distance <= 10 ? 1 : Math.ceil(distance / 10)),
       distance,
       distancePenalty: Number(domain.distancePenalty ?? 0),
+      damageCategory: domain.damageCategory ?? this.item?.system?.damageCategory ?? "physical",
       blastZones: zones,
       templateRadius: zones.length ? Math.max(...zones.map(zone => Number(zone.radius) || 0)) : 0
     });

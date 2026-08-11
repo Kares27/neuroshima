@@ -9,6 +9,7 @@
         },
         "Item": {
             "weapon": "Weapon",
+            "grenade": "Grenade",
             "armor": "Armor",
             "gear": "Item",
             "trick": "Trick",
@@ -750,7 +751,9 @@
                 "RemoveTier": "Remove",
                 "ThrowParams": "Throw Parameters",
                 "BaseRange": "Base Range (m)",
-                "DistanceMultiplier": "Distance Multiplier"
+                "DistanceMultiplier": "Distance Multiplier",
+                "DeleteTemplateAfterDamage": "Remove template after applying damage",
+                "DeleteTemplateAfterDamageHint": "After damage is applied, removes the template linked to that grenade roll card from the scene."
             },
             "DamageCategoryConfig": {
                 "Label": "Damage Categories",
@@ -1153,6 +1156,7 @@
         },
         "Notifications": {
             "SelectTargetOrPoint": "Select a target on the map (LMB) to measure distance. RMB to cancel.",
+            "SelectTemplatePoint": "Select a template point on the map (LMB). RMB to cancel.",
             "NoActorTokenOnCanvas": "No active token found for your character on the map.",
             "MagazineFull": "Magazine is already full.",
             "GeneratedMagazineMissingCaliber": "Set the weapon caliber first.",
@@ -1167,6 +1171,8 @@
             "OutOfAmmo": "No more {name} left!",
             "NoTokensSelectedOrTargeted": "No tokens are selected or targeted.",
             "NoMagazineSelected": "No magazine selected for this weapon!",
+            "AmmoCategoryMismatch": "The magazine already contains another ammunition type. Standard and launcher projectiles cannot be mixed.",
+            "AmmoCaliberMismatch": "The ammunition caliber does not match the magazine caliber.",
             "ActorNotFound": "Could not find the actor associated with this roll.",
             "Jamming": "JAMMING!",
             "DamageReversed": "Reversed {count} wounds for {name}.",
@@ -1336,6 +1342,7 @@
                 "WeaponRanged": "Ranged Weapon",
                 "WeaponThrown": "Thrown Weapon",
                 "WeaponGrenade": "Grenade",
+                "Grenade": "Grenade",
                 "WeaponLauncher": "Launcher",
                 "Armor": "Armor",
                 "Gear": "Item",
@@ -1364,6 +1371,7 @@
             },
             "AddType": {
                 "Weapon": "weapon",
+                "Grenade": "grenade",
                 "Armor": "armor",
                 "Gear": "item",
                 "Trick": "trick",
@@ -1380,12 +1388,7 @@
             "Empty": "No items.",
             "GearSection": "Items",
             "Ammo": {
-                "Category": { "Standard": "Standard", "Launcher": "Launcher" },
-                "Payload": { "Standard": "Standard", "Blast": "Blast", "Area": "Area", "AntiArmor": "Anti-armor" }
-            },
-            "Launcher": {
-                "Type": { "Grenade": "Grenade launcher", "Rocket": "Rocket", "Mortar": "Mortar", "Other": "Other" },
-                "Feed": { "Direct": "Direct", "Magazine": "Magazine", "Either": "Either", "Integrated": "Integrated" }
+                "Category": { "Standard": "Standard", "Launcher": "Launcher" }
             },
             "Fields": {
                 "Weight": "Weight",
@@ -1405,10 +1408,6 @@
                 "AmmoType": "Ammunition",
                 "Ammo": "Ammo",
                 "AmmoCategory": "Ammunition Category",
-                "PayloadType": "Payload Type",
-                "LauncherType": "Launcher Type",
-                "AmmoFeed": "Ammunition Feed",
-                "AmmoFeedMode": "Active Source",
                 "Attribute": "Attribute",
                 "Skill": "Skill",
                 "AttackBonus": "Attack Bonus",
@@ -1425,6 +1424,7 @@
                 "MeleeDamageTypes": "Damage Types",
                 "WeaponSubtype": "Weapon Subtype",
                 "Magazine": "Magazine",
+                "LauncherAmmunition": "Ammunition / Magazine",
                 "Piercing": "Piercing",
                 "PiercingAbbr": "PP",
                 "FireRate": "Fire Rate",

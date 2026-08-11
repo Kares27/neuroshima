@@ -1,4 +1,4 @@
-<div class="neuroshima roll-dialog weapon-roll-dialog-content">
+<div class="neuroshima roll-dialog weapon-roll-dialog-content {{#if isLauncher}}grenade-roll-dialog launcher-roll-dialog{{/if}}">
 
     <div class="rd-top-split">
         <div class="rd-inputs-col">
@@ -164,7 +164,7 @@
     </div>
     {{/if}}
 
-    <div class="rd-fullwidth-row rd-location-block">
+    {{#unless isLauncher}}<div class="rd-fullwidth-row rd-location-block">
         {{#if isMelee}}{{#if isPoolRoll}}{{#unless gradCiosDefense}}
         <label class="form-group rd-gradcios-row" for="rd-gradcios-checkbox">
             {{localize "NEUROSHIMA.GradCios.CheckboxLabel"}}
@@ -186,7 +186,9 @@
                 {{/each}}
             </select>
         </div>
-    </div>
+    </div>{{else}}
+    <input type="hidden" name="hitLocation" value="random">
+    {{/unless}}
 
     {{#if isMelee}}
     <div class="dialog-columns tempo-row {{#if (ne maneuver 'increasedTempo')}}hidden{{/if}}">
@@ -211,7 +213,7 @@
                 {{localize 'NEUROSHIMA.Roll.DiceCount'}}: <span class="dice-count">{{add aimingLevel 1}}</span>k20
             </div>
         </div>
-        <div class="rd-fire-controls">
+        {{#unless isLauncher}}<div class="rd-fire-controls">
             <div class="form-group vertical">
                 <label>{{localize 'NEUROSHIMA.Roll.FireMode'}}</label>
                 <select name="burstLevel">
@@ -235,7 +237,10 @@
             <div class="slider-hint">
                 {{localize 'NEUROSHIMA.Roll.BulletsFired'}}: <span class="bullets-count">1</span>
             </div>
-        </div>
+        </div>{{else}}
+        <input type="hidden" name="burstLevel" value="0">
+        <input type="hidden" name="fireRate" value="1">
+        {{/unless}}
     </div>
     {{else}}
     <input type="hidden" name="aimingLevel" value="2">
@@ -255,7 +260,7 @@
     <div class="summary-section">
         <h3>{{localize "NEUROSHIMA.Roll.Summary"}}</h3>
         <table class="summary-table">
-            {{#if (eq rollType "ranged")}}
+            {{#if (and (eq rollType "ranged") (not isLauncher))}}
             <tr class="fire-mode-summary-row">
                 <td>{{localize "NEUROSHIMA.Roll.FireMode"}}</td>
                 <td class="fire-mode-summary-value">-</td>
@@ -277,11 +282,11 @@
     </div>
 
     <footer class="form-footer">
-        <button type="button" data-action="roll" class="" autofocus="">
+        <button type="button" data-action="roll" autofocus="">
             <i class="fas fa-check"></i>
             <span>{{localize "NEUROSHIMA.Actions.Roll"}}</span>
         </button>
-        <button type="button" data-action="cancel" class="">
+        <button type="button" data-action="cancel">
             <i class="fas fa-times"></i>
             <span>{{localize "NEUROSHIMA.Actions.Cancel"}}</span>
         </button>

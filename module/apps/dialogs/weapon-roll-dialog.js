@@ -41,6 +41,7 @@ export function getFireModeKey(level) {
 }
 
 export function getFireModeModifier(weapon, level) {
+  if (weapon?.system?.weaponType === "launcher") return 0;
   return Number(weapon?.system?.fireModeModifiers?.[getFireModeKey(level)] ?? 0);
 }
 
@@ -73,6 +74,8 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     this.weapon = options.weapon;
     this.rollType = options.rollType || "ranged";
     this.targets = options.targets || [];
+    this.isLauncher = this.weapon?.system?.weaponType === "launcher";
+    this.launcherTargetPoint = options.launcherTargetPoint ?? null;
     const lastRoll = options.lastRoll || {};
 
     this.rollOptions = {
@@ -249,7 +252,9 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
         const effectiveHitLocation = (sf.hitLocation && this.userEntry.hitLocation === undefined)
           ? sf.hitLocation
           : hitLocation;
-        const locationPenalty = calculateLocationPenalty(this.weapon.system.weaponType, effectiveHitLocation);
+        const locationPenalty = this.isLauncher
+          ? 0
+          : calculateLocationPenalty(this.weapon.system.weaponType, effectiveHitLocation);
         const weaponModifier = this.userEntry.weaponModifier
           ?? ((this.weapon?.system?.weaponModifier ?? 0) + (sf.weaponModifier || 0));
         let effectiveBurstLevel = burstLevel;
@@ -310,6 +315,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     context.weapon = this.weapon;
     context.rollType = this.rollType;
     context.isMelee = this.rollType === "melee";
+    context.isLauncher = this.isLauncher;
     context.difficulties = NEUROSHIMA.difficulties;
     context.isVehicleTarget = isVehicleTarget;
 
@@ -527,7 +533,9 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       if ((maneuver === 'fury' && action === 'attack') || (maneuver === 'fullDefense' && action === 'defense')) weaponBonus += 2;
     }
 
-    const locationPenalty = calculateLocationPenalty(this.weapon.system.weaponType, formData.hitLocation);
+    const locationPenalty = this.isLauncher
+      ? 0
+      : calculateLocationPenalty(this.weapon.system.weaponType, formData.hitLocation);
     const movingShooterPenalty = Number(this.shooterMovedPenalty ?? 0);
     const movingTargetPenalty = Number(this.targetMovedPenalty ?? 0);
     const totalPct =
@@ -700,7 +708,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       fireRate:        fireRate,
       fireModeModifier,
       difficulty:      _effectiveDiff,
-      hitLocation:     formData.hitLocation,
+      hitLocation:     this.isLauncher ? "random" : formData.hitLocation,
       modifier:        totalModifier,
       movingShooterPenalty: Number(this.shooterMovedPenalty ?? 0),
       movingTargetPenalty: Number(this.targetMovedPenalty ?? 0),
@@ -774,6 +782,10 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     }
 
     const test = await this._executeWeaponTest({ ...rollData, options: submissionOptions });
+    if (this.isLauncher && test?.message && this.launcherTargetPoint && canvas?.scene) {
+      const { NeuroshimaChatMessage } = await import("../../documents/chat-message.js");
+      await NeuroshimaChatMessage.placeGrenadeTemplateAt(test.message, this.launcherTargetPoint);
+    }
     return test.result;
   }
 

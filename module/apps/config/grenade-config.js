@@ -34,7 +34,11 @@ export class GrenadeConfig extends HandlebarsApplicationMixin(ApplicationV2) {
         const tiers = Array.isArray(saved) && saved.length ? saved : DEFAULT_GRENADE_BONUSES;
         const baseRange = game.settings.get("neuroshima", "grenadeBaseRange") ?? 10;
         const distanceMultiplier = game.settings.get("neuroshima", "grenadeDistanceMultiplier") ?? 3;
-        return { tiers, baseRange, distanceMultiplier };
+        const deleteTemplateAfterDamage = game.settings.get(
+            "neuroshima",
+            "grenadeDeleteTemplateAfterDamage"
+        ) !== false;
+        return { tiers, baseRange, distanceMultiplier, deleteTemplateAfterDamage };
     }
 
     async _onSubmit(event, form, formData) {
@@ -51,9 +55,15 @@ export class GrenadeConfig extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         const baseRange = Number(data.baseRange) || 10;
         const distanceMultiplier = Number(data.distanceMultiplier) || 3;
+        const deleteTemplateAfterDamage = !!data.deleteTemplateAfterDamage;
         await game.settings.set("neuroshima", "grenadeConstitutionBonuses", tiers);
         await game.settings.set("neuroshima", "grenadeBaseRange", baseRange);
         await game.settings.set("neuroshima", "grenadeDistanceMultiplier", distanceMultiplier);
+        await game.settings.set(
+            "neuroshima",
+            "grenadeDeleteTemplateAfterDamage",
+            deleteTemplateAfterDamage
+        );
         if (game.neuroshima?.config) {
             game.neuroshima.config.grenadeConstitutionBonuses = tiers;
             game.neuroshima.config.grenadeBaseRange = baseRange;

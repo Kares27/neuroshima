@@ -4032,7 +4032,7 @@ export class NeuroshimaScript {
  * Armor / Weapon equipment helpers:
  *   this.getEquippedArmors(actor?)                — Item[] of equipped armors on actor
  *   this.getEquippedWeapons(weaponType?, actor?)  — Item[] of equipped weapons; optional type filter
- *                                                    weaponType: "melee"|"ranged"|"thrown"|"grenade"|undefined(=all)
+ *                                                    weaponType: "melee"|"ranged"|"thrown"|"launcher"|undefined(=all)
  *
  * Armor helpers (item = equipped armor Item):
  *   this.getArmorRating(item, location)            — base SP at location

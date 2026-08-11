@@ -111,7 +111,7 @@
                         {{/if}}
                         <img src="{{weapon.img}}" class="weapon-icon" alt="{{weapon.name}}">
                         <div class="weapon-info-column">
-                            <div class="weapon-name-rollable clickable" data-action="rollWeapon">{{weapon.name}}</div>
+                            <div class="weapon-name-rollable clickable" {{#if weapon.isGrenade}}data-action="rollGrenade"{{else}}data-action="rollWeapon"{{/if}}>{{weapon.name}}</div>
                             {{#if weapon.isGrenade}}
                             <div class="weapon-stats-row">
                                 <span class="stat-item">

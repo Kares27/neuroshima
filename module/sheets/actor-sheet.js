@@ -30,7 +30,12 @@ import {
   renderTooltipSections
 } from "../helpers/tooltip-renderer.js";
 import { createUnarmedWeapon, getUnarmedDamageProfile } from "../combat/unarmed.js";
-import { AmmunitionResolver, createAmmoSnapshot } from "../combat/ammunition-resolver.js";
+import {
+  AmmunitionResolver,
+  createAmmoSnapshot,
+  getAmmoCategory,
+  getMagazineAmmoCategory
+} from "../combat/ammunition-resolver.js";
 
 function _collectArmorBonusByEffect(actor) {
   const byLoc = {};
@@ -105,6 +110,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       toggleActive: this.prototype._onToggleActive,
       configureHP: this.prototype._onConfigureHP,
       rollWeapon: this.prototype._onRollWeapon,
+      rollGrenade: this.prototype._onRollGrenade,
       rollUnarmedMelee: this.prototype._onRollUnarmedMelee,
       rollMeleeInitiative: this.prototype._onRollMeleeInitiative,
       respondToOpposed: this.prototype._onRespondToOpposed,
@@ -295,7 +301,8 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       }),
       weaponsMelee: topItems.filter(i => i.type === "weapon" && i.system.weaponType === "melee"),
       weaponsRanged: topItems.filter(i => i.type === "weapon" && ["ranged", "launcher"].includes(i.system.weaponType)),
-      weaponsThrown: topItems.filter(i => i.type === "weapon" && (i.system.weaponType === "thrown" || i.system.weaponType === "grenade")),
+      weaponsThrown: topItems.filter(i => i.type === "weapon" && i.system.weaponType === "thrown"),
+      grenades: topItems.filter(i => i.type === "grenade"),
       armor: topItems.filter(i => i.type === "armor"),
       gear: topItems.filter(i => i.type === "gear"),
       hasWearableGear: topItems.some(i => i.type === "gear" && i.isEquippable),
@@ -535,7 +542,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     context.combat = {
       armor: items.filter(i => i.type === "armor" && i.system.equipped),
       weapons: weapons,
-      weaponsRanged: weapons.filter(w => w.type === "ranged" || w.type === "thrown" || w.type === "grenade"),
+      weaponsRanged: weapons.filter(w => ["ranged", "thrown", "launcher"].includes(w.type)),
       weaponsMelee: weapons.filter(w => w.type === "melee"),
       canUnjam,
       wounds: context.wounds,
@@ -1941,6 +1948,22 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
    */
   async _onLoadAmmoIntoMagazine(ammo, magazine) {
       game.neuroshima.log("Initializing ammo loading", { ammo, magazine });
+      const ammoCategory = getAmmoCategory(ammo);
+      const hasLoadedAmmo = Array.from(magazine.system.contents ?? [])
+          .some(stack => Number(stack?.quantity ?? 0) > 0);
+      const loadedCategory = hasLoadedAmmo
+          ? getMagazineAmmoCategory(magazine, null)
+          : null;
+      if (loadedCategory && ammoCategory !== loadedCategory) {
+          ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.AmmoCategoryMismatch"));
+          return;
+      }
+      const ammoCaliber = String(ammo.system.caliber ?? "").trim();
+      const magazineCaliber = String(magazine.system.caliber ?? "").trim();
+      if (magazineCaliber && ammoCaliber && magazineCaliber !== ammoCaliber) {
+          ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.AmmoCaliberMismatch"));
+          return;
+      }
       const amount = await AmmunitionLoadingDialog.wait({ ammo, magazine });
       if (!amount || isNaN(amount)) {
           game.neuroshima.log("Ammo loading cancelled or no quantity specified");
@@ -1979,7 +2002,12 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       }
 
       game.neuroshima.log("Updating magazine contents", { contents });
-      await magazine.update({ "system.contents": contents });
+      // The first projectile loaded into an empty magazine determines whether
+      // it is a regular firearm magazine or a launcher magazine.
+      await magazine.update({
+          "system.contents": contents,
+          "system.ammoCategory": ammoCategory
+      });
       
       // Deduct the loaded ammo from inventory
       if (ammo.system.quantity <= amount) {
@@ -2076,6 +2104,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
           if (obj.system) { // Actor Item
               const s = obj.system;
               return {
+                  snapshot: createAmmoSnapshot(obj),
                   damage: s.damage ?? "L",
                   piercing: s.piercing ?? 0,
                   jamming: s.jamming ?? 20,
@@ -2087,6 +2116,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
           } else { // Magazine Stack
               const o = obj.overrides || {};
               return {
+                  snapshot: obj.ammoSnapshot ?? {},
                   damage: o.damage ?? "L",
                   piercing: o.piercing ?? 0,
                   jamming: o.jamming ?? 20,
@@ -2114,6 +2144,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
              stats1.jamming === stats2.jamming && 
              stats1.isPellet === stats2.isPellet &&
              stats1.enabled === stats2.enabled &&
+             JSON.stringify(stats1.snapshot) === JSON.stringify(stats2.snapshot) &&
              samePelletStats;
   }
 
@@ -2231,14 +2262,41 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
   }
 
   /**
-   * Prepare weapon data for combat tab with magazine information.
+   * Prepare equipped weapons and grenades for the combat tab.
+   * Grenades share the combat presentation, but keep their dedicated roll
+   * action and never enter the regular weapon/ammunition resolver.
    */
   _prepareCombatWeapons(items) {
-    const weapons = items.filter(i => i.type === "weapon" && i.system.equipped);
+    const weapons = items.filter(i =>
+      ["weapon", "grenade"].includes(i.type) && i.system.equipped
+    );
     const magazines = items.filter(i => i.type === "magazine");
 
     return weapons.map(weapon => {
       const wData = weapon.system;
+
+      if (weapon.type === "grenade") {
+        const blastZones = Array.from(wData.blastZones ?? []);
+        return {
+          id: weapon.id,
+          uuid: weapon.uuid,
+          name: weapon.name,
+          img: weapon.img,
+          type: "grenade",
+          isGrenade: true,
+          quantity: Number(wData.quantity ?? 0),
+          freeThrowDistance: Number(
+            game.neuroshima?.config?.grenadeBaseRange
+              ?? NEUROSHIMA.grenadeBaseRange
+              ?? 10
+          ),
+          maxRange: blastZones.length
+            ? Math.max(...blastZones.map(zone => Number(zone.radius) || 0))
+            : 0,
+          jammed: false
+        };
+      }
+
       const weaponObj = {
         id: weapon.id,
         uuid: weapon.uuid,
@@ -2255,12 +2313,6 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
       if (wData.weaponType === "melee") {
         weaponObj.damage = [wData.damageMelee1, wData.damageMelee2, wData.damageMelee3].filter(d => d).join("/");
-      } else if (wData.weaponType === "grenade") {
-        const blastZones = wData.blastZones ?? [];
-        weaponObj.isGrenade = true;
-        weaponObj.freeThrowDistance = wData.freeThrowDistance ?? 10;
-        weaponObj.maxRange = blastZones.length > 0 ? Math.max(...blastZones.map(z => z.radius ?? 0)) : 0;
-        weaponObj.blastZones = blastZones;
       } else {
         // Handle ranged and thrown weapon ammo stats
         let ammoJamming = wData.jamming || 20;
@@ -2469,6 +2521,67 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     return this._rollWeapon(weapon, event);
   }
 
+  /** Roll a hand grenade as its own Item type and select a point on the canvas. */
+  async _onRollGrenade(event, target) {
+    event?.preventDefault();
+    event?.stopPropagation();
+    event?.stopImmediatePropagation?.();
+    if (this._isRolling) return;
+
+    const itemId = target.closest("[data-item-id]")?.dataset.itemId;
+    const grenade = this.document.items.get(itemId);
+    if (!grenade || grenade.type !== "grenade") return;
+    if (Number(grenade.system.quantity ?? 0) <= 0) {
+      ui.notifications.warn(game.i18n.format("NEUROSHIMA.Grenade.QuantityEmpty", { name: grenade.name }));
+      return;
+    }
+
+    this._isRolling = true;
+    try {
+      let distance = 0;
+      let grenadeTargetPoint = null;
+      for (const token of game.user.targets ?? []) {
+        token.setTarget(false, { user: game.user, releaseOthers: false, groupSelection: true });
+      }
+
+      const sourceToken = this._getSourceToken();
+      if (sourceToken) {
+        await this.minimize();
+        const zones = grenade.system.blastZones ?? [];
+        const templateRadius = zones.length
+          ? Math.max(...zones.map(zone => Number(zone.radius) || 0))
+          : 0;
+        let targetData;
+        try {
+          targetData = await this._waitForTarget({ templateRadius, pointOnly: true });
+        } finally {
+          await this.maximize();
+        }
+        if (!targetData || targetData.cancelled) {
+          this._isRolling = false;
+          return;
+        }
+        distance = Number(targetData.distance ?? 0);
+        if (targetData.point) {
+          grenadeTargetPoint = targetData.point;
+        }
+      }
+
+      const dialog = new NeuroshimaGrenadeRollDialog({
+        actor: this.document,
+        grenade,
+        distance,
+        grenadeTargetPoint,
+        onClose: () => { this._isRolling = false; }
+      });
+      await dialog.render(true);
+    } catch (error) {
+      this._isRolling = false;
+      console.error("Neuroshima | Failed to start grenade roll", error);
+      ui.notifications.error(error.message);
+    }
+  }
+
   async _onRollUnarmedMelee(event) {
     return this._rollWeapon(createUnarmedWeapon(this.document), event);
   }
@@ -2497,13 +2610,14 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         const isThrown = wData.weaponType === "thrown";
         const isLauncher = wData.weaponType === "launcher";
 
+        let launcherAmmunition = null;
         if (isLauncher) {
-            const ammunition = AmmunitionResolver.resolve(this.document, weapon, 1);
-            if (!ammunition.valid) {
-                ui.notifications.warn(game.i18n.localize(ammunition.reason === "noMagazine"
+            launcherAmmunition = AmmunitionResolver.resolve(this.document, weapon, 1);
+            if (!launcherAmmunition.valid) {
+                ui.notifications.warn(game.i18n.localize(launcherAmmunition.reason === "noMagazine"
                   ? "NEUROSHIMA.Notifications.NoMagazineSelected"
                   : "NEUROSHIMA.Notifications.OutOfAmmo"));
-                throw new Error(ammunition.reason);
+                throw new Error(launcherAmmunition.reason);
             }
         }
 
@@ -2536,42 +2650,50 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
         const lastRoll = this.document.system.lastWeaponRoll || {};
         let distance = 0;
-        let targets = Array.from(game.user.targets ?? []);
+        let launcherTargetPoint = null;
+        let targets = isLauncher ? [] : Array.from(game.user.targets ?? []);
         let targetUuids = targets.map(t => t.document.uuid);
-        let grenadeTargetPoint = null;
 
-        if (weapon.system.weaponType === "grenade" && targets.length > 0) {
-            for (const t of targets) t.setTarget(false, { user: game.user, releaseOthers: false, groupSelection: true });
-            targets = [];
-            targetUuids = [];
+        if (isLauncher) {
+            // Launchers target a point, not an Actor. The projectile supplies
+            // the grenade-like blast zones used for the placement preview.
+            for (const token of game.user.targets ?? []) {
+                token.setTarget(false, { user: game.user, releaseOthers: false, groupSelection: true });
+            }
+            const actorSourceToken = this._getSourceToken();
+            if (actorSourceToken) {
+                const zones = launcherAmmunition?.bulletSequence?.[0]?.ammoSnapshot?.blastZones ?? [];
+                const templateRadius = zones.length
+                    ? Math.max(...zones.map(zone => Number(zone.radius) || 0))
+                    : 0;
+                await this.minimize();
+                let targetData;
+                try {
+                    targetData = await this._waitForTarget({ templateRadius, pointOnly: true });
+                } finally {
+                    await this.maximize();
+                }
+                if (!targetData || targetData.cancelled) {
+                    this._isRolling = false;
+                    game.neuroshima.groupEnd();
+                    return;
+                }
+                distance = Number(targetData.distance ?? 0);
+                launcherTargetPoint = targetData.point ?? null;
+            }
         }
-
-        // No targets — enter target-selection mode on the canvas
-        if (targetUuids.length === 0) {
+        // Other weapons may target a token or a free point for distance.
+        else if (targetUuids.length === 0) {
             const actorSourceToken = this._getSourceToken();
             if (actorSourceToken) {
                 game.neuroshima.log("No active targets, switching to map selection mode");
                 await this.minimize();
-                const _grenadeBlastZones = weapon.system.blastZones ?? [];
-                const _grenadeRadius = (weapon.system.weaponType === "grenade" && _grenadeBlastZones.length > 0)
-                    ? Math.max(..._grenadeBlastZones.map(z => z.radius))
-                    : 0;
-                const targetData = await this._waitForTarget({ templateRadius: _grenadeRadius });
+                const targetData = await this._waitForTarget();
                 await this.maximize();
 
                 if (targetData && !targetData.cancelled) {
                     game.neuroshima.log("Otrzymano dane z mapy:", targetData);
                     distance = targetData.distance || 0;
-
-                    if (weapon.system.weaponType === "grenade") {
-                        if (targetData.point) {
-                            grenadeTargetPoint = targetData.point;
-                        } else if (targetData.token) {
-                            const gs = canvas.grid?.size ?? 100;
-                            const td = targetData.token.document;
-                            grenadeTargetPoint = { x: td.x + (td.width * gs) / 2, y: td.y + (td.height * gs) / 2 };
-                        }
-                    }
 
                     if (targetData.token) {
                         targetData.token.setTarget(true, { releaseOthers: true });
@@ -2704,34 +2826,21 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         }
     }
 
-        if (weapon.system.weaponType === "grenade") {
-            if ((weapon.system.quantity ?? 1) <= 0) {
-                ui.notifications.warn(game.i18n.format("NEUROSHIMA.Grenade.QuantityEmpty", { name: weapon.name }));
-                this._isRolling = false;
-                return;
-            }
-            const grenadeDialog = new NeuroshimaGrenadeRollDialog({
-                actor: this.document,
-                weapon: weapon,
-                distance: distance || 0,
-                grenadeTargetPoint,
-                onClose: () => { this._isRolling = false; }
-            });
-            await grenadeDialog.render(true);
-        } else {
-            const dialog = new NeuroshimaWeaponRollDialog({
-                actor: this.document,
-                weapon: weapon,
-                rollType: (isRanged || isThrown) ? "ranged" : "melee",
-                targets: targetUuids,
-                lastRoll: {
-                    ...lastRoll,
-                    distance: distance || lastRoll.distance
-                },
-                onClose: () => { this._isRolling = false; }
-            });
-            await dialog.render(true);
-        }
+        const dialog = new NeuroshimaWeaponRollDialog({
+            actor: this.document,
+            weapon,
+            rollType: (isRanged || isThrown || isLauncher) ? "ranged" : "melee",
+            targets: targetUuids,
+            launcherTargetPoint,
+            lastRoll: {
+                ...lastRoll,
+                // A point selected on the launcher's template is authoritative,
+                // including a legitimate distance of zero.
+                distance: isLauncher ? distance : (distance || lastRoll.distance)
+            },
+            onClose: () => { this._isRolling = false; }
+        });
+        await dialog.render(true);
     } catch (err) {
         game.neuroshima.log("Weapon roll interrupted or an error occurred:", err.message);
         ui.notifications.error(`Nie udało się rozpocząć rzutu bronią: ${err.message}`);
@@ -3879,8 +3988,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
     const isMagazine = item.type === 'magazine';
     const isContainer = item.type === 'container';
-    const canGenerateMagazine = item.type === 'weapon' && (item.system.weaponType === 'ranged'
-      || (item.system.weaponType === 'launcher' && ['magazine', 'either'].includes(item.system.ammoFeed)));
+    const canGenerateMagazine = item.type === 'weapon' && item.system.weaponType === 'ranged';
     const menuItems = [
       { action: 'edit',      icon: 'fas fa-edit',    label: game.i18n.localize('Edit') },
       { action: 'post',      icon: 'fas fa-comment',  label: game.i18n.localize('NEUROSHIMA.ContextMenu.PostToChat') },

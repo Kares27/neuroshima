@@ -6,7 +6,7 @@ import { isGearTypeEquippable, normalizeGearType } from "../helpers/gear-types.j
  *
  * Responsibilities beyond the Foundry base:
  * - Assigns system-specific default icons per item type at creation time.
- * - Presents a weapon-type selection dialog for new weapons (melee / ranged / thrown / grenade).
+ * - Presents a weapon-type selection dialog for new weapons (melee / ranged / thrown / launcher).
  * - Deducts XP (with dialog confirmation) when a trick is added to a character or NPC.
  * - Derives `totalWeight` (own weight × quantity + container contents) and `effectiveCost`
  *   (base cost + mod deltas) during `prepareDerivedData`.
@@ -50,6 +50,7 @@ export class NeuroshimaItem extends Item {
     // Default icons per item type
     const icons = {
       ammo: "systems/neuroshima/assets/img/ammo.svg",
+      grenade: "systems/neuroshima/assets/img/grenade.svg",
       magazine: "systems/neuroshima/assets/img/magazine.svg",
       armor: "systems/neuroshima/assets/img/armor.svg",
       gear: "systems/neuroshima/assets/img/swap-bag.svg",
@@ -85,7 +86,7 @@ export class NeuroshimaItem extends Item {
         const wType = foundry.utils.getProperty(data, "system.weaponType");
         if (wType === "ranged") icons.weapon = "systems/neuroshima/assets/img/weapon-ranged.svg";
         else if (wType === "thrown") icons.weapon = "systems/neuroshima/assets/img/weapon-throwable.svg";
-        else if (wType === "grenade") icons.weapon = "systems/neuroshima/assets/img/grenade.svg";
+        else if (wType === "launcher") icons.weapon = "systems/neuroshima/assets/img/weapon-ranged.svg";
     }
 
     // Apply default icon if none is set or the generic bag fallback is used
@@ -131,11 +132,6 @@ export class NeuroshimaItem extends Item {
             callback: (event, button, dialog) => "thrown"
           },
           {
-            action: "grenade",
-            label: game.i18n.localize("NEUROSHIMA.Items.Type.WeaponGrenade"),
-            callback: (event, button, dialog) => "grenade"
-          },
-          {
             action: "launcher",
             label: game.i18n.localize("NEUROSHIMA.Items.Type.WeaponLauncher"),
             callback: (event, button, dialog) => "launcher"
@@ -153,14 +149,9 @@ export class NeuroshimaItem extends Item {
         if (!currentImg || currentImg === "icons/svg/item-bag.svg" || currentImg === "systems/neuroshima/assets/img/swap-bag.svg" || currentImg === "systems/neuroshima/assets/img/weapon-melee.svg") {
             if (weaponType === "ranged") weaponUpdates.img = "systems/neuroshima/assets/img/weapon-ranged.svg";
             else if (weaponType === "thrown") weaponUpdates.img = "systems/neuroshima/assets/img/weapon-throwable.svg";
-            else if (weaponType === "grenade") weaponUpdates.img = "systems/neuroshima/assets/img/grenade.svg";
             else if (weaponType === "launcher") weaponUpdates.img = "systems/neuroshima/assets/img/weapon-ranged.svg";
             else weaponUpdates.img = "systems/neuroshima/assets/img/weapon-melee.svg";
         }
-        if (weaponType === "grenade") {
-          weaponUpdates.name = game.i18n.localize("NEUROSHIMA.Items.Type.WeaponGrenade");
-        }
-        
         this.updateSource(weaponUpdates);
       } else {
         return false; // Dialog closed without selection — cancel item creation
@@ -377,9 +368,24 @@ export class NeuroshimaItem extends Item {
    * @override
    */
   async _preUpdate(changed, options, userId) {
+    const isGrenadeLauncherMigration = options.neuroshimaGrenadeMigration
+      || options.neuroshimaLauncherMigration;
+    // A launcher has exactly one active ammunition source. Normalize the
+    // payload before Foundry and preUpdateDocument scripts inspect it.
+    if (this.type === "weapon" && this.system.weaponType === "launcher") {
+      const directValue = foundry.utils.getProperty(changed, "system.directAmmo");
+      const magazineValue = foundry.utils.getProperty(changed, "system.magazine");
+      const directChanged = foundry.utils.hasProperty(changed, "system.directAmmo")
+        && directValue !== this.system.directAmmo;
+      const magazineChanged = foundry.utils.hasProperty(changed, "system.magazine")
+        && magazineValue !== this.system.magazine;
+      if (directChanged && directValue) foundry.utils.setProperty(changed, "system.magazine", "");
+      else if (magazineChanged && magazineValue) foundry.utils.setProperty(changed, "system.directAmmo", "");
+    }
+
     await super._preUpdate(changed, options, userId);
     const actor = this.actor;
-    if (actor) {
+    if (actor && !isGrenadeLauncherMigration) {
       const args = { actor, item: this, document: this, updateData: changed, options, userId, cancel: false };
       await NeuroshimaScriptRunner.executeEvent("preUpdateDocument", args, {
         metadata: { item: this, document: this, updateData: changed }
@@ -524,6 +530,10 @@ export class NeuroshimaItem extends Item {
         NeuroshimaItem._rerenderParentContainerById(actor, formerContainerId);
       }
     }
+
+    // Schema migrations must be deterministic and must not dispatch gameplay
+    // scripts while changing the Item type or removing obsolete launcher data.
+    if (options.neuroshimaGrenadeMigration || options.neuroshimaLauncherMigration) return;
 
     // Editing a trait definition nested in an Origin/Profession only persists
     // template data. It must not dispatch gameplay update/equip hooks.

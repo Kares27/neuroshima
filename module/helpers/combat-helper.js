@@ -47,9 +47,41 @@ export class CombatHelper {
     const spDifference = options.spDifference ?? attackData.successPoints ?? 0;
 
     // Resolve attacker for attacker-side triggers (preApplyDamage / applyDamage).
-    // Works for any damage source: melee, ranged, thrown, grenade — any attackData with actorId.
-    const attackerActor = attackData.actorId ? game.actors.get(attackData.actorId) : null;
-    const attackerWeapon = attackerActor && attackData.weaponId ? attackerActor.items.get(attackData.weaponId) : null;
+    // Prefer document UUIDs so synthetic token actors and embedded Items remain
+    // valid; older cards can still use world-document IDs.
+    let attackerActor = null;
+    if (attackData.actorUuid) {
+      try {
+        const document = await fromUuid(attackData.actorUuid);
+        attackerActor = document?.documentName === "Token"
+          ? document.actor
+          : document;
+      } catch (error) {
+        game.neuroshima?.warn?.("[damage] Unable to resolve source actor UUID", {
+          actorUuid: attackData.actorUuid,
+          error
+        });
+      }
+    }
+    if (!attackerActor && attackData.actorId) {
+      attackerActor = game.actors.get(attackData.actorId) ?? null;
+    }
+
+    let attackerWeapon = null;
+    if (attackData.weaponUuid) {
+      try {
+        const document = await fromUuid(attackData.weaponUuid);
+        if (document?.documentName === "Item") attackerWeapon = document;
+      } catch (error) {
+        game.neuroshima?.warn?.("[damage] Unable to resolve source item UUID", {
+          weaponUuid: attackData.weaponUuid,
+          error
+        });
+      }
+    }
+    if (!attackerWeapon && attackerActor && attackData.weaponId) {
+      attackerWeapon = attackerActor.items.get(attackData.weaponId) ?? null;
+    }
 
     // Pure calculation phase. These synchronous triggers may alter the
     // in-memory outgoing packet, but cannot update Foundry documents.

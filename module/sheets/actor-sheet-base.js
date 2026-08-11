@@ -301,7 +301,7 @@ export class NeuroshimaBaseActorSheet extends HandlebarsApplicationMixin(ActorSh
   }
 
   async _waitForTarget(options = {}) {
-    const { templateRadius = 0 } = options;
+    const { templateRadius = 0, pointOnly = false } = options;
     const actorToken = this._getSourceToken();
     if (!actorToken) {
       ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.NoActorTokenOnCanvas"));
@@ -351,7 +351,9 @@ export class NeuroshimaBaseActorSheet extends HandlebarsApplicationMixin(ActorSh
     };
 
     game.neuroshima.log("_waitForTarget: Starting click capture (window capture)");
-    ui.notifications.info(game.i18n.localize("NEUROSHIMA.Notifications.SelectTargetOrPoint"));
+    ui.notifications.info(game.i18n.localize(pointOnly
+      ? "NEUROSHIMA.Notifications.SelectTemplatePoint"
+      : "NEUROSHIMA.Notifications.SelectTargetOrPoint"));
 
     return new Promise((resolve) => {
       let cleanupCalled = false;
@@ -370,6 +372,8 @@ export class NeuroshimaBaseActorSheet extends HandlebarsApplicationMixin(ActorSh
         if (!previewObj || !canvas?.mousePosition) return;
         const pos = snapPos(canvas.mousePosition.x, canvas.mousePosition.y);
         try { previewDoc.updateSource(pos); previewObj.refresh?.(); } catch (e) {}
+        // A point-only blast still previews its affected tokens dynamically.
+        // Clicking resolves to the template point, never to an individual token.
         if (previewObj?.shape && canvas?.tokens?.placeables) {
           const gs = canvas.grid?.size ?? 100;
           const inIds = canvas.tokens.placeables
@@ -412,7 +416,7 @@ export class NeuroshimaBaseActorSheet extends HandlebarsApplicationMixin(ActorSh
 
         const worldPos = { x: canvas.mousePosition.x, y: canvas.mousePosition.y };
 
-        const clickedToken = canvas.tokens.placeables.find(t => {
+        const clickedToken = pointOnly ? null : canvas.tokens.placeables.find(t => {
           if (!t.visible) return false;
           const b = t.bounds;
           return worldPos.x >= b.x && worldPos.x <= (b.x + b.width) &&

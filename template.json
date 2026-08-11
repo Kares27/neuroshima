@@ -8,8 +8,25 @@
     "homeBase": {}
   },
   "Item": {
-    "types": ["weapon", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-action", "beast-segment", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money","reputation","disease","weapon-mod","armor-mod","facilities","container"],
+    "types": ["weapon", "grenade", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-action", "beast-segment", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money","reputation","disease","weapon-mod","armor-mod","facilities","container"],
     "weapon": {},
+    "grenade": {
+      "description": "",
+      "weight": 0,
+      "cost": 0,
+      "quantity": 1,
+      "availability": 100,
+      "resources": [],
+      "tests": {
+        "value": ""
+      },
+      "equipped": false,
+      "attribute": "dexterity",
+      "skill": "throwing",
+      "useBuildBonus": true,
+      "damageCategory": "physical",
+      "blastZones": []
+    },
     "armor": {},
     "gear": {},
     "trick": {},

@@ -37,6 +37,7 @@ export async function createLoadedMagazineFromWeapon(actor, weapon) {
       quantity: 1,
       availability: Number(weapon.system.availability ?? 100),
       equipped: false,
+      ammoCategory: "standard",
       caliber,
       capacity,
       contents: [{

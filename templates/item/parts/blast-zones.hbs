@@ -1,0 +1,49 @@
+<div class="grenade-blast-zones">
+    <div class="section-header inv-section-header">
+        <span>{{localize "NEUROSHIMA.Grenade.BlastZones"}}</span>
+        {{#if owner}}
+        <div class="item-controls">
+            <a class="item-control" data-action="addBlastZone" title="{{localize 'NEUROSHIMA.Grenade.AddZone'}}">
+                <i class="fas fa-plus"></i>
+            </a>
+        </div>
+        {{/if}}
+    </div>
+
+    {{#if system.blastZones.length}}
+    <div class="blast-zone-list">
+        <div class="blast-zone-header flexrow">
+            <span class="blast-zone-col-radius">{{localize "NEUROSHIMA.Grenade.Zone.Radius"}}</span>
+            <span class="blast-zone-col-damage">{{localize "NEUROSHIMA.Grenade.Zone.Damage"}}</span>
+            <span class="blast-zone-col-shrapnel">{{localize "NEUROSHIMA.Grenade.Zone.Shrapnel"}}</span>
+            <span class="blast-zone-col-knockdown">{{localize "NEUROSHIMA.Grenade.Zone.Knockdown"}}</span>
+            <span class="blast-zone-col-actions"></span>
+        </div>
+        {{#each system.blastZones as |zone|}}
+        <div class="blast-zone-row flexrow" data-zone-index="{{@index}}">
+            <div class="blast-zone-col-radius">
+                <input type="number" name="system.blastZones.{{@index}}.radius" value="{{zone.radius}}" data-dtype="Number" min="1"/>
+            </div>
+            <div class="blast-zone-col-damage">
+                <select name="system.blastZones.{{@index}}.damage">
+                    {{selectOptions ../blastDamageTypesFull selected=zone.damage localize=true}}
+                </select>
+            </div>
+            <div class="blast-zone-col-shrapnel">
+                <input type="number" name="system.blastZones.{{@index}}.shrapnel" value="{{zone.shrapnel}}" data-dtype="Number" min="0"/>
+            </div>
+            <div class="blast-zone-col-knockdown">
+                <input type="checkbox" name="system.blastZones.{{@index}}.knockdown" {{checked zone.knockdown}}/>
+            </div>
+            <div class="blast-zone-col-actions">
+                <a class="item-control" data-action="removeBlastZone" data-zone-index="{{@index}}" title="{{localize 'NEUROSHIMA.Grenade.RemoveZone'}}">
+                    <i class="fas fa-trash"></i>
+                </a>
+            </div>
+        </div>
+        {{/each}}
+    </div>
+    {{else}}
+    <p class="hint blast-zones-empty">{{localize "NEUROSHIMA.Grenade.NoZones"}}</p>
+    {{/if}}
+</div>

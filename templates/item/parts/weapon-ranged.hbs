@@ -1,38 +1,7 @@
 <div class="flexcol" style="gap: 8px;">
-    {{#if isLauncher}}
-    <div class="secondary-box grid grid-3col">
-        <div class="form-group row-group">
-            <label>{{localize "NEUROSHIMA.Items.Fields.LauncherType"}}</label>
-            <select name="system.launcherType">
-                <option value="grenade" {{#if (eq system.launcherType "grenade")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Launcher.Type.Grenade"}}</option>
-                <option value="rocket" {{#if (eq system.launcherType "rocket")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Launcher.Type.Rocket"}}</option>
-                <option value="mortar" {{#if (eq system.launcherType "mortar")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Launcher.Type.Mortar"}}</option>
-                <option value="other" {{#if (eq system.launcherType "other")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Launcher.Type.Other"}}</option>
-            </select>
-        </div>
-        <div class="form-group row-group">
-            <label>{{localize "NEUROSHIMA.Items.Fields.AmmoFeed"}}</label>
-            <select name="system.ammoFeed">
-                <option value="direct" {{#if (eq system.ammoFeed "direct")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Launcher.Feed.Direct"}}</option>
-                <option value="magazine" {{#if (eq system.ammoFeed "magazine")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Launcher.Feed.Magazine"}}</option>
-                <option value="either" {{#if (eq system.ammoFeed "either")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Launcher.Feed.Either"}}</option>
-                <option value="integrated" {{#if (eq system.ammoFeed "integrated")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Launcher.Feed.Integrated"}}</option>
-            </select>
-        </div>
-        {{#if (eq system.ammoFeed "either")}}
-        <div class="form-group row-group">
-            <label>{{localize "NEUROSHIMA.Items.Fields.AmmoFeedMode"}}</label>
-            <select name="system.ammoFeedMode">
-                <option value="direct" {{#if (eq system.ammoFeedMode "direct")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Launcher.Feed.Direct"}}</option>
-                <option value="magazine" {{#if (eq system.ammoFeedMode "magazine")}}selected{{/if}}>{{localize "NEUROSHIMA.Items.Launcher.Feed.Magazine"}}</option>
-            </select>
-        </div>
-        {{/if}}
-    </div>
-    {{/if}}
     {{!-- Atrybut, Umiejętność, Mod Broni (3 kolumny obok siebie) --}}
     <div class="secondary-box">
-        <div class="grid grid-4col">
+        <div class="grid {{#if isLauncher}}grid-3col{{else}}grid-4col{{/if}}">
             <div class="form-group row-group">
                 <label>{{localize "NEUROSHIMA.Items.Fields.Attribute"}}</label>
                 <select name="system.attribute">
@@ -45,14 +14,14 @@
                     {{selectOptions availableSkills selected=system.skill localize=true}}
                 </select>
             </div>
-            <div class="form-group row-group">
+            {{#unless isLauncher}}<div class="form-group row-group">
                 <label>{{localize "NEUROSHIMA.Items.Fields.DamageType"}}</label>
                 <select name="system.damageCategory" {{#if isModded}}disabled{{/if}}>
                     {{#each damageCategories as |cat key|}}
                     <option value="{{key}}" {{#if (eq ../system.damageCategory key)}}selected{{/if}}>{{localize cat.label}}</option>
                     {{/each}}
                 </select>
-            </div>
+            </div>{{/unless}}
             <div class="form-group row-group">
                 <label title="{{localize 'NEUROSHIMA.Items.Fields.WeaponModifier'}}">{{localize "NEUROSHIMA.Items.Fields.WeaponModifierAbbr"}}</label>
                 <input type="number" name="system.weaponModifier" value="{{system.weaponModifier}}" data-dtype="Number" {{#if isModded}}disabled{{/if}}/>
@@ -63,7 +32,8 @@
     {{!-- Row 1 + Row 2: Statystyki broni --}}
     <div class="secondary-box flexcol" style="gap: 8px;">
         {{!-- Row 1: Typ Broni, Typ Amunicji, Obrażenia, PP, Szybkostrzelność --}}
-        <div class="grid grid-5col">
+        {{!-- Launchers take damage, blast zones and armor interaction from their projectile. --}}
+        <div class="grid {{#if isLauncher}}grid-3col{{else}}grid-5col{{/if}}">
             <div class="form-group row-group">
                 <label>{{localize "NEUROSHIMA.Items.Fields.WeaponSubtype"}}</label>
                 <select name="system.rangedSubtype" {{#if isModded}}disabled{{/if}}>
@@ -79,28 +49,31 @@
                     {{/each}}
                 </datalist>
             </div>
-            <div class="form-group row-group">
+            {{#unless isLauncher}}<div class="form-group row-group">
                 <label>{{localize "NEUROSHIMA.Items.Fields.Damage"}}</label>
                 <select name="system.damage" {{#if isModded}}disabled{{/if}}>
                     {{selectOptions damageTypes selected=system.damage localize=true}}
                 </select>
-            </div>
-            <div class="form-group row-group">
+            </div>{{/unless}}
+            {{#unless isLauncher}}<div class="form-group row-group">
                 <label title="{{localize 'NEUROSHIMA.Items.Fields.Piercing'}}">{{localize "NEUROSHIMA.Items.Fields.PiercingAbbr"}}</label>
                 <input type="number" name="system.piercing" value="{{system.piercing}}" data-dtype="Number" min="0" {{#if isModded}}disabled{{/if}}/>
-            </div>
-            <div class="form-group row-group">
+            </div>{{/unless}}
+            {{#if isLauncher}}<div class="form-group row-group">
+                <label>{{localize "NEUROSHIMA.Items.Fields.Capacity"}}</label>
+                <input type="number" name="system.capacity" value="{{system.capacity}}" data-dtype="Number" min="0" {{#if isModded}}disabled{{/if}}/>
+            </div>{{else}}<div class="form-group row-group">
                 <label title="{{localize 'NEUROSHIMA.Items.Fields.FireRate'}}">{{localize "NEUROSHIMA.Items.Fields.FireRateAbbr"}}</label>
                 <input type="number" name="system.fireRate" value="{{system.fireRate}}" data-dtype="Number" min="0" {{#if isModded}}disabled{{/if}}/>
-            </div>
+            </div>{{/if}}
         </div>
 
         {{!-- Row 2: Pojemność, Zacięcie, Budowa, Bonus do ataku, Bonus do Obrony --}}
-        <div class="grid grid-5col">
-            <div class="form-group row-group">
+        <div class="grid {{#if isLauncher}}grid-4col{{else}}grid-5col{{/if}}">
+            {{#unless isLauncher}}<div class="form-group row-group">
                 <label>{{localize "NEUROSHIMA.Items.Fields.Capacity"}}</label>
                 <input type="number" name="system.capacity" value="{{system.capacity}}" data-dtype="Number" min="0" {{#if isModded}}disabled{{/if}}/>
-            </div>
+            </div>{{/unless}}
             <div class="form-group row-group">
                 <label>{{localize "NEUROSHIMA.Items.Fields.Jamming"}}</label>
                 <input type="number" name="system.jamming" value="{{system.jamming}}" data-dtype="Number" min="0" max="20" {{#if isModded}}disabled{{/if}}/>
@@ -162,19 +135,23 @@
         </fieldset>{{/unless}}
     </div>
 
-    {{!-- Magazynek (na dole) --}}
-    {{#if launcherUsesDirect}}
+    {{!-- A launcher has one active feed selected from direct ammunition or magazines. --}}
+    {{#if isLauncher}}
     <div class="secondary-box">
         <div class="form-group row-group">
-            <label>{{localize "NEUROSHIMA.Items.Fields.Ammo"}}</label>
-            <select name="system.directAmmo">
+            <label>{{localize "NEUROSHIMA.Items.Fields.LauncherAmmunition"}}</label>
+            <select name="launcherAmmoSelection">
                 <option value="">{{localize "NEUROSHIMA.Items.Fields.None"}}</option>
-                {{#each availableAmmo as |ammo|}}<option value="{{ammo.id}}" title="{{ammo.tooltip}}" {{#if (eq ../system.directAmmo ammo.id)}}selected{{/if}}>{{ammo.name}}</option>{{/each}}
+                {{#each availableAmmo as |ammo|}}
+                <option value="ammo:{{ammo.id}}" title="{{ammo.tooltip}}" {{#if (eq ../launcherAmmoSelection (concat "ammo:" ammo.id))}}selected{{/if}}>{{ammo.name}}</option>
+                {{/each}}
+                {{#each availableMagazines as |mag|}}
+                <option value="magazine:{{mag.id}}" title="{{mag.tooltip}}" {{#if (eq ../launcherAmmoSelection (concat "magazine:" mag.id))}}selected{{/if}}>{{mag.name}}</option>
+                {{/each}}
             </select>
         </div>
     </div>
-    {{/if}}
-    {{#if showMagazineSelector}}
+    {{else if (eq system.weaponType "ranged")}}
     <div class="secondary-box">
         <div class="form-group row-group">
             <label>{{localize "NEUROSHIMA.Items.Fields.Magazine"}}</label>
