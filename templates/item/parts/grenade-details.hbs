@@ -1,6 +1,6 @@
 <div class="flexcol grenade-details" style="gap: 8px;">
     <div class="secondary-box">
-        <div class="grid grid-2col">
+        <div class="grid grid-3col grenade-core-grid">
             <div class="form-group row-group">
                 <label>{{localize "NEUROSHIMA.Items.Fields.Attribute"}}</label>
                 <select name="system.attribute">
@@ -13,10 +13,6 @@
                     {{selectOptions availableSkills selected=system.skill localize=true}}
                 </select>
             </div>
-        </div>
-    </div>
-    <div class="secondary-box">
-        <div class="grid grid-2col">
             <div class="form-group row-group">
                 <label>{{localize "NEUROSHIMA.Items.Fields.DamageType"}}</label>
                 <select name="system.damageCategory">
@@ -24,12 +20,6 @@
                     <option value="{{key}}" {{#if (eq ../system.damageCategory key)}}selected{{/if}}>{{localize cat.label}}</option>
                     {{/each}}
                 </select>
-            </div>
-            <div class="form-group row-group grenade-build-bonus-toggle">
-                <label class="grenade-build-bonus-control" for="grenade-build-bonus-{{item.id}}">
-                    <input id="grenade-build-bonus-{{item.id}}" type="checkbox" name="system.useBuildBonus" {{checked system.useBuildBonus}}/>
-                    <span>{{localize "NEUROSHIMA.Grenade.UseBuildBonus"}}</span>
-                </label>
             </div>
         </div>
     </div>

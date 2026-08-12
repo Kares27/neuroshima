@@ -752,6 +752,8 @@
                 "ThrowParams": "Throw Parameters",
                 "BaseRange": "Base Range (m)",
                 "DistanceMultiplier": "Distance Multiplier",
+                "UseBuildBonus": "Build bonus for all grenades",
+                "UseBuildBonusHint": "Applies the Build bonus tiers configured below to every grenade throw.",
                 "DeleteTemplateAfterDamage": "Remove template after applying damage",
                 "DeleteTemplateAfterDamageHint": "After damage is applied, removes the template linked to that grenade roll card from the scene."
             },
@@ -1149,6 +1151,12 @@
                 "Title": "Caliber Mismatch",
                 "Content": "You are trying to load {ammo} ammo into a {mag} caliber magazine. Are you sure you want to continue?"
             },
+            "LauncherAmmo": {
+                "Title": "Generate launcher ammunition",
+                "Content": "Choose the projectile profile to create and load into this launcher.",
+                "Offensive": "Offensive grenade",
+                "Defensive": "Defensive grenade"
+            },
             "MeleeDefenseTitle": "{name} - Defend Against Attack",
             "ChooseDefenseType": "Choose defense method:",
             "DefenseExists": "Defense already rolled",
@@ -1162,6 +1170,7 @@
             "GeneratedMagazineMissingCaliber": "Set the weapon caliber first.",
             "GeneratedMagazineInvalidCapacity": "Weapon capacity must be at least 1.",
             "LoadedMagazineGenerated": "Created a full magazine ({capacity}) for {weapon}.",
+            "LauncherAmmoGenerated": "Created and selected {ammo} for launcher {weapon}.",
             "AmmoLoaded": "Loaded {amount}x {ammo} into {mag}.",
             "AmmoRefunded": "Refunded {amount}x ammo to {name}.",
             "DamageApplied": "Applied {count} wounds to {name}.",
@@ -1336,6 +1345,10 @@
             "ExportedToSidebar": "Item \"{name}\" added to the items sidebar.",
             "GeneratedMagazineName": "Magazine — {weapon}",
             "GeneratedAmmoName": "Ammunition {caliber}",
+            "GeneratedLauncherAmmo": {
+                "Offensive": "{caliber} — offensive",
+                "Defensive": "{caliber} — defensive"
+            },
             "Type": {
                 "Weapon": "Weapon",
                 "WeaponMelee": "Melee Weapon",
@@ -1510,6 +1523,7 @@
             "OverrideDamage": "Override damage",
             "OverrideDamageCategory": "Override damage category",
             "OverrideCaliber": "Override caliber",
+            "LauncherHint": "For launchers, damage, damage category and piercing come from the projectile. Caliber, capacity, jamming, required Build, attack and weapon modifier apply to the launcher itself.",
             "OverrideMode": "Checked = overrides base value; unchecked = adds/subtracts from base value",
             "ModifiesCost": "Modifies item cost",
             "DeltaWeightAbbr": "Weight",
@@ -1520,7 +1534,7 @@
             "Sections": {
                 "Basic": "Basic",
                 "Common": "Common",
-                "Ranged": "Ranged / Thrown",
+                "Ranged": "Ranged / Thrown / Launchers",
                 "Melee": "Melee"
             },
             "Category": {

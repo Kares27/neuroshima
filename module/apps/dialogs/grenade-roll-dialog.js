@@ -10,11 +10,12 @@ function measureDistance(first, second) {
   return canvas.grid.measurePath([{ x: a.x, y: a.y }, { x: b.x, y: b.y }]).distance;
 }
 
-function grenadePenalty(distance, build, useBuildBonus = true) {
+function grenadePenalty(distance, build) {
   const config = game.neuroshima?.config ?? NEUROSHIMA;
   const baseRange = config.grenadeBaseRange ?? 10;
   if (distance <= baseRange) return 0;
   const raw = Math.round((distance - baseRange) * (config.grenadeDistanceMultiplier ?? 3));
+  const useBuildBonus = game.settings.get("neuroshima", "grenadeUseBuildBonus") !== false;
   const tier = useBuildBonus
     ? config.grenadeConstitutionBonuses?.find(entry =>
       build >= entry.minBuild && build <= entry.maxBuild)
@@ -95,7 +96,7 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
 
     const build        = actor?.system?.attributes?.constitution ?? 0;
     const distancePenalty = this.userEntry.distancePenalty
-      ?? grenadePenalty(distance, build, gData.useBuildBonus !== false);
+      ?? grenadePenalty(distance, build);
 
     const weaponAttrKey  = gData.attribute || "dexterity";
     const weaponSkillKey = gData.skill || "throwing";

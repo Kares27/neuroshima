@@ -3988,7 +3988,8 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
     const isMagazine = item.type === 'magazine';
     const isContainer = item.type === 'container';
-    const canGenerateMagazine = item.type === 'weapon' && item.system.weaponType === 'ranged';
+    const canGenerateMagazine = item.type === 'weapon'
+      && ['ranged', 'launcher'].includes(item.system.weaponType);
     const menuItems = [
       { action: 'edit',      icon: 'fas fa-edit',    label: game.i18n.localize('Edit') },
       { action: 'post',      icon: 'fas fa-comment',  label: game.i18n.localize('NEUROSHIMA.ContextMenu.PostToChat') },

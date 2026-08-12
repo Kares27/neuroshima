@@ -5556,6 +5556,10 @@ li.chat-message.message.flexcol > .message-content {
     cursor: pointer;
 }
 
+.neuroshima.grenade-config .grenade-cleanup-option + .grenade-cleanup-option {
+    margin-top: 8px;
+}
+
 .neuroshima.grenade-config .grenade-cleanup-option input[type="checkbox"] {
     flex: 0 0 18px;
     width: 18px;

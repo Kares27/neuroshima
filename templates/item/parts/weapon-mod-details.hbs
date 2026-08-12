@@ -101,13 +101,16 @@
 
     {{#if (eq system.category "modification")}}
 
-    {{!-- Zasięgowe / Miotane (Ranged / Thrown) — first after Bazowe --}}
+    {{!-- Ranged, thrown and launcher weapon fields. Launcher blast damage and
+         piercing remain properties of its ammunition; caliber, capacity,
+         jamming and the common modifiers still apply to the launcher itself. --}}
     <details class="weapon-mod-section secondary-box" data-details-id="ranged">
         <summary class="weapon-mod-section-summary">
             <i class="weapon-mod-section-arrow fas fa-chevron-up"></i>
             <span class="section-label">{{localize "NEUROSHIMA.Mods.Sections.Ranged"}}</span>
         </summary>
         <div class="flexcol" style="gap: 6px; margin-top: 8px;">
+            <p class="hint">{{localize "NEUROSHIMA.Mods.LauncherHint"}}</p>
             {{!-- Row 1: Obrażenia + Kaliber --}}
             <div class="grid grid-2col">
                 <div class="form-group bazowe-inline">

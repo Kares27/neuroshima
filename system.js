@@ -941,6 +941,13 @@ Hooks.once('init', async function() {
         ]
     });
 
+    game.settings.register("neuroshima", "grenadeUseBuildBonus", {
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: true
+    });
+
     game.settings.register("neuroshima", "grenadeBaseRange", {
         scope: "world",
         config: false,
@@ -1405,6 +1412,11 @@ Hooks.once("ready", async function () {
     if (Array.isArray(savedGrenadeBonuses) && savedGrenadeBonuses.length) {
         NEUROSHIMA.grenadeConstitutionBonuses = savedGrenadeBonuses;
     }
+
+    NEUROSHIMA.grenadeUseBuildBonus = game.settings.get(
+        "neuroshima",
+        "grenadeUseBuildBonus"
+    ) !== false;
 
     const savedGrenadeBaseRange = game.settings.get("neuroshima", "grenadeBaseRange");
     if (savedGrenadeBaseRange != null) NEUROSHIMA.grenadeBaseRange = savedGrenadeBaseRange;

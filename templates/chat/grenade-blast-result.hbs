@@ -33,10 +33,12 @@
                     <tr>
                         <td>{{this.tokenName}}</td>
                         <td>
+                            {{#if (and this.damage (ne this.damage "none"))}}
                             <strong>{{damageLabel this.damage}}</strong>
+                            {{else}}-{{/if}}
                             {{#if this.knockdown}}<span class="grenade-knockdown-tag" data-tooltip="{{localize 'NEUROSHIMA.Grenade.Zone.KnockdownTooltip'}}" data-tooltip-direction="UP">⊕</span>{{/if}}
                         </td>
-                        <td>{{localize this.locationLabel}}</td>
+                        <td>{{#if this.locationLabel}}{{localize this.locationLabel}}{{else}}-{{/if}}</td>
                     </tr>
                     {{/each}}
                 </tbody>

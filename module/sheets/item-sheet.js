@@ -2,7 +2,7 @@ import { NEUROSHIMA } from "../config.js";
 import { TraitBrowserApp } from "../apps/trait-browser.js";
 import { BeastActivitySheet } from "../apps/beast-activity-sheet.js";
 import { normalizeGearType } from "../helpers/gear-types.js";
-import { installMod, attachMod, detachMod, removeMod, buildInstalledMap, buildModDeltaSummary, getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveWeight, getEffectiveCost, computeWeaponEffective, buildWeaponWriteback } from "../helpers/mod-helpers.js";
+import { installMod, attachMod, detachMod, removeMod, buildInstalledMap, buildModDeltaSummary, getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveWeight, getEffectiveCost } from "../helpers/mod-helpers.js";
 import { buildItemPreviewTooltip } from "../helpers/item-tooltip.js";
 import {
   collectTraitSnapshots,
@@ -337,7 +337,6 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
         tests: item.system.tests?.toObject?.() ?? item.system.tests ?? { value: "" },
         attribute: item.system.attribute ?? "dexterity",
         skill: item.system.skill ?? "throwing",
-        useBuildBonus: item.system.useBuildBonus !== false,
         damageCategory: item.system.damageCategory ?? "physical",
         blastZones: Array.from(item.system.blastZones ?? [])
       };
@@ -1133,16 +1132,8 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       this._modUpdateHookId = Hooks.on("updateItem", async (updatedItem, _change, _options, _userId) => {
         const parentId = updatedItem.getFlag("neuroshima", "modParentId");
         if (!parentId || parentId !== item.id) return;
-        const modEntry = (item.system.mods ?? {})[updatedItem.id];
-        if (modEntry?.attached && item.type === "weapon") {
-          const modsRaw = foundry.utils.deepClone(item.system.mods ?? {});
-          const installedMap = buildInstalledMap(item, modsRaw);
-          const base = modsRaw.__baseStats;
-          if (base) {
-            const effective = computeWeaponEffective(base, installedMap);
-            await item.update(buildWeaponWriteback(effective));
-          }
-        }
+        // Stat recomputation belongs to NeuroshimaItem._onUpdate so it also
+        // works when the parent sheet is closed. This hook only refreshes UI.
         this.render();
       });
     }

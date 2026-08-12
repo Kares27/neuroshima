@@ -120,6 +120,8 @@ export class GrenadeData extends foundry.abstract.TypeDataModel {
       ...equipableSchema(),
       attribute: new fields.StringField({ initial: "dexterity" }),
       skill: new fields.StringField({ initial: "throwing" }),
+      // Legacy source compatibility only. Throw calculations use the world
+      // setting `grenadeUseBuildBonus` for every grenade.
       useBuildBonus: new fields.BooleanField({ initial: true }),
       damageCategory: new fields.StringField({ initial: "physical" }),
       blastZones: blastZonesField()

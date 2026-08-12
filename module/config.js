@@ -300,6 +300,7 @@ export const NEUROSHIMA = {
         { minBuild: 15, maxBuild: 16, bonus: 20 },
         { minBuild: 17, maxBuild: 99, bonus: 30 }
     ],
+    grenadeUseBuildBonus: true,
     grenadeBaseRange: 10,
     grenadeDistanceMultiplier: 3,
     burstLabels: [

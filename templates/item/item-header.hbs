@@ -8,7 +8,7 @@
             <h4 class="item-type">{{localize typeLabel}}{{#if gearTypeLabel}} — <span class="item-gear-type-label">{{gearTypeLabel}}</span>{{/if}}</h4>
             {{#unless (or isNonCountable (eq item.type "container"))}}
             <div class="item-qty">
-                <input type="number" name="system.quantity" value="{{system.quantity}}" data-dtype="Number" title="{{localize 'NEUROSHIMA.Items.Fields.Quantity'}}"/>
+                <input type="number" name="system.quantity" value="{{system.quantity}}" data-dtype="Number" min="0" step="1" title="{{localize 'NEUROSHIMA.Items.Fields.Quantity'}}"/>
                 <div class="qty-x">×</div>
             </div>
             {{/unless}}

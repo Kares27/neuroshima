@@ -118,8 +118,8 @@
                             <td>
                                 {{#if (and this.damage (ne this.damage "none"))}}
                                 <strong>{{damageLabel this.damage}}</strong>
-                                {{#if this.knockdown}}<span class="grenade-knockdown-tag" data-tooltip="{{localize 'NEUROSHIMA.Grenade.Zone.KnockdownTooltip'}}" data-tooltip-direction="UP">⊕</span>{{/if}}
                                 {{else}}-{{/if}}
+                                {{#if this.knockdown}}<span class="grenade-knockdown-tag" data-tooltip="{{localize 'NEUROSHIMA.Grenade.Zone.KnockdownTooltip'}}" data-tooltip-direction="UP">⊕</span>{{/if}}
                             </td>
                             <td>
                                 {{#if this.locationKey}}

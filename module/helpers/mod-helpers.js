@@ -88,10 +88,13 @@ export function snapshotWeaponBaseStats(weapon) {
   const s = weapon.system;
   return {
     weight:       s.weight ?? 0,
+    cost:         s.cost ?? 0,
     damage:       s.damage ?? "L",
+    damageCategory: s.damageCategory ?? "physical",
     damageMelee1: s.damageMelee1 ?? "D",
     damageMelee2: s.damageMelee2 ?? "L",
     damageMelee3: s.damageMelee3 ?? "C",
+    caliber:      s.caliber ?? "",
     piercing:     s.piercing ?? 0,
     fireRate:     s.fireRate ?? 0,
     capacity:     s.capacity ?? 0,
@@ -155,6 +158,20 @@ export function computeWeaponEffective(baseStats, installedMap) {
     if (mod.overrideDamageMelee3) eff.damageMelee3 = mod.damageMelee3;
     eff.weaponModifier = (eff.weaponModifier ?? 0) + (mod.deltaWeaponModifier ?? 0);
   }
+
+  // Modification deltas are intentionally signed, but the resulting weapon
+  // must still satisfy its DataModel. This is especially important for
+  // launchers, where capacity decides between direct ammunition and a magazine.
+  eff.weight = Math.max(0, Number(eff.weight) || 0);
+  eff.cost = Math.max(0, Math.trunc(Number(eff.cost) || 0));
+  eff.piercing = Math.max(0, Math.trunc(Number(eff.piercing) || 0));
+  eff.fireRate = Math.max(0, Math.trunc(Number(eff.fireRate) || 0));
+  eff.capacity = Math.max(0, Math.trunc(Number(eff.capacity) || 0));
+  eff.jamming = Math.clamp(Math.trunc(Number(eff.jamming) || 0), 0, 20);
+  eff.requiredBuild = Math.max(0, Math.trunc(Number(eff.requiredBuild) || 0));
+  eff.attackBonus = Math.trunc(Number(eff.attackBonus) || 0);
+  eff.defenseBonus = Math.trunc(Number(eff.defenseBonus) || 0);
+  eff.weaponModifier = Math.trunc(Number(eff.weaponModifier) || 0);
   return eff;
 }
 
@@ -186,7 +203,7 @@ export function computeArmorEffective(baseStats, installedMap) {
  * to the item's system fields (the fields dice.js reads at roll time).
  */
 export function buildWeaponWriteback(effective) {
-  return {
+  const update = {
     "system.weight":        effective.weight,
     "system.damage":        effective.damage,
     "system.damageMelee1":  effective.damageMelee1,
@@ -198,11 +215,15 @@ export function buildWeaponWriteback(effective) {
     "system.jamming":       effective.jamming,
     "system.attackBonus":    effective.attackBonus,
     "system.defenseBonus":   effective.defenseBonus,
-    "system.caliber":        effective.caliber,
     "system.requiredBuild":  effective.requiredBuild,
-    "system.weaponModifier": effective.weaponModifier,
-    "system.damageCategory": effective.damageCategory ?? "physical"
+    "system.weaponModifier": effective.weaponModifier
   };
+  // Older installed-mod snapshots did not store caliber or damage category.
+  // Omitting missing paths is safer than erasing current values when such a
+  // legacy mod is detached; every newly attached mod captures both correctly.
+  if (effective.caliber != null) update["system.caliber"] = effective.caliber;
+  if (effective.damageCategory != null) update["system.damageCategory"] = effective.damageCategory;
+  return update;
 }
 
 /**
@@ -847,13 +868,17 @@ export function buildModDeltaSummary(snapshot, itemType) {
   const d = (v) => (v > 0 ? `+${v}` : `${v}`);
   const parts = [];
   if (itemType === "weapon") {
-    if (snapshot.deltaAttackBonus)    parts.push(`ATK ${d(snapshot.deltaAttackBonus)}`);
-    if (snapshot.deltaDefenseBonus)   parts.push(`OBR ${d(snapshot.deltaDefenseBonus)}`);
-    if (snapshot.deltaPiercing)       parts.push(`PP ${d(snapshot.deltaPiercing)}`);
+    if (snapshot.deltaAttackBonus || snapshot.overrideAttackBonus) parts.push(`ATK ${d(snapshot.deltaAttackBonus ?? 0)}`);
+    if (snapshot.deltaDefenseBonus || snapshot.overrideDefenseBonus) parts.push(`OBR ${d(snapshot.deltaDefenseBonus ?? 0)}`);
+    if (snapshot.deltaPiercing || snapshot.overridePiercing) parts.push(`PP ${d(snapshot.deltaPiercing ?? 0)}`);
     if (snapshot.overrideDamage)      parts.push(`Obr: ${snapshot.damage}`);
-    if (snapshot.deltaFireRate)       parts.push(`Sz ${d(snapshot.deltaFireRate)}`);
-    if (snapshot.deltaCapacity)       parts.push(`Poj ${d(snapshot.deltaCapacity)}`);
-    if (snapshot.deltaJamming)        parts.push(`Zac ${d(snapshot.deltaJamming)}`);
+    if (snapshot.overrideDamageCategory) parts.push(`Kat: ${snapshot.damageCategory}`);
+    if (snapshot.overrideCaliber)     parts.push(`Kal: ${snapshot.modCaliber || "—"}`);
+    if (snapshot.deltaFireRate || snapshot.overrideFireRate) parts.push(`Sz ${d(snapshot.deltaFireRate ?? 0)}`);
+    if (snapshot.deltaCapacity || snapshot.overrideCapacity) parts.push(`Poj ${d(snapshot.deltaCapacity ?? 0)}`);
+    if (snapshot.deltaJamming || snapshot.overrideJamming) parts.push(`Zac ${d(snapshot.deltaJamming ?? 0)}`);
+    if (snapshot.deltaRequiredBuild || snapshot.overrideRequiredBuild) parts.push(`Bd ${d(snapshot.deltaRequiredBuild ?? 0)}`);
+    if (snapshot.deltaWeaponModifier) parts.push(`Mod ${d(snapshot.deltaWeaponModifier)}`);
     if (snapshot.overrideDamageMelee1) parts.push(`M1: ${snapshot.damageMelee1}`);
     if (snapshot.overrideDamageMelee2) parts.push(`M2: ${snapshot.damageMelee2}`);
     if (snapshot.overrideDamageMelee3) parts.push(`M3: ${snapshot.damageMelee3}`);

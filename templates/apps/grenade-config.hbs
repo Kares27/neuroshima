@@ -12,6 +12,13 @@
             </div>
         </div>
         <label class="grenade-cleanup-option">
+            <input type="checkbox" name="useBuildBonus" {{checked useBuildBonus}}/>
+            <span>
+                <strong>{{localize "NEUROSHIMA.Settings.GrenadeConfig.UseBuildBonus"}}</strong>
+                <small>{{localize "NEUROSHIMA.Settings.GrenadeConfig.UseBuildBonusHint"}}</small>
+            </span>
+        </label>
+        <label class="grenade-cleanup-option">
             <input type="checkbox" name="deleteTemplateAfterDamage" {{checked deleteTemplateAfterDamage}}/>
             <span>
                 <strong>{{localize "NEUROSHIMA.Settings.GrenadeConfig.DeleteTemplateAfterDamage"}}</strong>

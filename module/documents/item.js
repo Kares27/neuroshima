@@ -353,8 +353,23 @@ export class NeuroshimaItem extends Item {
    */
   async increaseQuantity(n = 1) {
     if (!this.hasQuantity) return;
-    const next = this.system.quantity + n;
+    const next = Math.max(0, Number(this.system.quantity ?? 0) + Number(n ?? 0));
     await this.update({ "system.quantity": next });
+  }
+
+  /** Keep the canonical Item quantity non-negative for nested and flat updates. */
+  static _clampQuantityUpdate(changed) {
+    if (!changed || typeof changed !== "object") return;
+    const flatPath = "system.quantity";
+    const hasFlat = Object.prototype.hasOwnProperty.call(changed, flatPath);
+    const hasNested = foundry.utils.hasProperty(changed, flatPath);
+    if (!hasFlat && !hasNested) return;
+
+    const submitted = hasFlat ? changed[flatPath] : foundry.utils.getProperty(changed, flatPath);
+    const numeric = Number(submitted);
+    const quantity = Number.isFinite(numeric) ? Math.max(0, Math.trunc(numeric)) : 0;
+    if (hasFlat) changed[flatPath] = quantity;
+    else foundry.utils.setProperty(changed, flatPath, quantity);
   }
 
   /**
@@ -370,6 +385,9 @@ export class NeuroshimaItem extends Item {
   async _preUpdate(changed, options, userId) {
     const isGrenadeLauncherMigration = options.neuroshimaGrenadeMigration
       || options.neuroshimaLauncherMigration;
+    // Clamp before core validation. This applies equally to sheet edits,
+    // embedded updates, macros, Active Effect scripts and direct API calls.
+    NeuroshimaItem._clampQuantityUpdate(changed);
     // A launcher has exactly one active ammunition source. Normalize the
     // payload before Foundry and preUpdateDocument scripts inspect it.
     if (this.type === "weapon" && this.system.weaponType === "launcher") {
@@ -391,6 +409,8 @@ export class NeuroshimaItem extends Item {
         metadata: { item: this, document: this, updateData: changed }
       });
       if (args.cancel) return false;
+      // A pre-update script may have changed the value after the first guard.
+      NeuroshimaItem._clampQuantityUpdate(changed);
     }
 
     // Gear equipability belongs to the configured subtype, not to an
@@ -549,6 +569,31 @@ export class NeuroshimaItem extends Item {
       options,
       userId
     }, { metadata: { item: this, document: this, updateData: data } });
+
+    // Recompute an attached weapon modification at the document layer. The
+    // former sheet hook only worked while the parent weapon sheet was open,
+    // which could leave launcher caliber/capacity/jamming stale.
+    if (this.type === "weapon-mod") {
+      const parentId = this.getFlag("neuroshima", "modParentId");
+      const parentWeapon = parentId ? actor.items.get(parentId) : null;
+      const modState = parentWeapon?.system?.mods?.[this.id];
+      if (parentWeapon?.type === "weapon" && modState?.attached) {
+        const {
+          buildInstalledMap,
+          computeWeaponEffective,
+          buildWeaponWriteback
+        } = await import("../helpers/mod-helpers.js");
+        const modsRaw = foundry.utils.deepClone(parentWeapon.system.mods ?? {});
+        const base = modsRaw.__baseStats;
+        if (base) {
+          const effective = computeWeaponEffective(base, buildInstalledMap(parentWeapon, modsRaw));
+          await parentWeapon.update(
+            buildWeaponWriteback(effective),
+            { neuroshimaModRecompute: true }
+          );
+        }
+      }
+    }
 
     const equippedChanged = foundry.utils.hasProperty(data, "system.equipped");
     if (equippedChanged) {

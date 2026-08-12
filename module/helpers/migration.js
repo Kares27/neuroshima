@@ -542,7 +542,6 @@ async function _migrateLegacyGrenade(item) {
     system.attribute = source.attribute ?? "dexterity";
     system.skill = source.skill ?? "throwing";
     system.equipped = source.equipped === true;
-    system.useBuildBonus = source.useBuildBonus !== false;
     system.damageCategory = source.damageCategory ?? "physical";
     system.blastZones = foundry.utils.deepClone(source.blastZones ?? []);
 
@@ -715,7 +714,6 @@ async function _normalizeGrenadeRollFields(item) {
     const updates = {};
     if (source.attribute == null) updates["system.attribute"] = "dexterity";
     if (source.skill == null) updates["system.skill"] = "throwing";
-    if (source.useBuildBonus == null) updates["system.useBuildBonus"] = true;
     if (!Object.keys(updates).length) return false;
     await item.update(updates, { neuroshimaGrenadeMigration: true });
     return true;

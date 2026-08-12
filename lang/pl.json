@@ -759,6 +759,8 @@
                 "ThrowParams": "Parametry Rzutu",
                 "BaseRange": "Zasięg Bazowy (m)",
                 "DistanceMultiplier": "Mnożnik Odległości",
+                "UseBuildBonus": "Premia z Budowy dla wszystkich granatów",
+                "UseBuildBonusHint": "Włącza skonfigurowane poniżej progi Premii z Budowy we wszystkich rzutach granatami.",
                 "DeleteTemplateAfterDamage": "Usuń template po nałożeniu obrażeń",
                 "DeleteTemplateAfterDamageHint": "Po zastosowaniu obrażeń usuwa z mapy template powiązany z tą kartą rzutu granatem."
             },
@@ -1176,6 +1178,12 @@
                 "Title": "Niezgodność kalibru",
                 "Content": "Próbujesz załadować amunicję {ammo} do magazynka na kaliber {mag}. Czy na pewno chcesz kontynuować?"
             },
+            "LauncherAmmo": {
+                "Title": "Wygeneruj amunicję do wyrzutni",
+                "Content": "Wybierz profil pocisku, który ma zostać utworzony i załadowany do tej wyrzutni.",
+                "Offensive": "Granat zaczepny",
+                "Defensive": "Granat obronny"
+            },
             "MeleeDefenseTitle": "{name} - Obrona przed atakiem",
             "ChooseDefenseType": "Wybierz sposób obrony:",
             "DefenseExists": "Obrona już została wykonana",
@@ -1189,6 +1197,7 @@
             "GeneratedMagazineMissingCaliber": "Najpierw ustaw kaliber broni.",
             "GeneratedMagazineInvalidCapacity": "Pojemność broni musi wynosić co najmniej 1.",
             "LoadedMagazineGenerated": "Utworzono pełny magazynek ({capacity}) dla broni {weapon}.",
+            "LauncherAmmoGenerated": "Utworzono i wybrano amunicję {ammo} dla wyrzutni {weapon}.",
             "AmmoLoaded": "Załadowano {amount}x {ammo} do {mag}.",
             "AmmoRefunded": "Zwrócono {amount} szt. amunicji do {name}.",
             "DamageApplied": "Nałożono {count} ran na {name}.",
@@ -1364,6 +1373,10 @@
             "ExportedToSidebar": "Przedmiot \"{name}\" dodany do biblioteki przedmiotów.",
             "GeneratedMagazineName": "Magazynek — {weapon}",
             "GeneratedAmmoName": "Amunicja {caliber}",
+            "GeneratedLauncherAmmo": {
+                "Offensive": "{caliber} — zaczepny",
+                "Defensive": "{caliber} — obronny"
+            },
             "Type": {
                 "Weapon": "Broń",
                 "WeaponMelee": "Broń Ręczna",
@@ -1538,6 +1551,7 @@
             "OverrideDamage": "Nadpisz obrażenia",
             "OverrideDamageCategory": "Nadpisz kategorię obrażeń",
             "OverrideCaliber": "Nadpisz kaliber",
+            "LauncherHint": "W wyrzutni obrażenia, ich kategoria i PP pochodzą z pocisku. Na samą wyrzutnię działają kaliber, pojemność, zacięcie, Budowa, ATK i modyfikator broni.",
             "OverrideMode": "Zaznaczone = nadpisuje wartość bazową; odznaczone = dodaje/odejmuje od wartości bazowej",
             "ModifiesCost": "Modyfikuje koszt itemu",
             "DeltaWeightAbbr": "Waga",
@@ -1548,7 +1562,7 @@
             "Sections": {
                 "Basic": "Bazowe",
                 "Common": "Wspólne",
-                "Ranged": "Zasięgowe / Miotane",
+                "Ranged": "Zasięgowe / Miotane / Wyrzutnie",
                 "Melee": "Walka wręcz"
             },
             "Category": {

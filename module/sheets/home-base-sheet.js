@@ -208,7 +208,7 @@ export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {
         return c;
       }),
       weaponsMelee:   topItems.filter(i => i.type === "weapon" && i.system.weaponType === "melee"),
-      weaponsRanged:  topItems.filter(i => i.type === "weapon" && i.system.weaponType === "ranged"),
+      weaponsRanged:  topItems.filter(i => i.type === "weapon" && ["ranged", "launcher"].includes(i.system.weaponType)),
       weaponsThrown:  topItems.filter(i => i.type === "weapon" && i.system.weaponType === "thrown"),
       grenades:       topItems.filter(i => i.type === "grenade"),
       armor:          topItems.filter(i => i.type === "armor"),
@@ -390,7 +390,8 @@ export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {
     document.querySelectorAll('.ns-item-ctx-menu').forEach(el => el.remove());
 
     const isContainer = item.type === 'container';
-    const canGenerateMagazine = item.type === 'weapon' && item.system.weaponType === 'ranged';
+    const canGenerateMagazine = item.type === 'weapon'
+      && ['ranged', 'launcher'].includes(item.system.weaponType);
     const menuItems = [
       { action: 'edit',      icon: 'fas fa-edit',   label: game.i18n.localize('Edit') },
       { action: 'post',      icon: 'fas fa-comment', label: game.i18n.localize('NEUROSHIMA.ContextMenu.PostToChat') },
