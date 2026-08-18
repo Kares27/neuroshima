@@ -24,6 +24,11 @@ import { DuelContext, DuelSegmentContext, DuelLifecycle, MeleeAction, DuelAction
 import { isMeleeSessionLink, isMeleeSessionMarker } from "./melee-system.js";
 import { createUnarmedWeapon } from "./unarmed.js";
 
+/** Canonical score used when an attack is resolved as an opposed open test. */
+function opposedOpenScore(result = {}) {
+  return Number(result.openMargin ?? result.successPoints ?? 0);
+}
+
 /**
  * Custom Token Ruler for Neuroshima 1.5.
  *
@@ -1560,7 +1565,7 @@ export class MeleeOpposedChat {
     await attacker.unsetFlag("neuroshima", "_szachistaYield");
     await this._registerPendingOpposed({
       data, attacker, targetActor, targetDoc, weapon, handlerMessage,
-      attackerSuccesses: Number(result.successPoints ?? 0)
+      attackerSuccesses: opposedOpenScore(result)
     });
     return handlerMessage;
   }
@@ -1722,8 +1727,8 @@ export class MeleeOpposedChat {
         defenseDice: opposedResult.defender.dice,
         attackTarget: attackerTest.result.target,
         defenseTarget: defenderTest.result.target,
-        attackSuccesses: opposedResult.attacker.successPoints,
-        defenseSuccesses: opposedResult.defender.successPoints,
+        attackSuccesses: opposedOpenScore(opposedResult.attacker),
+        defenseSuccesses: opposedOpenScore(opposedResult.defender),
         attackerSkillBudget: attackerBudget,
         defenderSkillBudget: defenderBudget
       });
@@ -1750,8 +1755,8 @@ export class MeleeOpposedChat {
   ) {
     const attackDice = opposedResult.attacker.dice ?? [];
     const defenseDice = opposedResult.defender.dice ?? [];
-    const attackSuccesses = Number(opposedResult.attacker.successPoints ?? 0);
-    const defenseSuccesses = Number(opposedResult.defender.successPoints ?? 0);
+    const attackSuccesses = opposedOpenScore(opposedResult.attacker);
+    const defenseSuccesses = opposedOpenScore(opposedResult.defender);
     const hits = [];
     if (data.mode === "opposedPips") {
       for (let index = 0; index < Math.min(3, attackDice.length); index++) {
@@ -1927,7 +1932,8 @@ export class MeleeOpposedChat {
       modified: die.modified,
       isSuccess: die.isSuccess,
       isNat1: die.isNat1,
-      isNat20: die.isNat20
+      isNat20: die.isNat20,
+      ignored: die.ignored === true
     }));
     const defenderWeapons = (defenderActor?.items ?? [])
       .filter(item => item.type === "weapon" && item.system.weaponType === "melee")
@@ -1945,7 +1951,7 @@ export class MeleeOpposedChat {
         damage3: data.damage3,
         attackDice: dice,
         attackerTarget: test.result.target,
-        attackerSuccesses: test.result.successPoints ?? 0,
+        attackerSuccesses: opposedOpenScore(test.result),
         defenderName: defenderActor?.name ?? "",
         defenderImg: defenderActor?.img,
         defenderWeapons,
@@ -2020,25 +2026,29 @@ export class MeleeOpposedChat {
     const mode = data.mode;
     let attackDice = data.attackModified;
     const attackTarget = data.attackTarget;
-    let attackSuccesses = data.attackSuccesses;
+    let attackSuccesses = Number(data.attackOpenMargin ?? data.attackSuccesses ?? 0);
 
     let defenseDice = (defenseResult.modifiedResults || []).map(r => ({
       original: r.original,
       modified: r.modified,
       isSuccess: r.isSuccess,
       isNat1: r.isNat1 ?? (r.original === 1),
-      isNat20: r.isNat20 ?? (r.original === 20)
+      isNat20: r.isNat20 ?? (r.original === 20),
+      ignored: r.ignored === true
     }));
     const defenseTarget = defenseResult.target;
-    let defenseSuccesses = Number(defenseResult.successPoints ?? 0);
+    let defenseSuccesses = opposedOpenScore(defenseResult);
 
     const attackerTest = new MeleeWeaponTest({
       actor: attackerActor,
       item: attackerActor?.items?.get(data.weaponId) ?? null,
       result: {
         modifiedResults: attackDice,
-        successPoints: attackSuccesses,
-        success: attackSuccesses > 0
+        isOpen: data.attackOpenMargin != null,
+        openMargin: data.attackOpenMargin ?? null,
+        successPoints: Math.max(0, attackSuccesses),
+        failurePoints: Math.max(0, -attackSuccesses),
+        success: attackSuccesses >= 0
       }
     });
     const defenderTest = new MeleeWeaponTest({
@@ -2057,8 +2067,8 @@ export class MeleeOpposedChat {
     const opposedResult = await opposed.resolve();
     attackDice = opposedResult.attacker.dice;
     defenseDice = opposedResult.defender.dice;
-    attackSuccesses = opposedResult.attacker.successPoints;
-    defenseSuccesses = opposedResult.defender.successPoints;
+    attackSuccesses = opposedOpenScore(opposedResult.attacker);
+    defenseSuccesses = opposedOpenScore(opposedResult.defender);
 
     const attackerName = attackerActor?.name ?? "Attacker";
     const defenderName = defenderActor.name;
@@ -3819,7 +3829,8 @@ export class MeleeOpposedChat {
         modified: effVal,
         isSuccess: effVal <= (attackTarget || 0) && effVal !== 20,
         isNat1: effVal === 1,
-        isNat20: effVal === 20
+        isNat20: effVal === 20,
+        ignored: d.ignored === true
       };
     }).filter(Boolean);
 
@@ -3834,12 +3845,19 @@ export class MeleeOpposedChat {
         modified: effVal,
         isSuccess: effVal <= (defenseTarget || 0) && effVal !== 20,
         isNat1: effVal === 1,
-        isNat20: effVal === 20
+        isNat20: effVal === 20,
+        ignored: d.ignored === true
       };
     }).filter(Boolean);
 
-    const attackSuccesses = effectiveAttackDice.filter(d => d.isSuccess).length;
-    const defenseSuccesses = effectiveDefenseDice.filter(d => d.isSuccess).length;
+    const attackActiveDice = effectiveAttackDice.filter(d => !d.ignored);
+    const defenseActiveDice = effectiveDefenseDice.filter(d => !d.ignored);
+    const attackSuccesses = mode === "opposedSuccesses" && attackActiveDice.length
+      ? Number(attackTarget ?? 0) - Math.max(...attackActiveDice.map(d => d.modified))
+      : attackActiveDice.filter(d => d.isSuccess).length;
+    const defenseSuccesses = mode === "opposedSuccesses" && defenseActiveDice.length
+      ? Number(defenseTarget ?? 0) - Math.max(...defenseActiveDice.map(d => d.modified))
+      : defenseActiveDice.filter(d => d.isSuccess).length;
 
     const attackerName = attackerActor?.name ?? "Attacker";
     const defenderName = defenderActor?.name ?? "Defender";
@@ -4021,11 +4039,12 @@ export class MeleeOpposedChat {
       modified: r.modified,
       isSuccess: r.isSuccess,
       isNat1: r.isNat1,
-      isNat20: r.isNat20
+      isNat20: r.isNat20,
+      ignored: r.ignored === true
     }));
-    const attackerSuccesses = Number(rawResult.successPoints ?? 0);
+    const attackerSuccesses = opposedOpenScore(rawResult);
 
-    if (rawResult.isGradCios && attackerSuccesses === 0) {
+    if (rawResult.isGradCios && rawResult.success !== true) {
       const rollMode = rawResult.rollMode ?? game.settings.get("core", "rollMode");
       const missContent = await foundry.applications.handlebars.renderTemplate(
         "systems/neuroshima/templates/chat/melee-hail-card.hbs",
@@ -4081,10 +4100,12 @@ export class MeleeOpposedChat {
             attackModified: attackDice.map(d => ({
               original: d.value,
               modified: d.modified,
-              isSuccess: d.isSuccess
+              isSuccess: d.isSuccess,
+              ignored: d.ignored === true
             })),
             attackTarget: rawResult.target,
             attackSuccesses: attackerSuccesses,
+            attackOpenMargin: rawResult.openMargin ?? null,
             attackerSkillBudget: rawResult.skill ?? 0,
             damage1: rawResult.damageMelee1 ?? weapon.system.damageMelee1,
             damage2: rawResult.damageMelee2 ?? weapon.system.damageMelee2,
@@ -6861,7 +6882,9 @@ export class MeleeTurnService {
       diceChanges: foundry.utils.deepClone(result.diceChanges ?? []),
       target: Number(result.target ?? 0),
       success: result.success === true,
-      successPoints: Number(result.successPoints ?? 0)
+      successPoints: Number(result.successPoints ?? 0),
+      failurePoints: Number(result.failurePoints ?? 0),
+      openMargin: result.openMargin == null ? null : Number(result.openMargin)
     };
   }
 

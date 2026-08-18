@@ -109,7 +109,7 @@ function evaluateDefense3d20(data, results, rolledResults = results) {
   };
 }
 
-function evaluateOpen3d20(data, results, rolledResults = results) {
+export function evaluateOpen3d20(data, results, rolledResults = results) {
   if (![2, 3].includes(results.length)) {
     throw new RangeError("Open tests require exactly two or three dice");
   }
@@ -122,16 +122,39 @@ function evaluateOpen3d20(data, results, rolledResults = results) {
     const ignored = dice.find(die => !active.includes(die));
     if (ignored) ignored.ignored = true;
   }
+  // Skill and die reduction form one shared pool. Spend it where it lowers the
+  // worse of the two active dice; this maximizes the canonical open margin.
+  const totalPool = Math.max(0, skill + reduction);
+  let pool = totalPool;
   for (const die of active) {
-    die.modified = Math.max(1, die.original - skill - reduction);
+    die.modified = die.original;
+    die.skillSpent = 0;
+  }
+  while (pool > 0) {
+    const candidates = active
+      .filter(die => die.original !== 20 && die.modified > 1)
+      .sort((a, b) => b.modified - a.modified || a.index - b.index);
+    if (!candidates.length) break;
+    candidates[0].modified--;
+    candidates[0].skillSpent++;
+    pool--;
+  }
+  for (const die of active) {
     die.isSuccess = die.modified <= target && die.original !== 20;
   }
-  const successPoints = active.reduce((sum, die) =>
-    sum + (die.isSuccess ? Math.max(0, target - die.modified + 1) : 0), 0);
+  const worseDie = Math.max(...active.map(die => die.modified));
+  const openMargin = target - worseDie;
+  const openNaturalFailure = active.some(die => die.original === 20);
+  const success = active.every(die => die.isSuccess);
   return {
     modifiedResults: dice.sort((a, b) => a.index - b.index),
-    successPoints,
-    success: successPoints > 0,
+    openMargin,
+    successPoints: Math.max(0, openMargin),
+    failurePoints: Math.max(0, -openMargin),
+    success,
+    openNaturalFailure,
+    skillUsed: totalPool - pool,
+    remainingSkill: Math.max(0, skill - (totalPool - pool)),
     isCritSuccess: active.some(die => die.isNat1),
     isCritFailure: active.every(die => die.isNat20)
   };
@@ -489,9 +512,16 @@ export class NeuroshimaTestBase {
 
   applyResultModifiers() {
     const modifiers = this.preData.resultModifiers ?? {};
-    this.result.successPoints = Math.max(
-      0, Number(this.result.successPoints ?? 0) + Number(modifiers.successPoints ?? 0)
-    );
+    const successPointModifier = Number(modifiers.successPoints ?? 0);
+    if (this.result.isOpen === true && this.result.openMargin != null) {
+      this.result.openMargin = Number(this.result.openMargin) + successPointModifier;
+      this.result.successPoints = Math.max(0, this.result.openMargin);
+      this.result.failurePoints = Math.max(0, -this.result.openMargin);
+    } else {
+      this.result.successPoints = Math.max(
+        0, Number(this.result.successPoints ?? 0) + successPointModifier
+      );
+    }
     if (modifiers.forcedSuccess !== undefined) {
       this.result.success = modifiers.forcedSuccess === true;
     } else {
@@ -1090,8 +1120,19 @@ export class NeuroshimaTest extends NeuroshimaTestBase {
   get diceCount() { return 3; }
 
   evaluateSuccessState() {
-    if (this.result.isOpen) return Number(this.result.successPoints ?? 0) > 0;
+    if (this.result.isOpen) {
+      if (this.result.openMargin != null) {
+        return Number(this.result.openMargin) >= 0 && this.result.openNaturalFailure !== true;
+      }
+      return Number(this.result.successPoints ?? 0) >= 0 && this.result.success !== false;
+    }
     return Number(this.result.successPoints ?? 0) >= 2;
+  }
+
+  getDisplayedSuccessPoints() {
+    return this.result.isOpen && this.result.openMargin != null
+      ? Number(this.result.openMargin)
+      : super.getDisplayedSuccessPoints();
   }
 
   async prepare() {
@@ -2076,6 +2117,7 @@ export class RangedWeaponTest extends WeaponTest {
 
 export class MeleeWeaponTest extends WeaponTest {
   evaluateSuccessState() {
+    if (this.result.isOpen) return super.evaluateSuccessState();
     const successPoints = Number(this.result.successPoints ?? 0);
     const doubleSkill = game.settings.get("neuroshima", "doubleSkillAction") === true;
     if (this.result.meleeAction === "defense") {
@@ -2098,16 +2140,16 @@ export class MeleeWeaponTest extends WeaponTest {
     await super.computeResult();
     const doubleSkill = game.settings.get("neuroshima", "doubleSkillAction") === true;
     const defense = this.result.meleeAction === "defense";
-    const evaluated = defense
-      ? evaluateDefense3d20(this.result, this.result.rawResults, this.result.rolledResults)
-      : doubleSkill && !this.result.isOpen
+    const evaluated = this.result.isOpen
+      ? evaluateOpen3d20(this.result, this.result.rawResults, this.result.rolledResults)
+      : defense
+        ? evaluateDefense3d20(this.result, this.result.rawResults, this.result.rolledResults)
+        : doubleSkill
         ? {
             ...evaluateDefense3d20(this.result, this.result.rawResults, this.result.rolledResults),
             success: this.result.rawResults.some(value => Number(value) <= this.result.target && Number(value) !== 20)
           }
-        : this.result.isOpen
-          ? evaluateOpen3d20(this.result, this.result.rawResults, this.result.rolledResults)
-          : evaluateClosed3d20(this.result, this.result.rawResults, this.result.rolledResults);
+        : evaluateClosed3d20(this.result, this.result.rawResults, this.result.rolledResults);
     Object.assign(this.result, evaluated);
     this.applyResultModifiers();
     return this;
@@ -2134,6 +2176,8 @@ export class MeleeWeaponTest extends WeaponTest {
     return {
       success: this.result.success,
       successPoints: this.result.successPoints,
+      failurePoints: this.result.failurePoints ?? 0,
+      openMargin: this.result.openMargin ?? null,
       dice: this.result.modifiedResults ?? []
     };
   }
@@ -2169,7 +2213,13 @@ export class GrenadeTest extends AttackTest {
     await super.computeResult();
     const domain = this.preData.grenadeData ?? this.context.grenadeData ?? {};
     const distance = Number(domain.distance ?? this.result.distance ?? 0);
-    const failureMargin = this.result.success ? 0 : Math.max(0, 3 - this.result.successPoints);
+    const failureMargin = this.result.success
+      ? 0
+      : this.result.failurePoints != null
+        ? Number(this.result.failurePoints)
+        : this.result.openMargin != null
+          ? Math.max(0, -Number(this.result.openMargin))
+          : Math.max(0, 3 - Number(this.result.successPoints ?? 0));
     const zones = [...(domain.blastZones ?? this.result.blastZones ?? [])]
       .sort((a, b) => Number(a.radius) - Number(b.radius));
     Object.assign(this.result, {
@@ -2206,13 +2256,19 @@ export class MeleeOpposedResolver {
   evaluate() {
     const attacker = this.attackerTest.opposedResult;
     const defender = this.defenderTest.opposedResult;
-    const difference = Number(attacker.successPoints ?? 0) - Number(defender.successPoints ?? 0);
+    // New open tests expose their signed margin. Fall back to success points so
+    // old chat cards and non-open callers remain resolvable.
+    const attackerMargin = Number(attacker.openMargin ?? attacker.successPoints ?? 0);
+    const defenderMargin = Number(defender.openMargin ?? defender.successPoints ?? 0);
+    const difference = attackerMargin - defenderMargin;
     const result = {
       winner: difference > 0 ? "attacker" : difference < 0 ? "defender" : "draw",
       difference: Math.abs(difference),
       attacker,
       defender,
-      mode: "opposedSuccessPoints"
+      attackerMargin,
+      defenderMargin,
+      mode: this.mode
     };
     this.attackerTest.context.opposedResult = result;
     this.defenderTest.context.opposedResult = result;
@@ -2258,8 +2314,82 @@ export const NEUROSHIMA_TESTS = Object.freeze({
   GrenadeTest
 });
 
+/** Pure regression suite for the signed open-test and opposed-test contract. */
+export function runOpenTestRegressionTests() {
+  let passed = 0;
+  const assert = (condition, message) => {
+    if (!condition) throw new Error(`Open test regression failed: ${message}`);
+    passed++;
+  };
+  const evaluate = (target, skill, dice) => evaluateOpen3d20({ target, skill }, dice);
+  const textbook = evaluate(14, 3, [4, 9, 18]);
+  const activeTextbook = textbook.modifiedResults.filter(die => !die.ignored).map(die => die.modified).sort((a, b) => a - b);
+  assert(JSON.stringify(activeTextbook) === JSON.stringify([4, 6]), "skill is one shared pool");
+  assert(textbook.openMargin === 8 && textbook.successPoints === 8 && textbook.success, "textbook roll yields 8 SP");
+
+  const exact = evaluate(10, 0, [5, 10, 18]);
+  assert(exact.openMargin === 0 && exact.successPoints === 0 && exact.success, "zero-margin test succeeds");
+  const reconciliationProbe = {
+    result: { isOpen: true, openMargin: 0, successPoints: 0, openNaturalFailure: false },
+    preData: { resultModifiers: {} }
+  };
+  reconciliationProbe.evaluateSuccessState = NeuroshimaTest.prototype.evaluateSuccessState;
+  reconciliationProbe.reconcileSuccess = NeuroshimaTestBase.prototype.reconcileSuccess;
+  NeuroshimaTestBase.prototype.applyResultModifiers.call(reconciliationProbe);
+  assert(reconciliationProbe.result.success === true, "result reconciliation preserves an exact success");
+  const failureFour = evaluate(10, 0, [8, 14, 19]);
+  const failureNine = evaluate(10, 0, [10, 19, 20]);
+  assert(failureFour.openMargin === -4 && failureFour.failurePoints === 4 && !failureFour.success,
+    "failure stores four failure points");
+  assert(failureNine.openMargin === -9 && failureNine.failurePoints === 9 && !failureNine.success,
+    "failure stores nine failure points");
+
+  const opposed = (attacker, defender) => new MeleeOpposedResolver(
+    { opposedResult: attacker, context: {} },
+    { opposedResult: defender, context: {} }
+  ).evaluate();
+  const successVsSuccess = opposed({ openMargin: 8 }, { openMargin: 3 });
+  assert(successVsSuccess.winner === "attacker" && successVsSuccess.difference === 5,
+    "success versus success compares signed margins");
+  const failureVsFailure = opposed({ openMargin: -4 }, { openMargin: -9 });
+  assert(failureVsFailure.winner === "attacker" && failureVsFailure.difference === 5,
+    "failure versus failure preserves failure points");
+  const successVsFailure = opposed({ openMargin: 2 }, { openMargin: -4 });
+  assert(successVsFailure.winner === "attacker" && successVsFailure.difference === 6,
+    "success versus failure spans zero");
+  return { passed, failed: 0 };
+}
+
+/** Integration regressions proving both melee roles use the open-test evaluator. */
+export async function runOpenAttackRegressionTests() {
+  let passed = 0;
+  for (const meleeAction of ["attack", "defense"]) {
+    const test = new MeleeWeaponTest({
+      attribute: { key: "dexterity", value: 14 },
+      skill: { key: "brawl", value: 3 },
+      preData: { isOpen: true, applySkillDifficultyShift: false, applyDiceDifficultyShift: false },
+      context: { isOpen: true, isMelee: true, meleeAction }
+    });
+    await test.prepare();
+    test.result.rawResults = [4, 9, 18];
+    test.result.rolledResults = [4, 9, 18];
+    await test.computeResult();
+    if (test.result.openMargin !== 8 || test.result.successPoints !== 8 || test.result.success !== true) {
+      throw new Error(`Open ${meleeAction} regression failed`);
+    }
+    passed++;
+  }
+  return { passed, failed: 0 };
+}
+
 /** Run the document-free canonical melee regression suite from the existing test API. */
 export async function runMeleeTests() {
   const { runMeleeCoreSelfTests } = await import("./combat/melee-system.js");
-  return runMeleeCoreSelfTests();
+  const melee = await runMeleeCoreSelfTests();
+  const open = runOpenTestRegressionTests();
+  const attacks = await runOpenAttackRegressionTests();
+  return {
+    passed: melee.passed + open.passed + attacks.passed,
+    failed: melee.failed + open.failed + attacks.failed
+  };
 }
