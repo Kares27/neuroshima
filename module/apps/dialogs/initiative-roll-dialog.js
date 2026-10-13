@@ -1,3 +1,4 @@
+import { expandDialogModifiers } from "../../helpers/dialog-script-groups.js";
 import { NEUROSHIMA } from "../../config.js";
 import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
 import { NeuroshimaRollDialogBase } from "./roll-dialog-base.js";
@@ -86,7 +87,9 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
 
     const initAttrValue = this.actor.system.attributeTotals?.[attribute] ?? 0;
     const initAttrObj = { name: attribute, value: initAttrValue, key: attribute };
-    const initSkillValue = skill ? (this.actor.system.skills?.[skill]?.value ?? 0) : 0;
+    const initSkillValue = skill === "experience" && this.actor.type === "creature"
+      ? (this.actor.system.experience ?? 0)
+      : (skill ? (this.actor.system.skills?.[skill]?.value ?? 0) : 0);
     const initSkillObj = skill ? { name: game.i18n.localize(`NEUROSHIMA.Skills.${skill}`) || skill, value: initSkillValue, key: skill } : null;
 
     const targetActors = Array.from(game.user.targets || []).map(t => t.actor).filter(Boolean);
@@ -309,6 +312,21 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
   }
 
   async _onRoll(event, target) {
+    if (this._rollSubmitted) return null;
+    this._rollSubmitted = true;
+    try {
+      return await this._submitRoll(event, target);
+    } catch (error) {
+      try {
+        await this._onErrorCallback?.(error);
+      } finally {
+        await this.close();
+      }
+      throw error;
+    }
+  }
+
+  async _submitRoll(event, target) {
     const html = this.element;
     const form = html.tagName === "FORM" ? html : html.querySelector('form');
     if (!form) return;
@@ -338,7 +356,7 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
     const actorWoundPenalty = this.actor.system.combat?.totalWoundPenalty || 0;
 
     const submissionOptions = {};
-    for (const dm of this._dialogModifiers) {
+    for (const dm of expandDialogModifiers(this._dialogModifiers)) {
       if (!dm.activated || !dm._script?.submissionScript) continue;
       await dm._script.runSubmission({
         actor: this.actor,

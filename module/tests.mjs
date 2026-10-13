@@ -201,6 +201,7 @@ function serializeSyntheticItem(item) {
     img: item.img ?? "",
     type: item.type ?? "weapon",
     beastItemId: item.beastItemId ?? null,
+    isBeastCombat: item.isBeastCombat === true,
     system: clone(item.system ?? {})
   };
 }

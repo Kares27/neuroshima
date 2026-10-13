@@ -1,3 +1,4 @@
+import { expandDialogModifiers } from "../../helpers/dialog-script-groups.js";
 import { NEUROSHIMA } from "../../config.js";
 import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
 import { NeuroshimaRollDialogBase } from "./roll-dialog-base.js";
@@ -1056,7 +1057,7 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
 
     for (
       const dialogModifier
-      of this._dialogModifiers
+      of expandDialogModifiers(this._dialogModifiers)
     ) {
       if (
         !dialogModifier.activated

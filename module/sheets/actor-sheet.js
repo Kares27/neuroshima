@@ -1,3 +1,4 @@
+import { beastActivities } from "../helpers/beast-actions.js";
 import { NEUROSHIMA } from "../config.js";
 import { createLoadedMagazineFromWeapon } from "../helpers/ammunition.js";
 import { NeuroshimaDice } from "../helpers/dice.js";
@@ -4222,7 +4223,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       }
       case "beastAction":
       case "beast-action": {
-        const activities = s.activities ?? [];
+        const activities = beastActivities(item);
         if (activities.length === 0) {
           stats.push({ label: loc("NEUROSHIMA.BeastAction.Activities"), value: "—" });
         } else {

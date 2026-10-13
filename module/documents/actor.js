@@ -314,21 +314,9 @@ export class NeuroshimaActor extends Actor {
   async rollInitiativeDialog(rollOptions = {}) {
     const { NeuroshimaInitiativeRollDialog } = await import("../apps/dialogs/initiative-roll-dialog.js");
 
-    return new Promise((resolve) => {
-      let resolved = false;
-      const dialog = new NeuroshimaInitiativeRollDialog({
-        actor: this,
-        ...rollOptions,
-        onRoll: async (result) => {
-          resolved = true;
-          resolve(result);
-          return result;
-        },
-        onClose: () => {
-          if (!resolved) resolve(null);
-        }
-      });
-      dialog.render(true);
+    return NeuroshimaInitiativeRollDialog.prompt(NeuroshimaInitiativeRollDialog, {
+      actor: this,
+      ...rollOptions
     });
   }
 
@@ -345,7 +333,7 @@ export class NeuroshimaActor extends Actor {
    * @returns {Promise<number|null>}  The written initiative value, or null if the dialog was cancelled.
    */
   async rollInitiative(options = {}) {
-    const combatant = options.combatant || this.token?.combatant || game.combat?.getCombatantByActor(this.id);
+    const combatant = options.combatant || this.token?.combatant || game.combat?.getCombatantsByActor(this.id)[0];
 
     const result = await this.rollInitiativeDialog({
         combatant: combatant,
@@ -354,9 +342,9 @@ export class NeuroshimaActor extends Actor {
 
     if (!result) return null;
 
-    const initiativeValue = Number(result.successPoints);
+    const initiativeValue = Number(result.initiative ?? result.successPoints);
 
-    return initiativeValue;
+    return Number.isFinite(initiativeValue) ? initiativeValue : null;
   }
 
   // ── Script-facing helpers ──────────────────────────────────────────────────

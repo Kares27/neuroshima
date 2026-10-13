@@ -1770,6 +1770,8 @@
             "Threat": "Zagrożenie"
         },
         "Creature": {
+            "QuickActions": "Szybkie akcje",
+            "QuickInitiative": "Inicjatywa",
             "Type": "Typ Stworzenia",
             "TypeAbbr": "Typ",
             "Terrain": "Teren",

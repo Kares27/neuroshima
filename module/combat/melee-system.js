@@ -1,3 +1,4 @@
+import { beastActivities, createBeastCombatWeapon } from "../helpers/beast-actions.js";
 /**
  * Canonical Neuroshima melee engine.
  *
@@ -487,6 +488,7 @@ function normalizeParticipant(participant, side) {
     img: participant.img || null,
     weaponUuid: participant.weaponUuid || null,
     isUnarmed: participant.isUnarmed === true,
+    isBeastCombat: participant.isBeastCombat === true,
     beastItemUuid: participant.beastItemUuid || null
   };
 }
@@ -558,6 +560,7 @@ export function meleeParticipantFromActor(actor, { weapon = null } = {}) {
     img: actor.img,
     weaponUuid: weapon?.uuid ?? null,
     isUnarmed: weapon?.isUnarmed === true,
+    isBeastCombat: weapon?.isBeastCombat === true,
     beastItemUuid: ["beast-action", "beast-segment"].includes(weapon?.type) ? weapon.uuid : null
   };
 }
@@ -850,7 +853,7 @@ export class MeleeActionCatalog {
   }
 
   static fromBeastItem(item) {
-    return array(item?.system?.activities).map(activity => normalizeMeleeActivity({
+    return beastActivities(item).map(activity => normalizeMeleeActivity({
       ...clone(activity),
       id: activity.id,
       category: "beast",
@@ -1669,14 +1672,16 @@ export class MeleeCommandService {
         ? await fromUuid(session.participants.attacker.weaponUuid)
         : attackerActor?.items?.get?.(session.metadata.weaponId)
           ?? attackerActor?.items?.get?.(session.metadata.beastItemId)
-          ?? (session.participants.attacker.isUnarmed ? createUnarmedWeapon(attackerActor) : null);
+          ?? (session.participants.attacker.isBeastCombat ? createBeastCombatWeapon(attackerActor)
+            : session.participants.attacker.isUnarmed ? createUnarmedWeapon(attackerActor) : null);
       const defenderDocument = await fromUuid(
         session.participants.defender.tokenUuid || session.participants.defender.actorUuid
       );
       const defenderActor = defenderDocument?.actor ?? defenderDocument;
       const defenderWeapon = session.participants.defender.weaponUuid
         ? await fromUuid(session.participants.defender.weaponUuid)
-        : session.participants.defender.isUnarmed ? createUnarmedWeapon(defenderActor) : null;
+        : session.participants.defender.isBeastCombat ? createBeastCombatWeapon(defenderActor)
+          : session.participants.defender.isUnarmed ? createUnarmedWeapon(defenderActor) : null;
       session.metadata.activitySnapshots = {};
       for (const [activitySide, activityActor, activityWeapon] of [
         ["attacker", attackerActor, attackerWeapon],
@@ -2407,13 +2412,13 @@ export class MeleeMigration {
       report.actors++;
       for (const item of actor.items ?? []) {
         seenItems.add(item.uuid);
-        if (["beast-action", "beast-segment"].includes(item.type)) report.beastActivities += array(item.system.activities).length;
+        if (["beast-action", "beast-segment"].includes(item.type)) report.beastActivities += beastActivities(item).length;
       }
       for (const effect of actor.effects ?? []) report.effectActions += array(effect.system?.actionDefs).length;
     }
     for (const item of items ?? []) {
       if (seenItems.has(item.uuid)) continue;
-      if (["beast-action", "beast-segment"].includes(item.type)) report.beastActivities += array(item.system.activities).length;
+      if (["beast-action", "beast-segment"].includes(item.type)) report.beastActivities += beastActivities(item).length;
       for (const effect of item.effects ?? []) report.effectActions += array(effect.system?.actionDefs).length;
     }
     for (const combat of combats ?? []) {
@@ -2452,7 +2457,7 @@ export class MeleeMigration {
       seen.add(item.uuid);
       if (["beast-action", "beast-segment"].includes(item.type) &&
           Number(item.getFlag("neuroshima", "meleeSchemaVersion") ?? 0) < MELEE_VERSION) {
-        const activities = array(item.system.activities).map(activity => {
+        const activities = beastActivities(item).map(activity => {
           const raw = activity.toObject?.() ?? clone(activity);
           const normalized = normalizeMeleeActivity({
             ...raw,
@@ -2483,7 +2488,9 @@ export class MeleeMigration {
             automation: normalized.automation
           };
         });
-        await item.update({ "system.activities": activities });
+        await item.update(item.type === "beast-action"
+          ? Object.fromEntries(Object.entries(activities[0] ?? {}).filter(([key]) => !["name", "img"].includes(key)).map(([key, value]) => [`system.${key}`, value]))
+          : { "system.activities": activities });
         await item.setFlag("neuroshima", "meleeSchemaVersion", MELEE_VERSION);
         updated++;
       }
@@ -2766,7 +2773,7 @@ export async function runMeleeCoreSelfTests() {
   assert(dryRun.writes === 0 && dryRun.legacyPreserved === true, "migration dry-run performs no writes");
   let invalidSessionRejected = false;
   const broken = clone(other);
-  broken.segments.pop();
+  broken.exchange.segments = [];
   try { validateMeleeSession(broken); }
   catch (_error) { invalidSessionRejected = true; }
   assert(invalidSessionRejected, "invalid session schema rejected");

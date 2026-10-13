@@ -348,22 +348,32 @@ export class WoundData extends foundry.abstract.TypeDataModel {
 }
 
 /**
- * Data model for Beast Action items (special actions available to Creature actors).
+ * Data model for a single Beast Action (an innate Creature activity).
  * Beast actions are innate, non-countable abilities — no quantity or weight tracking.
- * costType determines whether the action costs segments or successes.
+ * Beast actions cost successes; segment-based maneuvers have their own item model.
  */
 export class BeastActionData extends foundry.abstract.TypeDataModel {
+  static migrateData(source) {
+    super.migrateData(source);
+    if (source.activities?.length) {
+      source.legacyActivities = source.activities;
+      const description = source.description;
+      Object.assign(source, source.activities[0]);
+      source.description = source.activities[0].description || description || "";
+      delete source.activities;
+    }
+    return source;
+  }
+
   static defineSchema() {
     const fields = foundry.data.fields;
-    const activitySchema = new fields.SchemaField({
+    const activitySchema = {
       ...meleeActivitySchema(),
       id:                      new fields.StringField({ initial: () => foundry.utils.randomID() }),
-      name:                    new fields.StringField({ initial: "" }),
-      img:                     new fields.StringField({ initial: "" }),
       summary:                 new fields.StringField({ initial: "", blank: true }),
       gmNote:                  new fields.StringField({ initial: "", blank: true }),
       actionType:              new fields.StringField({ initial: "attack" }),
-      costType:                new fields.StringField({ initial: "success", choices: ["success", "segment"] }),
+      costType:                new fields.StringField({ initial: "success", choices: ["success"] }),
       successCost:             new fields.NumberField({ integer: true, initial: 1, min: 0, max: 3 }),
       segmentCost:             new fields.NumberField({ integer: true, initial: 1, min: 1, max: 3 }),
       attribute:               new fields.StringField({ initial: "dexterity" }),
@@ -381,12 +391,14 @@ export class BeastActionData extends foundry.abstract.TypeDataModel {
       effectTarget:            new fields.StringField({ initial: "target", choices: ["self", "target", "selected", "manual"] }),
       applyEffectsAutomatically: new fields.BooleanField({ initial: true }),
       resolverKind:            new fields.StringField({ initial: "opposedMelee", choices: ["opposedMelee", "directApply"] })
-    });
+    };
     return {
       description: new fields.HTMLField({ initial: "" }),
       resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
       ...testsSchema(),
-      activities: new fields.ArrayField(activitySchema, { initial: [] })
+      ...activitySchema,
+      legacyActivities: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+      testDifficulty: new fields.StringField({ initial: "average" })
     };
   }
 }

@@ -1,3 +1,4 @@
+import { createBeastCombatWeapon } from "../helpers/beast-actions.js";
 import {
   MeleeActionCatalog,
   MeleeMigration,
@@ -369,7 +370,8 @@ export class MeleeSessionPresenter {
 
     const explicitlyUnarmed = weaponId === "";
     let weapon = explicitlyUnarmed ? createUnarmedWeapon(actor) : weaponId ? actor.items?.get?.(weaponId) : null;
-    weapon ??= participant.isUnarmed ? createUnarmedWeapon(actor)
+    weapon ??= participant.isBeastCombat ? createBeastCombatWeapon(actor)
+      : participant.isUnarmed ? createUnarmedWeapon(actor)
       : participant.weaponUuid ? await fromUuid(participant.weaponUuid) : null;
     if (["beast-action", "beast-segment"].includes(weapon?.type)) {
       const beastItem = weapon;

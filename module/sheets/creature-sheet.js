@@ -1,3 +1,4 @@
+import { beastActivities, createBeastCombatWeapon } from "../helpers/beast-actions.js";
 import { NEUROSHIMA } from "../config.js";
 import { createLoadedMagazineFromWeapon } from "../helpers/ammunition.js";
 import { NeuroshimaDice } from "../helpers/dice.js";
@@ -139,13 +140,17 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       },
 
       rollMeleeInitiative: async function() {
-        const { NeuroshimaInitiativeRollDialog } = await import("../apps/dialogs/initiative-roll-dialog.js");
-        const dialog = new NeuroshimaInitiativeRollDialog({ actor: this.document });
-        const result = await dialog.render(true);
+        const actor = this.document;
+        const combat = game.combat;
+        // A synthetic token actor must update its own token's combatant.
+        const combatant = actor.token
+          ? combat?.combatants.find(c => c.tokenId === actor.token.id)
+          : combat?.getCombatantsByActor(actor.id)[0];
+        const result = await actor.rollInitiativeDialog({ combatant, skill: "experience" });
         if (!result) return;
-        await this.document.update({
-          "system.combat.meleeInitiative": Number(result.initiative ?? result.successPoints)
-        });
+        const value = Number(result.initiative ?? result.successPoints);
+        if (!Number.isFinite(value)) return;
+        await actor.update({ "system.combat.meleeInitiative": Math.trunc(value) });
       },
 
       rollWeapon: async function(event, target) {
@@ -309,38 +314,10 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
 
       rollBeastAttack: async function(event, target) {
         const actor = this.document;
-        const itemId = target.dataset.itemId;
+        const sourceItems = actor.items.filter(i => i.type === "beast-action");
+        if (!sourceItems.length) return;
 
-        const sourceItems = itemId
-          ? actor.items.filter(i => i.id === itemId && i.type === "beast-action")
-          : actor.items.filter(i => i.type === "beast-action");
-
-        const sourceItem = sourceItems[0];
-        if (!sourceItem) return;
-
-        const syntheticWeapon = {
-          id: null,
-          beastItemId: sourceItem?.id ?? null,
-          name: sourceItem?.name ?? actor.name,
-          img: sourceItem?.img ?? actor.img,
-          type: "weapon",
-          system: {
-            weaponType: "melee",
-            attribute: sourceItem?.system?.attribute || "dexterity",
-            skill: "experience",
-            attackBonus: 0,
-            defenseBonus: 0,
-            // The package defines only the roll profile. Damage comes from the
-            // exact typed Activity selected later on the duel card.
-            damageMelee1: "D",
-            damageMelee2: "D",
-            damageMelee3: "D",
-            requiredBuild: 0,
-            piercing: 0,
-            magazine: null,
-            jamming: 20
-          }
-        };
+        const syntheticWeapon = createBeastCombatWeapon(actor);
 
         const combatTypeSetting = game.settings.get("neuroshima", "meleeCombatType") || "default";
         const effectiveMode = combatTypeSetting === "default" ? "opposedPips" : combatTypeSetting;
@@ -413,11 +390,11 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         const itemId     = target.dataset.itemId;
         const activityId = target.dataset.activityId;
         const item       = this.document.items.get(itemId);
-        if (!item || (item.type !== "beast-segment" && item.type !== "beast-action")) return;
+        if (!item || item.type !== "beast-segment") return;
 
         const act = activityId
-          ? (item.system.activities ?? []).find(a => a.id === activityId)
-          : (item.system.activities ?? [])[0];
+          ? beastActivities(item).find(a => a.id === activityId)
+          : beastActivities(item)[0];
         if (!act) return;
 
         const actor = this.document;
@@ -557,25 +534,6 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         const type = target.dataset.type || "weapon";
         const name = `${game.i18n.localize("DOCUMENT.New")} ${game.i18n.localize(`TYPES.Item.${type}`) || type}`;
         const itemData = { name, type };
-        if (type === "beast-action") {
-          itemData.system = {
-            activities: [{
-              id: foundry.utils.randomID(),
-              name: "",
-              img: "",
-              summary: "",
-              gmNote: "",
-              actionType: "",
-              costType: "success",
-              successCost: 1,
-              segmentCost: 1,
-              attribute: "dexterity",
-              damage: "",
-              piercing: 0,
-              effectIds: []
-            }]
-          };
-        }
         if (type === "beast-segment") {
           itemData.system = {
             activities: [{
@@ -1000,27 +958,19 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         return m;
       }),
       beastActions:      equippedWeapons,
-      beastActionItems:  topItems.filter(i => i.type === "beast-action").sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0)).map(item => ({
-        id:         item.id,
-        name:       item.name,
-        img:        item.img,
-        activities: (item.system.activities ?? []).map(act => ({
-          itemId:      item.id,
-          activityId:  act.id,
-          name:        act.name || item.name,
-          img:         act.img || item.img,
-          successCost: act.successCost ?? 1,
-          damage:      act.damage || null,
-          actionType:  act.actionType || "",
-          gmNote:      act.gmNote || "",
-          hasEffects:  (act.effectIds ?? []).length > 0
-        }))
-      })),
+      beastActionItems: topItems.filter(i => i.type === "beast-action")
+        .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0)).map(item => ({
+          id: item.id, name: item.name, img: item.img,
+          successCost: item.system.successCost ?? 1,
+          damage: item.system.damage || null,
+          actionType: item.system.actionType || "",
+          hasEffects: (item.system.effectIds ?? []).length > 0
+        })),
       beastSegmentItems: topItems.filter(i => i.type === "beast-segment").sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0)).map(item => ({
         id:         item.id,
         name:       item.name,
         img:        item.img,
-        activities: (item.system.activities ?? []).map(act => ({
+        activities: beastActivities(item).map(act => ({
           itemId:      item.id,
           activityId:  act.id,
           name:        act.name || item.name,

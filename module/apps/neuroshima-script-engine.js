@@ -1,3 +1,4 @@
+import { dialogScriptSignature, dialogScriptGroupId, groupDialogModifiers } from "../helpers/dialog-script-groups.js";
 import { NeuroshimaChoiceRouter } from "../helpers/choice-router.js";
 import { NEUROSHIMA } from "../config.js";
 import {
@@ -297,6 +298,24 @@ export class NeuroshimaScript {
   /** Stable lifecycle information for the currently executing trigger. */
   get triggerContext() {
     return this._currentArgs?.eventContext ?? null;
+  }
+
+  /**
+   * Claim an ability once during the current dialog calculation.
+   * Copies must use the same key. The claim resets on every recalculation.
+   * Use in the main dialog code or melee dialogCode, not Hide/Activate.
+   * @param {string} key Stable identifier shared by copies of the ability.
+   * @returns {boolean} True only for the first claim in this calculation.
+   */
+  oncePerDialog(key) {
+    if (typeof key !== "string" || !key.trim()) {
+      throw new TypeError("oncePerDialog requires a non-empty ability key");
+    }
+    const once = this._currentArgs?.flags?.dialogOnce;
+    if (!this._currentArgs?.fields || !once) return false;
+    if (once[key]) return false;
+    once[key] = true;
+    return true;
   }
 
   /**
@@ -5197,6 +5216,10 @@ export class NeuroshimaScriptRunner {
     game.neuroshima?.log?.(`[dialog] fired`, { _actor: actor.name, ...rollContext, _targets: targetActors.map(a => a?.name) });
 
     const scriptFlags = options.scriptFlags ?? rollContext.scriptFlags ?? {};
+    // Like Warhammer dialog flags: shared within one calculation, reset on every
+    // render and final-difficulty pass. Keep the object identity for submission.
+    for (const key of Object.keys(scriptFlags)) delete scriptFlags[key];
+    scriptFlags.dialogOnce = Object.create(null);
     const allScriptEntries = [];
 
     const ownScripts = this.getScripts(actor, "dialog").filter(s => !s.targeter);
@@ -5227,11 +5250,8 @@ export class NeuroshimaScriptRunner {
     }
 
     const dialogModifiers = [];
-    for (const [idx, entry] of allScriptEntries.entries()) {
+    for (const entry of allScriptEntries) {
       const { script, sourceActor, isMeleePreRoll = false } = entry;
-      const effectId = script.effect?.id
-        ? (sourceActor !== actor ? `target_${sourceActor.id}_${script.effect.id}_${idx}` : `${script.effect.id}_${idx}`)
-        : `${sourceActor.id}_script_${idx}`;
       const flags = scriptFlags;
       const isTargetScript = sourceActor !== actor;
       // isMeleePreRoll=true: this getMeleeActions+isDialogScript entry runs with dialog context.
@@ -5252,6 +5272,14 @@ export class NeuroshimaScriptRunner {
       const hidden = await script.evalHide(baseArgs);
       if (hidden) continue;
 
+      const parentItem = script.effect?.parent instanceof Item ? script.effect.parent : null;
+      const rawLabel = script.label || (parentItem?.getFlag?.("neuroshima", "test") ?? "");
+      const _modId1 = script.effect?.getFlag?.("neuroshima", "fromModId");
+      const _modSnap1 = _modId1 ? (parentItem?.system?.mods?.[_modId1] ?? null) : null;
+      const resolvedLabel = NeuroshimaScriptRunner._resolveItemRef(rawLabel, parentItem, script.effect ?? null, _modSnap1, _modId1 ?? null);
+      const groupKey = dialogScriptSignature(script, sourceActor, isMeleePreRoll, resolvedLabel);
+      const effectId = dialogScriptGroupId(groupKey);
+
       let activated;
       if (selectedModifierIds.has(effectId)) {
         activated = true;
@@ -5261,11 +5289,7 @@ export class NeuroshimaScriptRunner {
         activated = await script.evalActivate(baseArgs);
       }
 
-      const parentItem = script.effect?.parent instanceof Item ? script.effect.parent : null;
-      const rawLabel = script.label || (parentItem?.getFlag?.("neuroshima", "test") ?? "");
-      const _modId1 = script.effect?.getFlag?.("neuroshima", "fromModId");
-      const _modSnap1 = _modId1 ? (parentItem?.system?.mods?.[_modId1] ?? null) : null;
-      const resolvedLabel = NeuroshimaScriptRunner._resolveItemRef(rawLabel, parentItem, script.effect ?? null, _modSnap1, _modId1 ?? null);
+
 
       // For isMeleePreRoll entries, inject weapon/weaponId/isPreRollContext into _rollContext
       // so execDialogModifier passes them to the script via args.weapon / args.isPreRollContext.
@@ -5279,6 +5303,7 @@ export class NeuroshimaScriptRunner {
         activated,
         canToggle: true,
         _effectId: effectId,
+        _groupKey: groupKey,
         _script: script,
         _sourceActor: sourceActor,
         _rollContext: storedRollContext,
@@ -5381,7 +5406,7 @@ export class NeuroshimaScriptRunner {
     }
 
     const result = {
-      dialogModifiers,
+      dialogModifiers: groupDialogModifiers(dialogModifiers),
       scriptFields,
       modBreakdown,
       attrBreakdown,

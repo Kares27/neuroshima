@@ -1,3 +1,4 @@
+import { beastActivities, resolveBeastActionItem } from "../helpers/beast-actions.js";
 /**
  * @file combat-api.js
  * @description Neuroshima 1.5 Melee Combat API — implementacja przebudowy.
@@ -1539,9 +1540,9 @@ export class DuelDeclarationEngine {
         if (separator <= 0 || separator === compositeId.length - 2) return false;
         const itemId = compositeId.slice(0, separator);
         const activityId = compositeId.slice(separator + 2);
-        const item = ownerActor.items.get(itemId);
+        const item = resolveBeastActionItem(ownerActor, itemId, activityId);
         const activity = item?.type === "beast-action"
-          ? (item.system.activities ?? []).find(entry => entry.id === activityId)
+          ? beastActivities(item).find(entry => entry.id === activityId)
           : null;
         if (!activity || activity.costType !== "success") return false;
         queueCost += Math.max(0, Number(activity.successCost ?? 1));
@@ -2063,9 +2064,9 @@ export class DuelSegmentEngine {
       let affordableBeastActions = [];
       if (isBeastAttack && netSuccesses > 0 && atkActor) {
         const { MeleeActionRegistry } = await import("./melee-action-registry.js");
-        const beastItemFilter = state.beastItemId ?? null;
+
         affordableBeastActions = MeleeActionRegistry.collectAffordableBeastActions(
-          atkActor, beastItemFilter, netSuccesses
+          atkActor, netSuccesses
         );
       }
 
@@ -2148,7 +2149,7 @@ export class DuelBeastActionEngine {
    */
   static async processSelected(rd, selectedActionIds, { attackerActor, defenderActor, CombatHelper, NeuroshimaScriptRunner }) {
     const location     = rd.location ?? "torso";
-    const beastItemFilter = rd.beastItemId ?? null;
+
 
     if (!Array.isArray(selectedActionIds)) {
       throw new TypeError("selectedActionIds must be an array");
@@ -2164,11 +2165,11 @@ export class DuelBeastActionEngine {
       }
       const itemId = compositeId.slice(0, separator);
       const activityId = compositeId.slice(separator + 2);
-      const item = attackerActor.items.get(itemId);
+      const item = resolveBeastActionItem(attackerActor, itemId, activityId);
       const activity = item?.type === "beast-action"
-        ? (item.system.activities ?? []).find(entry => entry.id === activityId)
+        ? beastActivities(item).find(entry => entry.id === activityId)
         : null;
-      if (!item || !activity || (beastItemFilter && item.id !== beastItemFilter) || activity.costType !== "success") {
+      if (!item || !activity || activity.costType !== "success") {
         throw new RangeError(`Unknown or unavailable beast action: ${compositeId}`);
       }
       return { compositeId, item, activity };
@@ -2257,9 +2258,9 @@ export class DuelBeastActionEngine {
 
     for (const [compositeId, count] of Object.entries(spentPerAction)) {
       const [itemId, activityId] = compositeId.split("::");
-      const actionItem = attackerActor.items.get(itemId);
+      const actionItem = resolveBeastActionItem(attackerActor, itemId, activityId);
       if (!actionItem) continue;
-      const activity = (actionItem.system.activities ?? []).find(a => a.id === activityId);
+      const activity = beastActivities(actionItem).find(a => a.id === activityId);
       if (!activity) continue;
       const cost   = activity.successCost ?? 1;
       const damage = activity.damage || null;

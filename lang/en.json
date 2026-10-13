@@ -1742,6 +1742,8 @@
             "Threat": "Threat"
         },
         "Creature": {
+            "QuickActions": "Quick Actions",
+            "QuickInitiative": "Initiative",
             "Type": "Creature Type",
             "TypeAbbr": "Type",
             "Terrain": "Terrain",

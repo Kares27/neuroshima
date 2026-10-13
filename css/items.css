@@ -2522,50 +2522,6 @@ input[type="color"].rep-color-input::-moz-color-swatch {
 
 /* ===== BeastActivitySheet popup ===== */
 
-.beast-activity-sheet .bas-content {
-    display: flex;
-    flex-direction: column;
-}
-
-/* --- Tab bar --- */
-.beast-activity-sheet .bas-tabs {
-    display: flex;
-    gap: 2px;
-    padding: 6px 10px 0;
-    border-bottom: 2px solid var(--ns-border-main);
-    margin-bottom: 0;
-}
-
-.beast-activity-sheet .bas-tab-btn {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 5px 10px 6px;
-    font-size: 0.74em;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--ns-text-main);
-    opacity: 0.55;
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -2px;
-    transition: opacity 0.12s, border-color 0.12s;
-}
-
-.beast-activity-sheet .bas-tab-btn i {
-    font-size: 0.9em;
-}
-
-.beast-activity-sheet .bas-tab-btn.active {
-    opacity: 1;
-    border-bottom-color: var(--ns-text-accent);
-}
-
-.beast-activity-sheet .bas-tab-btn:hover:not(.active) {
-    opacity: 0.8;
-}
-
 .beast-activity-sheet .bas-tab-badge {
     display: inline-flex;
     align-items: center;
@@ -2590,83 +2546,6 @@ input[type="color"].rep-color-input::-moz-color-swatch {
 
 .beast-activity-sheet .bas-tab.active {
     display: block;
-}
-
-/* --- Identity hero row (icon + name) --- */
-.beast-activity-sheet .bas-identity-hero {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    margin-bottom: 2px;
-}
-
-.beast-activity-sheet .bas-icon-wrap {
-    position: relative;
-    flex-shrink: 0;
-    width: 56px;
-    height: 56px;
-    border-radius: 4px;
-    border: 2px solid var(--ns-border-main);
-    overflow: hidden;
-}
-
-.beast-activity-sheet .bas-icon-wrap.bas-icon-editable {
-    cursor: pointer;
-}
-
-.beast-activity-sheet .bas-activity-icon {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-}
-
-.beast-activity-sheet .bas-icon-overlay {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0,0,0,0.55);
-    opacity: 0;
-    transition: opacity 0.15s;
-    color: #fff;
-    font-size: 1.1em;
-}
-
-.beast-activity-sheet .bas-icon-wrap.bas-icon-editable:hover .bas-icon-overlay {
-    opacity: 1;
-}
-
-.beast-activity-sheet .bas-hero-fields {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.beast-activity-sheet .bas-name-input {
-    width: 100%;
-    font-size: 1.15em;
-    font-weight: 700;
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid var(--ns-border-main);
-    border-radius: 0;
-    color: var(--ns-text-main);
-    padding: 2px 2px 4px;
-    line-height: 1.2;
-}
-
-.beast-activity-sheet .bas-name-input:focus {
-    outline: none;
-    border-bottom-color: var(--ns-text-accent);
-}
-
-.beast-activity-sheet .bas-name-input::placeholder {
-    opacity: 0.4;
-    font-weight: 400;
 }
 
 /* --- Fieldsets --- */
@@ -3157,4 +3036,49 @@ input[type="color"].rep-color-input::-moz-color-swatch {
     display: flex;
     align-items: center;
     gap: 4px;
+}
+
+/* Flat beast actions share the regular item appearance; segment editors keep their layout. */
+.neuroshima.beast-action-sheet.sheet.item .sheet-header {
+    padding: 0 0 2px;
+}
+.neuroshima.beast-action-sheet.sheet.item .profile-img {
+    height: 100px;
+    width: auto;
+    min-height: 60px;
+    max-width: 180px;
+}
+.neuroshima.beast-action-sheet.sheet.item nav.tabs .item {
+    display: block;
+}
+.neuroshima.beast-action-sheet.sheet.item .sheet-body .bas-tab {
+    padding: 5px 0 0;
+}
+.neuroshima.beast-action-sheet.sheet.item .bas-fieldset {
+    background: transparent;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 5px;
+    padding: 6px 10px 10px;
+    margin: 0;
+}
+.neuroshima.beast-action-sheet.sheet.item .bas-fieldset > legend {
+    display: block;
+    padding: 0 6px;
+    font-family: 'SpecialElite', serif;
+    font-size: 0.95em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--ns-text-main);
+    margin: 0 auto;
+}
+.neuroshima.beast-action-sheet.sheet.item .bas-label {
+    font-size: 0.85em;
+    font-weight: bold;
+    letter-spacing: normal;
+    opacity: 1;
+}
+.neuroshima.beast-action-sheet.sheet.item .bas-field-group input,
+.neuroshima.beast-action-sheet.sheet.item .bas-field-group select {
+    font-size: inherit;
 }

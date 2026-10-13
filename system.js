@@ -1,3 +1,4 @@
+import { BeastActivitySheet } from "./module/apps/beast-activity-sheet.js";
 import { NEUROSHIMA } from "./module/config.js";
 import { NeuroshimaActor } from "./module/documents/actor.js";
 import { NeuroshimaCombat, NeuroshimaCombatant } from "./module/documents/combat.js";
@@ -566,7 +567,7 @@ Hooks.once('init', async function() {
 
     foundry.documents.collections.Items.unregisterSheet("core", foundry.appv1.sheets.ItemSheet);
     foundry.documents.collections.Items.registerSheet("neuroshima", NeuroshimaItemSheet, {
-        types: ["weapon", "grenade", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-action", "beast-segment", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money", "reputation", "disease", "weapon-mod", "armor-mod", "facilities", "container"],
+        types: ["weapon", "grenade", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-segment", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money", "reputation", "disease", "weapon-mod", "armor-mod", "facilities", "container"],
         makeDefault: true,
         label: "NEUROSHIMA.Sheet.Item"
     });
@@ -575,6 +576,10 @@ Hooks.once('init', async function() {
     foundry.applications.apps.DocumentSheetConfig.registerSheet(ActiveEffect, "neuroshima", NeuroshimaEffectSheet, {
         makeDefault: true,
         label: "NEUROSHIMA.Sheet.Effect"
+    });
+
+    foundry.documents.collections.Items.registerSheet("neuroshima", BeastActivitySheet, {
+        types: ["beast-action"], makeDefault: true, label: "NEUROSHIMA.BeastAction.Sheet.Title"
     });
 
     // Internal schema version — used by the migration system to track which
@@ -1199,6 +1204,8 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/item/item-header.hbs",
         "systems/neuroshima/templates/item/item-details.hbs",
         "systems/neuroshima/templates/item/item-effects.hbs",
+        "systems/neuroshima/templates/item/parts/item-effects-list.hbs",
+        "systems/neuroshima/templates/item/parts/beast-required-test.hbs",
         "systems/neuroshima/templates/item/item-resources.hbs",
         "systems/neuroshima/templates/item/parts/weapon-melee.hbs",
         "systems/neuroshima/templates/item/parts/weapon-ranged.hbs",

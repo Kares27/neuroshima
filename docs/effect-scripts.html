@@ -630,8 +630,53 @@
   </tbody></table>
 
   <!-- dialog -->
+  <div class="callout info">
+    <strong>Aura bez kumulowania tej samej sztuczki — zwykła flaga:</strong>
+    <pre><code>if (args.flags.shadow) return;
+args.flags.shadow = true;
+args.fields.difficultyShift += 1;</code></pre>
+    Pierwsza aktywna kopia ustawia flagę i dodaje utrudnienie. Kolejne widzą tę samą
+    flagę i kończą wykonanie. Wszystkie kopie tej sztuczki używają <code>shadow</code>;
+    inne zdolności powinny używać własnych nazw flag.
+    Całe <code>args.flags</code> jest zerowane przed każdym przeliczeniem dialogu,
+    także przy ponownym ustalaniu końcowej trudności. Wynik ostatniego przeliczenia
+    jest dostępny dla kodu Submission. To pamięć tymczasowa, nie zapis na dokumencie aktora.
+    Warunek <code>if (args.flags.shadow)</code> sprawdza flagę;
+    <code>args.flags.shadow = true</code> ją ustawia.
+    <br><strong>Opcjonalny skrót:</strong>
+    <pre><code>if (this.oncePerDialog("neuroshima.ciszej-niz-cien")) {
+  args.fields.difficultyShift += 1;
+}</code></pre>
+    <code>this.oncePerDialog(key)</code> zwraca <code>true</code> tylko dla pierwszej
+    aktywnej kopii z podanym kluczem w bieżącym przeliczeniu dialogu.
+    Wszystkie kopie tej samej sztuczki powinny używać tego samego klucza;
+    inne sztuczki powinny mieć własne klucze. Blokada odnawia się przy każdej zmianie pól
+    oraz ponownym ustalaniu końcowej trudności. Pozostałe utrudnienia nadal mogą się sumować.
+    Używaj tej metody w kodzie głównym <code>dialog</code> lub w <code>dialogCode</code>,
+    nie w Hide lub Activate. Nie obejmuje automatycznie kodu Submission.
+    Poza obliczaniem pól dialogu metoda zwraca <code>false</code>.
+    Dla bardziej zaawansowanych skryptów dostępna jest ta sama pamięć przez
+    <code>args.flags.dialogOnce</code>. Ta pamięć również odnawia się przy każdym przeliczeniu.
+    Aura udostępnia opcję przez bliskość źródła, ale nie rozpoznaje osoby będącej przedmiotem testu.
+    Jeśli test dotyczy kogoś bez tej sztuczki, wyłącz jej opcję w dialogu.
+  </div>
   <h3 id="dialog">dialog — <em>Dialog</em></h3>
   <p>Wyzwalacz <code>dialog</code> jest najsilniejszym i najbardziej elastycznym typem skryptu. Skrypty tego typu pojawiają się w panelu <strong>Dialog Modifiers</strong> w oknie dialogowym rzutu i mogą być przez użytkownika włączane lub wyłączane. Aktywowany skrypt modyfikuje pola dialogu (np. modyfikator, bonus do atrybutu, bonus do umiejętności) przed wykonaniem rzutu.</p>
+
+
+
+  <div class="callout info">
+    <strong>Powtarzaj?ce si? efekty i aury:</strong> identyczne skrypty z tego samego kontekstu aktora
+    s? pokazywane jako jedna opcja dialogu. Por?wnywane s? etykieta, kod g??wny,
+    <code>dialogCode</code>, Hide, Activate, Submission oraz ustawienia zakresu i wykonania.
+    R??ne wersje kodu i r??ne itemy ?r?d?owe pozostaj? osobnymi opcjami.
+    Ka?da widoczna kopia zachowuje w?asne <code>this.effect</code>, <code>this.actor</code>
+    i <code>this.item</code>; ukrywanie i automatyczna aktywacja s? sprawdzane dla ka?dej kopii.
+    R?czne prze??czenie wsp?lnej opcji obejmuje wszystkie jej kopie.
+    Grupowanie nie usuwa Active Effects ani nie wy??cza kumulowania: kod g??wny i Submission
+    wykonuj? si? dla ka?dej aktywnej kopii. Ta sama zasada dotyczy
+    <code>getMeleeActions</code> z <code>isDialogScript</code> ? w dialogu wykonuje si? tylko <code>dialogCode</code>.
+  </div>
 
   <div class="callout info">
     Wyzwalacz <code>dialog</code> obsługuje <strong>4 osobne pola kodu</strong>:

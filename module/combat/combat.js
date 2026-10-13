@@ -1,3 +1,4 @@
+import { beastActivities } from "../helpers/beast-actions.js";
 /**
  * @file combat.js
  * @description Merged Neuroshima 1.5 melee combat module.
@@ -2201,10 +2202,10 @@ export class MeleeOpposedChat {
 
     const affordableBeastActions = [];
     if (isCreatureAttacker && netSuccesses > 0) {
-      const beastItemFilter = data.beastItemId ?? null;
+
       const beastItems = attackerActor.items.filter(i => i.type === "beast-action");
-      for (const item of beastItems.filter(i => !beastItemFilter || i.id === beastItemFilter)) {
-        for (const act of (item.system.activities ?? [])) {
+      for (const item of beastItems) {
+        for (const act of beastActivities(item)) {
           if (act.costType !== "success") continue;
           const cost = act.successCost ?? 1;
           if (cost <= netSuccesses) {
@@ -2777,8 +2778,8 @@ export class MeleeOpposedChat {
 
     let ownerBeastActions = null;
     if (ownerIsCreature) {
-      const ownerBeastItemFilter = state.beastItemId ?? null;
-      const flat = MeleeActionRegistry.collectBeastActions(ownerActor, ownerBeastItemFilter, committedSuccessPoints);
+
+      const flat = MeleeActionRegistry.collectBeastActions(ownerActor, committedSuccessPoints);
       if (flat.length > 0) ownerBeastActions = flat;
     }
 
@@ -3943,9 +3944,9 @@ export class MeleeOpposedChat {
 
     const affordableBeastActions = [];
     if (isCreatureAttacker && netSuccesses > 0) {
-      const beastItemFilter = allocData.beastItemId ?? null;
-      for (const item of attackerActor.items.filter(i => i.type === "beast-action" && (!beastItemFilter || i.id === beastItemFilter))) {
-        for (const act of (item.system.activities ?? [])) {
+
+      for (const item of attackerActor.items.filter(i => i.type === "beast-action")) {
+        for (const act of beastActivities(item)) {
           if (act.costType !== "success") continue;
           const cost = act.successCost ?? 1;
           if (cost <= netSuccesses) {
@@ -4468,12 +4469,12 @@ export class MeleeOpposedChat {
     }
 
     if (attackerActor?.type === "creature") {
-      const beastItemFilter = rd.beastItemId ?? null;
+
       const beastItems = attackerActor.items.filter(i =>
-        i.type === "beast-action" && (!beastItemFilter || i.id === beastItemFilter)
+        i.type === "beast-action"
       );
       for (const beastItem of beastItems) {
-        for (const activity of (beastItem.system.activities ?? [])) {
+        for (const activity of beastActivities(beastItem)) {
           const linkedEffectIds = new Set(activity.effectIds ?? []);
           for (const effect of beastItem.effects) {
             if (!linkedEffectIds.has(effect.id)) continue;
@@ -5662,7 +5663,7 @@ export class MeleeResolution {
       d2 = attacker.damageMelee2 ?? attacker.damageMelee1 ?? "D";
       d3 = attacker.damageMelee3 ?? attacker.damageMelee2 ?? attacker.damageMelee1 ?? "D";
     } else if (weapon?.type === "beast-action") {
-      const acts = weapon.system.activities ?? [];
+      const acts = beastActivities(weapon);
       const getActDmg = (cost) => acts.find(a => a.successCost === cost && a.damage)?.damage ?? null;
       d1 = this._shiftDamageType(getActDmg(1) ?? "D", s1);
       d2 = this._shiftDamageType(getActDmg(2) ?? "D", s2);
@@ -5838,7 +5839,7 @@ export class MeleeResolution {
 
     const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
 
-    for (const activity of (weapon.system.activities ?? [])) {
+    for (const activity of beastActivities(weapon)) {
       const actCost = wType === "beast-action"
         ? (activity.successCost ?? 1)
         : (activity.segmentCost  ?? 1);
@@ -8219,7 +8220,7 @@ export class MeleeVanillaChat {
     const atkBeastActions = atkIsCreature
       ? (atkActor.items || [])
           .filter(i => i.type === "beast-action")
-          .flatMap(i => (i.system?.activities ?? []).map(act => ({
+          .flatMap(i => beastActivities(i).map(act => ({
             id: `${i.id}::${act.id}`,
             itemId: i.id,
             activityId: act.id,
@@ -8264,7 +8265,7 @@ export class MeleeVanillaChat {
         damageTiers: (() => {
           if (!atkWeapon) return null;
           if (atkWeapon.type === "beast-action") {
-            const firstAct = (atkWeapon.system?.activities ?? [])[0];
+            const firstAct = beastActivities(atkWeapon)[0];
             const dmg = firstAct?.damage || null;
             return dmg ? { s1: dmg, s2: dmg, s3: dmg } : null;
           }

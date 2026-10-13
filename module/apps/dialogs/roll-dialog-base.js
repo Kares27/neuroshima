@@ -1,3 +1,4 @@
+import { expandDialogModifiers } from "../../helpers/dialog-script-groups.js";
 import {
   buildBreakdownTooltip,
   collectDocumentEffectSources
@@ -218,7 +219,7 @@ export class NeuroshimaRollDialogBase extends HandlebarsApplicationMixin(Applica
   }
 
   async _runSubmissionScripts(item = null, submissionOptions = {}) {
-    for (const modifier of this._dialogModifiers ?? []) {
+    for (const modifier of expandDialogModifiers(this._dialogModifiers)) {
       if (!modifier.activated || !modifier._script?.submissionScript) continue;
       await modifier._script.runSubmission({
         actor: this.actor,

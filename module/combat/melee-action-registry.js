@@ -1,3 +1,4 @@
+import { beastActivities } from "../helpers/beast-actions.js";
 /**
  * @file melee-action-registry.js
  * @description Data layer for melee action normalization in Neuroshima 1.5.
@@ -86,17 +87,16 @@ export class MeleeActionRegistry {
    * are handled by a separate pipeline.
    *
    * @param {Actor}       actor                 - The creature actor owning the beast-action items
-   * @param {string|null} beastItemFilter        - When set, only include activities from this item id
    * @param {number}      committedSuccessPoints - Success points the owner has committed so far
    *                                              (used to set isAffordable on each action)
    * @returns {MeleeAction[]} Sorted ascending by successCost
    */
-  static collectBeastActions(actor, beastItemFilter, committedSuccessPoints) {
+  static collectBeastActions(actor, committedSuccessPoints) {
     const flat = [];
     for (const item of actor.items.filter(i =>
-      i.type === "beast-action" && (!beastItemFilter || i.id === beastItemFilter)
+      i.type === "beast-action"
     )) {
-      for (const act of (item.system.activities ?? [])) {
+      for (const act of beastActivities(item)) {
         if (act.costType !== "success") continue;
         flat.push(MeleeActionRegistry._normalizeBeastActivity(item, act, committedSuccessPoints));
       }
@@ -110,16 +110,15 @@ export class MeleeActionRegistry {
    * to populate the list of actions the creature can spend their net successes on.
    *
    * @param {Actor}       actor           - The creature actor
-   * @param {string|null} beastItemFilter - When set, only include activities from this item id
    * @param {number}      netSuccesses    - Total successes available for spending
    * @returns {MeleeAction[]} Sorted ascending by successCost
    */
-  static collectAffordableBeastActions(actor, beastItemFilter, netSuccesses) {
+  static collectAffordableBeastActions(actor, netSuccesses) {
     const flat = [];
     for (const item of actor.items.filter(i =>
-      i.type === "beast-action" && (!beastItemFilter || i.id === beastItemFilter)
+      i.type === "beast-action"
     )) {
-      for (const act of (item.system.activities ?? [])) {
+      for (const act of beastActivities(item)) {
         if (act.costType !== "success") continue;
         if ((act.successCost ?? 1) > netSuccesses) continue;
         flat.push(MeleeActionRegistry._normalizeBeastActivity(item, act, netSuccesses));
@@ -281,19 +280,17 @@ export class MeleeActionRegistry {
    * @param {Actor}  actor
    * @param {object} [options={}]
    * @param {boolean} [options.isCreature=false]        - When true, use beast activity collection
-   * @param {string|null} [options.beastItemFilter=null] - Beast item filter (creature only)
    * @param {number} [options.availableSuccesses=0]     - Success budget for affordability check
    * @param {Array|null} [options.extraActionsArr=null] - Pre-collected script entries (non-creature)
    * @returns {MeleeAction[]}
    */
   static collectForActor(actor, {
     isCreature          = false,
-    beastItemFilter     = null,
     availableSuccesses  = 0,
     extraActionsArr     = null
   } = {}) {
     if (isCreature) {
-      return MeleeActionRegistry.collectBeastActions(actor, beastItemFilter, availableSuccesses);
+      return MeleeActionRegistry.collectBeastActions(actor, availableSuccesses);
     }
     if (!extraActionsArr?.length) return [];
     return MeleeActionRegistry.normalizeEffectActions(extraActionsArr, availableSuccesses);

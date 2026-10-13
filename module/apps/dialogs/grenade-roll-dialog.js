@@ -1,3 +1,4 @@
+import { expandDialogModifiers } from "../../helpers/dialog-script-groups.js";
 import { NEUROSHIMA } from "../../config.js";
 import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
 import { GrenadeTest, TestRules } from "../../tests.mjs";
@@ -215,7 +216,7 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
       ? (parseInt(html.querySelector('[name="diseasePenalty"]')?.value) || 0) : 0;
     const effectPenalty   = html.querySelector('[name="useEffectPenalty"]')?.checked
       ? (parseInt(html.querySelector('[name="effectPenalty"]')?.value) || 0) : 0;
-    const dmBonus         = this._dialogModifiers
+    const dmBonus         = expandDialogModifiers(this._dialogModifiers)
       .filter(dm => dm.activated)
       .reduce((sum, dm) => sum + (dm._lastResult?.modifier || 0), 0);
 

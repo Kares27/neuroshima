@@ -1,3 +1,4 @@
+import { expandDialogModifiers } from "../../helpers/dialog-script-groups.js";
 
 import { NEUROSHIMA } from "../../config.js";
 import { NeuroshimaDice } from "../../helpers/dice.js";
@@ -629,7 +630,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
 
   async _runSubmissionScripts() {
     const submissionOptions = {};
-    for (const dm of this._dialogModifiers) {
+    for (const dm of expandDialogModifiers(this._dialogModifiers)) {
       if (!dm.activated || !dm._script?.submissionScript) continue;
       await dm._script.runSubmission({
         actor: this.actor,
@@ -759,7 +760,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       }
       if (rawResult) {
         rawResult.isGradCios = !!(formData.gradCios);
-        rawResult.activatedMeleePreRollMods = (this._dialogModifiers ?? [])
+        rawResult.activatedMeleePreRollMods = expandDialogModifiers(this._dialogModifiers)
           .filter(dm => dm.isMeleePreRoll && dm.activated !== false)
           .map(dm => dm._script?.effect?.uuid)
           .filter(Boolean);

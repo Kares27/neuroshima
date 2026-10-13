@@ -1,3 +1,4 @@
+import { beastActivities } from "../helpers/beast-actions.js";
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { EffectActionRuntime } from "../effects/effect-action-runtime.js";
@@ -715,13 +716,11 @@ export class NeuroshimaChatMessage extends ChatMessage {
     const myUuidsCheck = [attackerActor.uuid];
     if (attackerActor.token) myUuidsCheck.push(attackerActor.token.uuid);
 
-    const sourceItems = data.beastItemId
-      ? attackerActor.items.filter(i => i.id === data.beastItemId && i.type === "beast-action")
-      : attackerActor.items.filter(i => i.type === "beast-action");
+    const sourceItems = attackerActor.items.filter(i => i.type === "beast-action");
 
     const byTier = {};
     for (const item of sourceItems) {
-      for (const act of (item.system.activities ?? [])) {
+      for (const act of beastActivities(item)) {
         const t = Math.min(3, Math.max(1, act.successCost ?? 1));
         if (!byTier[t]) byTier[t] = act.damage || "D";
       }

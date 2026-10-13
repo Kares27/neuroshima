@@ -1529,7 +1529,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
   async _onAddBeastActivity() {
     const item = this.document;
-    if (item.type !== "beast-action" && item.type !== "beast-segment") return;
+    if (item.type !== "beast-segment") return;
     const activities = foundry.utils.deepClone(item.system.activities ?? []);
     const base = {
       id: foundry.utils.randomID(),
@@ -1543,19 +1543,14 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       piercing: 0,
       effectIds: []
     };
-    if (item.type === "beast-segment") {
-      base.costType = "segment";
-      base.segmentCost = 1;
-      base.skillMode = "experience";
-      base.weaponType = "melee";
-      base.damage1 = "D";
-      base.damage2 = "L";
-      base.damage3 = "C";
-      base.range = 0;
-    } else {
-      base.costType = "success";
-      base.successCost = 1;
-    }
+    base.costType = "segment";
+    base.segmentCost = 1;
+    base.skillMode = "experience";
+    base.weaponType = "melee";
+    base.damage1 = "D";
+    base.damage2 = "L";
+    base.damage3 = "C";
+    base.range = 0;
     activities.push(base);
     const updated = await item.update({ "system.activities": activities });
     if (updated) {
@@ -1565,7 +1560,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
   async _onRemoveBeastActivity(event, target) {
     const item = this.document;
-    if (item.type !== "beast-action" && item.type !== "beast-segment") return;
+    if (item.type !== "beast-segment") return;
     const activityId = target.closest("[data-activity-id]")?.dataset.activityId ?? target.dataset.activityId;
     if (!activityId) return;
     const activities = (item.system.activities ?? []).filter(a => a.id !== activityId);
@@ -1574,7 +1569,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
   async _onEditBeastActivity(event, target) {
     const item = this.document;
-    if (item.type !== "beast-action" && item.type !== "beast-segment") return;
+    if (item.type !== "beast-segment") return;
     const activityId = target.closest("[data-activity-id]")?.dataset.activityId ?? target.dataset.activityId;
     if (!activityId) return;
     BeastActivitySheet.open(item, activityId);

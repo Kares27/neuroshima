@@ -9189,3 +9189,43 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     font-style: italic;
     align-self: center;
 }
+
+/* Creature combat: visible quick actions and equal-height columns. */
+.neuroshima.sheet.actor-creature .creature-combat-columns {
+    align-items: stretch;
+}
+.neuroshima.sheet.actor-creature .creature-combat-col {
+    min-height: 460px;
+}
+.neuroshima.sheet.actor-creature .creature-combat-col .creature-armor-grid {
+    flex: 1;
+}
+.neuroshima.sheet.actor-creature .creature-actions-list,
+.neuroshima.sheet.actor-creature .creature-maneuvers-list {
+    height: 132px;
+}
+.neuroshima.sheet.actor-creature .creature-quick-actions {
+    padding: 8px;
+    margin-bottom: 4px;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 5px;
+    background: var(--ns-bg-panel);
+}
+.neuroshima.sheet.actor-creature .creature-quick-actions-buttons {
+    display: flex;
+    gap: 8px;
+}
+.neuroshima.sheet.actor-creature .creature-quick-actions-buttons button {
+    flex: 1;
+    min-height: 34px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.neuroshima.sheet.actor-creature .creature-quick-actions-buttons .creature-attack-button {
+    border-color: var(--ns-text-accent);
+    color: var(--ns-text-accent);
+}
+.neuroshima.sheet.actor-creature .creature-quick-actions-buttons button:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
