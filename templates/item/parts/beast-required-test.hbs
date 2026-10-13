@@ -1,0 +1,85 @@
+            <fieldset class="bas-fieldset">
+                <legend>{{localize "NEUROSHIMA.BeastAction.Sheet.RequiredTest"}}</legend>
+
+                <div class="bas-row bas-row-check">
+                    <label class="bas-label bas-label-check">
+                        <input type="checkbox" name="testRequired" {{#if activity.testRequired}}checked{{/if}}
+                               {{#unless editable}}disabled{{/unless}}/>
+                        {{localize "NEUROSHIMA.BeastAction.Sheet.TestRequired"}}
+                    </label>
+                </div>
+
+                {{#if activity.testRequired}}
+                <div class="bas-row">
+                    <div class="bas-field-group">
+                        <label class="bas-label">{{localize "NEUROSHIMA.BeastAction.Sheet.TestType"}}</label>
+                        <select name="testType" {{#unless editable}}disabled{{/unless}}>
+                            <option value="attribute" {{#if (eq activity.testType "attribute")}}selected{{/if}}>
+                                {{localize "NEUROSHIMA.BeastAction.Sheet.TestTypeAttribute"}}
+                            </option>
+                            <option value="skill" {{#if (eq activity.testType "skill")}}selected{{/if}}>
+                                {{localize "NEUROSHIMA.BeastAction.Sheet.TestTypeSkill"}}
+                            </option>
+                        </select>
+                    </div>
+                </div>
+                <div class="bas-row bas-test-options-row">
+                    <div class="bas-field-group bas-open-test-group">
+                        <label class="bas-label">{{localize "NEUROSHIMA.BeastAction.Sheet.RollType"}}</label>
+                        <div class="bas-open-test-control">
+                            <select name="testIsOpen" {{#unless editable}}disabled{{/unless}}>
+                                <option value="closed" {{#unless activity.testIsOpen}}selected{{/unless}}>{{localize "NEUROSHIMA.BeastAction.Sheet.RollTypeClosed"}}</option>
+                                <option value="open" {{#if activity.testIsOpen}}selected{{/if}}>{{localize "NEUROSHIMA.BeastAction.Sheet.RollTypeOpen"}}</option>
+                            </select>
+                            <span class="bas-open-test-sp-label">SP</span>
+                            <input type="number" name="testSuccesses" value="{{activity.testSuccesses}}"
+                                   min="1" max="10"
+                                   {{#unless editable}}disabled{{else}}{{#unless activity.testIsOpen}}disabled{{/unless}}{{/unless}}/>
+                        </div>
+                    </div>
+                    <div class="bas-field-group bas-difficulty-group">
+                        <label class="bas-label">{{localize "NEUROSHIMA.BeastAction.Sheet.TestDifficulty"}}</label>
+                        <select name="testDifficulty" {{#unless editable}}disabled{{/unless}}>
+                            {{#each difficulties}}
+                            <option value="{{@key}}" {{#if (eq @key ../activity.testDifficulty)}}selected{{/if}}>
+                                {{localize this.label}}
+                            </option>
+                            {{/each}}
+                        </select>
+                    </div>
+                </div>
+                <div class="bas-row">
+                    <div class="bas-field-group bas-field-full">
+                        <label class="bas-label">{{localize "NEUROSHIMA.BeastAction.Sheet.TestKey"}}</label>
+                        {{#if (eq activity.testType "attribute")}}
+                        <select name="testKey" {{#unless editable}}disabled{{/unless}}>
+                            {{selectOptions testAttributes selected=activity.testKey localize=true}}
+                        </select>
+                        {{else}}
+                        <select name="testKey" {{#unless editable}}disabled{{/unless}}>
+                            {{#each testSkillGroups}}
+                            <optgroup label="{{this.attrLabel}}">
+                                {{#each this.skills}}
+                                <option value="{{this.key}}" {{#if (eq this.key ../../../activity.testKey)}}selected{{/if}}>{{this.label}}</option>
+                                {{/each}}
+                            </optgroup>
+                            {{/each}}
+                        </select>
+                        {{/if}}
+                    </div>
+                </div>
+                {{#if (eq activity.testType "skill")}}
+                <div class="bas-row">
+                    <div class="bas-field-group bas-field-full">
+                        <label class="bas-label">{{localize "NEUROSHIMA.BeastAction.Sheet.TestAttributeOverride"}}</label>
+                        <select name="testAttributeOverride" {{#unless editable}}disabled{{/unless}}>
+                            <option value="" {{#unless activity.testAttributeOverride}}selected{{/unless}}>
+                                {{localize "NEUROSHIMA.BeastAction.Sheet.TestAttributeOverrideNone"}}
+                            </option>
+                            {{selectOptions testAttributes selected=activity.testAttributeOverride localize=true}}
+                        </select>
+                    </div>
+                </div>
+                {{/if}}
+                {{/if}}
+            </fieldset>
