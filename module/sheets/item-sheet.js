@@ -290,6 +290,18 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     return super._onChangeForm(formConfig, event);
   }
 
+  /** Convert presentation checkboxes before Foundry validates and cleans the schema. */
+  _processFormData(event, form, formData) {
+    const data = super._processFormData(event, form, formData);
+    if (this.document.type === "speciality" && data.specialitySkills) {
+      data.system ??= {};
+      data.system.skills = Object.entries(data.specialitySkills)
+        .filter(([, checked]) => checked === true || checked === "true").map(([key]) => key);
+      delete data.specialitySkills;
+    }
+    return data;
+  }
+
   /**
    * Synthetic trait copies are complete in-memory Item documents whose writes
    * are persisted by trait-snapshot-item-editor. Core ItemSheetV2 otherwise
@@ -321,6 +333,9 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.system = item.system;
     context.fields = item.system.schema.fields;
     context.source = item.system.toObject();
+    if (item.type === "speciality") {
+      context.system = { ...context.source, value: Math.max(0, Math.trunc(Number(item.system.value) || 0)) };
+    }
 
     // Imported and freshly migrated legacy grenades can have no persisted
     // system keys. GrenadeData supplies defaults at runtime; expose an explicit
@@ -359,6 +374,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       gear: ["description", "stats", "resources", "effects"],
       "vehicle-mod": ["description", "stats", "resources", "effects"],
       "vehicle-damage": ["description", "stats", "effects"],
+      speciality: ["description", "stats", "effects"],
       specialization: ["description", "stats", "effects"],
       origin: ["description", "stats", "effects"],
       profession: ["description", "stats", "effects"],
@@ -423,7 +439,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.isJammedWeapon = item.type === "weapon" && "jammed" in item.system;
 
     // Non-countable item types have no quantity, cost, or weight
-    const NON_COUNTABLE = ["wound", "vehicle-damage", "vehicle-mod", "beast-action", "beast-segment", "specialization", "origin", "profession", "trick", "trait", "reputation", "disease", "facilities"];
+    const NON_COUNTABLE = ["speciality","wound", "vehicle-damage", "vehicle-mod", "beast-action", "beast-segment", "specialization", "origin", "profession", "trick", "trait", "reputation", "disease", "facilities"];
     context.isNonCountable = NON_COUNTABLE.includes(item.type);
     context.isModItem = item.type === "weapon-mod" || item.type === "armor-mod";
     context.isTrait = item.type === "trait";
@@ -455,6 +471,11 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
     // Common options
     context.attributes = NEUROSHIMA.attributes;
+    context.specialitySkillGroups = Object.entries(NEUROSHIMA.skillConfiguration).map(([attribute, groups]) => ({
+      label: NEUROSHIMA.attributes[attribute].label,
+      skills: Object.values(groups).flat().map(key => ({ key, label: `NEUROSHIMA.Skills.${key}`,
+        checked: (item.system.skills ?? []).includes(key) }))
+    }));
     context.damageTypes = NEUROSHIMA.damageTypes;
     context.damageCategories = NEUROSHIMA.damageCategories;
     context.blastDamageTypes = NEUROSHIMA.blastDamageTypes;
@@ -1165,6 +1186,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       gear: ["description", "stats", "resources", "effects"],
       "vehicle-mod": ["description", "stats", "resources", "effects"],
       "vehicle-damage": ["description", "stats", "effects"],
+      speciality: ["description", "stats", "effects"],
       specialization: ["description", "stats", "effects"],
       origin: ["description", "stats", "effects"],
       profession: ["description", "stats", "effects"],

@@ -136,7 +136,7 @@
 
 <header class="doc-header">
   <h1>System Skryptów Efektów <span class="badge">Neuroshima 1.5</span></h1>
-  <div class="subtitle">Dokumentacja dla twórców modułów i administratorów gry — Foundry VTT v13, Application V2 · architektura TestRoll i rejestr triggerów v4 · audyt API: 2026-07-28</div>
+  <div class="subtitle">Dokumentacja dla twórców modułów i administratorów gry — Foundry VTT v13, Application V2 · architektura TestRoll i schemat kontekstu triggerów v5 · aktualizacja: 2026-10-21</div>
 </header>
 
 <nav class="toc">
@@ -249,6 +249,22 @@
 
   <h3>Gdzie dodawać skrypty?</h3>
   <p>Otwórz dowolny ActiveEffect (na aktorze lub itemie) → zakładka <strong>Skrypty</strong> → Dodaj Skrypt.</p>
+  <p>Item <code>beast-action</code> reprezentuje teraz jedną akcję. Jego zakładki to <strong>Opis | Aktywacja | Efekty</strong>, a domyślnie otwiera się <strong>Efekty</strong>. Lista zawiera bezpośrednio <code>item.effects</code>: tworzysz i edytujesz zwykłe Active Effects, bez dodatkowego podpinania do aktywności. Efekt ze skryptem Enable jest sterowany tym skryptem — nie przełączaj go ręcznie. Itemy <code>beast-segment</code> nadal mają aktywności i ich powiązania z efektami.</p>
+  <p>Na akcji bestii ustaw <strong>Effect Application → Damage</strong>, aby po zadaniu obrażeń
+    nałożyć efekt na przeciwnika. Efekty pochodzą tylko z akcji, która zadała obrażenia;
+    nie trzeba wpisywać ich do <code>system.effectIds</code>. Sam wybór akcji nie nakłada efektu.
+    Jeśli pancerz całkowicie zatrzyma obrażenia albo skrypt anuluje wszystkie rany, efekt nie przechodzi.
+    Wybory akcji są zachowywane od deklaracji przez segmenty aż do nałożenia obrażeń.
+    Koszt akcji bestii jest liczony względem sukcesów trafienia, a nie liczby wpisów trafień:
+    jedno trafienie z dwóch sukcesów pozwala opłacić akcję za dwa sukcesy.
+    Kopia zachowuje skrypty i dane źródła, a dalsze działanie zależy od jej wyzwalaczy.
+    <code>system.applyEffectsAutomatically === false</code> wyłącza automat.
+    <strong>Target</strong> pozostaje trybem nakładania przez targetowanie i jawne wywołanie
+    <code>this.applyTargetEffects()</code>; nie oznacza zadania obrażeń.
+    Tryb Damage nie jest triggerem skryptu: <code>applyDamage</code> wykonuje kod po stronie
+    atakującego, <code>takeDamage</code> po stronie otrzymującego obrażenia. Na przekazanej kopii
+    jednorazowy kod możesz uruchomić przez <code>immediate</code>, a późniejsze modyfikatory przez
+    <code>dialog</code>. Flaga <code>targeter</code> dotyczy pobierania modyfikatorów od wskazanego aktora.</p>
   <p>Edytor skryptów oferuje:</p>
   <ul style="padding-left:1.5rem; margin-bottom:0.75rem;">
     <li><strong>Etykieta</strong> — nazwa widoczna na liście skryptów</li>
@@ -286,14 +302,18 @@
 
   <h3>Kontekst <code>this</code></h3>
   <div class="context-box">
-    <div class="ctx-row"><span class="ctx-name">this.actor</span><span class="ctx-type">Actor | null</span><span class="ctx-desc">Aktor posiadający ten efekt (lub właściciel itemu z efektem)</span></div>
-    <div class="ctx-row"><span class="ctx-name">this.item</span><span class="ctx-type">Item | null</span><span class="ctx-desc">Item będący właścicielem efektu (null jeśli efekt bezpośrednio na aktorze)</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.actor</span><span class="ctx-type">Actor | null</span><span class="ctx-desc">Aktor przekazany przez wyzwalacz; domyślnie właściciel efektu lub itemu. Na otrzymanej kopii aury jest to jej odbiorca, nie pierwotny właściciel aury.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.item</span><span class="ctx-type">Item | null</span><span class="ctx-desc">Item przekazany przez wyzwalacz; domyślnie item będący właścicielem efektu. Kopia aury bezpośrednio na aktorze nie ma własnego itemu — nie zakładaj, że jest to item sztuczki źródłowej.</span></div>
     <div class="ctx-row"><span class="ctx-name">this.effect</span><span class="ctx-type">ActiveEffect</span><span class="ctx-desc">Ten aktywny efekt</span></div>
     <div class="ctx-row"><span class="ctx-name">this.label</span><span class="ctx-type">string</span><span class="ctx-desc">Etykieta skryptu</span></div>
     <div class="ctx-row"><span class="ctx-name">this.trigger</span><span class="ctx-type">string</span><span class="ctx-desc">Nazwa wyzwalacza który uruchomił ten skrypt</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.triggerContext</span><span class="ctx-type">object | null</span><span class="ctx-desc">Skrót do bieżącego <code>args.eventContext</code>. Zawiera informacje o zdarzeniu, jeśli dany wyzwalacz je przekazuje.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.isRecalculation</span><span class="ctx-type">boolean</span><span class="ctx-desc"><code>true</code>, gdy bieżący test jest edytowany lub przerzucany (<code>args.test.context.edited</code> / <code>reroll</code>). Nie oznacza zwykłego odświeżenia dialogu.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.oncePerDialog(key)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Opcjonalny skrót blokady jednej zdolności na przeliczenie pól dialogu. Używaj w głównym kodzie <code>dialog</code> lub <code>dialogCode</code>. Zwykła flaga, np. <code>args.flags.shadow</code>, jest równie poprawnym i prostszym wzorcem.</span></div>
     <div class="ctx-row"><span class="ctx-name">this.token</span><span class="ctx-type">TokenDocument | null</span><span class="ctx-desc">Pierwszy token aktora na aktywnej scenie (null jeśli brak)</span></div>
     <div class="ctx-row"><span class="ctx-name">this.notification(msg, type?)</span><span class="ctx-type">void</span><span class="ctx-desc">Pokazuje powiadomienie UI. type: "info" | "warn" | "error"</span></div>
     <div class="ctx-row"><span class="ctx-name">this.addAnnotation(text)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Dodaje krótką adnotację wyświetlaną pod wynikiem rzutu na karcie czatu. Zwraca <code>true</code>, gdy bieżący wyzwalacz udostępnia test. Działa w <code>dialog</code> oraz wszystkich fazach testu, w tym <code>afterRollDice</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.addAction(args, id, overrides?)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Dodaje do wyniku przycisk z <code>this.effect.system.actionDefs</code>. W definicji wybierz typ <code>result</code> i stabilne <code>id</code>. Karta zapisuje odwołanie do efektu; przy kliknięciu odczytuje aktualny kod, zamiast przechowywać jego kopię w wiadomości.</span></div>
     <div class="ctx-row"><span class="ctx-name">this.forceInitiative(value)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Wymusza liczbę Punktów sukcesu bieżącego <code>InitiativeTest</code>. Działa także w <strong>Submission Script</strong> aktywnego wyzwalacza <code>dialog</code> przy rzucie inicjatywy. Ta sama wartość trafia do powiązanego wpisu w Combat Trackerze. Zwraca <code>false</code> poza kontekstem inicjatywy albo dla nieprawidłowej wartości.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.roll(formula, data?, options?)</span><span class="ctx-type">Promise&lt;Roll&gt;</span><span class="ctx-desc">Rzut kością. <code>options: { flavor, rollMode, toMessage, speaker }</code> — gdy <code>flavor</code> lub <code>toMessage:true</code>, wynik trafia do chatu z flavorem i speakerem aktora. <strong>Tylko w triggerach ASYNC.</strong></span></div>
     <div class="ctx-row"><span class="ctx-name">this.rollToChat(count, sides, options?)</span><span class="ctx-type">number[] | Promise&lt;Roll&gt;</span><span class="ctx-desc"><strong>Ujednolicony rzut kością — działa w SYNC i ASYNC.</strong> W triggerze SYNC (<code>APCalc</code>) zachowuje się jak <code>deferRollToChat</code>: wykonuje rzut natychmiast i zwraca <code>number[]</code>, wpis na czat jest odroczony. W triggerze ASYNC działa jak <code>this.roll</code> i zwraca <code>Promise&lt;Roll&gt;</code>. Możesz bezpiecznie pisać <code>await this.rollToChat(...)</code> w obu kontekstach. Opcje: <code>{ flavor, rollMode, speaker }</code>.</span></div>
@@ -553,7 +573,7 @@
   </p>
 
   <h3>Argumenty <code>args</code></h3>
-  <p>Obiekt <code>args</code> jest zawsze przekazywany jako parametr funkcji skryptu. Publiczne zdarzenia otrzymują także <code>args.eventContext</code> z identyfikatorem triggera, fazą, trybem wykonania, zakresem i metadanymi. Wszystkie fazy testowe oraz akcje wyniku używają wspólnego kontraktu: <code>args.actor</code>, <code>args.item</code>, <code>args.test</code>, <code>args.context</code>, <code>args.eventContext</code>, <code>args.dice</code>, <code>args.result</code> i <code>args.links</code>.</p>
+  <p>Obiekt <code>args</code> jest zawsze przekazywany jako parametr funkcji skryptu. Zdarzenia cyklu testu otrzymują także <code>args.eventContext</code> z identyfikatorem triggera, fazą i metadanymi, np. <code>schemaVersion</code>, <code>type</code>, <code>subtype</code>, <code>edited</code> i <code>reroll</code>. Rejestr triggerów osobno definiuje tryb SYNC/ASYNC i dopuszczalny zakres dokumentu. Fazy testowe oraz akcje wyniku używają wspólnego kontraktu: <code>args.actor</code>, <code>args.item</code>, <code>args.test</code>, <code>args.context</code>, <code>args.eventContext</code>, <code>args.dice</code>, <code>args.result</code> i <code>args.links</code>. Dialog przed rzutem ma własny kontrakt pól — nie zakładaj, że istnieje już w nim <code>args.test</code>.</p>
   <div class="context-box">
     <div class="ctx-row"><span class="ctx-name">args.dice.rolled / raw / modified</span><span class="ctx-type">array</span><span class="ctx-desc"><code>rolled</code> to niezmienny rzeczywisty rzut, <code>raw</code> to aktualne wartości po zamianach, a <code>modified</code> zawiera wynik oceny i wykorzystanie umiejętności.</span></div>
     <div class="ctx-row"><span class="ctx-name">args.dice.replace(index, value, options?)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Kontrolowana zamiana kości z historią w <code>diceChanges</code>. Wartość ustawiona na 1 nie staje się naturalną jedynką.</span></div>
@@ -572,7 +592,7 @@
   <h3>Async vs Sync</h3>
   <p>Większość wyzwalaczy jest <strong>asynchronicznych</strong> — możesz używać <code>await</code>. Wyjątek:</p>
   <div class="callout danger">
-    Triggery grup <strong>data</strong> i synchroniczne obliczenia obrażeń są <em>synchroniczne</em>.
+    Triggery grup <strong>data</strong>, <code>getInitiativeFormula</code> oraz <code>computeTakeDamageModifiers</code> i <code>computeApplyDamageModifiers</code> są <em>synchroniczne</em>.
     Nie używaj <code>await</code>, <code>fetch</code>, ani żadnych operacji asynchronicznych w tych triggerach —
     spowoduje to błędy lub zignorowanie zmian.
   </div>
@@ -630,6 +650,9 @@
   </tbody></table>
 
   <!-- dialog -->
+
+  <h3 id="dialog">dialog — <em>Dialog</em></h3>
+  <p>Wyzwalacz <code>dialog</code> jest najsilniejszym i najbardziej elastycznym typem skryptu. Skrypty tego typu pojawiają się w panelu <strong>Dialog Modifiers</strong> w oknie dialogowym rzutu i mogą być przez użytkownika włączane lub wyłączane. Aktywowany skrypt modyfikuje pola dialogu (np. modyfikator, bonus do atrybutu, bonus do umiejętności) przed wykonaniem rzutu.</p>
   <div class="callout info">
     <strong>Aura bez kumulowania tej samej sztuczki — zwykła flaga:</strong>
     <pre><code>if (args.flags.shadow) return;
@@ -660,22 +683,22 @@ args.fields.difficultyShift += 1;</code></pre>
     Aura udostępnia opcję przez bliskość źródła, ale nie rozpoznaje osoby będącej przedmiotem testu.
     Jeśli test dotyczy kogoś bez tej sztuczki, wyłącz jej opcję w dialogu.
   </div>
-  <h3 id="dialog">dialog — <em>Dialog</em></h3>
-  <p>Wyzwalacz <code>dialog</code> jest najsilniejszym i najbardziej elastycznym typem skryptu. Skrypty tego typu pojawiają się w panelu <strong>Dialog Modifiers</strong> w oknie dialogowym rzutu i mogą być przez użytkownika włączane lub wyłączane. Aktywowany skrypt modyfikuje pola dialogu (np. modyfikator, bonus do atrybutu, bonus do umiejętności) przed wykonaniem rzutu.</p>
 
 
 
   <div class="callout info">
-    <strong>Powtarzaj?ce si? efekty i aury:</strong> identyczne skrypty z tego samego kontekstu aktora
-    s? pokazywane jako jedna opcja dialogu. Por?wnywane s? etykieta, kod g??wny,
+    <strong>Powtarzające się efekty i aury:</strong> identyczne skrypty z tego samego kontekstu aktora
+    są pokazywane jako jedna opcja dialogu. Porównywane są etykieta, kod główny,
     <code>dialogCode</code>, Hide, Activate, Submission oraz ustawienia zakresu i wykonania.
-    R??ne wersje kodu i r??ne itemy ?r?d?owe pozostaj? osobnymi opcjami.
-    Ka?da widoczna kopia zachowuje w?asne <code>this.effect</code>, <code>this.actor</code>
-    i <code>this.item</code>; ukrywanie i automatyczna aktywacja s? sprawdzane dla ka?dej kopii.
-    R?czne prze??czenie wsp?lnej opcji obejmuje wszystkie jej kopie.
-    Grupowanie nie usuwa Active Effects ani nie wy??cza kumulowania: kod g??wny i Submission
-    wykonuj? si? dla ka?dej aktywnej kopii. Ta sama zasada dotyczy
-    <code>getMeleeActions</code> z <code>isDialogScript</code> ? w dialogu wykonuje si? tylko <code>dialogCode</code>.
+    Różne wersje kodu, różne itemy źródłowe i różni aktorzy źródłowi w trybie Targeted pozostają osobnymi opcjami.
+    Każda widoczna kopia zachowuje własne <code>this.effect</code>, <code>this.actor</code>
+    i <code>this.item</code>; ukrywanie i automatyczna aktywacja są sprawdzane dla każdej kopii.
+    Wspólna opcja jest oznaczona jako aktywna, jeśli co najmniej jedna widoczna kopia jest aktywna.
+    Ręczne przełączenie wspólnej opcji obejmuje wszystkie jej widoczne kopie.
+    Grupowanie nie usuwa Active Effects ani nie wyłącza kumulowania: kod główny i Submission
+    wykonują się dla każdej aktywnej kopii. Ta sama zasada dotyczy
+    <code>getMeleeActions</code> z <code>isDialogScript</code> — w dialogu wykonuje się tylko <code>dialogCode</code>.
+    Jeśli zdolność ma działać tylko raz, zastosuj osobny warunek na <code>args.flags</code>.
   </div>
 
   <div class="callout info">
@@ -693,6 +716,8 @@ args.fields.difficultyShift += 1;</code></pre>
     <tbody>
       <tr><td><code>args.actor</code></td><td>Actor</td><td>Aktor, na którym wykonywany jest test (może być celem w trybie Targeted).</td></tr>
       <tr><td><code>args.rollingActor</code></td><td>Actor</td><td>Aktor <em>wykonujący</em> rzut — zawsze ten sam co rzucający, niezależnie od Targeted/Defending. Przydatne gdy <code>args.actor</code> to cel a nie rzucający.</td></tr>
+      <tr><td><code>args.flags</code></td><td>object</td><td>Wspólna pamięć skryptów jednego przeliczenia dialogu, np. <code>if (args.flags.shadow) return;</code>. Cały obiekt jest czyszczony przed następnym przeliczeniem, także przy ponownym ustalaniu końcowej trudności. Ostatni stan pozostaje dostępny w Submission. Nie jest zapisywany jako flaga aktora ani efektu.</td></tr>
+      <tr><td><code>args.flags.dialogOnce</code></td><td>object</td><td>Przestrzeń używana przez opcjonalny helper <code>this.oncePerDialog(key)</code>. Nie jest to ta sama blokada co <code>args.flags.shadow</code>; dla wszystkich kopii zdolności stosuj konsekwentnie jeden wzorzec i tę samą nazwę flagi lub klucza.</td></tr>
       <tr><td><code>args.skill</code></td><td>Object | null</td><td>Obiekt umiejętności: <code>{ name, value, key }</code> lub <code>null</code>.</td></tr>
       <tr><td><code>args.attribute</code></td><td>Object | null</td><td>Obiekt atrybutu: <code>{ name, value, key }</code>.</td></tr>
       <tr><td><code>args.rollType</code></td><td>string</td><td>Typ rzutu: <code>"skill"</code>, <code>"attribute"</code>, <code>"reputation"</code>, <code>"ranged"</code>, <code>"melee"</code>, <code>"initiative"</code>, <code>"healing"</code>.</td></tr>
@@ -703,7 +728,6 @@ args.fields.difficultyShift += 1;</code></pre>
       <tr><td><code>args.weapon</code></td><td>Item | null</td><td>Broń (dostępna gdy <code>rollType</code> to <code>"ranged"</code> lub <code>"melee"</code>).</td></tr>
       <tr><td><code>args.healingMethod</code></td><td>string | undefined</td><td>Metoda leczenia — <code>"firstAid"</code> (Pierwsza Pomoc) lub <code>"woundTreatment"</code> (Leczenie Ran). Dostępne gdy <code>rollType === "healing"</code>.</td></tr>
       <tr><td><code>args.wounds</code></td><td>Array | undefined</td><td>Lista ran pacjenta otwartych do leczenia: <code>[{ id, name, damageType, hadFirstAid, failedFirstAidAttempts, failedTreatmentAttempts, firstAidHealingApplied, originalPenalty }]</code>. Dostępne gdy <code>rollType === "healing"</code>.</td></tr>
-      <tr><td><code>args.flags</code></td><td>Object</td><td>Wolny obiekt do własnego użytku skryptów — zapobiega wielokrotnemu wykonaniu.</td></tr>
       <tr><td><code>args.fields</code></td><td>Object</td><td><strong>Tylko w Dialog Script</strong> — pola edytowalne dialogu (patrz niżej).</td></tr>
       <tr><td><code>args.currentDifficulty</code></td><td>string</td><td>Aktualna trudność dialogu w momencie wywołania skryptu (read-only, np. <code>"average"</code>).</td></tr>
       <tr><td><code>args.currentHitLocation</code></td><td>string</td><td>Aktualna lokacja trafienia (read-only, np. <code>"random"</code>).</td></tr>
@@ -776,6 +800,14 @@ args.fields.difficultyShift += 1;</code></pre>
       <tr><td><code>args.fields.burstHitStep</code></td><td>number</td><td>Krok trafień przy serii — ile kul trafia na jeden Punkt Przewagi. Domyślnie <code>1</code> (1 kula / PP). Ustaw <code>2</code> aby podwoić liczbę trafionych kul (Ruchome gniazdo CKM). Obsługuje dowolne całkowite wartości ≥ 1. Działa wyłącznie przy <code>rollType === "ranged"</code> i <code>burstLevel ≥ 1</code>.</td></tr>
     </tbody>
   </table>
+
+  <p>Item <strong>Specjalność</strong> (<code>speciality</code>) działa tylko u Character i NPC.
+    W zakładce statystyk zaznacz umiejętności w <code>system.skills</code>. Dla pasującego testu
+    specjalność pojawia się w panelu modyfikatorów, domyślnie wyłączona. Kliknięcie dodaje jej
+    całkowity <code>system.value</code> do <code>dieReductionBonus</code>, bez zmiany
+    <code>skillBonus</code> i suwaka. Pole <code>specialityBonus</code> zapisuje tę część bonusu
+    w wyniku rzutu; nie należy dodawać jej ponownie do redukcji. Poziom rozwija się w tabeli
+    Specjalność w Atutach. <code>system.fromSpecialization</code> wybiera tańszą tabelę XP.</p>
 
   <h4>Kara efektów — Dialog Script</h4>
   <p>
@@ -971,16 +1003,16 @@ args.fields.modifier -= <span class="num">10</span>;</code></pre>
     <h4 class="script-label">Hide Script</h4>
     <pre><code><span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
     <h4 class="script-label">Activate Script</h4>
-    <pre><code><span class="cmt">// Aktywuj automatycznie gdy nosiciel jeszcze nie użył ogłuszenia w tej rundzie</span>
-<span class="kw">return</span> !args.flags.stunUsed;</code></pre>
+    <pre><code><span class="cmt">// Gracz wybiera użycie sztuczki ręcznie</span>
+<span class="kw">return</span> <span class="kw">false</span>;</code></pre>
     <h4 class="script-label">Dialog Script</h4>
     <pre><code><span class="cmt">// Celuj w głowę automatycznie — lokacja wymagana przez sztuczke</span>
 args.fields.hitLocation = <span class="str">"head"</span>;</code></pre>
     <h4 class="script-label">Submission Script</h4>
     <pre><code><span class="cmt">// Uruchamia się gdy modyfikator jest aktywny i gracz klika OK w dialogu
 // args.options przekazywane dalej do rollTest / preRollTest</span>
-args.options.applyStun = <span class="kw">true</span>;
-args.flags.stunUsed    = <span class="kw">true</span>; <span class="cmt">// blokuj ponowną auto-aktywację w tej rundzie</span></code></pre>
+args.options.applyStun = <span class="kw">true</span>;</code></pre>
+    <p class="example-desc"><code>args.flags</code> nie przechowuje użycia sztuczki przez rundę. Takie ograniczenie wymaga osobnego stanu zdolności lub zasobu. Do przekazania decyzji z Submission do testu używaj <code>args.options</code>.</p>
     <p style="margin:8px 0 4px; font-size:0.85em; color:var(--text-dim);">Odpowiadający skrypt <strong>rollTest</strong> na tym samym efekcie:</p>
     <pre><code><span class="cmt">// Trigger: rollTest — reaguj na flagę z Submission Script</span>
 <span class="kw">if</span> (!args.options?.applyStun) <span class="kw">return</span>;
@@ -1399,6 +1431,10 @@ args.piercing = <span class="num">0</span>;</code></pre>
 }</code></pre>
   </div>
 
+  <p>Opcja <strong>Restrykcja Poziomu Pancerza</strong> w ustawieniach walki ogranicza końcowy
+    pancerz po zsumowaniu źródeł i modyfikatorów <code>APCalc</code>, przed przebiciem.
+    Character i NPC mają wspólny limit, Creature oraz Vehicle osobne (domyślnie po 6).
+    Wyłączenie opcji przywraca pełne wartości: ograniczenie nie zmienia zapisanych danych źródłowych.</p>
   <!-- APCalc -->
   <h3 id="trigger-APCalc">APCalc — <em>Armour Calculation</em> <span class="badge" style="color:var(--accent-err)">SYNC</span></h3>
   <p>Uruchamiany podczas obliczania redukcji pancerza dla trafienia. Pozwala modyfikować efektywne SP zbroi.</p>
@@ -2414,24 +2450,25 @@ args.encounter._rrrroooaaarrr.<span class="fn">push</span>(args.defenderId);
   </p>
   <ol>
     <li>
-      <strong>Pre-roll — Okno rzutu bronią:</strong> Pojawia się jako opcjonalny checkbox w oknie wyboru puli kości (razem ze standardowymi modyfikatorami dialogowymi). Gdy gracz zaznaczy go i kliknie <em>Rzut</em>, odpala się <strong>Główny skrypt (code)</strong> z kontekstem <code>args.fields.*</code> — identycznym jak w wyzwalaczu <code>dialog</code>. Pozwala to modyfikować trudność, bonusy atrybutów itp. <em>przed</em> rzutem.
+      <strong>Pre-roll — Okno rzutu bronią:</strong> Pojawia się jako opcja obok standardowych modyfikatorów dialogowych. Przy każdym przeliczeniu aktywnej opcji wykonywany jest <strong>kod dialogowy (<code>dialogCode</code>)</strong> z kontekstem <code>args.fields.*</code>. Pozwala zmieniać trudność i bonusy przed rzutem. Główny <code>code</code> nie zastępuje tutaj pustego <code>dialogCode</code> i nie jest uruchamiany jako kod dialogowy.
     </li>
     <li>
       <strong>Post-roll — Karta walki wręcz:</strong> Ta sama sztuczka pojawia się jako osobny checkbox w sekcji <em>Modyfikatory sztuczek</em> na karcie wyboru akcji. Gdy gracz zaznaczy go i kliknie <strong>Atak</strong>, odpala się <strong>Skrypt zatwierdzenia (submissionScript)</strong> z pełnym kontekstem stanu walki (<code>args.state</code>, <code>args.actions</code> itp.).
     </li>
   </ol>
-  <p>W trybie dialogowym dostępne są cztery pola skryptu:</p>
+  <p>W trybie dualnym rozdziel kod budujący akcje od kodu zmieniającego pola dialogu:</p>
   <table>
     <thead><tr><th>Pole skryptu</th><th>Kiedy się odpala</th><th>Kontekst / Zwraca</th></tr></thead>
     <tbody>
-      <tr><td><code>Główny skrypt (code)</code></td><td><strong>Pre-roll</strong>: gdy checkbox zaznaczony w oknie rzutu i gracz klika Rzut</td><td><code>args.fields.*</code> — modyfikuj trudność, bonusy; zwracana wartość ignorowana</td></tr>
+      <tr><td><code>code</code></td><td>Główna faza <code>getMeleeActions</code> podczas zbierania akcji.</td><td><code>args.actions</code> i kontekst walki; nie zakładaj obecności pól dialogu.</td></tr>
+      <tr><td><code>dialogCode</code></td><td><strong>Pre-roll</strong>: każde przeliczenie aktywnej opcji w dialogu rzutu.</td><td><code>args.fields.*</code>, <code>args.weapon</code>, <code>args.weaponId</code>, <code>args.isPreRollContext === true</code>; tu zmieniaj trudność i bonusy.</td></tr>
       <tr><td><code>hideScript</code></td><td>Podczas budowania UI (pre-roll dialog I post-roll karta walki)</td><td><code>true</code> → ukryj w obu miejscach. Dostępne: <code>args.weapon</code>, <code>args.weaponId</code>, <code>args.isPreRollContext</code></td></tr>
       <tr><td><code>activateScript</code></td><td>Podczas budowania listy modyfikatorów (oba miejsca)</td><td><code>true</code> → automatycznie zaznacz checkbox</td></tr>
-      <tr><td><code>Skrypt zatwierdzenia (submissionScript)</code></td><td><strong>Post-roll</strong>: gdy checkbox zaznaczony na karcie walki i gracz klika <strong>Atak</strong></td><td><code>args.state</code>, <code>args.actions</code> — push akcji do trick-queue lub efekt bezpośredni</td></tr>
+      <tr><td><code>submissionScript</code></td><td>Przy zatwierdzeniu aktywnej opcji w dialogu rzutu oraz w obsługującej ją karcie walki.</td><td>W dialogu: <code>args.options</code>, <code>args.fields</code> i <code>args.flags</code>. Na karcie walki: jej kontekst. Kod wymagający <code>args.state</code> musi najpierw sprawdzić jego obecność.</td></tr>
     </tbody>
   </table>
   <div class="callout info">
-    <strong>Detekcja fazy:</strong> W <code>hideScript</code> i <code>code</code> możesz sprawdzić <code>args.isPreRollContext === true</code> aby wykryć, że skrypt odpala się w fazie pre-roll (okno rzutu). Gdy brakuje tej flagi (lub jest <code>false</code>), skrypt działa na karcie walki.
+    <strong>Detekcja fazy:</strong> W Hide, Activate i <code>dialogCode</code> fazę przeliczania dialogu rozpoznasz po <code>args.isPreRollContext === true</code>. Nie zakładaj jednak, że brak tej flagi oznacza dostęp do karty walki — np. Submission w dialogu ma osobny zestaw argumentów. Przed użyciem <code>args.state</code> sprawdź jego obecność.
   </div>
   <div class="callout info">
     <strong>Priorytet submissionScript:</strong> Gdy gracz zatwierdza Atak z aktywnym modyfikatorem, system wywołuje <code>submissionScript</code> jeśli jest wypełniony. Jeśli <code>submissionScript</code> jest pusty, wywoływany jest główny skrypt (<code>code</code>) jako fallback.
@@ -2451,6 +2488,7 @@ args.encounter._rrrroooaaarrr.<span class="fn">push</span>(args.defenderId);
 <span class="kw">return</span> <span class="kw">false</span>; <span class="cmt">// gracz decyduje ręcznie</span></code></pre>
     <p style="font-size:0.85em;color:var(--text-dim);margin:8px 1rem 4px;"><strong>Skrypt zatwierdzenia (Atak)</strong> — wstrzyknij akcję gdy zaznaczony:</p>
     <pre><code><span class="cmt">// submissionScript — odpala się gdy checkbox zaznaczony i gracz klika Atak</span>
+<span class="kw">if</span> (!args.actions) <span class="kw">return</span>; <span class="cmt">// pomiń zatwierdzenie okna pre-roll</span>
 args.actions.<span class="fn">push</span>({
   id:          <span class="str">"barbarka-head-butt-dialog"</span>,
   name:        <span class="str">"Uderzenie Głową"</span>,
@@ -2479,8 +2517,8 @@ args.actions.<span class="fn">push</span>({
 <span class="kw">const</span> <span class="var">wId</span> = args.weaponId ?? args.state?.weaponId;
 <span class="kw">const</span> <span class="var">weapon</span> = <span class="var">wId</span> ? args.actor?.items.<span class="fn">get</span>(<span class="var">wId</span>) : <span class="kw">null</span>;
 <span class="kw">return</span> !<span class="var">weapon</span> || <span class="var">weapon</span>.system.skill !== <span class="str">"handWeapon"</span>;</code></pre>
-    <p style="font-size:0.85em;color:var(--text-dim);margin:8px 1rem 4px;"><strong>Główny skrypt (pre-roll, code)</strong> — podnosi PT akcji o 1 poziom (Aramis wymaga podwyższonego PT):</p>
-    <pre><code><span class="cmt">// code — odpala się PRE-ROLL gdy checkbox zaznaczony w oknie rzutu bronią</span>
+    <p style="font-size:0.85em;color:var(--text-dim);margin:8px 1rem 4px;"><strong>Kod dialogowy (pre-roll, dialogCode)</strong> — podnosi PT akcji o 1 poziom (Aramis wymaga podwyższonego PT):</p>
+    <pre><code><span class="cmt">// dialogCode — wykonuje się przy przeliczeniu aktywnej opcji przed rzutem</span>
 <span class="cmt">// args.isPreRollContext === true w tej fazie</span>
 <span class="cmt">// Aramis wymaga akcji za 2 sukcesy → podnosimy PT o 1 poziom trudności</span>
 args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
@@ -2488,6 +2526,7 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
     <pre><code><span class="kw">return</span> <span class="kw">false</span>;</code></pre>
     <p style="font-size:0.85em;color:var(--text-dim);margin:8px 1rem 4px;"><strong>Skrypt zatwierdzenia (post-roll, Atak)</strong> — znajdź i rozbrój broń przeciwnika:</p>
     <pre><code><span class="cmt">// submissionScript — wywołane gdy gracz zaznaczył checkbox i kliknął Atak</span>
+<span class="kw">if</span> (!args.state) <span class="kw">return</span>;
 <span class="kw">const</span> <span class="var">state</span> = args.state;
 <span class="kw">const</span> <span class="var">isOwnerAttacker</span> = <span class="var">state</span>.initiativeOwnerSide === <span class="str">"attacker"</span>;
 <span class="kw">const</span> <span class="var">opponentUuid</span>    = <span class="var">isOwnerAttacker</span> ? <span class="var">state</span>.defenderUuid : <span class="var">state</span>.attackerUuid;
@@ -2722,16 +2761,20 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
       <tr><td><code>trick</code></td><td>Sztuczka / zdolność specjalna</td></tr>
       <tr><td><code>wound</code></td><td>Rana (generowana przez system)</td></tr>
       <tr><td><code>reputation</code></td><td>Reputacja</td></tr>
-      <tr><td><code>specialization</code></td><td>Specjalizacja / cecha</td></tr>
+    <tr><td><code>specialization</code></td><td>Specjalizacja</td></tr>
+    <tr><td><code>speciality</code></td><td>Specjalność: <code>system.skills</code> (lista kluczy umiejętności), <code>system.value</code> (0–20), <code>system.fromSpecialization</code> (tańszy rozwój XP).</td></tr>
+    <tr><td><code>trait</code></td><td>Cecha</td></tr>
+    <tr><td><code>beast-action</code></td><td>Jedna akcja bestii; jej dane są bezpośrednio w <code>item.system</code>, a efekty w <code>item.effects</code>.</td></tr>
+    <tr><td><code>beast-segment</code></td><td>Item segmentów bestii; zachowuje tablicę aktywności <code>system.activities</code>.</td></tr>
       <tr><td><code>disease</code></td><td>Choroba (przewlekła lub przejściowa)</td></tr>
     </tbody>
   </table>
 
   <!-- ITEM FIELDS -->
   <h3 id="keys-item-fields">Pola Itemów</h3>
-  <p>Klucze dostępne przez <code>args.item.system.&lt;pole&gt;</code> lub <code>this.item.system.&lt;pole&gt;</code>. Każdy item ma zawsze <code>description</code>, <code>weight</code>, <code>cost</code>, <code>quantity</code> i <code>availability</code>.</p>
+  <p>Klucze dostępne przez <code>args.item.system.&lt;pole&gt;</code> lub <code>this.item.system.&lt;pole&gt;</code>, jeśli dany kontekst udostępnia item. Dostępność pól zależy od jego modelu: np. <code>beast-action</code> nie ma pól wagi, ceny ani ilości. Przed odczytem opcjonalnych pól używaj <code>?.</code> i wartości domyślnej.</p>
 
-  <h4 class="key-group">Wspólne pola (wszystkie typy)</h4>
+  <h4 class="key-group">Pola wspólne i ekwipunkowe (zależnie od typu)</h4>
   <table>
     <thead><tr><th>Pole</th><th>Typ</th><th>Opis</th></tr></thead>
     <tbody>
@@ -2744,6 +2787,30 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
       <tr><td><code>system.resources</code></td><td>Array</td><td>Zasoby zdefiniowane na itemu</td></tr>
     </tbody>
   </table>
+
+  <p><strong>Akcja bestii (<code>beast-action</code>):</strong> poniższe pola odczytuj bezpośrednio z <code>item.system</code>, bez <code>system.activities[0]</code>. Nazwa i obraz są polami dokumentu: <code>item.name</code> i <code>item.img</code>.</p>
+  <table>
+    <thead><tr><th>Pole</th><th>Typ</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td><code>system.id</code></td><td>string</td><td>Identyfikator pojedynczej aktywności używany także przez odwołania w walce.</td></tr>
+      <tr><td><code>system.successCost</code></td><td>number</td><td>Koszt 0–3 sukcesów; <code>system.costType</code> ma wartość <code>"success"</code>.</td></tr>
+      <tr><td><code>system.actionType</code></td><td>string</td><td><code>"attack"</code> albo <code>"action"</code>.</td></tr>
+      <tr><td><code>system.damage</code> / <code>system.piercing</code></td><td>string | null / number</td><td>Obrażenia i przebicie akcji.</td></tr>
+      <tr><td><code>system.tests.value</code></td><td>string</td><td>Pole testów dostępne w standardowej liście efektów itemu; nie jest tym samym co konfiguracja wymaganego testu.</td></tr>
+      <tr><td><code>system.testRequired</code><br><code>testType</code>, <code>testKey</code><br><code>testAttributeOverride</code><br><code>testIsOpen</code>, <code>testSuccesses</code><br><code>testDifficulty</code></td><td>pola konfiguracji</td><td>Wymagany test; konfiguracja jest w zakładce Aktywacja. Wszystkie wymienione klucze mają prefiks <code>system.</code>.</td></tr>
+      <tr><td><code>item.effects</code></td><td>kolekcja ActiveEffect</td><td>Bezpośrednie efekty itemu. Transfer, zakres i kod określa każdy efekt oddzielnie.</td></tr>
+      <tr><td><code>system.effectIds</code><br><code>system.onFailureEffectIds</code><br><code>system.effectTiming</code><br><code>system.effectTarget</code><br><code>system.applyEffectsAutomatically</code></td><td>pola zgodności</td><td>Nadal obsługują wcześniejsze powiązania i konsekwencje testów. Brak interfejsu podpinania w nowej akcji bestii nie oznacza usunięcia działania zapisanych powiązań.</td></tr>
+      <tr><td><code>system.legacyActivities</code></td><td>Array</td><td>Pole migracyjne starych kontenerów. Nie dopisuj tu nowych akcji; twórz osobne itemy <code>beast-action</code>.</td></tr>
+      <tr><td><code>system.activities</code></td><td>Array</td><td>Nadal właściwe dla <code>beast-segment</code>; nie jest bieżącym modelem <code>beast-action</code>.</td></tr>
+    </tbody>
+  </table>
+  <div class="callout info">
+    <strong>Rzut bestii:</strong> przycisk Atak w Szybkich akcjach na karcie stworzenia korzysta z całej listy akcji bestii.
+    Tworzy wspólny profil rzutu z Doświadczeniem (<code>experience</code>) i Zręcznością (<code>dexterity</code>),
+    oznaczony <code>isBeastCombat</code>. Nie jest to rzeczywisty item jednej z akcji: profil ma <code>id</code> i <code>uuid</code> równe <code>null</code>.
+    Nie używaj więc <code>args.weapon.id</code> do wskazania wybranej akcji i nie zakładaj, że wszystkie efekty itemów są automatycznie nakładane na przeciwnika.
+    Starsze kontenery są rozdzielane przez migrację; zgodność dawnych odwołań czatu jest zachowana.
+  </div>
 
   <h4 class="key-group">Cecha (<code>trait</code>)</h4>
   <table>
@@ -4867,7 +4934,7 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
       <tr><th>Opcja</th><th>Opis</th></tr>
       <tr><td><code>Owning Document</code></td><td>Efekt zostaje przekazany do dokumentu właściciela (domyślne). Dla sztuczek / talentów — aktor dostaje efekt automatycznie. <strong>Jedyny typ zbierany pasywnie przez <code>getScripts()</code>.</strong></td></tr>
       <tr><td><code>Target</code></td><td><strong>Template.</strong> Efekt na itemu jest tylko szablonem — nie jest zbierany pasywnie przez <code>getScripts()</code>. Musi być jawnie nałożony na cel przez <code>convertToApplied()</code> / <code>applyEffect()</code>. Kopie na aktorach stają się <code>owningDocument</code>.</td></tr>
-      <tr><td><code>Damage</code></td><td><strong>Template.</strong> Jak <code>Target</code> — musi być jawnie aplikowany skryptem. Używany gdy efekt powinien trafiać na aktora otrzymującego obrażenia.</td></tr>
+      <tr><td><code>Damage</code></td><td>Automatycznie przenoszony na aktora po utworzeniu ran lub uszkodzeń pojazdu w pełnym pipeline obrażeń. Obsługuje Pre-Apply i Filter. Efekty konkretnej akcji bestii przechodzą wyłącznie przy obrażeniach zadanych tą akcją.</td></tr>
       <tr><td><code>Other</code></td><td><strong>Template.</strong> Efekt na itemu jest tylko szablonem — nie pojawia się pasywnie w dialogach ani <code>getScripts()</code>. Aktywny dopiero gdy zostanie nałożony na aktora przez <code>convertToApplied()</code> / <code>applyEffect()</code>. Kopie na aktorach stają się <code>owningDocument</code>. Typowe zastosowanie: sztuczki z czasowym efektem (np. "Bez Sznurków").</td></tr>
       <tr><td><code>Aura</code></td><td><strong>Template + automatyczna propagacja.</strong> Efekt jest automatycznie aplikowany do aktorów w promieniu wokół tokena. Kopie na celach mają <code>transferType: owningDocument</code> (nie propagują dalej). Konfiguracja w <strong>Open Advanced Configuration</strong>.</td></tr>
       <tr><td><code>Area</code></td><td><strong>Template + propagacja przez szablon.</strong> Efekt jest aplikowany do aktorów w obrębie MeasuredTemplate. Kopie na celach mają <code>transferType: owningDocument</code>. Szablon w <strong>Open Advanced Configuration → Place Template</strong>. Tryby: <em>Sustained</em> i <em>Instantaneous</em>.</td></tr>
@@ -4889,6 +4956,7 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
 
   <h3>Document Type</h3>
   <p>Precyzuje <em>jakiego rodzaju dokument</em> jest celem transferu. Używane razem z <strong>Effect Application</strong>.</p>
+  <p>Dla efektu <code>owningDocument</code> z zakresem <code>item</code> wyzwalacze dotyczące użytego itemu (np. <code>preRollWeaponTest</code>, <code>rollWeaponTest</code>, <code>preApplyDamage</code>) sprawdzają zgodność UUID itemu właściciela efektu i itemu testu. Nie jest to globalny modyfikator wszystkich broni aktora. Wspólny profil rzutu bestii nie zastępuje automatycznie konkretnego itemu akcji w takim porównaniu.</p>
   <table>
     <tbody>
       <tr><th>Opcja</th><th>Opis</th></tr>
@@ -4904,7 +4972,8 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
       <tr><td>Owning Document</td><td>Actor</td><td>Pasywny transfer do właściciela-aktora. <strong>Jedyna kombinacja zbierana automatycznie przez <code>getScripts()</code>.</strong> Typowe dla sztuczek i pancerzy.</td></tr>
       <tr><td>Owning Document</td><td>Item</td><td>Transfer do właściciela-itemu. Rzadko używane.</td></tr>
       <tr><td>Target</td><td>Actor</td><td><strong>Template.</strong> Nie zbierany pasywnie. Efekt musi być nałożony jawnie przez <code>convertToApplied()</code> / <code>applyEffect()</code>. Kopie na aktorach działają jako <code>owningDocument</code>.</td></tr>
-      <tr><td>Damage</td><td>Actor</td><td><strong>Template.</strong> Jak Target — jawna aplikacja skryptem. Dla efektów wywoływanych przez obrażenia.</td></tr>
+      <tr><td>Damage</td><td>Actor</td><td>Przenoszony na odbiorcę obrażeń ze źródłowego aktora i jego efektów Damage. Efekty innych akcji bestii są pomijane.</td></tr>
+      <tr><td>Damage</td><td>Item</td><td>Przenoszony na odbiorcę obrażeń tylko wtedy, gdy obrażenia pochodzą z tego itemu. Kopia działa na docelowym aktorze.</td></tr>
       <tr><td>Damage</td><td>Item</td><td><strong>Template.</strong> Efekt jawnie aplikowany na item przy obrażeniach. Obsługa skryptem.</td></tr>
       <tr><td>Other</td><td>Actor / Item</td><td><strong>Template.</strong> Brak pasywnego zbierania — efekt niewidoczny dla <code>getScripts()</code> dopóki nie zostanie nałożony przez <code>convertToApplied()</code> / <code>applyEffect()</code>. Kopie działają jako <code>owningDocument</code>.</td></tr>
       <tr><td>Aura</td><td>Actor</td><td>Automatyczna propagacja do aktorów w promieniu tokena. Kopie w <em>Temporary</em> u celów. Kopie mają <code>transferType: owningDocument</code> — nie re-propagują. Usuwane gdy aktor wyjdzie z zasięgu lub efekt źródłowy zostanie usunięty.</td></tr>
@@ -4964,7 +5033,22 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
     który otwiera osobny dialog z zaawansowanymi opcjami efektu. Dostępne pola zależą od wybranego
     <strong>Effect Application</strong>.
   </p>
+  <div class="callout info">
+    <strong>Wymagany test bez pisania skryptu:</strong> w Advanced Configuration dostępna jest konfiguracja
+    <code>flags.neuroshima.requiredTestTrigger</code>. Włączenie <code>enabled</code> tworzy kartę wymaganego testu
+    przy utworzeniu efektu na aktorze. Ustawienia obejmują <code>title</code>, <code>description</code>,
+    <code>testType</code> (<code>attribute</code> / <code>skill</code>), <code>testKey</code>,
+    <code>testAttributeOverride</code>, <code>requiredSuccesses</code>, <code>isOpen</code> i <code>baseDifficulty</code>.
+    Konsekwencje <code>onSuccessEffectIds</code> / <code>onFailureEffectIds</code> wskazują ID innych efektów na tym samym itemie.
+    Przy aplikacji system odszukuje item źródłowy przez efekt wskazany w <code>origin</code>.
+    Jeśli źródła nie da się odtworzyć, karta powstaje bez automatycznych konsekwencji.
+    Karta jest szeptana do właścicieli odbiorcy i MG.
+    Nie włączaj jednocześnie tej opcji i skryptu <code>immediate</code> wysyłającego tę samą kartę — obie ścieżki mogą się wykonać.
+    Jest to osobna konfiguracja od pól wymaganego testu na itemie <code>beast-action</code>.
+  </div>
+
   <h4>Test Independent</h4>
+
   <p>Jeśli zaznaczone — efekt może być aplikowany bezpośrednio z arkusza aktora, bez rzutu ani chatu. Niedostępne dla <code>Owning Document</code>.</p>
 
   <h4>Avoid Test</h4>
@@ -5027,7 +5111,7 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
   <p>
     Trigger <code>dialog</code> wykonuje się <strong>gdy otwierany jest dialog rzutu</strong> — pozwala modyfikować pola dialogu
     (<code>args.fields</code>), ukrywać skrypt (<code>Hide Script</code>) lub warunkowo go aktywować (<code>Activate Script</code>).
-    Skrypt dialogowy jest synchroniczny.
+    Skrypty <code>dialog</code>, Hide, Activate i Submission są wykonywane asynchronicznie. Ponieważ pola dialogu są przeliczane wielokrotnie, w kodzie głównym stosuj krótkie obliczenia; zapis dokumentów i jednorazowe skutki przenieś do Submission lub właściwego triggera testu.
   </p>
   <div class="callout info">
     <strong>Logika operatorów w skryptach hide/activate:</strong><br>
@@ -5363,6 +5447,13 @@ args.fields.healingModifier[<span class="str">"D,L"</span>] += <span class="num"
     Zwróć <code>false</code> aby zablokować aplikację. Dostępny dla <code>Damage</code>, <code>Target</code>, <code>Aura</code> i <code>Area</code>.
     Zmienne: <code>actor</code> (źródło), <code>effect</code>, <code>targetActor</code> (cel).
   </p>
+  <div class="callout warning">
+    <strong>Źródło a odbiorca aury:</strong> w Pre-Apply kod <code>return !isFriendlyToken(actor);</code>
+    blokuje całą aurę przyjaznego właściciela — nie sprawdza BN-a będącego odbiorcą.
+    Aby przepuścić nieprzyjaznych odbiorców, użyj <code>return !isFriendlyToken(targetActor);</code>.
+    Neutralny lub wrogi token zostanie dopuszczony, przyjazny pominięty, niezależnie od typu aktora.
+    W Filter odwrotnie: <code>actor</code> oznacza odbiorcę, a zwrócenie <code>true</code> blokuje kopiowanie.
+  </div>
   <div class="callout info">
     <strong>Kiedy używać Pre-Apply Script zamiast Filter?</strong><br>
     <strong>Filter</strong> działa tylko dla Aura i Area — filtruje automatyczne kopiowanie do celów na scenie.<br>
@@ -5388,7 +5479,7 @@ args.fields.healingModifier[<span class="str">"D,L"</span>] += <span class="num"
   <div class="example-block">
     <div class="example-header">Pre-Apply Script — Nie nakładaj efektu na siebie samego (Aura)</div>
     <pre><code><span class="cmt">// Aura nie nakłada się na właściciela efektu</span>
-<span class="kw">return</span> actor.id !== targetActor.id;</code></pre>
+<span class="kw">return</span> actor.uuid !== targetActor.uuid;</code></pre>
   </div>
   <div class="example-block">
     <div class="example-header">Pre-Apply Script — Zezwól tylko gdy cel ma mniej niż połowę HP</div>
@@ -5443,7 +5534,7 @@ args.fields.healingModifier[<span class="str">"D,L"</span>] += <span class="num"
   </div>
   <div class="example-block">
     <div class="example-header">Filter — Wyklucz aktora będącego źródłem efektu</div>
-    <pre><code><span class="kw">return</span> actor.id === sourceActor?.id;</code></pre>
+    <pre><code><span class="kw">return</span> actor.uuid === sourceActor?.uuid;</code></pre>
   </div>
   <div class="example-block">
     <div class="example-header">Filter — Tylko sojusznicy (ta sama dyspozycja co źródło)</div>
@@ -5453,7 +5544,7 @@ args.fields.healingModifier[<span class="str">"D,L"</span>] += <span class="num"
   <div class="example-block">
     <div class="example-header">Filter — Tylko wrogowie (nie gracze, nie źródło)</div>
     <pre><code><span class="cmt">// Blokuj: samo źródło aury oraz wszystkich nie-wrogów</span>
-<span class="kw">if</span> (actor.id === sourceActor?.id) <span class="kw">return</span> <span class="kw">true</span>;
+<span class="kw">if</span> (actor.uuid === sourceActor?.uuid) <span class="kw">return</span> <span class="kw">true</span>;
 <span class="kw">return</span> !<span class="fn">isHostileToken</span>(actor); <span class="cmt">// blokuj FRIENDLY/NEUTRAL, przepuszczaj HOSTILE</span></code></pre>
   </div>
   <div class="example-block">
@@ -5462,16 +5553,17 @@ args.fields.healingModifier[<span class="str">"D,L"</span>] += <span class="num"
 <span class="kw">return</span> !<span class="fn">isActorType</span>(actor, <span class="str">"creature"</span>);</code></pre>
   </div>
   <div class="example-block">
-    <div class="example-header">Filter — Aura "Ciszej niż cień" — nakłada efekt tylko gdy ktoś rzuca test wykrycia</div>
+    <div class="example-header">Filter — Aura "Ciszej niż cień" — kopia w zasięgu, warunek testu dopiero w dialogu</div>
     <pre><code><span class="cmt">// Filter Script dla sztuczki "Ciszej niż cień"
 // Efekt nakładany zawsze (filter nie blokuje) — trudność testu wykrycia
 // modyfikowana jest przez skrypt dialog na kopii efektu
 return false; // nie blokuj nikogo</span></code></pre>
   </div>
   <div class="example-block">
-    <div class="example-header">Filter — Wyklucz aktorów którzy mają już ten efekt (Aura, bez duplikatów)</div>
-    <pre><code><span class="cmt">// Nie nakładaj kopii jeśli cel już posiada efekt o tej samej nazwie</span>
+    <div class="example-header">Filter — Wyklucz aktorów, którzy mają już efekt o tej nazwie (tylko świadoma blokada kopiowania)</div>
+    <pre><code><span class="cmt">// Pomija nowe kopie po nazwie; nie ogranicza samego bonusu w dialogu</span>
 <span class="kw">return</span> (actor.effects ?? []).some(e =&gt; e.name === effect.name);</code></pre>
+    <p class="example-desc">Nie stosuj tego filtra zamiast flagi <code>args.flags.shadow</code> dla kilku nakładających się aur. Osobne kopie są potrzebne do śledzenia źródeł i poprawnego usuwania ich po wyjściu z zasięgu.</p>
   </div>
 
   <h4>Prompt</h4>
@@ -5481,7 +5573,7 @@ return false; // nie blokuj nikogo</span></code></pre>
   <table>
     <thead><tr><th>Pole</th><th>Typ</th><th>Dostępne dla</th><th>Opis</th></tr></thead>
     <tbody>
-      <tr><td><strong>Radius</strong></td><td>liczba</td><td>Aura + Area</td><td>Promień w jednostkach sceny. Pusty = dziedziczone z itemu.</td></tr>
+      <tr><td><strong>Radius</strong></td><td>liczba</td><td>Aura + Area</td><td>Dodatni promień w jednostkach sceny. Dla automatycznej aury pusty promień lub <code>0</code> powoduje pominięcie nakładania; dla Area brak promienia blokuje umieszczenie szablonu.</td></tr>
       <tr><td><strong>Keep</strong></td><td>checkbox</td><td>Aura + Area</td><td>Kopia efektu pozostaje na celu po wyjściu z zasięgu / obszaru.</td></tr>
       <tr><td><strong>Template Data</strong></td><td>przycisk</td><td>Aura + Area</td><td>Dialog konfiguracji wyglądu szablonu (kolor wypełnienia, obramowania, opacity).</td></tr>
       <tr><td><strong>Render Aura</strong></td><td>checkbox</td><td>Aura</td><td>Widoczny szablon kołowy na canvasie, przemieszcza się z tokenem właściciela.</td></tr>
@@ -5501,6 +5593,8 @@ return false; // nie blokuj nikogo</span></code></pre>
     <tbody>
       <tr><td><code>flags.neuroshima.fromAura.sourceEffectId</code></td><td>string</td><td><strong>(Aura)</strong> ID efektu źródłowego na aktorze-źródle.</td></tr>
       <tr><td><code>flags.neuroshima.fromAura.sourceActorId</code></td><td>string</td><td><strong>(Aura)</strong> ID aktora będącego źródłem aury.</td></tr>
+      <tr><td><code>flags.neuroshima.fromAura.sourceActorUuid</code></td><td>string</td><td><strong>(Aura)</strong> UUID aktora źródłowego, także aktora syntetycznego tokena. Pozwala odróżnić źródła współdzielące bazowy Actor ID.</td></tr>
+      <tr><td><code>flags.neuroshima.fromAura.sourceTokenId</code></td><td>string | null</td><td><strong>(Aura)</strong> ID tokena źródłowego, jeśli kopia powstała z automatycznego zasięgu.</td></tr>
       <tr><td><code>flags.neuroshima.fromArea.templateId</code></td><td>string</td><td><strong>(Area)</strong> ID szablonu MeasuredTemplate w scenie.</td></tr>
       <tr><td><code>flags.neuroshima.fromArea.sourceEffectId</code></td><td>string</td><td><strong>(Area)</strong> ID efektu źródłowego (na aktorze właścicielu).</td></tr>
       <tr><td><code>flags.neuroshima.fromArea.sourceActorId</code></td><td>string</td><td><strong>(Area)</strong> ID aktora-właściciela efektu Area.</td></tr>
@@ -5508,9 +5602,11 @@ return false; // nie blokuj nikogo</span></code></pre>
     </tbody>
   </table>
   <div class="callout info">
-    <strong>Skrypty na kopiach:</strong> Triggery <code>immediate</code> i <code>deleteEffect</code> <strong>nie są wywoływane</strong>
-    na kopiach Aura/Area — system pomija je celowo, aby uniknąć kaskadowych efektów ubocznych. Cleanup kopii
-    (usuwanie) wykonuje manager aur automatycznie.
+    <strong>Skrypty na kopiach:</strong> <code>deleteEffect</code> jest pomijany na kopiach Aura/Area,
+    a usuwanie kopii obsługuje manager. Natomiast utworzenie kopii na aktorze może uruchomić
+    jej <code>immediate</code> i konfigurację <code>requiredTestTrigger</code> na kliencie tworzącym dokument.
+    Nie umieszczaj tam bezwarunkowych skutków, które nie powinny powtarzać się po ponownym wejściu w aurę.
+    Zwykły skrypt <code>dialog</code> na kopii działa później, podczas otwierania i przeliczania dialogu odbiorcy.
   </div>
   <div class="callout warning">
     <strong>Cleanup Aury:</strong> Gdy efekt źródłowy jest usuwany lub wyłączany, manager automatycznie
@@ -5522,15 +5618,34 @@ return false; // nie blokuj nikogo</span></code></pre>
   <h3>Aura — przykłady</h3>
 
   <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">Aura + dialog</span> Ciszej niż Cień — maksymalnie +1 poziom trudności mimo kilku źródeł</div>
+    <p class="example-desc">Effect Application: <strong>Aura</strong>, Document Type: <strong>Actor</strong>, dodatni Radius (np. <strong>99</strong>), Keep i Transferred Aura wyłączone. Render Aura jest opcjonalny i steruje wyłącznie widocznością szablonu. Efekt umieść na itemie sztuczki należącym do każdego właściciela aury.</p>
+    <p class="example-desc"><strong>Pre-Apply Script</strong> — odbiorca neutralny lub wrogi, nie przyjazny:</p>
+    <pre><code><span class="kw">return</span> !<span class="fn">isFriendlyToken</span>(targetActor);</code></pre>
+    <p class="example-desc"><strong>Filter</strong> pozostaw pusty. Na efekcie dodaj skrypt o wyzwalaczu <code>dialog</code>, bez Targeted i Defending Against.</p>
+    <p class="example-desc"><strong>Hide Script</strong>:</p>
+    <pre><code><span class="kw">return</span> ![<span class="str">"spotting"</span>, <span class="str">"vigilance"</span>, <span class="str">"listening"</span>].includes(args.skill?.key);</code></pre>
+    <p class="example-desc"><strong>Activate Script</strong>:</p>
+    <pre><code><span class="kw">return</span> [<span class="str">"spotting"</span>, <span class="str">"vigilance"</span>, <span class="str">"listening"</span>].includes(args.skill?.key);</code></pre>
+    <p class="example-desc"><strong>Dialog Script</strong> — ta sama flaga we wszystkich kopiach:</p>
+    <pre><code><span class="kw">if</span> (args.flags.shadow) <span class="kw">return</span>;
+args.flags.shadow = <span class="kw">true</span>;
+args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
+    <p class="example-desc">Submission pozostaw pusty. Czterech właścicieli może nałożyć cztery osobne kopie AE na BN-a; dialog pokazuje wspólną opcję, a kod wnosi łącznie tylko <strong>+1</strong>. Inna zdolność z inną flagą nadal może dodać własne utrudnienie. Bez wskazania celu aura nie wie, kogo dotyczy test — w razie potrzeby wyłącz tę opcję ręcznie.</p>
+    <p class="example-desc">Zmiana itemu w katalogu nie aktualizuje automatycznie jego niezależnych kopii na aktorach. Zmień kod u wszystkich właścicieli; już otrzymane kopie aury również wymagają aktualizacji albo odtworzenia. Automatyczna aura jest przeliczana przy przygotowaniu sceny, utworzeniu tokena i jego ruchu. Po poprawieniu Pre-Apply porusz tokenem. Samo pokazanie koła aury nie dowodzi utworzenia efektu na odbiorcy.</p>
+  </div>
+
+  <div class="example-block">
     <div class="example-header">
       <span class="trigger-badge">Aura</span>
-      Prosta aura strachu — wszyscy w promieniu 5m dostają -1 trudności rzutu
+      Prosta aura strachu — wszyscy w promieniu 5m dostają +1 poziom trudności testu umiejętności
     </div>
     <p style="margin:6px 1rem;font-size:0.88em;color:#888;">
       Effect Application: <strong>Aura</strong> | Radius: <strong>5</strong> | Render Aura: <strong>zaznaczony</strong>
     </p>
     <p style="margin:6px 1rem;font-size:0.88em;">Skrypt <code>dialog</code>:</p>
-    <pre><code>args.fields.difficultyShift -= <span class="num">1</span>;</code></pre>
+    <pre><code>args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
+    <p class="example-desc">Ustaw Activate na <code>return true;</code>, jeśli modyfikator ma być automatycznie aktywny. Ten przykład nie ma blokady kumulowania — kilka kopii może dodać kilka poziomów.</p>
     <p style="margin:6px 1rem;font-size:0.88em;">Ukryj dla rzutów nie będących testem umiejętności (Hide):</p>
     <pre><code><span class="kw">return</span> args.rollType !== <span class="str">"skill"</span>;</code></pre>
   </div>
@@ -5847,9 +5962,10 @@ return false; // nie blokuj nikogo</span></code></pre>
   <p>Dostępne globalnie przez <code>game.neuroshima.NeuroshimaScriptRunner</code> lub bezpośrednio przez skrypt (klasa jest w scope).</p>
 
   <div class="callout info">
-    <strong>Wszystkie helpery są dostępne bezpośrednio przez <code>this</code> w skrypcie.</strong><br>
-    Nie musisz odwoływać się do <code>NeuroshimaScriptRunner</code> — każda metoda jest proxowana
-    na kontekst skryptu. <code>NeuroshimaScriptRunner</code> pozostaje dostępny globalnie
+    <strong>Udokumentowane helpery skryptu są dostępne bezpośrednio przez <code>this</code>.</strong><br>
+    Są to metody <code>NeuroshimaScript</code> działające w kontekście danego efektu; nie oznacza to,
+    że każda wewnętrzna metoda statyczna runnera ma odpowiednik na <code>this</code>.
+    <code>NeuroshimaScriptRunner</code> pozostaje dostępny globalnie
     przez <code>game.neuroshima.NeuroshimaScriptRunner</code> dla zaawansowanych przypadków
     (np. z zewnętrznych makr lub konsoli), ale w skryptach efektów używaj <strong>wyłącznie <code>this</code></strong>.
   </div>
@@ -5869,6 +5985,11 @@ return false; // nie blokuj nikogo</span></code></pre>
     <tr><td><code>await this.applyTransferredAura(targets?)</code></td><td>Nałóż kopię efektu aury (auraTransferred) na podanych aktorów lub aktualnie wskazane tokeny</td></tr>
     <tr><td><code>await this.chooseFromList(items, prompt?, title?)</code></td><td>Przeszukiwalny wybór jednej wartości, wykonywany przez aktywnego właściciela aktora lub aktywnego MG. Wiersze obsługują <code>img</code>, wzbogacany <code>tooltipHtml</code> i <code>rollData</code>.</td></tr>
     <tr><td><code>await this.allocatePoints(options)</code></td><td>Rozdanie puli punktów przez właściwego użytkownika; zwraca mapę wartości lub <code>null</code>.</td></tr>
+    <tr><td><code>this.oncePerDialog(key)</code></td><td>Opcjonalny skrót „tylko raz na przeliczenie pól dialogu”; wymaga wspólnego, niepustego klucza zdolności. Poza tym kontekstem zwraca <code>false</code>. Nie zastępuje stanu zdolności przechowywanego przez rundę.</td></tr>
+    <tr><td><code>this.isRecalculation</code></td><td>Odczyt: czy bieżący test jest edytowany albo przerzucany. Zwykłe odświeżenie dialogu nie ustawia tej wartości.</td></tr>
+    <tr><td><code>this.triggerContext</code></td><td>Odczyt bieżącego <code>args.eventContext</code> lub <code>null</code>.</td></tr>
+    <tr><td><code>this.addAction(args, id, overrides?)</code></td><td>Dodaje deklaratywną akcję wyniku z <code>effect.system.actionDefs</code> (typ <code>result</code>). Przycisk odwołuje się do aktualnego efektu po UUID, zamiast kopiować kod do wiadomości czatu.</td></tr>
+    <tr><td><code>this.dialogConfig(content, config?)</code></td><td>Buduje konfigurację dialogu z tytułem efektu. Nie otwiera okna; do zwykłego użycia wybierz <code>await this.dialog(...)</code>.</td></tr>
     <tr><td><code>await this.deleteEffect(options?)</code></td><td>Bezpiecznie usuwa efekt źródłowy również dla aktorów synthetic/unlinked.</td></tr>
     <tr><td><code>this.getWeaponJammingThreshold(weapon)</code></td><td>Zwraca bazowy próg zacięcia broni; przy braku pola używa wartości <code>20</code>.</td></tr>
     <tr>

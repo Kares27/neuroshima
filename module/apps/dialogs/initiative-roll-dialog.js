@@ -501,6 +501,8 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
     if (Object.hasOwn(rollData.options ?? {}, "forcedInitiative")) {
       test.forceInitiative(rollData.options.forcedInitiative);
     }
+    test.preData.specialityBonus = Number(this._scriptFields?.specialityBonus ?? 0);
+    test.preData.specialitySources = foundry.utils.deepClone(this._scriptFields?.specialitySources ?? []);
     await test.roll();
     if (this._onRollCallback) await this._onRollCallback(test.result, test);
     return test.result;

@@ -11,6 +11,7 @@
             "homeBase": "Baza"
         },
         "Item": {
+            "speciality": "Specjalność",
             "weapon": "Broń",
             "grenade": "Granat",
             "armor": "Pancerz",
@@ -40,6 +41,23 @@
         }
     },
     "NEUROSHIMA": {
+        "ArmorLimit": {
+            "Name": "Restrykcja Poziomu Pancerza",
+            "Hint": "Ogranicza końcowy pancerz po uwzględnieniu efektów. Wyłączenie przywraca obliczenia bez limitu.",
+            "Character": "Actor & BN",
+            "Creature": "Bestia",
+            "Vehicle": "Pojazd"
+        },
+        "Speciality": {
+            "Name": "Specjalność",
+            "Skill": "Powiązana umiejętność",
+            "BaseLevel": "Poziom bazowy",
+            "TotalLevel": "Poziom po efektach",
+            "Level": "Poziom",
+            "FromSpecialization": "Jest ze specjalizacji",
+            "Empty": "Brak specjalności.",
+            "RollHint": "Punkty pomagają odejmować oczka; nie zwiększają przesunięcia trudności."
+        },
         "Sheet": {
             "ActorCharacter": "Arkusz Postaci",
             "ActorNPC": "Arkusz BN",
@@ -1378,6 +1396,7 @@
                 "Defensive": "{caliber} — obronny"
             },
             "Type": {
+                "Speciality": "Specjalność",
                 "Weapon": "Broń",
                 "WeaponMelee": "Broń Ręczna",
                 "WeaponRanged": "Broń Dystansowa",
@@ -1801,6 +1820,7 @@
             }
         },
         "BeastAction": {
+            "NoQueuedActions": "Brak zapisanych akcji bestii do nałożenia obrażeń. Wykonaj nowe starcie i wybierz akcję bestii.",
             "Label": "Akcje Bestii",
             "None": "Brak akcji bestii.",
             "RollAttack": "Rzut atakiem bestii",

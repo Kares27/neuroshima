@@ -1,3 +1,4 @@
+import { clampArmor, preserveArmorSourceValues } from "../helpers/armor-limit.js";
 import { beastActivities, createBeastCombatWeapon } from "../helpers/beast-actions.js";
 import { NEUROSHIMA } from "../config.js";
 import { createLoadedMagazineFromWeapon } from "../helpers/ammunition.js";
@@ -46,6 +47,11 @@ function _collectCreatureArmorBonusByEffect(actor) {
  * simplified wounds list instead of the full healing-panel system.
  */
 export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
+  async _processSubmitData(event, form, submitData) {
+    preserveArmorSourceValues(this.document, event, submitData);
+    return super._processSubmitData(event, form, submitData);
+  }
+
   /** @override */
   static DEFAULT_OPTIONS = {
     tag: "form",
@@ -1014,16 +1020,16 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       return {
         key,
         label:            game.i18n.localize(data.label),
-        reduction,
+        reduction: clampArmor(actor, reduction),
         hitPenalty:       system.naturalArmor?.[key]?.hitPenalty ?? 0,
         weakPoint:        system.naturalArmor?.[key]?.weakPoint  ?? false,
         items:            locItems,
         totalAP:          itemsAP,
-        totalEffectiveAP: reduction + itemsAP + bonus,
+        totalEffectiveAP: clampArmor(actor, reduction + itemsAP + bonus),
         tooltip:          buildBreakdownTooltip({
           title: data.label,
           sources: armorSources,
-          totalValue: reduction + itemsAP + bonus
+          totalValue: clampArmor(actor, reduction + itemsAP + bonus)
         })
       };
     });
@@ -1410,7 +1416,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
             currentDurability: currentDur,
             rating,
             damage:           locDamage,
-            currentRating:    currentAP
+            currentRating:    clampArmor(this.document, currentAP)
           });
         }
       }

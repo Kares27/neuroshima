@@ -1,4 +1,4 @@
-<section class="tab tab-stats {{#if (eq item.type "specialization")}}specialization-stats{{/if}} {{tabs.stats.cssClass}}" data-group="primary" data-tab="stats">
+<section class="tab tab-stats {{#if (eq item.type "specialization")}}specialization-stats{{/if}} {{#if (eq item.type "speciality")}}speciality-stats{{/if}} {{tabs.stats.cssClass}}" data-group="primary" data-tab="stats">
     {{#if (eq item.type "armor")}}
         {{#if isModded}}
         <div class="mod-lock-banner">
@@ -456,4 +456,33 @@
         </div>
     {{/if}}
 
+    {{#if (eq item.type "speciality")}}
+    <div class="grid grid-2col speciality-stat-controls">
+        <div class="form-group">
+            <label>{{localize "NEUROSHIMA.Speciality.Level"}}</label>
+            <input type="number" value="{{system.value}}" min="0" max="20" step="1" readonly>
+        </div>
+        <div class="form-group">
+            <label>{{localize "NEUROSHIMA.Speciality.FromSpecialization"}}</label>
+            <input type="checkbox" name="system.fromSpecialization" {{checked system.fromSpecialization}} {{#unless editable}}disabled{{/unless}}>
+        </div>
+    </div>
+        <div class="spec-master-table">
+            <div class="spec-master-body">
+                {{#each specialitySkillGroups}}
+                <div class="spec-attr-group">
+                    <div class="spec-attr-label">{{localize label}}</div>
+                    <div class="spec-attr-checks">
+                        {{#each skills}}
+                        <label class="spec-check-label">
+                            <input type="checkbox" name="specialitySkills.{{key}}" {{checked checked}} {{#unless @root.editable}}disabled{{/unless}}>
+                            {{localize label}}
+                        </label>
+                        {{/each}}
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+    {{/if}}
 </section>

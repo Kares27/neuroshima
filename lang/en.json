@@ -8,6 +8,7 @@
             "homeBase": "Home Base"
         },
         "Item": {
+            "speciality": "Speciality",
             "weapon": "Weapon",
             "grenade": "Grenade",
             "armor": "Armor",
@@ -37,6 +38,23 @@
         }
     },
     "NEUROSHIMA": {
+        "ArmorLimit": {
+            "Name": "Armor Level Restriction",
+            "Hint": "Caps final armor after effects. Disabling restores calculations without a limit.",
+            "Character": "Actor & NPC",
+            "Creature": "Beast",
+            "Vehicle": "Vehicle"
+        },
+        "Speciality": {
+            "Name": "Speciality",
+            "Skill": "Related skill",
+            "BaseLevel": "Base level",
+            "TotalLevel": "Effective level",
+            "Level": "Level",
+            "FromSpecialization": "From a specialization",
+            "Empty": "No specialities.",
+            "RollHint": "Points reduce dice results without improving the difficulty shift."
+        },
         "Sheet": {
             "ActorCharacter": "Actor Sheet",
             "ActorNPC": "NPC Sheet",
@@ -1350,6 +1368,7 @@
                 "Defensive": "{caliber} — defensive"
             },
             "Type": {
+                "Speciality": "Speciality",
                 "Weapon": "Weapon",
                 "WeaponMelee": "Melee Weapon",
                 "WeaponRanged": "Ranged Weapon",
@@ -1772,6 +1791,7 @@
             }
         },
         "BeastAction": {
+            "NoQueuedActions": "No beast actions were saved for damage application. Start a new exchange and select a beast action.",
             "Label": "Beast Actions",
             "None": "No beast actions.",
             "RollAttack": "Roll Beast Attack",

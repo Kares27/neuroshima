@@ -1159,7 +1159,9 @@ export class DuelDamageEngine {
         const attackData = {
           isMelee:       true,
           actorId:       attackerActor?.id,
+          actorUuid:     attackerActor?.uuid,
           weaponId:      rd.weaponId,
+          weaponUuid:    weaponItem?.uuid,
           label:         weaponItem?.name ?? game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
           damageMelee1:  hit.damageType,
           damageMelee2:  hit.damageType,
@@ -1185,7 +1187,9 @@ export class DuelDamageEngine {
         const attackData = {
           isMelee:       true,
           actorId:       attackerActor?.id,
+          actorUuid:     attackerActor?.uuid,
           weaponId:      rd.weaponId,
+          weaponUuid:    weaponItem?.uuid,
           label:         weaponItem?.name ?? game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
           damageMelee1:  rd.damage1,
           damageMelee2:  rd.damage2,
@@ -1805,7 +1809,7 @@ export class DuelSegmentEngine {
           const { MeleeActionRunner } = await import("./melee-action-runner.js");
 
           if (ownerSuccessPoints > 0) {
-            const hitEntry = { tier: N, damageType: hitDmgType };
+            const hitEntry = { tier: N, damageType: hitDmgType, successPoints: ownerSuccessPoints };
             if (declaredAction === "trick" && state.committedTrickId) {
               hitEntry.trickId = state.committedTrickId;
             }
@@ -1865,7 +1869,7 @@ export class DuelSegmentEngine {
             const hitDmgType = declaredAction === "trick" && state.committedTrickDamage
               ? state.committedTrickDamage
               : (state[`damage${N}`] ?? "?");
-            const hitEntry = { tier: N, damageType: hitDmgType };
+            const hitEntry = { tier: N, damageType: hitDmgType, successPoints: ownerSuccessPoints };
             if (declaredAction === "trick" && state.committedTrickId) {
               hitEntry.trickId = state.committedTrickId;
             }
@@ -2059,7 +2063,9 @@ export class DuelSegmentEngine {
       const atkActor           = atkDoc?.actor ?? atkDoc;
       const isCreatureAttacker = atkActor?.type === "creature";
       const isBeastAttack      = isCreatureAttacker && !state.weaponId;
-      const netSuccesses       = state.hits.length;
+      const netSuccesses = isBeastAttack
+        ? state.hits.reduce((sum, hit) => sum + Math.max(0, Number(hit.successPoints ?? hit.tier ?? 1)), 0)
+        : state.hits.length;
 
       let affordableBeastActions = [];
       if (isBeastAttack && netSuccesses > 0 && atkActor) {
@@ -2135,26 +2141,8 @@ export class DuelSegmentEngine {
  */
 export class DuelBeastActionEngine {
 
-  /**
-   * Zastosuj wybrane akcje bestii i oblicz wynikowe obrażenia.
-   *
-   * @param {object}   rd                 - opposedResult flag data
-   * @param {string[]} selectedActionIds  - compositeId[] = "itemId::activityId" (może się powtarzać)
-   * @param {object}   ctx
-   * @param {Actor}    ctx.attackerActor
-   * @param {Actor}    ctx.defenderActor
-   * @param {object}   ctx.CombatHelper   - dynamicznie importowany moduł
-   * @param {object}   ctx.NeuroshimaScriptRunner - dynamicznie importowany moduł
-   * @returns {Promise<{allResults: object[], allWoundIds: string[], totalReduced: number, allReducedDetails: object[], appliedNames: string[]}>}
-   */
-  static async processSelected(rd, selectedActionIds, { attackerActor, defenderActor, CombatHelper, NeuroshimaScriptRunner }) {
-    const location     = rd.location ?? "torso";
-
-
-    if (!Array.isArray(selectedActionIds)) {
-      throw new TypeError("selectedActionIds must be an array");
-    }
-
+  static validateSelected(rd, selectedActionIds, attackerActor) {
+    if (!Array.isArray(selectedActionIds)) throw new TypeError("selectedActionIds must be an array");
     // Resolve the exact composite references and validate the complete cost
     // before any test, effect, damage or other side effect is produced.
     const selectedActivities = selectedActionIds.map(compositeId => {
@@ -2182,6 +2170,31 @@ export class DuelBeastActionEngine {
     if (selectedCost > Math.max(0, Number(rd.netSuccesses ?? 0))) {
       throw new RangeError("Selected beast actions exceed the available success budget");
     }
+
+    return selectedActivities;
+  }
+
+  /**
+   * Zastosuj wybrane akcje bestii i oblicz wynikowe obrażenia.
+   *
+   * @param {object}   rd                 - opposedResult flag data
+   * @param {string[]} selectedActionIds  - compositeId[] = "itemId::activityId" (może się powtarzać)
+   * @param {object}   ctx
+   * @param {Actor}    ctx.attackerActor
+   * @param {Actor}    ctx.defenderActor
+   * @param {object}   ctx.CombatHelper   - dynamicznie importowany moduł
+   * @param {object}   ctx.NeuroshimaScriptRunner - dynamicznie importowany moduł
+   * @returns {Promise<{allResults: object[], allWoundIds: string[], totalReduced: number, allReducedDetails: object[], appliedNames: string[]}>}
+   */
+  static async processSelected(rd, selectedActionIds, { attackerActor, defenderActor, CombatHelper, NeuroshimaScriptRunner }) {
+    const location     = rd.location ?? "torso";
+
+
+    if (!Array.isArray(selectedActionIds)) {
+      throw new TypeError("selectedActionIds must be an array");
+    }
+
+    const selectedActivities = this.validateSelected(rd, selectedActionIds, attackerActor);
 
     const _applyLinkedEffects = async (item, activity, targetActor) => {
       const linkedEffectIds = new Set(activity.effectIds ?? []);
@@ -2277,6 +2290,9 @@ export class DuelBeastActionEngine {
           const attackData = {
             isMelee:     true,
             actorId:     attackerActor.id,
+            actorUuid:   attackerActor.uuid,
+            weaponId:    actionItem.id,
+            weaponUuid:  actionItem.uuid,
             label,
             damageMelee1: damage,
             damageMelee2: damage,
@@ -2319,6 +2335,9 @@ export class DuelBeastActionEngine {
           const attackData = {
             isMelee:      true,
             actorId:      attackerActor.id,
+            actorUuid:    attackerActor.uuid,
+            weaponId:     rd.weaponId,
+            weaponUuid:   attackerActor.items.get(rd.weaponId)?.uuid,
             label:        attackerActor.items.get(rd.weaponId)?.name ?? "—",
             damageMelee1: hit.damageType,
             damageMelee2: hit.damageType,
@@ -2343,6 +2362,9 @@ export class DuelBeastActionEngine {
           const attackData = {
             isMelee:      true,
             actorId:      attackerActor.id,
+            actorUuid:    attackerActor.uuid,
+            weaponId:     rd.weaponId,
+            weaponUuid:   attackerActor.items.get(rd.weaponId)?.uuid,
             label:        attackerActor.items.get(rd.weaponId)?.name ?? "—",
             damageMelee1: rd.damage1,
             damageMelee2: rd.damage2,

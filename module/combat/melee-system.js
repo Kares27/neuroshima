@@ -279,6 +279,8 @@ export class MeleeExchangeContext {
       isGradCios: session.variant === "gradCiosow",
       waitingFor: session.phase === "response" ? "responder" : "initiativeOwner",
       committedOwnerIndices: declaration ? idsToIndices(declaration.ownerSide, declaration.selectedDieIds) : null,
+      committedBeastQueue: clone(declaration?.beastQueue ?? null),
+      allBeastQueue: clone(exchange.beastQueue ?? []),
       currentSegment: exchange.currentSegment,
       attackerUuid: session.participants.attacker.actorUuid,
       attackerTokenUuid: session.participants.attacker.tokenUuid ?? null,
@@ -311,7 +313,6 @@ export class MeleeExchangeContext {
       declaredAction: declaration?.duelAction ?? null,
       committedTrickId: declaration?.activityInstanceId ?? null,
       committedTrickDamage: declaration?.damageSnapshot?.final?.[declaration?.selectedDieIds?.length] ?? null,
-      committedBeastQueue: null,
       committedTrickQueue: null,
       opposedId: session.id,
       actions: clone(declaration?.duelActions ?? {}),
@@ -340,6 +341,7 @@ export class MeleeExchangeContext {
     exchange.currentSegment = Math.min(2, number(state.currentSegment));
     exchange.segments = clone(state.segments ?? exchange.segments);
     exchange.hits = clone(state.hits ?? []);
+    exchange.beastQueue = clone(state.allBeastQueue ?? []);
     exchange.counterHits = clone(state.counterHits ?? []);
     if (state.waitingFor === "responder") {
       exchange.declaration ??= {};
@@ -347,6 +349,7 @@ export class MeleeExchangeContext {
       exchange.declaration.selectedDieIds = array(state.committedOwnerIndices)
         .map(index => this.getPool(ownerSide)[index]?.id).filter(Boolean);
       exchange.declaration.duelAction = state.declaredAction || "attack";
+      exchange.declaration.beastQueue = clone(state.committedBeastQueue ?? null);
       exchange.declaration.duelActions = clone(state.actions ?? {});
     } else exchange.declaration = null;
     this.setInitiativeOwnerSide(ownerSide, "duelResolver");
@@ -500,14 +503,16 @@ export function sideForActor(session, actorUuid) {
   }) ?? null;
 }
 
-async function userControlsMeleeParticipant(participant, user = game.user) {
+export function userControlsMeleeActor(actor, user = game.user) {
   if (!user?.active) return false;
   if (user.isGM) return true;
-  const document = await fromUuid(participant?.tokenUuid || participant?.actorUuid);
-  const actor = document?.actor ?? document;
-  if (user.character?.uuid === actor?.uuid) return true;
   const ownerLevel = globalThis.CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OWNER ?? 3;
   return actor?.testUserPermission?.(user, ownerLevel) === true;
+}
+
+async function userControlsMeleeParticipant(participant, user = game.user) {
+  const document = await fromUuid(participant?.tokenUuid || participant?.actorUuid);
+  return userControlsMeleeActor(document?.actor ?? document, user);
 }
 
 /** Canonical UI projection of the participant or GM action required by a session phase. */
@@ -1206,7 +1211,9 @@ registerMeleeOperation("damage", async context => {
   const damage = data.damage || data.damageProfiles?.[damageTier - 1]
     || context.action.definition.duel?.damage || "D";
   const attackData = {
-    isMelee: true, actorId: context.actor?.id, label: context.action.definition.name,
+    isMelee: true, actorId: context.actor?.id, actorUuid: context.actor?.uuid,
+    weaponUuid: context.action.definition.source?.itemUuid || context.session.participants?.[context.action.side]?.weaponUuid || null,
+    label: context.action.definition.name,
     damageMelee1: damage, damageMelee2: damage, damageMelee3: damage,
     finalLocation: data.location || context.location || "torso",
     successPoints: Math.max(1, number(context.successPoints, 1)),
@@ -1389,6 +1396,11 @@ export class MeleeEffectService {
   }
 
   static async applyTemplate(template, target, { session, action, operation, duration, stackMode, stackKey } = {}) {
+    const sourceActor = template.actor ?? template.parent?.actor;
+    if (sourceActor && template.getFlag?.("neuroshima", "preApplyScript")) {
+      const { NeuroshimaAuraManager } = await import("../apps/aura-manager.js");
+      if (!await NeuroshimaAuraManager._runPreApplyScript(template, sourceActor, target)) return null;
+    }
     const melee = template.system?.melee ?? {};
     const key = stackKey || melee.stackKey || template.uuid;
     const mode = stackMode || melee.stackMode || "ignore";
@@ -1402,7 +1414,7 @@ export class MeleeEffectService {
       }
       if (mode === "replace") await target.deleteEmbeddedDocuments("ActiveEffect", existing.map(effect => effect.id));
     }
-    const source = template.toObject();
+    const source = template.convertToApplied?.() ?? template.toObject();
     delete source._id;
     source.disabled = false;
     source.transfer = false;
@@ -1617,6 +1629,9 @@ export class MeleeCommandService {
   static async _authorize(session, command, user) {
     if (!user?.active) throw new MeleeValidationError("Inactive or unknown user", "UNAUTHORIZED");
     if (user.isGM) return;
+    if (["undo", "redo", "swapInitiative", "approveOutcome", "advanceSegment"].includes(command.type)) {
+      throw new MeleeValidationError("This melee command requires a GM", "UNAUTHORIZED");
+    }
     if (command.type === "endSession") {
       for (const participant of Object.values(session.participants ?? {})) {
         if (await userControlsMeleeParticipant(participant, user)) return;
@@ -1899,6 +1914,18 @@ export class MeleeCommandService {
       });
     }
 
+    if (queuedSuccessCost + number(activity.activation.successCost) > selectedSuccesses) {
+      throw new MeleeValidationError("Queued activities cost more successes than selected", "INSUFFICIENT_SUCCESSES");
+    }
+    const beastQueue = [
+      ...(activity.source?.kind === "beast" ? [{ definition: activity, quantity: 1 }] : []),
+      ...queuedSupplements
+    ].flatMap(entry => {
+      if (entry.definition.source?.kind !== "beast") return [];
+      const item = actor.items.find(item => item.uuid === entry.definition.source.itemUuid);
+      if (!item) throw new MeleeValidationError("Beast action item not found", "ACTIVITY_NOT_FOUND");
+      return Array.from({ length: entry.quantity }, () => `${item.id}::${entry.definition.id}`);
+    });
     const adapter = MeleeExchangeContext.fromSession(session);
     const state = adapter.toDuelState();
     const diceIndices = selectedDieIds.map(id => meleePoolDice(session, side).findIndex(die => die.id === id));
@@ -1934,7 +1961,7 @@ export class MeleeCommandService {
       session.actionInstances[instance.id] = instance;
       const accepted = await DuelDeclarationEngine.processOwnerCommit(state, {
         pool: side, ownerPool: ownerSide, action: duelAction, diceIndices,
-        beastQueue: null, message: messageAdapter, onRender: render
+        beastQueue, message: messageAdapter, onRender: render
       });
       if (!accepted) {
         session.exchange.history.pop();
@@ -1945,7 +1972,8 @@ export class MeleeCommandService {
       session.exchange.declaration = {
         ownerSide: side, activityInstanceId: instance.id, activityRef: reference,
         selectedDieIds, parameterValues, modifierRefs,
-        queuedSupplements: clone(instance.queuedSupplements), damageSnapshot: clone(instance.damageSnapshot),
+        queuedSupplements: clone(instance.queuedSupplements), beastQueue: clone(state.committedBeastQueue),
+        damageSnapshot: clone(instance.damageSnapshot),
         duelAction, duelActions: clone(state.actions ?? {})
       };
       for (const die of selectedDice) {
@@ -2068,9 +2096,6 @@ export class MeleeCommandService {
       await MeleeEffectService.expire(session, "initiativeChange", {
         previousOwnerId: initiativeBefore, ownerId: session.initiative.ownerId
       });
-    }
-    if (queuedSuccessCost > selectedSuccesses) {
-      throw new MeleeValidationError("Queued activities cost more successes than selected", "INSUFFICIENT_SUCCESSES");
     }
     if (session.status === "complete") await MeleeEffectService.expire(session, "sessionEnd", {});
     else await MeleeEffectService.expire(session, "segmentStart", { segmentIndex: session.exchange.currentSegment });
@@ -2691,7 +2716,11 @@ export function registerMeleeSystem() {
 }
 
 export function registerMeleeSocket(socket) {
-  socket.register(MELEE_SOCKET_COMMAND, async command => {
+  socket.register(MELEE_SOCKET_COMMAND, async function(command) {
+    // Socketlib supplies the actual sender independently of the command payload.
+    const userId = this.socketdata?.userId;
+    if (!userId) throw new MeleeValidationError("Missing socket sender", "UNAUTHORIZED");
+    command = { ...command, userId };
     if (command?.type === "startSession") {
       const requester = game.users.get(command.userId);
       if (!requester?.active) throw new MeleeValidationError("Inactive or unknown user", "UNAUTHORIZED");

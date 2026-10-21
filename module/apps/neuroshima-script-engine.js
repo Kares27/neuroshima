@@ -1,3 +1,4 @@
+import { specialityChoices } from "../helpers/speciality.js";
 import { dialogScriptSignature, dialogScriptGroupId, groupDialogModifiers } from "../helpers/dialog-script-groups.js";
 import { NeuroshimaChoiceRouter } from "../helpers/choice-router.js";
 import { NEUROSHIMA } from "../config.js";
@@ -4234,7 +4235,7 @@ export class NeuroshimaScriptRunner {
       skillLabel: null,
 
       dieManualBonus: 0,
-      dieReductionBonus: 0
+      specialitySources: [], specialityBonus: 0, dieReductionBonus: 0
     };
   }
 
@@ -4343,7 +4344,7 @@ export class NeuroshimaScriptRunner {
     burstHitStep: 1,
 
     dieManualBonus: 0,
-    dieReductionBonus: 0,
+    specialitySources: [], specialityBonus: 0, dieReductionBonus: 0,
 
     rollType: rc.rollType ?? null,
     subtype: rc.subtype ?? null,
@@ -4567,6 +4568,7 @@ export class NeuroshimaScriptRunner {
     skillKey:fields.skillKey || null,
     skillLabel:fields.skillLabel || null,
     dieManualBonus:fields.dieManualBonus || 0,
+    specialityBonus: fields.specialityBonus || 0,
     dieReductionBonus:fields.dieReductionBonus || 0
   };
 }
@@ -5205,7 +5207,7 @@ export class NeuroshimaScriptRunner {
   static async computeDialogFields(actor, rollContext = {}, selectedModifierIds = new Set(), unselectedModifierIds = new Set(), targetActors = [], options = {}) {
     if (!actor) return {
       dialogModifiers: [],
-      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, repBonus: 0, repValue: 0, fame: 0, attributeKey: null, skillKey: null, skillLabel: null, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, effectPenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, finalDifficultyShift: 0, maximumDifficulty: null, autoSuccess: false, annotations: [], damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], dieManualBonus: 0, dieReductionBonus: 0 },
+      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, repBonus: 0, repValue: 0, fame: 0, attributeKey: null, skillKey: null, skillLabel: null, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, effectPenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, finalDifficultyShift: 0, maximumDifficulty: null, autoSuccess: false, annotations: [], damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], dieManualBonus: 0, specialitySources: [], specialityBonus: 0, dieReductionBonus: 0 },
       modBreakdown: [],
       attrBreakdown: [],
       skillBreakdown: [],
@@ -5221,6 +5223,18 @@ export class NeuroshimaScriptRunner {
     for (const key of Object.keys(scriptFlags)) delete scriptFlags[key];
     scriptFlags.dialogOnce = Object.create(null);
     const allScriptEntries = [];
+    // Specialities are opt-in modifiers, scoped to the current skill.
+    for (const item of specialityChoices(actor, rollContext.skill?.key)) {
+      const value = Math.max(0, Math.trunc(Number(item.system.value) || 0));
+      if (!value) continue;
+      const effect = { id: `speciality-${item.id}`, parent: item, name: item.name, getFlag: () => null };
+      const script = new NeuroshimaScript({
+        trigger: "dialog", label: `${item.name} (+${value})`,
+        code: `args.fields.dieReductionBonus += ${value}; args.fields.specialityBonus += ${value};`,
+        activateScript: "return false;"
+      }, effect);
+      allScriptEntries.push({ script, sourceActor: actor, sourceLabel: null });
+    }
 
     const ownScripts = this.getScripts(actor, "dialog").filter(s => !s.targeter);
     for (const script of ownScripts) {
@@ -5319,7 +5333,7 @@ export class NeuroshimaScriptRunner {
       ? foundry.utils.deepClone(options.preRollModifiers)
       : [];
 
-    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, repBonus: 0, repValue: 0, fame: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, effectPenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, finalDifficultyShift: 0, maximumDifficulty: null, autoSuccess: false, annotations: [], damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], attributeKey: null, skillKey: null, skillLabel: null, dieManualBonus: 0, dieReductionBonus: 0 };
+    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, repBonus: 0, repValue: 0, fame: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, effectPenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, finalDifficultyShift: 0, maximumDifficulty: null, autoSuccess: false, annotations: [], damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], attributeKey: null, skillKey: null, skillLabel: null, dieManualBonus: 0, specialitySources: [], specialityBonus: 0, dieReductionBonus: 0 };
     const modBreakdown = [], attrBreakdown = [], skillBreakdown = [], effectPenaltyBreakdown = [];
     const reputationBreakdown = { repBonus: [], repValue: [], fame: [] };
 
@@ -5397,6 +5411,12 @@ export class NeuroshimaScriptRunner {
       if (result.skillKey) scriptFields.skillKey = result.skillKey;
       if (result.skillLabel) scriptFields.skillLabel = result.skillLabel;
       scriptFields.dieManualBonus += result.dieManualBonus || 0;
+      scriptFields.specialityBonus += result.specialityBonus || 0;
+      const specialityItem = dm._script?.effect?.parent;
+      if (specialityItem?.type === "speciality" && result.specialityBonus > 0) {
+        scriptFields.specialitySources.push({ uuid: specialityItem.uuid, name: specialityItem.name,
+          value: result.specialityBonus });
+      }
       scriptFields.dieReductionBonus += result.dieReductionBonus || 0;
     }
 

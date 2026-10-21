@@ -1,3 +1,5 @@
+import { advanceSpeciality } from "../helpers/speciality.js";
+import { clampArmor } from "../helpers/armor-limit.js";
 import { beastActivities } from "../helpers/beast-actions.js";
 import { NEUROSHIMA } from "../config.js";
 import { createLoadedMagazineFromWeapon } from "../helpers/ammunition.js";
@@ -377,6 +379,11 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         hasAny: moneyItems.length > 0
     };
     context.currencyDisplayName = game.settings.get("neuroshima", "currencyNameLabel") || "Gamble";
+    context.specialities = ["character", "npc"].includes(actor.type) ? items.filter(i => i.type === "speciality") : [];
+    context.specialityLevels = Object.fromEntries(context.specialities.map(item => [item.id, {
+      base: item._source?.system?.value ?? item.system.value,
+      total: Math.max(0, Math.trunc(Number(item.system.value) || 0))
+    }]));
     context.tricks = items.filter(i => i.type === "trick");
     context.traits = items.filter(i => i.type === "trait");
 
@@ -1132,6 +1139,15 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
   /** @override */
   async _onChangeForm(formConfig, event) {
+    if (event.target?.matches?.("[data-speciality-level]")) {
+      const input = event.target;
+      const item = this.document.items.get(input.closest("[data-item-id]")?.dataset.itemId);
+      if (!item) return;
+      try { await advanceSpeciality(this.document, item, input.value); }
+      catch (error) { ui.notifications.error(error.message); }
+      finally { input.value = item._source?.system?.value ?? item.system.value; }
+      return;
+    }
     const input = event.target;
     const name = input?.getAttribute?.("name") ?? input?.name;
 
@@ -2413,7 +2429,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
             currentDurability: currentDur,
             rating: rating,
             damage: locDamage,
-            currentRating: currentAP,
+            currentRating: clampArmor(actor, currentAP),
             radiationProtection: armor.radiationProtection ?? 0
           });
         }
@@ -2432,6 +2448,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       }
     }
 
+    for (const loc of Object.values(locations)) loc.totalAP = clampArmor(actor, loc.totalAP);
     const effectBonus = _collectArmorBonusByEffect(actor);
     for (const [key, loc] of Object.entries(locations)) {
       const sources = [

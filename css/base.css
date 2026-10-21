@@ -5478,17 +5478,21 @@ li.chat-message.message.flexcol > .message-content {
     color: var(--ns-text-accent);
 }
 
+.neuroshima-config .armor-limit-config table,
 .neuroshima-config .unarmed-damage-config table {
     width: 100%;
     table-layout: fixed;
 }
 
+.neuroshima-config .armor-limit-config th,
+.neuroshima-config .armor-limit-config td,
 .neuroshima-config .unarmed-damage-config th,
 .neuroshima-config .unarmed-damage-config td {
     padding: 3px;
     text-align: center;
 }
 
+.neuroshima-config .armor-limit-config input,
 .neuroshima-config .unarmed-damage-config input,
 .neuroshima-config .unarmed-damage-config select {
     width: 100%;

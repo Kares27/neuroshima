@@ -94,6 +94,9 @@ function evaluateClosed3d20(data, results, rolledResults = results) {
 }
 
 function evaluateDefense3d20(data, results, rolledResults = results) {
+  if (Number(data.specialityBonus ?? 0) > 0) {
+    return evaluateClosed3d20({ ...data, skill: 0, dieReductionBonus: data.specialityBonus }, results, rolledResults);
+  }
   const target = Number(data.target ?? 0);
   const modifiedResults = diceObjects(results, rolledResults).map(die => ({
     ...die,
@@ -1028,6 +1031,12 @@ export class NeuroshimaTestBase {
               : Number(result.attributeBonus ?? 0) < 0 ? "penalty" : null
           },
           { label: "NEUROSHIMA.Tooltip.BaseSkill", value: result.baseSkill ?? 0 },
+          ...(result.specialitySources?.length
+            ? result.specialitySources.map(source => ({
+                label: `${game.i18n.localize("NEUROSHIMA.Speciality.Name")}: ${source.name}`,
+                value: source.value, signed: true, state: "bonus"
+              }))
+            : result.specialityBonus ? [{ label: "NEUROSHIMA.Speciality.Name", value: result.specialityBonus, signed: true, state: "bonus" }] : []),
           {
             label: "NEUROSHIMA.Tooltip.SkillBonus",
             value: result.skillBonus ?? 0,
@@ -1153,6 +1162,17 @@ export class NeuroshimaTest extends NeuroshimaTestBase {
     this.result.isOpen = this.preData.isOpen === true || this.context.isOpen === true;
     this.result.isCombat = this.preData.isCombat === true || this.context.isCombat === true;
     this.result.dieManualBonus = Number(this.preData.dieManualBonus ?? 0);
+    this.result.specialityBonus = ["character", "npc"].includes(this.actor?.type)
+      ? Math.max(0, Math.trunc(Number(this.preData.specialityBonus) || 0)) : 0;
+    this.result.specialitySources = ["character", "npc"].includes(this.actor?.type)
+      ? (this.preData.specialitySources ?? []).filter(source => Number(source.value) > 0)
+        .map(source => ({ uuid: source.uuid, name: String(source.name ?? ""), value: Math.trunc(Number(source.value)) }))
+      : [];
+    for (const source of this.result.specialitySources) {
+      const label = `${game.i18n.localize("NEUROSHIMA.Speciality.Name")}: ${source.name} (+${source.value})`;
+      this.result.annotations ??= [];
+      if (!this.result.annotations.includes(label)) this.result.annotations.push(label);
+    }
     this.result.dieReductionBonus = Number(this.preData.dieReductionBonus ?? 0);
     this.result.actorId = this.actor?.id ?? null;
     this.result.actorImg = this.actor?.img ?? null;
@@ -2146,10 +2166,10 @@ export class MeleeWeaponTest extends WeaponTest {
       : defense
         ? evaluateDefense3d20(this.result, this.result.rawResults, this.result.rolledResults)
         : doubleSkill
-        ? {
-            ...evaluateDefense3d20(this.result, this.result.rawResults, this.result.rolledResults),
-            success: this.result.rawResults.some(value => Number(value) <= this.result.target && Number(value) !== 20)
-          }
+        ? (() => {
+            const evaluated = evaluateDefense3d20(this.result, this.result.rawResults, this.result.rolledResults);
+            return { ...evaluated, success: evaluated.modifiedResults.some(die => die.isSuccess) };
+          })()
         : evaluateClosed3d20(this.result, this.result.rawResults, this.result.rolledResults);
     Object.assign(this.result, evaluated);
     this.applyResultModifiers();

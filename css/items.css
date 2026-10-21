@@ -308,9 +308,10 @@
     display: flex;
 }
 
-/* Specialization uses the complete Stats-tab height. The table owns the
+/* Specialization and speciality use the complete Stats-tab height. The table owns the
    available space while only its list body scrolls when the window is short. */
-.neuroshima.sheet.item .specialization-stats.active {
+.neuroshima.sheet.item .specialization-stats.active,
+.neuroshima.sheet.item .speciality-stats.active {
     display: flex;
     flex: 1 1 0;
     flex-direction: column;
@@ -320,7 +321,8 @@
     box-sizing: border-box;
 }
 
-.neuroshima.sheet.item .specialization-stats .spec-master-table {
+.neuroshima.sheet.item .specialization-stats .spec-master-table,
+.neuroshima.sheet.item .speciality-stats .spec-master-table {
     display: flex;
     flex: 1 1 auto;
     flex-direction: column;
@@ -332,11 +334,36 @@
     flex: 0 0 auto;
 }
 
-.neuroshima.sheet.item .specialization-stats .spec-master-body {
+.neuroshima.sheet.item .specialization-stats .spec-master-body,
+.neuroshima.sheet.item .speciality-stats .spec-master-body {
     flex: 1 1 auto;
     min-height: 0;
     max-height: none;
     overflow-y: auto;
+}
+
+.neuroshima.sheet.item .speciality-stat-controls {
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.neuroshima.sheet.item .speciality-stat-controls .form-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+
+.neuroshima.sheet.item .speciality-stat-controls input[type="number"] {
+    flex: 0 0 54px;
+    width: 54px;
+    text-align: center;
+}
+
+.neuroshima.sheet.item .speciality-stat-controls input[type="checkbox"] {
+    flex: 0 0 auto;
 }
 
 /* Stats Tab Grid Layout */

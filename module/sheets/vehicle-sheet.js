@@ -1,3 +1,4 @@
+import { clampArmor } from "../helpers/armor-limit.js";
 import { NEUROSHIMA } from "../config.js";
 import { createLoadedMagazineFromWeapon } from "../helpers/ammunition.js";
 import { getConditions } from "../apps/config/condition-config.js";
@@ -399,15 +400,15 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
       return {
         key,
         label:            game.i18n.localize(vehicleLocationsConfig[key]),
-        reduction:        plate,
+        reduction:        clampArmor(actor, plate),
         hitPenalty:       system.armor?.[key]?.hitPenalty ?? 0,
         weakPoint:        system.armor?.[key]?.weakPoint  ?? false,
         items:            locItems,
-        totalEffectiveAP: plate + itemsAP + bonus,
+        totalEffectiveAP: clampArmor(actor, plate + itemsAP + bonus),
         tooltip:          buildBreakdownTooltip({
           title: vehicleLocationsConfig[key],
           sources: armorSources,
-          totalValue: plate + itemsAP + bonus
+          totalValue: clampArmor(actor, plate + itemsAP + bonus)
         })
       };
     });

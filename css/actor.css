@@ -9191,6 +9191,20 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 }
 
 /* Creature combat: visible quick actions and equal-height columns. */
+.neuroshima.sheet.actor .speciality-row {
+    align-items: center;
+    gap: 8px;
+    padding: 5px;
+}
+.neuroshima.sheet.actor .speciality-row .skill-input-wrapper {
+    flex-basis: 102px;
+}
+.neuroshima.sheet.actor .speciality-row .skill-input {
+    width: 50px;
+}
+.neuroshima.sheet.actor .speciality-row .item-controls {
+    flex: 0 0 28px;
+}
 .neuroshima.sheet.actor-creature .creature-combat-columns {
     align-items: stretch;
 }

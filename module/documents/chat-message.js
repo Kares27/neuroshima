@@ -1,3 +1,4 @@
+import { clampArmor } from "../helpers/armor-limit.js";
 import { beastActivities } from "../helpers/beast-actions.js";
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
@@ -235,12 +236,19 @@ export class NeuroshimaChatMessage extends ChatMessage {
    */
   static async onApplyOpposedDamage(event, message) {
     const btn = event.currentTarget;
-    const { MeleeOpposedChat } = await import("../combat/combat.js");
-    await MeleeOpposedChat.applyOpposedDamage(message.id);
-    if (btn) {
-      btn.disabled = true;
-      btn.classList.add("applied");
-      btn.innerHTML = `<i class="fas fa-check"></i> ${game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.DamageApplied")}`;
+    if (btn?.disabled) return;
+    if (btn) btn.disabled = true;
+    try {
+      const { MeleeOpposedChat } = await import("../combat/combat.js");
+      const result = await MeleeOpposedChat.applyOpposedDamage(message.id);
+      if (btn && result?.applied) {
+        btn.classList.add("applied");
+        btn.innerHTML = `<i class="fas fa-check"></i> ${game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.DamageApplied")}`;
+      } else if (btn) btn.disabled = false;
+    } catch (error) {
+      if (btn) btn.disabled = false;
+      ui.notifications.error(error.message);
+      console.error("Neuroshima | Failed to apply opposed damage", error);
     }
   }
 
@@ -278,8 +286,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
    * Handle a die-pick click in the Grad Ciosów duel card.
    *
    * Permission check: non-GM players may only pick dice for the side they own.
-   * GMs execute the mutation directly; players route through the socket helper so
-   * that `applyDuelPick` always runs on the GM client.
+   * Players use the authorized command dispatcher, preserving their identity
+   * when the command is relayed to the GM client.
    *
    * @param {PointerEvent}  event
    * @param {HTMLElement}   btn   - The clicked button (`data-side`, `data-die-idx`).
@@ -305,7 +313,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
     if (game.user.isGM) {
       await MeleeOpposedChat.applyDuelPick(message.id, side, dieIdx);
     } else if (game.neuroshima?.socket) {
-      await game.neuroshima.socket.executeAsGM("applyDuelPick", message.id, side, dieIdx);
+      await MeleeOpposedChat.commitExchangeAction(message.id, side, [dieIdx]);
     }
   }
 
@@ -2112,7 +2120,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
         const eff = s.effectiveArmor ?? {};
         armorRatings = locKeys.map(({ key, abbr }) => ({
           label: loc(`NEUROSHIMA.Items.Fields.${abbr}`),
-          value: eff[key] ?? s.armor?.ratings?.[key] ?? 0
+          value: clampArmor(item.actor, eff[key] ?? s.armor?.ratings?.[key] ?? 0)
         }));
         const dur = (s.armor?.durability ?? 0) - (s.armor?.durabilityDamage ?? 0);
         armorBoxStats = [

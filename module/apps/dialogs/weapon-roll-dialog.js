@@ -898,6 +898,8 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     if (params.autoSuccess === true) {
       test.forceSuccess({ mode: "keepRoll" });
     }
+    test.preData.specialityBonus = Number(this._scriptFields?.specialityBonus ?? 0);
+    test.preData.specialitySources = foundry.utils.deepClone(this._scriptFields?.specialitySources ?? []);
     await test.roll();
     NeuroshimaDice._groupHitsData(test.result);
     return test;

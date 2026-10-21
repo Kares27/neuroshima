@@ -1,3 +1,4 @@
+import { clampArmor } from "./armor-limit.js";
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaChatMessage } from "../documents/chat-message.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
@@ -373,7 +374,7 @@ export class CombatHelper {
             results = damageResult.results;
             woundIds = damageResult.woundIds;
 
-            await this._applyDamageTypeEffects(actor, attackData);
+            if (woundIds.length) await this._applyDamageTypeEffects(actor, attackData);
 
             if (!suppressChat) {
                 ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.DamageApplied", { 
@@ -423,10 +424,7 @@ export class CombatHelper {
     const VEHICLE_DMG_MAP = isWeakPoint ? VEHICLE_DMG_MAP_WEAKPOINT : VEHICLE_DMG_MAP_BASE;
     const durBase     = (actor.system.attributes?.durability ?? 0) + (actor.system.modifiers?.durability ?? 0);
     const sourceLabel = attackData.label || game.i18n.localize("NEUROSHIMA.Items.Fields.None");
-    const attackerActor = attackData.actorId ? game.actors.get(attackData.actorId) : null;
-    const attackerWeapon = attackerActor && attackData.weaponId
-      ? attackerActor.items.get(attackData.weaponId)
-      : null;
+    const { attacker: attackerActor, weapon: attackerWeapon } = await this._resolveDamageSource(attackData);
 
     if (attackerActor) {
       await NeuroshimaScriptRunner.executeEvent("preApplyDamage", {
@@ -495,7 +493,7 @@ export class CombatHelper {
       }
 
       // Vehicle armor: unified via getArmorRating (built-in plate + equipped items)
-      const { totalSP: rawSP, weakPoint: vWeakPoint } = this.getArmorRating(actor, location);
+      const { uncappedSP: rawSP, weakPoint: vWeakPoint } = this.getArmorRating(actor, location);
 
       let vehicleDmgTypeFinal = vehicleDmgType;
       if (vWeakPoint) {
@@ -513,7 +511,7 @@ export class CombatHelper {
       NeuroshimaScriptRunner.executeEventSync("APCalc", vArmorArgs, {
         metadata: { role: "target", damage: vArmorArgs }
       });
-      const armorSP = (vArmorArgs.sp ?? rawSP) + (vArmorArgs.bonusSP ?? 0);
+      const armorSP = clampArmor(actor, Number(vArmorArgs.sp ?? rawSP) + Number(vArmorArgs.bonusSP ?? 0));
 
       const vConfig = NEUROSHIMA.vehicleDamageConfiguration;
       const origPoints = vConfig[vehicleDmgTypeFinal]?.damagePoints ?? 1;
@@ -607,6 +605,7 @@ export class CombatHelper {
     if (itemsToCreate.length > 0) {
       const created = await actor.createEmbeddedDocuments("Item", itemsToCreate);
       woundIds = created.map(i => i.id);
+      if (woundIds.length) await this._applyDamageTypeEffects(actor, attackData);
     }
 
     const damageResult = { attackData, results, negatedItems, woundIds, location };
@@ -1292,7 +1291,7 @@ export class CombatHelper {
       }
     }
 
-    return { totalSP, details, weakPoint };
+    return { totalSP: clampArmor(actor, totalSP), uncappedSP: totalSP, details, weakPoint };
   }
 
   /**
@@ -1329,8 +1328,8 @@ export class CombatHelper {
       reducedDamageType: null
     };
 
-    const { totalSP, details, weakPoint } = this.getArmorRating(actor, location, damageCategory);
-    let totalArmorRating = totalSP;
+    const { uncappedSP, details, weakPoint } = this.getArmorRating(actor, location, damageCategory);
+    let totalArmorRating = uncappedSP;
     reductionData.armorDetails = details;
 
     if (weakPoint) {
@@ -1358,7 +1357,7 @@ export class CombatHelper {
     NeuroshimaScriptRunner.executeEventSync("APCalc", armorArgs, {
       metadata: { role: "target", damage: armorArgs }
     });
-    totalArmorRating = (armorArgs.sp ?? totalArmorRating) + (armorArgs.bonusSP ?? 0);
+    totalArmorRating = clampArmor(actor, Number(armorArgs.sp ?? totalArmorRating) + Number(armorArgs.bonusSP ?? 0));
     reductionData.totalArmor = totalArmorRating;
 
     // Piercing only applies to physical armor
@@ -1513,6 +1512,8 @@ export class CombatHelper {
       totalArmorRating
     });
     
+    // Apply the same cap in the legacy reduction entry point.
+    totalArmorRating = clampArmor(actor, totalArmorRating);
     // Calculate reduction: Armor - Piercing
     const reduction = totalArmorRating - piercing;
     let actualReduction = 0;
@@ -1819,27 +1820,54 @@ export class CombatHelper {
    * @returns {Promise<void>}
    */
   static async _applyDamageTypeEffects(defender, attackData) {
-    const attacker = attackData.actorId ? game.actors.get(attackData.actorId) : null;
-    const weapon   = attacker && attackData.weaponId ? attacker.items.get(attackData.weaponId) : null;
-
-    const sources = [
-      ...(attacker ? attacker.effects.contents : []),
-      ...(weapon   ? weapon.effects.contents   : [])
-    ];
-
-    const toApply = sources
-      .filter(e => !e.disabled)
-      .filter(e => {
-        const tType = e.getFlag?.("neuroshima", "transferType") ?? "owningDocument";
-        const dType = e.getFlag?.("neuroshima", "documentType") ?? "actor";
-        return tType === "damage" && dType === "actor";
-      })
-      .map(e => e.convertToApplied());
-
-    if (toApply.length) {
-      game.neuroshima.log(`CombatHelper | Applying ${toApply.length} damage-type effect(s) to ${defender.name}`);
-      await defender.applyEffect({ effectData: toApply });
+    const { attacker, weapon } = await this._resolveDamageSource(attackData);
+    const sources = new Set(Array.from(attacker?.effects ?? []));
+    for (const item of attacker?.items ?? []) {
+      if (item.type === "beast-action" && (item.uuid !== weapon?.uuid || item.system?.applyEffectsAutomatically === false)) continue;
+      for (const effect of item.effects ?? []) {
+        if (effect.getFlag?.("neuroshima", "equipTransfer") && item.system?.equipped === false) continue;
+        const documentType = effect.getFlag?.("neuroshima", "documentType") ?? "actor";
+        if (documentType === "actor" || item.uuid === weapon?.uuid) sources.add(effect);
+      }
     }
+    if (weapon?.type !== "beast-action" || weapon.system?.applyEffectsAutomatically !== false) {
+      for (const effect of weapon?.effects ?? []) sources.add(effect);
+    }
+    const toApply = [];
+    const seen = new Set();
+    for (const effect of sources) {
+      if (effect.disabled || effect.getFlag?.("neuroshima", "transferType") !== "damage") continue;
+      const key = effect.uuid ?? effect;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (effect.getFlag?.("neuroshima", "preApplyScript") || effect.getFlag?.("neuroshima", "filterScript")) {
+        const { NeuroshimaAuraManager } = await import("../apps/aura-manager.js");
+        if (!await NeuroshimaAuraManager._runPreApplyScript(effect, attacker, defender)) continue;
+        if (await NeuroshimaAuraManager._runFilterScript(effect, defender, attacker)) continue;
+      }
+      toApply.push(effect.convertToApplied());
+    }
+    if (toApply.length) await defender.applyEffect({ effectData: toApply });
+  }
+
+  /** Resolve the actual attack source, including unlinked token actors and beast actions. */
+  static async _resolveDamageSource(attackData) {
+    let attacker = null;
+    if (attackData.actorUuid) {
+      try {
+        const document = await fromUuid(attackData.actorUuid);
+        attacker = document?.actor ?? document;
+      } catch (error) { game.neuroshima?.warn?.("[damage] Invalid source actor UUID", error); }
+    }
+    attacker ??= attackData.actorId ? game.actors.get(attackData.actorId) : null;
+    let weapon = null;
+    if (attackData.weaponUuid) {
+      try { weapon = await fromUuid(attackData.weaponUuid); }
+      catch (error) { game.neuroshima?.warn?.("[damage] Invalid source item UUID", error); }
+    }
+    weapon ??= attackData.weaponId ? attacker?.items?.get(attackData.weaponId) : null;
+    attacker ??= weapon?.actor ?? null;
+    return { attacker, weapon };
   }
 
   /**

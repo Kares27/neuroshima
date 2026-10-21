@@ -22,7 +22,7 @@ import { NeuroshimaTestBase, MeleeWeaponTest, MeleeOpposedResolver, TestRules } 
 import { MeleeActionRegistry } from "./melee-action-registry.js";
 import { MeleeActionRunner }   from "./melee-action-runner.js";
 import { DuelContext, DuelSegmentContext, DuelLifecycle, MeleeAction, DuelActionPipeline, DuelDamageEngine, DuelDeclarationEngine, DuelSegmentEngine, DuelBeastActionEngine } from "./combat-api.js";
-import { isMeleeSessionLink, isMeleeSessionMarker } from "./melee-system.js";
+import { isMeleeSessionLink, isMeleeSessionMarker, userControlsMeleeActor } from "./melee-system.js";
 import { createUnarmedWeapon } from "./unarmed.js";
 
 /** Canonical score used when an attack is resolved as an opposed open test. */
@@ -2970,20 +2970,42 @@ export class MeleeOpposedChat {
 
     const state = message._neuroshimaMeleeSession?.duelState
       ?? message.getFlag("neuroshima", "duelCard");
-    if (!state || state.status !== "picking") return;
+    if (!state) return;
     root.dataset.neuroshimaMeleeActionsBound = "true";
-
-    root.querySelectorAll("[data-melee-owner]").forEach(el => {
-      const ownerUuid = el.dataset.meleeOwner;
-      if (!ownerUuid) return;
-      const doc   = fromUuidSync(ownerUuid);
-      const actor = doc?.actor ?? doc;
-      const canAct = game.user.isGM || actor?.isOwner;
-      if (!canAct) {
-        el.style.opacity       = "0.4";
-        el.style.pointerEvents = "none";
-      }
+    const sideActor = side => {
+      const uuid = side === "attacker" ? (state.attackerTokenUuid || state.attackerUuid)
+        : side === "defender" ? (state.defenderTokenUuid || state.defenderUuid) : null;
+      const document = uuid ? fromUuidSync(uuid) : null;
+      return document?.actor ?? document;
+    };
+    const activeSide = state.waitingFor === "initiativeOwner" ? state.initiativeOwnerSide
+      : state.waitingFor === "responder" ? (state.initiativeOwnerSide === "attacker" ? "defender" : "attacker") : null;
+    const canTakeTurn = () => state.status === "picking" && !!activeSide
+      && userControlsMeleeActor(sideActor(activeSide));
+    const gmControls = '[data-action="duelSwapInit"], [data-action="duelUndoSegment"], [data-action="duelRedoSegment"], [data-melee-outcome-id]';
+    if (!game.user.isGM) root.querySelectorAll(gmControls).forEach(control => {
+      control.disabled = true;
+      control.hidden = true;
     });
+    // Capture runs before delegated card handlers and before submission scripts.
+    for (const eventName of ["click", "change"]) root.addEventListener(eventName, event => {
+      const target = event.target?.closest?.("button, input, select, textarea, label, .mdc-dialog-mod-entry");
+      if (!target) return;
+      const gmOnly = target.matches(gmControls);
+      const combatControl = target.closest(".mdc-controls, .duel-pool-chips");
+      const pool = target.dataset.pool;
+      if ((gmOnly && !game.user.isGM) || (combatControl && (!canTakeTurn()
+        || (pool && (pool !== activeSide || !userControlsMeleeActor(sideActor(pool))))))) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    }, { capture: true });
+    if (!canTakeTurn()) {
+      root.querySelectorAll('.mdc-controls button, .mdc-controls input, .mdc-controls select, .mdc-controls textarea, button.die-chip-mvc')
+        .forEach(control => { control.disabled = true; });
+      return;
+    }
+    if (state.status !== "picking") return;
 
     const updateActionButtons = () => {
       const selectedChips = [...root.querySelectorAll("button.die-chip-mvc.mvc-die-selected")];
@@ -3440,7 +3462,14 @@ export class MeleeOpposedChat {
     }
     const session = await game.neuroshima.melee.get(marker.sessionId, { messageId });
     if (!session) throw new Error("Nie znaleziono aktywnej sesji melee.");
-    const side = pool === "defender" ? "defender" : "attacker";
+    if (!["attacker", "defender"].includes(pool)) throw new Error("Invalid melee side");
+    const side = pool;
+    const requester = game.user.isGM && options.requestingUserId
+      ? game.users.get(options.requestingUserId) : game.user;
+    const participantDocument = await fromUuid(session.participants?.[side]?.tokenUuid || session.participants?.[side]?.actorUuid);
+    if (!userControlsMeleeActor(participantDocument?.actor ?? participantDocument, requester)) {
+      throw new Error("Nie masz uprawnień do sterowania tą stroną walki.");
+    }
     const selectedDieIds = [...new Set(diceIndices)]
       .map(index => session.pools?.[side]?.dice?.[index]?.id)
       .filter(Boolean);
@@ -3465,6 +3494,7 @@ export class MeleeOpposedChat {
     }));
     return game.neuroshima.melee.dispatch({
       type: "commitExchangeAction",
+      userId: requester.id,
       side,
       payload: {
         activity, selectedDieIds,
@@ -4334,7 +4364,7 @@ export class MeleeOpposedChat {
     if (!rd) return;
     if (rd.applied) {
       ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.AlreadyApplied"));
-      return;
+      return { applied: true, alreadyApplied: true };
     }
     const hasHits        = rd.hits?.length > 0;
     const hasCounterHits = rd.counterHits?.length > 0;
@@ -4350,6 +4380,15 @@ export class MeleeOpposedChat {
     if (!defenderActor) {
       ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.DefenderNotFound"));
       return;
+    }
+
+    if (rd.isBeastAttack && hasHits) {
+      const queue = rd.pendingBeastQueue ?? [];
+      if (!queue.length) {
+        ui.notifications.warn(game.i18n.localize("NEUROSHIMA.BeastAction.NoQueuedActions"));
+        return { applied: false };
+      }
+      DuelBeastActionEngine.validateSelected(rd, queue, attackerActor);
     }
 
     // Reserve the canonical damage operation only after the duel documents
@@ -4436,7 +4475,8 @@ export class MeleeOpposedChat {
     if (rd.isBeastAttack) {
       const queue = rd.pendingBeastQueue ?? [];
       if (queue.length > 0) {
-        await MeleeOpposedChat.applyBeastActions(messageId, queue, { damageClaimed: true });
+        const applied = await MeleeOpposedChat.applyBeastActions(messageId, queue, { damageClaimed: true });
+        if (!applied?.applied) return { applied: false };
         if (!meleeSession) {
           const refreshed = message.getFlag("neuroshima", "opposedResult");
           await message.setFlag("neuroshima", "opposedResult", { ...refreshed, applied: true });
@@ -4450,7 +4490,7 @@ export class MeleeOpposedChat {
           });
         } else await message.setFlag("neuroshima", "opposedResult", { ...rd, applied: true });
       }
-      return;
+      return { applied: true };
     }
     const weaponItem = attackerActor?.items?.get(rd.weaponId);
 
@@ -4501,6 +4541,7 @@ export class MeleeOpposedChat {
     } else {
       await message.setFlag("neuroshima", "opposedResult", { ...rd, applied: true });
     }
+    return { applied: true };
   }
 
   static async _createPendingHailCard(rawResult, attacker, weapon, targetActor, targetDoc, attackDice, attackerSuccesses) {
@@ -4879,6 +4920,8 @@ export class MeleeOpposedChat {
       return;
     }
 
+    DuelBeastActionEngine.validateSelected(rd, selectedActionIds, attackerActor);
+
     // This method is also reachable directly from the beast-action button. If
     // the ordinary duel handler did not reserve damage first, reserve it here.
     if (meleeSession && options.damageClaimed !== true) {
@@ -4908,8 +4951,7 @@ export class MeleeOpposedChat {
       );
     } catch (error) {
       game.neuroshima?.warn?.("[applyBeastActions] authoritative validation rejected selection", error);
-      ui.notifications.warn(error.message);
-      return;
+      throw error;
     }
 
     const { allResults, allWoundIds, totalReduced, allReducedDetails, appliedNames } = result;
@@ -4933,8 +4975,9 @@ export class MeleeOpposedChat {
         commandId: foundry.utils.randomID()
       });
     } else {
-      await message.setFlag("neuroshima", "opposedResult", { ...rd, beastActionsApplied: true });
+      await message.setFlag("neuroshima", "opposedResult", { ...rd, beastActionsApplied: true, applied: true });
     }
+    return { applied: true };
   }
 
   /** Map first attack die roll to a body location. @private */

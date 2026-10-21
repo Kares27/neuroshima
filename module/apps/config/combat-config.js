@@ -70,6 +70,10 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
         }));
 
         const config = {
+                armorLimitEnabled: game.settings.get("neuroshima", "armorLimitEnabled"),
+                armorLimitCharacter: game.settings.get("neuroshima", "armorLimitCharacter"),
+                armorLimitCreature: game.settings.get("neuroshima", "armorLimitCreature"),
+                armorLimitVehicle: game.settings.get("neuroshima", "armorLimitVehicle"),
                 usePelletCountLimit: game.settings.get("neuroshima", "usePelletCountLimit"),
                 allowCombatShift: game.settings.get("neuroshima", "allowCombatShift"),
                 allowPainResistanceShift: game.settings.get("neuroshima", "allowPainResistanceShift"),
@@ -90,6 +94,15 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
         };
     }
 
+    async _onChangeForm(formConfig, event) {
+        if (event.target?.name === "armorLimitEnabled") {
+            const table = this.element?.querySelector("[data-armor-limit-table]");
+            if (table) table.hidden = !event.target.checked;
+            return;
+        }
+        return super._onChangeForm(formConfig, event);
+    }
+
     _readUnarmedDamageTable() {
         const rows = Array.from(this.element?.querySelectorAll?.("[data-unarmed-row]") ?? []).map(row => ({
             maxBuild: row.querySelector('[name$=".maxBuild"]')?.value ?? null,
@@ -104,6 +117,10 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
     _readConfigDraft() {
         const value = name => this.element?.querySelector?.(`[name="${name}"]`);
         return {
+            armorLimitEnabled: value("armorLimitEnabled")?.checked === true,
+            armorLimitCharacter: Number(value("armorLimitCharacter")?.value ?? 6),
+            armorLimitCreature: Number(value("armorLimitCreature")?.value ?? 6),
+            armorLimitVehicle: Number(value("armorLimitVehicle")?.value ?? 6),
             usePelletCountLimit: value("usePelletCountLimit")?.checked === true,
             allowCombatShift: value("allowCombatShift")?.checked === true,
             allowPainResistanceShift: value("allowPainResistanceShift")?.checked === true,
@@ -155,7 +172,14 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
             const prevPellet = game.settings.get("neuroshima", "usePelletCountLimit");
             const prevMeleeType = game.settings.get("neuroshima", "meleeCombatType");
 
+            const armorLimits = ["Character", "Creature", "Vehicle"].map(group => {
+                const value = Number(data[`armorLimit${group}`]);
+                if (!Number.isFinite(value) || value < 0) throw new Error("Invalid armor limit");
+                return { group, value };
+            });
             const updates = [
+                game.settings.set("neuroshima", "armorLimitEnabled", !!data.armorLimitEnabled),
+                ...armorLimits.map(({ group, value }) => game.settings.set("neuroshima", `armorLimit${group}`, value)),
                 game.settings.set("neuroshima", "usePelletCountLimit", !!data.usePelletCountLimit),
                 game.settings.set("neuroshima", "allowCombatShift", !!data.allowCombatShift),
                 game.settings.set("neuroshima", "allowPainResistanceShift", !!data.allowPainResistanceShift),

@@ -450,6 +450,8 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
         dieReductionBonus: (Number(this.userEntry.dieReductionBonus ?? 0) || 0) + (sf.dieReductionBonus || 0)
       });
       test.context.options = submissionOptions;
+      test.preData.specialityBonus = Number(this._scriptFields?.specialityBonus ?? 0);
+      test.preData.specialitySources = foundry.utils.deepClone(this._scriptFields?.specialitySources ?? []);
       await test.roll({ sendToChat: false });
       if (!test.preData.cancelled) tests.push(test);
     }

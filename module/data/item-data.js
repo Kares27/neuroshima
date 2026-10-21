@@ -463,10 +463,23 @@ export class BeastSegmentData extends foundry.abstract.TypeDataModel {
 }
 
 /**
- * Data model for Specialization items.
- * Represents a character specialization (e.g. Combat, Exploration, Social).
- * Can optionally auto-unlock a skill specialization group on the actor.
+ * A skill-specific dice reduction bonus, separate from specialization groups.
  */
+export class SpecialityData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" }),
+      skills: new fields.ArrayField(new fields.StringField(), { initial: [] }),
+      value: new fields.NumberField({ integer: true, initial: 0, min: 0, max: 20 }),
+      fromSpecialization: new fields.BooleanField({ initial: false }),
+      resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+      ...testsSchema()
+    };
+  }
+}
+
+/** Specialization items unlock discounted skill groups. */
 export class SpecializationData extends foundry.abstract.TypeDataModel {
   static defineSchema() {
     const fields = foundry.data.fields;

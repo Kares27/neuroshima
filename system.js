@@ -1,3 +1,4 @@
+import { refreshArmorLimits } from "./module/helpers/armor-limit.js";
 import { BeastActivitySheet } from "./module/apps/beast-activity-sheet.js";
 import { NEUROSHIMA } from "./module/config.js";
 import { NeuroshimaActor } from "./module/documents/actor.js";
@@ -6,7 +7,7 @@ import { NeuroshimaItem } from "./module/documents/item.js";
 import { NeuroshimaChatMessage } from "./module/documents/chat-message.js";
 import { NeuroshimaActiveEffect, NeuroshimaActiveEffectData } from "./module/documents/active-effect.js";
 import { NeuroshimaActorData, NeuroshimaNPCData, NeuroshimaCreatureData, NeuroshimaVehicleData, HomeBaseData } from "./module/data/actor-data.js";
-import { WeaponData, GrenadeData, ArmorData, GearData, AmmoData, MagazineData, TrickData, TraitData, WoundData, BeastActionData, BeastSegmentData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData, MoneyData, ReputationData, DiseaseData, WeaponModData, ArmorModData, FacilitiesData, ContainerData } from "./module/data/item-data.js";
+import { WeaponData, GrenadeData, ArmorData, GearData, AmmoData, MagazineData, TrickData, TraitData, WoundData, BeastActionData, BeastSegmentData, SpecialityData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData, MoneyData, ReputationData, DiseaseData, WeaponModData, ArmorModData, FacilitiesData, ContainerData } from "./module/data/item-data.js";
 import { NeuroshimaActorSheet } from "./module/sheets/actor-sheet.js";
 import { NeuroshimaNPCSheet } from "./module/sheets/npc-sheet.js";
 import { NeuroshimaCreatureSheet } from "./module/sheets/creature-sheet.js";
@@ -408,6 +409,7 @@ Hooks.once('init', async function() {
     CONFIG.Item.dataModels.wound = WoundData;
     CONFIG.Item.dataModels["beast-action"]      = BeastActionData;
     CONFIG.Item.dataModels["beast-segment"]     = BeastSegmentData;
+    CONFIG.Item.dataModels.speciality = SpecialityData;
     CONFIG.Item.dataModels["specialization"]    = SpecializationData;
     CONFIG.Item.dataModels["origin"]            = OriginData;
     CONFIG.Item.dataModels["profession"]        = ProfessionData;
@@ -567,7 +569,7 @@ Hooks.once('init', async function() {
 
     foundry.documents.collections.Items.unregisterSheet("core", foundry.appv1.sheets.ItemSheet);
     foundry.documents.collections.Items.registerSheet("neuroshima", NeuroshimaItemSheet, {
-        types: ["weapon", "grenade", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-segment", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money", "reputation", "disease", "weapon-mod", "armor-mod", "facilities", "container"],
+        types: ["weapon", "grenade", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-segment", "speciality", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money", "reputation", "disease", "weapon-mod", "armor-mod", "facilities", "container"],
         makeDefault: true,
         label: "NEUROSHIMA.Sheet.Item"
     });
@@ -663,6 +665,15 @@ Hooks.once('init', async function() {
         default: true,
         requiresReload: true
     });
+
+    game.settings.register("neuroshima", "armorLimitEnabled", {
+        scope: "world", config: false, type: Boolean, default: false, onChange: refreshArmorLimits
+    });
+    for (const group of ["Character", "Creature", "Vehicle"]) {
+        game.settings.register("neuroshima", `armorLimit${group}`, {
+            scope: "world", config: false, type: Number, default: 6, onChange: refreshArmorLimits
+        });
+    }
 
     game.settings.register("neuroshima", "allowCombatShift", {
         name: "NEUROSHIMA.Settings.AllowCombatShift.Name",
@@ -3141,8 +3152,10 @@ function initializeSocketlib() {
         await MeleeOpposedChat.applyAllocPatch(messageId, patch);
     });
 
-    game.neuroshima.socket.register("applyDuelPick", async (messageId, side, dieIdx) => {
-        await MeleeOpposedChat.commitExchangeAction(messageId, side, [dieIdx]);
+    game.neuroshima.socket.register("applyDuelPick", async function(messageId, side, dieIdx) {
+        const requestingUserId = this.socketdata?.userId;
+        if (!requestingUserId) throw new Error("Missing socket sender");
+        await MeleeOpposedChat.commitExchangeAction(messageId, side, [dieIdx], null, null, { requestingUserId });
     });
 
 
