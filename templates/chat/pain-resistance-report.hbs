@@ -67,12 +67,14 @@
                     </div>
                 </div>
                 {{else}}
-                <div class="wound-item {{#if this.isPassed}}success{{else}}failure{{/if}}{{#if this.forcePassed}} force-passed{{/if}}"
+                <div class="wound-item {{#if this.isPassed}}success{{else}}failure{{/if}}{{#if this.forcePassed}} force-passed{{/if}}{{#if this.rerollCount}} ns-pain-rerolled{{/if}}"
+                     {{#unless this.forcePassed}}data-pain-result-index="{{@index}}"{{/unless}}
                      data-tooltip-html="{{this.tooltipHtml}}"
                      data-tooltip-direction="LEFT">
                     <div class="wound-icon">
                         <i class="fas {{#if this.isPassed}}fa-check{{else}}fa-times{{/if}}"></i>
                     </div>
+                    {{#if this.rerollCount}}<span class="pain-reroll-badge" data-tooltip="{{localize 'NEUROSHIMA.PainResistance.Rerolled'}}" aria-label="{{localize 'NEUROSHIMA.PainResistance.Rerolled'}}"><i class="fas fa-rotate-right" aria-hidden="true"></i></span>{{/if}}
                     <div class="wound-info-main">
                         <span class="wound-name">{{this.name}}</span>
                         <span class="penalty-value"><strong>{{this.penalty}}%</strong></span>

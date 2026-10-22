@@ -449,6 +449,7 @@
             "Button": "Rest"
         },
         "PainResistance": {
+            "Rerolled": "Rerolled",
             "ReportTitle": "Pain Resistance Tests",
             "Passed": "Passed",
             "Failed": "Failed",

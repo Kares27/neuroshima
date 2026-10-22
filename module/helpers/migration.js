@@ -1,4 +1,4 @@
-import { migrateBeastActionItem } from "./beast-actions.js";
+import { migrateBeastItem } from "./beast-actions.js";
 /**
  * Schema migration system for Neuroshima 1.5.
  *
@@ -40,13 +40,13 @@ import { collectTraitSnapshots } from "./trait-snapshot.js";
 import { normalizeEffectPenaltyChanges } from "./effect-penalty.js";
 import { GEAR_TYPE_KEYS, normalizeGearType } from "./gear-types.js";
 
-const CURRENT_SCHEMA_VERSION = "2.2";
+const CURRENT_SCHEMA_VERSION = "2.3";
 
 export function registerMigrationHook() {
     const migrateImported = async item => {
         if (!game.user.isGM || (game.users.activeGM && game.users.activeGM.id !== game.user.id)) return;
-        try { await migrateBeastActionItem(item); }
-        catch (error) { console.error("Neuroshima | Beast action migration failed", error); }
+        try { await migrateBeastItem(item); }
+        catch (error) { console.error("Neuroshima | Beast item migration failed", error); }
     };
     Hooks.on("createItem", migrateImported);
     Hooks.on("updateItem", migrateImported);
@@ -64,9 +64,9 @@ export function registerMigrationHook() {
         }
 
         if (_versionGte(stored, CURRENT_SCHEMA_VERSION)) {
-            try { await _migrate_2_1_to_2_2(); }
+            try { await _migrateBeastItems(); }
             catch (error) {
-                console.error("Neuroshima | Beast action migration failed", error);
+                console.error("Neuroshima | Beast item migration failed", error);
                 ui.notifications.error(game.i18n.localize("NEUROSHIMA.Migration.Failed"));
             }
             // Legacy Item JSON can be imported after the versioned migration
@@ -104,7 +104,7 @@ export function registerMigrationHook() {
             // refactor was being developed cannot retain weapon-type grenades.
             if (!_versionGte(stored, "2.0")) await _migrate_1_9_to_2_0();
             if (!_versionGte(stored, "2.1")) await _migrate_2_0_to_2_1();
-            await _migrate_2_1_to_2_2();
+            await _migrateBeastItems();
 
             await game.settings.set("neuroshima", "schemaVersion", CURRENT_SCHEMA_VERSION);
             ui.notifications.info(game.i18n.localize("NEUROSHIMA.Migration.Done"));
@@ -814,7 +814,7 @@ export async function normalizeActor(actor) {
     await _migrateGrenadeLauncherDocument(actor);
     await _repairStoredSystemData(actor);
     for (const item of Array.from(actor.items)) {
-        await migrateBeastActionItem(item);
+        await migrateBeastItem(item);
         try { await _normalizeGearItem(item); } catch (_) {}
         try { await _repairStoredSystemData(item); } catch (_) {}
         try { await _materializeBackgroundTraitCopies(item); } catch (_) {}
@@ -854,6 +854,7 @@ export async function normalizeAll() {
 
     for (const item of _allWorldItems()) {
         try {
+            await migrateBeastItem(item);
             await _migrateGrenadeLauncherDocument(item);
             await _normalizeGearItem(item);
             await _migrate_1_1_normalizeWorldItemMods(item);
@@ -867,9 +868,9 @@ export async function normalizeAll() {
     ui.notifications.info("Neuroshima | Normalizacja zakończona.");
 }
 
-async function _migrate_2_1_to_2_2() {
+async function _migrateBeastItems() {
     for (const actor of _allActors()) {
-        for (const item of Array.from(actor.items)) await migrateBeastActionItem(item);
+        for (const item of Array.from(actor.items)) await migrateBeastItem(item);
     }
-    for (const item of _allWorldItems()) await migrateBeastActionItem(item);
+    for (const item of _allWorldItems()) await migrateBeastItem(item);
 }

@@ -1,4 +1,5 @@
 import { beastActivities, createBeastCombatWeapon } from "../helpers/beast-actions.js";
+import { clampMeleeTempo, maxMeleeTempo } from "./melee-maneuvers.js";
 /**
  * Canonical Neuroshima melee engine.
  *
@@ -307,6 +308,7 @@ export class MeleeExchangeContext {
       segments: clone(exchange.segments),
       hits: clone(exchange.hits),
       counterHits: clone(exchange.counterHits),
+      fullDefenseStreak: clone(exchange.fullDefenseStreak ?? {}),
       applied: session.result?.applied === true,
       segmentHistory: exchange.history.map((_snapshot, index) => ({ canonicalSnapshot: index })),
       segmentFuture: exchange.future.map((_snapshot, index) => ({ canonicalSnapshot: index })),
@@ -343,6 +345,7 @@ export class MeleeExchangeContext {
     exchange.hits = clone(state.hits ?? []);
     exchange.beastQueue = clone(state.allBeastQueue ?? []);
     exchange.counterHits = clone(state.counterHits ?? []);
+    exchange.fullDefenseStreak = clone(state.fullDefenseStreak ?? {});
     if (state.waitingFor === "responder") {
       exchange.declaration ??= {};
       exchange.declaration.ownerSide = ownerSide;
@@ -1593,6 +1596,46 @@ export function validateMeleeSession(session) {
 export class MeleeCommandService {
   static _queues = new Map();
 
+  static async syncManeuvers(session) {
+    const actors = {};
+    for (const side of MELEE_SIDES) {
+      const participant = session.participants[side];
+      const document = await fromUuid(participant.tokenUuid || participant.actorUuid);
+      actors[side] = document?.actor ?? document;
+    }
+    const owner = initiativeSide(session);
+    const source = actors[owner];
+    const participant = session.participants[owner];
+    let weapon = participant.weaponUuid ? await fromUuid(participant.weaponUuid) : createUnarmedWeapon(source);
+    if (participant.isBeastCombat || ["beast-action", "beast-segment"].includes(weapon?.type)) {
+      weapon = createBeastCombatWeapon(source);
+    }
+    const tempo = clampMeleeTempo(session.metadata[`${owner}TempoLevel`], maxMeleeTempo(source, weapon));
+    session.metadata.tempoLevel = tempo;
+    for (const side of MELEE_SIDES) {
+      const actor = actors[side];
+      if (!actor?.addCondition) continue;
+      const maneuver = session.metadata[`${side}Maneuver`];
+      const desired = { "maneuver-pace": tempo, "maneuver-fury": maneuver === "fury" ? 1 : 0,
+        "maneuver-full-defense": maneuver === "fullDefense" ? 1 : 0 };
+      for (const [key, value] of Object.entries(desired)) {
+        if (!value) continue;
+        const existing = actor.effects.find(effect => effect.statuses?.has(key));
+        if (existing) {
+          if (key === "maneuver-pace" && existing.getFlag("neuroshima", "conditionValue") !== value) {
+            await existing.setFlag("neuroshima", "conditionValue", value);
+          }
+          continue;
+        }
+        await actor.addCondition(key, value);
+        const effect = actor.effects.find(entry => entry.statuses?.has(key));
+        if (!effect) continue;
+        if (key === "maneuver-pace") await effect.update({ origin: source.uuid });
+        session.effects.push({ effectUuid: effect.uuid, targetUuid: actor.uuid, expiryRules: ["sessionEnd"] });
+      }
+    }
+  }
+
   static dispatch(command) {
     const key = String(command?.sessionId || "missing-session");
     const previous = this._queues.get(key) ?? Promise.resolve();
@@ -1629,7 +1672,7 @@ export class MeleeCommandService {
   static async _authorize(session, command, user) {
     if (!user?.active) throw new MeleeValidationError("Inactive or unknown user", "UNAUTHORIZED");
     if (user.isGM) return;
-    if (["undo", "redo", "swapInitiative", "approveOutcome", "advanceSegment"].includes(command.type)) {
+    if (["undo", "redo", "swapInitiative", "approveOutcome", "advanceSegment", "resetDamage"].includes(command.type)) {
       throw new MeleeValidationError("This melee command requires a GM", "UNAUTHORIZED");
     }
     if (command.type === "endSession") {
@@ -1655,6 +1698,7 @@ export class MeleeCommandService {
       case "swapInitiative": return this._swapInitiative(session);
       case "claimDamage": return this._claimDamage(session, command);
       case "markApplied": return this._markApplied(session, command);
+      case "resetDamage": return this._resetDamage(session, command);
       case "approveOutcome": return this._approveOutcome(session, command);
       case "resolveRequiredTest": return this._resolveRequiredTest(session, command);
       case "advanceSegment": return this._advanceSegment(session);
@@ -1664,6 +1708,9 @@ export class MeleeCommandService {
   }
 
   static async _submitRoll(session, command) {
+    if (command.payload?.maneuver === "increasedTempo" && command.side !== initiativeSide(session)) {
+      throw new MeleeValidationError("Only the initiative owner may increase tempo", "INVALID_MANEUVER");
+    }
     const side = command.side;
     const expected = side === "attacker" ? "awaitingAttackerRoll" : "awaitingDefenderRoll";
     if (session.phase !== expected) throw new MeleeValidationError("Roll submitted in the wrong phase", "WRONG_PHASE");
@@ -1677,6 +1724,9 @@ export class MeleeCommandService {
     }
     session.participants[side].weaponUuid = command.payload?.weaponUuid || null;
     session.participants[side].isUnarmed = command.payload?.isUnarmed === true;
+    session.metadata[`${side}Maneuver`] = command.payload?.maneuver ?? null;
+    session.metadata[`${side}TempoLevel`] = command.payload?.selectedTempoLevel ?? 0;
+    await this.syncManeuvers(session);
     if (side === "defender") {
       session.metadata.defenderTarget = number(command.payload?.target);
       const attackerDocument = await fromUuid(
@@ -2324,6 +2374,24 @@ export class MeleeCommandService {
     return { applied: true, kind };
   }
 
+  static _resetDamage(session, command) {
+    const report = game.messages.get(command.payload?.reportMessageId);
+    const source = report?.getFlag("neuroshima", "damageSource");
+    const kind = command.payload?.kind === "hail" ? "hail" : "duel";
+    if (!report?.getFlag("neuroshima", "isReversed") || source?.sessionId !== session.id || source.kind !== kind) {
+      throw new MeleeValidationError("A reversed report from this damage application is required", "INVALID_DAMAGE_REPORT");
+    }
+    const remaining = game.messages.contents.some(message => {
+      const link = message.getFlag("neuroshima", "damageSource");
+      return link?.messageId === source.messageId && link?.kind === kind && !message.getFlag("neuroshima", "isReversed");
+    });
+    if (remaining) throw new MeleeValidationError("Reverse every report from this damage application first", "DAMAGE_NOT_REVERSED");
+    const result = kind === "hail" ? session.hailResult : session.result;
+    if (result) { result.applied = false; result.beastActionsApplied = false; }
+    delete session.operationLedger[`${session.id}:damage:${kind}`];
+    return { reset: true, kind };
+  }
+
   static _claimDamage(session, command) {
     const kind = command.payload?.kind === "hail" ? "hail" : "duel";
     const ledgerKey = `${session.id}:damage:${kind}`;
@@ -2513,9 +2581,9 @@ export class MeleeMigration {
             automation: normalized.automation
           };
         });
-        await item.update(item.type === "beast-action"
-          ? Object.fromEntries(Object.entries(activities[0] ?? {}).filter(([key]) => !["name", "img"].includes(key)).map(([key, value]) => [`system.${key}`, value]))
-          : { "system.activities": activities });
+        await item.update(Object.fromEntries(Object.entries(activities[0] ?? {})
+          .filter(([key]) => !["name", "img"].includes(key))
+          .map(([key, value]) => [`system.${key}`, value])));
         await item.setFlag("neuroshima", "meleeSchemaVersion", MELEE_VERSION);
         updated++;
       }
@@ -2605,6 +2673,7 @@ export async function startMeleeSession({
       setMeleePool(session, "attacker", attackerRoll.dice);
       session.phase = "awaitingDefenderRoll";
       session.metadata.attackerTarget = number(attackerRoll.target);
+      await MeleeCommandService.syncManeuvers(session);
     }
     await MeleeSessionStore.create(session, { combat: game.combat, message });
     await message.update({

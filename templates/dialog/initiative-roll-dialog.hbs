@@ -109,15 +109,15 @@
             <label>{{localize "NEUROSHIMA.Roll.Maneuvers.Label"}}</label>
             <div class="rd-skill-row">
                 <select name="maneuver" style="flex: 2;">
-                    <option value="none">{{localize "NEUROSHIMA.Roll.Maneuvers.None"}}</option>
-                    <option value="charge">{{localize "NEUROSHIMA.Roll.Maneuvers.Charge"}}</option>
+                    <option value="none" {{#if (eq maneuver "none")}}selected{{/if}}>{{localize "NEUROSHIMA.Roll.Maneuvers.None"}}</option>
+                    {{#if canCharge}}<option value="charge" {{#if (eq maneuver "charge")}}selected{{/if}}>{{localize "NEUROSHIMA.Roll.Maneuvers.Charge"}}</option>{{/if}}
                 </select>
                 <div class="charge-level-wrapper" style="flex: 1; display: flex; align-items: center; gap: 5px;" hidden>
                     <label>Bon.</label>
                     <select name="chargeLevel">
-                        <option value="1">+1</option>
-                        <option value="2" selected>+2</option>
-                        <option value="3">+3</option>
+                        <option value="1" {{#if (eq chargeLevel 1)}}selected{{/if}}>+1</option>
+                        <option value="2" {{#if (eq chargeLevel 2)}}selected{{/if}}>+2</option>
+                        <option value="3" {{#if (eq chargeLevel 3)}}selected{{/if}}>+3</option>
                     </select>
                 </div>
             </div>

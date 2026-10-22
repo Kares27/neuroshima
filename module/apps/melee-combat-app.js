@@ -538,7 +538,7 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     const isFirstTurn = (encounter?.turnState?.turn ?? 1) === 1;
     const hasInitiative = encounter?.turnState?.initiativeOwnerId === participantId;
-    const chargeDexPenalty = (isFirstTurn && !hasInitiative && (p.chargeLevel ?? 0) > 0)
+    const chargeDexPenalty = (isFirstTurn && (p.chargeLostInitiative ?? !hasInitiative) && (p.chargeLevel ?? 0) > 0)
       ? (p.chargeLevel ?? 0) : 0;
 
     const { NeuroshimaWeaponRollDialog } = await import("./dialogs/weapon-roll-dialog.js");
@@ -556,6 +556,8 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       meleePoolLink,
       crowdingDexPenalty,
       chargeDexPenalty,
+      canIncreaseTempo: hasInitiative,
+      meleeAction: hasInitiative ? "attack" : "defense",
       onClose: () => {
         if (this._openPoolDialogs.get(participantId) === dialog) {
           this._openPoolDialogs.delete(participantId);

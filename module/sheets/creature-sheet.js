@@ -1,5 +1,5 @@
 import { clampArmor, preserveArmorSourceValues } from "../helpers/armor-limit.js";
-import { beastActivities, createBeastCombatWeapon } from "../helpers/beast-actions.js";
+import { beastActivities, resolveBeastActionItem, createBeastSegmentWeapon, createBeastCombatWeapon } from "../helpers/beast-actions.js";
 import { NEUROSHIMA } from "../config.js";
 import { createLoadedMagazineFromWeapon } from "../helpers/ammunition.js";
 import { NeuroshimaDice } from "../helpers/dice.js";
@@ -181,7 +181,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
             const myUuidsCheck = [this.document.uuid];
             if (this.document.token) myUuidsCheck.push(this.document.token.uuid);
 
-            // 1. Actor flag (WFRP-style primary check)
+            // 1. Actor flag (primary check)
             const opposeFlag = game.neuroshima?.melee?.enabled?.() ? null : this.document.getFlag("neuroshima", "oppose");
             if (opposeFlag?.messageId) {
               const pendingMsg = game.messages.get(opposeFlag.messageId);
@@ -395,7 +395,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       rollBeastAction: async function(event, target) {
         const itemId     = target.dataset.itemId;
         const activityId = target.dataset.activityId;
-        const item       = this.document.items.get(itemId);
+        const item       = activityId ? resolveBeastActionItem(this.document, itemId, activityId) : this.document.items.get(itemId);
         if (!item || item.type !== "beast-segment") return;
 
         const act = activityId
@@ -431,40 +431,10 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
           return;
         }
 
-        const attrKey    = act.attribute || item.system?.attribute || "dexterity";
         const weaponType = act.weaponType || "melee";
 
         const isMeleeAct = weaponType === "melee";
-        const fallbackDmg = act.damage || "D";
-        const syntheticWeapon = {
-          id: item.id,
-          beastItemId: item.id,
-          beastActivityId: act.id,
-          name: act.name || item.name,
-          img: act.img || item.img,
-          type: "weapon",
-          system: {
-            weaponType,
-            attribute: attrKey,
-            skill: "experience",
-            attackBonus:    act.attackBonus    ?? 0,
-            defenseBonus:   act.defenseBonus   ?? 0,
-            weaponModifier: act.weaponModifier  ?? 0,
-            requiredBuild:  act.requiredBuild   ?? 0,
-            damageCategory: act.damageCategory || "physical",
-            damageMelee1: isMeleeAct ? (act.damage1 || fallbackDmg) : fallbackDmg,
-            damageMelee2: isMeleeAct ? (act.damage2 || fallbackDmg) : fallbackDmg,
-            damageMelee3: isMeleeAct ? (act.damage3 || fallbackDmg) : fallbackDmg,
-            damageRanged: fallbackDmg,
-            damage:       fallbackDmg,
-            rangedSubtype: act.rangedSubtype || "pistols",
-            fireRate:      act.fireRate      ?? 0,
-            piercing:      act.piercing      ?? 0,
-            magazine: null,
-            jamming:  act.jamming ?? 20,
-            skipMagazineCheck: true
-          }
-        };
+        const syntheticWeapon = createBeastSegmentWeapon(actor, item, act);
 
         const combatTypeSetting = game.settings.get("neuroshima", "meleeCombatType") || "default";
         const effectiveMode = combatTypeSetting === "default" ? "opposedPips" : combatTypeSetting;
@@ -540,30 +510,6 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         const type = target.dataset.type || "weapon";
         const name = `${game.i18n.localize("DOCUMENT.New")} ${game.i18n.localize(`TYPES.Item.${type}`) || type}`;
         const itemData = { name, type };
-        if (type === "beast-segment") {
-          itemData.system = {
-            activities: [{
-              id: foundry.utils.randomID(),
-              name: "",
-              img: "",
-              summary: "",
-              gmNote: "",
-              actionType: "",
-              costType: "segment",
-              segmentCost: 1,
-              skillMode: "experience",
-              weaponType: "melee",
-              attribute: "dexterity",
-              damage1: "D",
-              damage2: "L",
-              damage3: "C",
-              damage: "",
-              piercing: 0,
-              range: 0,
-              effectIds: []
-            }]
-          };
-        }
         const [created] = await this.document.createEmbeddedDocuments("Item", [itemData]);
         if (created && (type === "beast-action" || type === "beast-segment")) created.sheet.render(true);
         return created;
@@ -574,32 +520,6 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         this.document.items.get(li.dataset.itemId)?.sheet.render(true);
       },
 
-      editBeastActivity: async function(event, target) {
-        const itemId     = target.closest("[data-item-id]")?.dataset.itemId ?? target.dataset.itemId;
-        const activityId = target.closest("[data-activity-id]")?.dataset.activityId ?? target.dataset.activityId;
-        const item       = this.document.items.get(itemId);
-        if (!item || !activityId) return;
-        BeastActivitySheet.open(item, activityId);
-      },
-
-      toggleBeastCollapse: function(event, target) {
-        const itemId = target.dataset.itemId;
-        if (!this._collapsedBeastItems) this._collapsedBeastItems = new Set();
-        const li = target.closest(".beast-parent-item");
-        if (!li) return;
-        const isCollapsed = this._collapsedBeastItems.has(itemId);
-        if (isCollapsed) {
-          this._collapsedBeastItems.delete(itemId);
-          li.classList.remove("collapsed");
-          const icon = target.querySelector("i");
-          if (icon) { icon.classList.remove("fa-chevron-right"); icon.classList.add("fa-chevron-down"); }
-        } else {
-          this._collapsedBeastItems.add(itemId);
-          li.classList.add("collapsed");
-          const icon = target.querySelector("i");
-          if (icon) { icon.classList.remove("fa-chevron-down"); icon.classList.add("fa-chevron-right"); }
-        }
-      },
 
       deleteItem: async function(event, target) {
         const li = target.closest("[data-item-id]");
@@ -973,25 +893,14 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
           hasEffects: (item.system.effectIds ?? []).length > 0
         })),
       beastSegmentItems: topItems.filter(i => i.type === "beast-segment").sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0)).map(item => ({
-        id:         item.id,
-        name:       item.name,
-        img:        item.img,
-        activities: beastActivities(item).map(act => ({
-          itemId:      item.id,
-          activityId:  act.id,
-          name:        act.name || item.name,
-          img:         act.img || item.img,
-          segmentCost: act.segmentCost ?? 1,
-          skillMode:   act.skillMode || "experience",
-          weaponType:  act.weaponType || "melee",
-          damage:      act.damage || null,
-          damage1:     act.damage1 || null,
-          damage2:     act.damage2 || null,
-          damage3:     act.damage3 || null,
-          actionType:  act.actionType || "",
-          gmNote:      act.gmNote || "",
-          hasEffects:  (act.effectIds ?? []).length > 0
-        }))
+        id: item.id, name: item.name, img: item.img,
+        segmentCost: item.system.segmentCost ?? 1,
+        skillMode: item.system.skillMode || "experience",
+        weaponType: item.system.weaponType || "melee",
+        damage: item.system.damage || null,
+        actionType: item.system.actionType || "",
+        gmNote: item.system.gmNote || "",
+        hasEffects: item.effects.size > 0
       })),
 
       wounds:         topItems.filter(i => i.type === "wound")
@@ -1194,11 +1103,8 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
     const condDefs = getConditions();
     const condTypeMap = Object.fromEntries(condDefs.map(c => [c.key, c.type ?? "boolean"]));
     const effectDurationLabel = (e) => e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—");
-    const isTemporary = (e) => !!(
-      e.duration?.rounds || e.duration?.seconds || e.duration?.turns ||
-      e.getFlag("neuroshima", "fromAura") || e.getFlag("neuroshima", "fromArea")
-    );
-    const isConditionEffect = (e) => e.statuses?.size > 0;
+    const isTemporary = (e) => e.isTemporary;
+    const isConditionEffect = (e) => e.isCondition;
 
     const temporary     = [];
     const passive       = [];
@@ -1236,10 +1142,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         const originItem = e.origin ? actor.items.find(i => i.uuid === e.origin) : null;
         pushEffect(e, originItem?.id ?? null, originItem?.name ?? actor.name, originItem?.img ?? actor.img ?? "icons/svg/mystery-man.svg", !!originItem);
       } else {
-        const fromAura = e.getFlag("neuroshima", "fromAura");
-        const fromArea = e.getFlag("neuroshima", "fromArea");
-        const sourceActorId = fromAura?.sourceActorId ?? fromArea?.sourceActorId ?? null;
-        const sourceActor = sourceActorId ? game.actors.get(sourceActorId) : null;
+        const sourceActor = e.sourceActor;
         pushEffect(e, null, sourceActor?.name ?? actor.name, sourceActor?.img ?? actor.img ?? "icons/svg/mystery-man.svg", false);
       }
     }
@@ -1428,16 +1331,6 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
   async _onRender(context, options) {
     await super._onRender(context, options);
     const html = this.element;
-
-    if (this._collapsedBeastItems?.size) {
-      for (const itemId of this._collapsedBeastItems) {
-        const li = html.querySelector(`.beast-parent-item[data-item-id="${itemId}"]`);
-        if (!li) continue;
-        li.classList.add("collapsed");
-        const icon = li.querySelector(".beast-collapse-toggle i");
-        if (icon) { icon.classList.remove("fa-chevron-down"); icon.classList.add("fa-chevron-right"); }
-      }
-    }
 
     html.querySelectorAll('[data-action="modifyDurability"]').forEach(el => {
       el.addEventListener('contextmenu', async (event) => {

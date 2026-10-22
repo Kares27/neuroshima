@@ -569,7 +569,7 @@ Hooks.once('init', async function() {
 
     foundry.documents.collections.Items.unregisterSheet("core", foundry.appv1.sheets.ItemSheet);
     foundry.documents.collections.Items.registerSheet("neuroshima", NeuroshimaItemSheet, {
-        types: ["weapon", "grenade", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-segment", "speciality", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money", "reputation", "disease", "weapon-mod", "armor-mod", "facilities", "container"],
+        types: ["weapon", "grenade", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "speciality", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money", "reputation", "disease", "weapon-mod", "armor-mod", "facilities", "container"],
         makeDefault: true,
         label: "NEUROSHIMA.Sheet.Item"
     });
@@ -581,7 +581,7 @@ Hooks.once('init', async function() {
     });
 
     foundry.documents.collections.Items.registerSheet("neuroshima", BeastActivitySheet, {
-        types: ["beast-action"], makeDefault: true, label: "NEUROSHIMA.BeastAction.Sheet.Title"
+        types: ["beast-action", "beast-segment"], makeDefault: true, label: "NEUROSHIMA.BeastAction.Sheet.Title"
     });
 
     // Internal schema version — used by the migration system to track which
@@ -1443,7 +1443,7 @@ Hooks.once("ready", async function () {
     if (savedGrenadeMultiplier != null) NEUROSHIMA.grenadeDistanceMultiplier = savedGrenadeMultiplier;
 
     // ── Token PIXI counter for numbered conditions ────────────────────────────
-    // Mirrors WFRP4e's FoundryOverrides: override _drawEffects and _drawEffect
+    // Override _drawEffects and _drawEffect
     // so that int-type conditions show their stack count on the token icon.
 
     foundry.canvas.placeables.Token.prototype._drawEffects = async function () {
@@ -1742,6 +1742,25 @@ function getMessageTestContext(li) {
 // Add context menu options for chat messages
 Hooks.on("getChatMessageContextOptions", (html, options) => {
     options.push({
+        name: "NEUROSHIMA.Actions.Reroll",
+        icon: '<i class="fas fa-dice"></i>',
+        condition: li => {
+            const message = game.messages.get(li.dataset.messageId);
+            return NeuroshimaChatMessage.canRerollPainReport(message)
+                && NeuroshimaChatMessage.painRerollIndices(message).length > 0;
+        },
+        callback: async li => {
+            const message = game.messages.get(li.dataset.messageId);
+            const selected = NeuroshimaChatMessage._selectedPainResults.get(message.id);
+            if (!NeuroshimaChatMessage.painRerollIndices(message).length) return;
+            const indices = selected?.size ? [...selected] : [];
+            selected?.clear();
+            li.querySelectorAll(".ns-pain-selected").forEach(row => row.classList.remove("ns-pain-selected"));
+            try { await CombatHelper.rerollPainResistance(message, indices); }
+            catch (error) { ui.notifications.error(error.message); }
+        }
+    });
+    options.push({
         name: "Edytuj rzut",
         icon: '<i class="fas fa-pen"></i>',
         condition: li => {
@@ -1840,9 +1859,10 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
 
             return messageType === "painResistanceReport" && woundIds.length > 0 && !alreadyReversed;
         },
-        callback: li => {
+        callback: async li => {
             const message = game.messages.get(li.dataset.messageId);
-            CombatHelper.reverseDamage(message);
+            try { await CombatHelper.reverseDamage(message); }
+            catch (error) { ui.notifications.error(error.message); }
         }
     });
 
@@ -2155,7 +2175,7 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
 // Chat card interactions (v13: renderChatMessageHTML)
 Hooks.on("renderChatMessageHTML", (message, html) => {
     // Initialize Neuroshima chat actions dispatcher
-    NeuroshimaChatMessage.onChatAction(html);
+    NeuroshimaChatMessage.onChatAction(html, message);
 
     // Melee Vanilla Chat (default mode only)
     if ((game.settings.get("neuroshima", "meleeCombatType") || "default") === "default") {
@@ -3194,6 +3214,15 @@ function initializeSocketlib() {
         await weapon.update({ "system.equipped": false });
         game.neuroshima?.log("[socket:disarmWeapon] weapon disarmed", { actorName: actor.name, weaponName: weapon.name });
         return { success: true, weaponName: weapon.name, actorName: actor.name };
+    });
+
+    game.neuroshima.socket.register("rerollPainResistance", async function (messageId, indices) {
+        const requestingUserId = this.socketdata?.userId;
+        const message = game.messages.get(messageId);
+        if (!requestingUserId || message?.getFlag("neuroshima", "messageType") !== "painResistanceReport") {
+            throw new Error("Nieprawidłowe żądanie przerzutu odporności na ból.");
+        }
+        return CombatHelper.rerollPainResistance(message, indices, requestingUserId);
     });
 
     game.neuroshima.socket.register("syncActorManeuverConditions", async (actorUuid, condKey, hasCharge, tempoLevel) => {

@@ -303,7 +303,7 @@ export class MeleeActionRegistry {
    * Reads all available fields from the activity and fills defaults for any that are absent.
    *
    * @param {Item}   item               - The beast-action Item document
-   * @param {object} act                - Activity data from item.system.activities
+   * @param {object} act                - The beast Item definition from item.system
    * @param {number} availableSuccesses - Used to compute the isAffordable flag
    * @returns {MeleeAction}
    */

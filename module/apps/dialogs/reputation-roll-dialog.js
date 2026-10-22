@@ -4,7 +4,7 @@ import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
 import { NeuroshimaRollDialogBase } from "./roll-dialog-base.js";
 
 /**
- * Reputation roll dialog using the same WFRP-style modifier pipeline and
+ * Reputation roll dialog using the shared modifier pipeline and
  * presentation as the standard attribute dialog.
  */
 export class ReputationRollDialog extends NeuroshimaRollDialogBase {

@@ -616,7 +616,7 @@ export class NeuroshimaActor extends Actor {
     }
   }
 
-  // ── Condition helpers (WFRP-style) ────────────────────────────────────────
+  // ── Condition helpers ────────────────────────────────────────
 
   /**
    * Synchronise equipTransfer effects for a single item after its equipped state changes.
@@ -859,7 +859,7 @@ export class NeuroshimaActor extends Actor {
   /**
    * Override toggleStatusEffect so that int-type conditions route to addCondition/removeCondition.
    * Foundry calls toggleStatusEffect(key, { overlay: true }) on RMB in the token HUD — we use
-   * that to distinguish increment (LMB) from decrement (RMB), matching WFRP4e's approach.
+   * that to distinguish increment (LMB) from decrement (RMB).
    * @override
    */
   async toggleStatusEffect(effectId, {

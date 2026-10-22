@@ -218,40 +218,21 @@
 
             <ul class="item-list creature-actions-list">
                 {{#each inventory.beastSegmentItems}}
-                <li class="item beast-parent-item" data-item-id="{{this.id}}">
-                    <div class="beast-parent-row">
-                        <a class="beast-collapse-toggle" data-action="toggleBeastCollapse" data-item-id="{{this.id}}"><i class="fas fa-chevron-down"></i></a>
-                        <img class="item-img" src="{{this.img}}" title="{{this.name}}" width="16" height="16"/>
-                        <span class="item-name">{{this.name}}</span>
-                        <span class="item-controls">
-                            <a data-action="editItem" data-item-id="{{this.id}}"><i class="fas fa-edit"></i></a>
-                            <a data-action="deleteItem" data-item-id="{{this.id}}"><i class="fas fa-trash"></i></a>
-                        </span>
-                    </div>
-                    <div class="beast-children-wrap">
-                    {{#each this.activities}}
-                    <div class="beast-child-row" data-item-id="{{this.itemId}}" data-activity-id="{{this.activityId}}">
-                        <img class="item-img" src="{{this.img}}" title="{{this.name}}" width="14" height="14"/>
-                        <span class="item-name beast-child-name beast-roll-name" data-action="rollBeastAction" data-item-id="{{this.itemId}}" data-activity-id="{{this.activityId}}" title="{{localize 'NEUROSHIMA.BeastSegment.RollAction'}}">{{this.name}}</span>
-                        <span class="beast-action-meta">
-                            {{#if this.actionType}}<span class="action-type-badge">{{this.actionType}}</span>{{/if}}
-                            <span class="action-cost" title="{{localize 'NEUROSHIMA.BeastSegment.SegmentCost'}}">{{this.segmentCost}}seg</span>
-                            {{#if (eq this.weaponType "ranged")}}<i class="fas fa-crosshairs action-wtype-icon"></i>{{/if}}
-                            {{#if (eq this.weaponType "thrown")}}<i class="fas fa-hand-holding action-wtype-icon"></i>{{/if}}
-                            {{#if (eq this.weaponType "grenade")}}<i class="fas fa-bomb action-wtype-icon"></i>{{/if}}
-                            {{#if this.damage}}<span class="action-damage">{{this.damage}}</span>{{/if}}
-                        </span>
-                        <span class="item-controls">
-                            <a data-action="editBeastActivity" data-item-id="{{this.itemId}}" data-activity-id="{{this.activityId}}" title="{{localize 'NEUROSHIMA.Sheet.Edit'}}"><i class="fas fa-pen"></i></a>
-                        </span>
-                        {{#if this.gmNote}}<div class="beast-child-gmnote">{{this.gmNote}}</div>{{/if}}
-                    </div>
-                    {{else}}
-                    <div class="beast-child-empty">
-                        <em>{{localize "NEUROSHIMA.BeastSegment.NoActivities"}}</em>
-                    </div>
-                    {{/each}}
-                    </div>
+                <li class="item beast-segment-item" data-item-id="{{this.id}}">
+                    <img class="item-img" src="{{this.img}}" title="{{this.name}}" width="16" height="16"/>
+                    <span class="item-name beast-roll-name" data-action="rollBeastAction" data-item-id="{{this.id}}" title="{{localize 'NEUROSHIMA.BeastSegment.RollAction'}}">{{this.name}}</span>
+                    <span class="beast-action-meta">
+                        <span class="action-cost" title="{{localize 'NEUROSHIMA.BeastSegment.SegmentCost'}}">{{this.segmentCost}}seg</span>
+                        {{#if (eq this.weaponType "ranged")}}<i class="fas fa-crosshairs action-wtype-icon"></i>{{/if}}
+                        {{#if (eq this.weaponType "thrown")}}<i class="fas fa-hand-holding action-wtype-icon"></i>{{/if}}
+                        {{#if (eq this.weaponType "grenade")}}<i class="fas fa-bomb action-wtype-icon"></i>{{/if}}
+                        {{#if this.damage}}<span class="action-damage">{{this.damage}}</span>{{/if}}
+                    </span>
+                    <span class="item-controls">
+                        <a data-action="editItem" data-item-id="{{this.id}}"><i class="fas fa-edit"></i></a>
+                        {{#if @root.editable}}<a data-action="deleteItem" data-item-id="{{this.id}}"><i class="fas fa-trash"></i></a>{{/if}}
+                    </span>
+                    {{#if this.gmNote}}<div class="beast-segment-note">{{this.gmNote}}</div>{{/if}}
                 </li>
                 {{else}}
                 <li class="item-list-empty">{{localize "NEUROSHIMA.BeastSegment.None"}}</li>

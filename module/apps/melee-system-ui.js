@@ -114,6 +114,7 @@ export class MeleeSessionPresenter {
               location: rawResult.finalLocation ?? null,
               headDamageApplied: rawResult.headDamageApplied === true,
               attackerManeuver: rawResult.maneuver ?? null,
+              attackerTempoLevel: rawResult.selectedTempoLevel ?? rawResult.tempoLevel ?? 0,
               activatedMeleePreRollMods: rawResult.activatedMeleePreRollMods ?? []
             }
           });
@@ -400,6 +401,7 @@ export class MeleeSessionPresenter {
       isPoolRoll: true,
       fixedMeleeDiceCount: null,
       gradCiosDefense: gradDefenseDice != null,
+      canIncreaseTempo: side === (session.initiative.ownerId === session.participants.attacker.actorUuid ? "attacker" : "defender"),
       onRoll: async (result, test) => {
         const dice = this._diceFromResult(result);
         try {
@@ -410,6 +412,7 @@ export class MeleeSessionPresenter {
               dice,
               target: result.target,
               maneuver: result.maneuver ?? null,
+              selectedTempoLevel: result.selectedTempoLevel ?? 0,
               testMessageId: test?.message?.id ?? null,
               weaponUuid: weapon?.uuid ?? null,
               isUnarmed: weapon?.isUnarmed === true,

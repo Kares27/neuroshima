@@ -442,10 +442,24 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
     });
   }
 
+  _processFormData(event, form, formData) {
+    const data = super._processFormData(event, form, formData);
+    // The native selector only contains CONFIG.statusEffects. Applied-effect
+    // identifiers (name.slugify()) are absent from that selector,
+    // so an ordinary submit must not discard them.
+    const selectable = new Set(CONFIG.statusEffects.map(status => status.id));
+    const identifiers = [...this.document.statuses].filter(status => !selectable.has(status));
+    if (identifiers.length) data.statuses = [...new Set([...(data.statuses ?? []), ...identifiers])];
+    return data;
+  }
+
   async _processSubmitData(event, form, submitData) {
-    const transferType = submitData["flags.neuroshima.transferType"] ?? "owningDocument";
-    const documentType = submitData["flags.neuroshima.documentType"] ?? "actor";
-    submitData.transfer = (transferType === "owningDocument" && documentType === "actor");
+    const transferType = foundry.utils.getProperty(submitData, "flags.neuroshima.transferType")
+      ?? submitData["flags.neuroshima.transferType"] ?? this.document.getFlag("neuroshima", "transferType") ?? "owningDocument";
+    const documentType = foundry.utils.getProperty(submitData, "flags.neuroshima.documentType")
+      ?? submitData["flags.neuroshima.documentType"] ?? this.document.getFlag("neuroshima", "documentType") ?? "actor";
+    submitData.transfer = this.document.parent?.documentName === "Item"
+      && transferType === "owningDocument" && documentType === "actor";
 
     if (this.document.getFlag("neuroshima", "conditionNumbered")) {
       delete submitData.statuses;

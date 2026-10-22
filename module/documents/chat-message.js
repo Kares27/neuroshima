@@ -63,15 +63,19 @@ export class NeuroshimaChatMessage extends ChatMessage {
    * Main chat card action dispatcher.
    * Called from the renderChatMessageHTML hook in system.js.
    */
-  static onChatAction(html) {
+  static onChatAction(html, message = null) {
     // Foundry v13 compatibility: html can be an HTMLElement or a jQuery object.
     const root = (html instanceof HTMLElement) ? html : html[0];
     if (!root) return;
 
     // Resolve the chat message linked to this HTML element
-    const messageId = root.closest(".chat-message")?.dataset.messageId;
-    const message = game.messages.get(messageId);
+    const messageId = root.dataset.messageId ?? root.closest("[data-message-id]")?.dataset.messageId;
+    message ??= game.messages.get(messageId);
     if (!message) return;
+    this.bindPainReportSelection(root, message);
+    this.restoreDamageButtonState(root, message).catch(error => {
+      console.error("Neuroshima | Failed to restore damage button state", error);
+    });
 
     // Delegate click events for action buttons
     root.querySelectorAll("[data-action]").forEach(btn => {
@@ -228,12 +232,86 @@ export class NeuroshimaChatMessage extends ChatMessage {
   }
 
   /**
-   * Apply the opposed damage from the result card and visually disable the button.
-   * Delegates to `MeleeOpposedChat.applyOpposedDamage`.
-   *
-   * @param {PointerEvent}  event
-   * @param {ChatMessage}   message
+   * Restore damage controls from persisted results when saved chat HTML is rendered.
    */
+  static _selectedPainResults = new Map();
+
+  static painRerollIndices(message) {
+    const selected = this._selectedPainResults.get(message.id);
+    if (selected?.size) return [...selected];
+    return (message.getFlag("neuroshima", "results") ?? []).flatMap((result, index) =>
+      !result.isCritical && !result.forcePassed ? [index] : []);
+  }
+
+  static canRerollPainReport(message) {
+    if (message?.getFlag("neuroshima", "messageType") !== "painResistanceReport"
+      || message.getFlag("neuroshima", "isReversed")) return false;
+    if (game.user.isGM) return true;
+    const document = fromUuidSync(message.getFlag("neuroshima", "actorUuid"));
+    return (document?.actor ?? document)?.isOwner === true;
+  }
+
+  static bindPainReportSelection(root, message) {
+    if (!this.canRerollPainReport(message)) return;
+    const report = root.querySelector(".pain-resistance-report");
+    if (!report || report.dataset.painSelectionBound === "true") return;
+    report.dataset.painSelectionBound = "true";
+    const selected = new Set();
+    this._selectedPainResults.set(message.id, selected);
+    const results = message.getFlag("neuroshima", "results") ?? [];
+    // The index fallback also supports reports saved before selectable rows existed.
+    report.querySelectorAll(".wound-list .wound-item:not(.reduced)").forEach((row, index) => {
+      const result = results[index];
+      if (!result || result.isCritical || result.forcePassed) return;
+      row.dataset.painResultIndex = String(index);
+      row.classList.toggle("ns-pain-rerolled", Number(result.rerollCount) > 0);
+      row.setAttribute("aria-selected", "false");
+      row.addEventListener("click", () => {
+        if (selected.has(index)) selected.delete(index);
+        else selected.add(index);
+        row.classList.toggle("ns-pain-selected", selected.has(index));
+        row.setAttribute("aria-selected", String(selected.has(index)));
+      });
+    });
+  }
+
+  static async restoreDamageButtonState(root, message) {
+    const buttons = [...root.querySelectorAll('[data-action="applyOpposedDamage"], [data-action="applyHailDamage"]')];
+    if (!buttons.length) return;
+    const marker = message.getFlag("neuroshima", "melee");
+    let session = null;
+    if (isMeleeSessionMarker(marker)) {
+      // Saved chat HTML can predate damage application. Keep the controls locked
+      // until the authoritative session has been loaded after a refresh.
+      const disabled = buttons.map(button => button.disabled);
+      buttons.forEach(button => { button.disabled = true; });
+      session = await game.neuroshima.melee.get(marker.sessionId, { messageId: message.id });
+      buttons.forEach((button, index) => { button.disabled = disabled[index]; });
+      if (!session) return;
+    }
+    for (const button of buttons) {
+      const hail = button.dataset.action === "applyHailDamage";
+      if (session?.operationLedger?.[`${session.id}:damage:${hail ? "hail" : "duel"}`]?.status === "running") {
+        button.disabled = true;
+        continue;
+      }
+      const result = session
+        ? (hail ? session.hailResult : session.result)
+        : message.getFlag("neuroshima", hail ? "hailResult" : "opposedResult");
+      if (!result) continue;
+      if (!result.applied && !result.beastActionsApplied) {
+        button.disabled = false;
+        button.classList.remove("applied");
+        button.innerHTML = `<i class="fas fa-hand-holding-medical"></i> ${game.i18n.localize("NEUROSHIMA.MeleeDuel.DuelApplyDamage")}`;
+        continue;
+      }
+      button.disabled = true;
+      button.classList.add("applied");
+      button.innerHTML = `<i class="fas fa-check"></i> ${game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.DamageApplied")}`;
+    }
+  }
+
+  /** Apply opposed damage and lock the button while the request is running. */
   static async onApplyOpposedDamage(event, message) {
     const btn = event.currentTarget;
     if (btn?.disabled) return;
@@ -1716,6 +1794,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
    */
   static async renderPainResistance(actor, results, woundIds, reducedCount = 0, reducedDetails = [], options = {}) {
     const template = "systems/neuroshima/templates/chat/pain-resistance-report.hbs";
+    results = results.map((result, index) => ({ ...result, woundId: result.woundId ?? woundIds[index] }));
     ({ results, reducedDetails } = this._preparePainTooltipData(results, reducedDetails));
 
     const normalResults = results.filter(r => !r.isCritical);
@@ -1753,10 +1832,28 @@ export class NeuroshimaChatMessage extends ChatMessage {
           actorUuid: actor.uuid,
           woundIds,
           results,
+          reducedCount, reducedDetails,
+          sourceInfo: options.sourceInfo || "",
+          armorReductionOnly: options.armorReductionOnly || false,
+          damageSource: options.damageSource ?? null,
           isReversed: false
         }
       }
     });
+  }
+
+  static async updatePainResistance(message, actor, results) {
+    const data = message.flags.neuroshima;
+    const prepared = this._preparePainTooltipData(results, data.reducedDetails ?? []);
+    const normal = prepared.results.filter(result => !result.isCritical);
+    const context = {
+      ...data, ...prepared, actorName: actor.name, config: NEUROSHIMA,
+      passedCount: normal.filter(result => result.isPassed).length,
+      failedCount: normal.filter(result => !result.isPassed).length,
+      criticalCount: prepared.results.filter(result => result.isCritical).length
+    };
+    const content = await this._renderTemplate("systems/neuroshima/templates/chat/pain-resistance-report.hbs", context);
+    await message.update({ content, "flags.neuroshima.results": prepared.results });
   }
 
   /**

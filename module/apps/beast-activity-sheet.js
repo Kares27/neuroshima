@@ -4,21 +4,18 @@ import { NEUROSHIMA } from "../config.js";
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 
 /**
- * Native sheet for one beast-action Item, or an activity inside a beast-segment Item.
+ * Native sheet for a single beast action or segment Item.
  *
- * Beast-action fields are stored directly in item.system; segments keep their activity array.
- * This sheet edits exactly one of them, identified by `activityId`.
+ * Fields are stored directly in item.system; each sheet edits one Item.
  *
  * Architecture notes:
- * - One sheet instance per (item UUID, activity ID) pair.  The `#instances` map prevents
- *   duplicate windows for the same activity.
  * - `submitOnChange: true` — every form change auto-saves; the sheet never closes on submit.
  * - A `updateItem` hook is registered while the sheet is open so it re-renders whenever the
  *   backing item changes from any code path (e.g. another client or a script).
  * - `_selfUpdating` flag suppresses the full force-render that would normally follow a hook
  *   update triggered by this sheet's own submit — avoids a visible flicker.
  *
- * Segment activity linking model (flat beast actions use their native item effects):
+ * Optional effect references used by tests and explicit application:
  * - `effectIds`        — ActiveEffect IDs on the parent item applied on success (or unconditionally
  *                        when `testRequired = false`).
  * - `onFailureEffectIds` — ActiveEffect IDs applied when the required test is failed.
@@ -26,29 +23,16 @@ const { HandlebarsApplicationMixin } = foundry.applications.api;
  */
 export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.applications.sheets.ItemSheetV2) {
 
-  /** @type {Map<string, BeastActivitySheet>} One open sheet per (itemUuid::activityId) key. */
-  static #instances = new Map();
-
   /**
    * Open (or focus) the sheet for a specific activity.
-   * Returns the existing instance if the sheet is already open.
+   * Uses the native Item sheet instance.
    *
    * @param {Item}   item       - The beast-action or beast-segment item that owns the activity.
    * @param {string} activityId - The `id` field of the target activity schema object.
    * @returns {BeastActivitySheet}
    */
   static open(item, activityId) {
-    if (item.type === "beast-action") return item.sheet.render(true);
-    const key = `${item.uuid}::${activityId}`;
-    const existing = BeastActivitySheet.#instances.get(key);
-    if (existing) {
-      existing.bringToFront();
-      return existing;
-    }
-    const sheet = new BeastActivitySheet({ item, activityId });
-    BeastActivitySheet.#instances.set(key, sheet);
-    sheet.render(true);
-    return sheet;
+    return item.sheet.render(true);
   }
 
   /**
@@ -59,18 +43,16 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
    */
   constructor({ item, activityId, document, ...options } = {}, legacyOptions = {}) {
     super({ ...options, ...legacyOptions, document: document ?? item });
-    if (this.document.type === "beast-action") {
+    if (["beast-action", "beast-segment"].includes(this.document.type)) {
       this.tabGroups.sheet = "effects";
       this.options.classes.push("beast-action-sheet");
     }
     this.activityId = activityId ?? beastActivities(this.document)[0]?.id;
-    this._instanceKey = `${this.document.uuid}::${this.activityId}`;
   }
 
   get item() { return this.document; }
 
   async _saveActivities(activities) {
-    if (this.item.type !== "beast-action") return this.item.update({ "system.activities": activities });
     const activity = { ...activities[0] };
     const update = { name: activity.name, img: activity.img };
     delete activity.name;
@@ -157,7 +139,8 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
   get title() {
     const act = this.activity;
     const base = act?.name || this.item.name;
-    return `${game.i18n.localize("NEUROSHIMA.BeastAction.Sheet.Title")}: ${base}`;
+    const label = this.item.type === "beast-segment" ? "NEUROSHIMA.BeastSegment.Label" : "NEUROSHIMA.BeastAction.Sheet.Title";
+    return `${game.i18n.localize(label)}: ${base}`;
   }
 
   /**
@@ -331,7 +314,7 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
       isThrown:               isAttack && actWeaponType === "thrown",
       isGrenade:              isAttack && actWeaponType === "grenade",
       showBeastActionDamage:  !isSegmentItem && actActionType === "attack",
-      isFlatAction:           this.item.type === "beast-action",
+      isFlatAction:           true,
       editable:               this.item.isOwner
     };
   }
@@ -391,17 +374,16 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
   }
 
   /**
-   * Deregister the `updateItem` hook and remove the instance from the singleton map.
+   * Deregister the `updateItem` hook.
    * @override
    */
   _onClose(options) {
     if (this._itemHookId !== undefined) Hooks.off("updateItem", this._itemHookId);
-    BeastActivitySheet.#instances.delete(this._instanceKey);
     super._onClose(options);
   }
 
   /**
-   * Form submit handler — persists all editable activity fields to `item.system.activities`.
+   * Form submit handler — persists editable definition fields directly to `item.system`.
    *
    * Uses `_selfUpdating` to suppress the redundant force-render that the `updateItem` hook
    * would otherwise trigger immediately after the save.
@@ -439,6 +421,8 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     if (raw.weaponModifier          !== undefined) act.weaponModifier          = Number(raw.weaponModifier) || 0;
     if (raw.requiredBuild           !== undefined) act.requiredBuild           = Number(raw.requiredBuild)  || 0;
     if (raw.damageCategory          !== undefined) act.damageCategory          = raw.damageCategory;
+    if (raw.fireModes) act.fireModes = { ...act.fireModes, ...raw.fireModes };
+    if (raw.fireModeModifiers) act.fireModeModifiers = { ...act.fireModeModifiers, ...raw.fireModeModifiers };
     if (raw.fireRate                !== undefined) act.fireRate                = Number(raw.fireRate)       || 0;
     if (raw.rangedSubtype           !== undefined) act.rangedSubtype           = raw.rangedSubtype;
     if (raw.jamming                 !== undefined) act.jamming                 = Number(raw.jamming)        || 20;
@@ -461,7 +445,7 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     if (raw.applyEffectsAutomatically !== undefined) act.applyEffectsAutomatically = raw.applyEffectsAutomatically === true || raw.applyEffectsAutomatically === "true" || raw.applyEffectsAutomatically === "on";
 
     const changedField = event?.target?.name ?? "";
-    const STRUCTURAL_FIELDS = ["testRequired", "testIsOpen", "testType", "actionType", "weaponType"];
+    const STRUCTURAL_FIELDS = ["fireModes.all", "testRequired", "testIsOpen", "testType", "actionType", "weaponType"];
     const needsRerender = !changedField || STRUCTURAL_FIELDS.includes(changedField);
     this._selfUpdating = !needsRerender;
     try {
@@ -473,7 +457,7 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
 
   /**
    * Open the FilePicker to select a new icon for this activity.
-   * Writes the chosen path back to `activities[idx].img`.
+   * Saves the chosen image on the Item document.
    *
    * @param {PointerEvent} event
    * @param {HTMLElement}  target
@@ -496,8 +480,7 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
   }
 
   /**
-   * Create a new ActiveEffect on the parent item and link it to this activity's `effectIds`.
-   * If `target.dataset.effectId` is set the effect already exists and is just linked (no creation).
+   * Create a new ActiveEffect on the Item.
    * Opens the effect sheet after creation so the GM can configure it immediately.
    *
    * @param {PointerEvent} event

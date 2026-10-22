@@ -1089,6 +1089,10 @@ export class MeleeEncounter {
       log: []
     };
 
+    for (const participant of Object.values(encounter.participants)) {
+      participant.chargeLostInitiative = participant.id !== encounter.turnState.initiativeOwnerId;
+    }
+
     MeleeTurnService.updateCrowding(encounter);
 
     game.neuroshima?.log("Creating melee encounter", { id, attacker: attackerData.name, defender: defenderData.name });
@@ -1218,7 +1222,7 @@ export class MeleeEncounter {
 
 /**
  * @file melee-opposed-chat.js
- * @description Chat-based opposed melee test for Neuroshima 1.5 — WFRP-style flow.
+ * @description Chat-based opposed melee test for Neuroshima 1.5.
  *
  * Modes:
  *  - **opposedPips**      — each of the 3 dice compared individually; each won slot
@@ -1226,7 +1230,7 @@ export class MeleeEncounter {
  *  - **opposedSuccesses** — net successes (attackerSuccesses − defenderSuccesses) →
  *                           damage tier = min(3, net).
  *
- * Flow (mirrors WFRP4e OpposedHandler):
+ * Opposed test flow:
  *  1. Attacker clicks a melee weapon with a target → `initiateAttack()` opens the
  *     weapon-roll dialog. After the roll:
  *     a. A "handler" chat card is posted showing the attacker's dice and the
@@ -4085,7 +4089,7 @@ export class MeleeOpposedChat {
       return;
     }
 
-    // Collect defender's melee weapons for the chat buttons (WFRP style)
+    // Collect defender's melee weapons for the chat buttons
     const defenderWeapons = targetActor.items
       .filter(i => i.type === "weapon" && i.system.weaponType === "melee")
       .map(i => ({ id: i.id, name: i.name, img: i.img }));
@@ -4192,7 +4196,7 @@ export class MeleeOpposedChat {
       ui.combat?.render(true);
     }
 
-    // ── Set actor flag on defender SECOND (WFRP: flags.oppose) ───────────
+    // ── Set actor flag on defender SECOND ───────────
     // Setting this last ensures the meleePendings combat flag is already written
     // before the actor's sheet re-renders in response to the flag change.
     await MeleeOpposedChat._setDefenderFlag(targetActor.uuid, chatMsg.id);
@@ -4463,7 +4467,8 @@ export class MeleeOpposedChat {
       }
       if (counterResults.length > 0 || counterReduced > 0 || counterWoundIds.length > 0) {
         await CombatHelper.renderPainResistanceReport(
-          attackerActor, counterResults, counterWoundIds, counterReduced, counterReducedDetails
+          attackerActor, counterResults, counterWoundIds, counterReduced, counterReducedDetails,
+          { damageSource: { messageId, sessionId: meleeSession?.id ?? null, kind: "duel" } }
         );
       }
       game.neuroshima?.log?.("[melee] berserker counter-hits applied", {
@@ -4504,7 +4509,8 @@ export class MeleeOpposedChat {
     }
     if (allResults.length > 0 || totalReduced > 0 || allWoundIds.length > 0) {
       await CombatHelper.renderPainResistanceReport(
-        defenderActor, allResults, allWoundIds, totalReduced, allReducedDetails
+        defenderActor, allResults, allWoundIds, totalReduced, allReducedDetails,
+        { damageSource: { messageId, sessionId: meleeSession?.id ?? null, kind: "duel" } }
       );
     }
 
@@ -4867,7 +4873,8 @@ export class MeleeOpposedChat {
       const allReducedDetails = batch.reducedDetails ?? [];
       if (allResults.length > 0 || totalReduced > 0 || woundIds.length > 0) {
         await CombatHelper.renderPainResistanceReport(
-          defenderActor, allResults, woundIds, totalReduced, allReducedDetails
+          defenderActor, allResults, woundIds, totalReduced, allReducedDetails,
+        { damageSource: { messageId, sessionId: meleeSession?.id ?? null, kind: "hail" } }
         );
       }
     }
@@ -4964,7 +4971,8 @@ export class MeleeOpposedChat {
     }
     if (allResults.length > 0 || totalReduced > 0 || allWoundIds.length > 0) {
       await CombatHelper.renderPainResistanceReport(
-        defenderActor, allResults, allWoundIds, totalReduced, allReducedDetails
+        defenderActor, allResults, allWoundIds, totalReduced, allReducedDetails,
+        { damageSource: { messageId, sessionId: meleeSession?.id ?? null, kind: "duel" } }
       );
     }
 
@@ -6578,7 +6586,7 @@ export class MeleeTurnCard {
 
     const isFirstTurn = (encounter?.turnState?.turn ?? 1) === 1;
     const hasInitiative = encounter?.turnState?.initiativeOwnerId === participantId;
-    const chargeDexPenalty = (isFirstTurn && !hasInitiative && (p.chargeLevel ?? 0) > 0)
+    const chargeDexPenalty = (isFirstTurn && (p.chargeLostInitiative ?? !hasInitiative) && (p.chargeLevel ?? 0) > 0)
       ? (p.chargeLevel ?? 0) : 0;
 
     const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
@@ -6597,6 +6605,8 @@ export class MeleeTurnCard {
       meleePoolLink,
       crowdingDexPenalty,
       chargeDexPenalty,
+      canIncreaseTempo: hasInitiative,
+      meleeAction: hasInitiative ? "attack" : "defense",
       onClose: () => {},
       onRoll: async (rollResult, test) => {
         game.neuroshima?.log("[melee-turn-card.onRoll] callback fired", { encounterId, participantId, maneuver: rollResult?.maneuver, tempoLevel: rollResult?.tempoLevel });
@@ -6707,8 +6717,8 @@ export class MeleeTurnService {
    *   NOTE — chargeLevel tracks the bonus declared at initiative time (+1..+3 to Zręczność on
    *   the initiative test).  Rule: the SAME value becomes a PENALTY on the first pool roll if the
    *   charge user LOSES the initiative test.  Enforcement of that penalty and the restriction
-   *   "cannot use defensive maneuvers on the first turn" is currently left to the pool-roll dialog
-   *   and is NOT automatically enforced by this code.
+   *   "cannot use defensive maneuvers on the first turn" is enforced by the pool-roll dialog.
+   *   The initial initiative result is retained even if initiative changes during that turn.
    *   chargeLevel is reset to 0 at startNewTurn so the condition only appears on turn 1.
    *
    * • Zwiększone tempo / Increased Pace (maneuver-pace):
@@ -7124,11 +7134,11 @@ export class MeleeTurnService {
       // getDifficultyFromPercent → finalDiff.mod).  getEffectiveTarget() then
       // re-applies the shift a second time.  To avoid this double-count we
       // deliberately fall through to the approximate fallback when the roll was
-      // made with increasedTempo.  The fallback snapshot contains NO tempo
+      // made with any declared or inherited tempo. The fallback snapshot contains NO tempo
       // shift, so getEffectiveTarget() applies it exactly once — which is the
       // correct behaviour (both participants pay the same raised PT).
       const _usePreferred = rollTarget !== null && rollTarget !== undefined
-        && maneuver !== "increasedTempo";
+        && tempoLevel === 0;
 
       if (_usePreferred) {
         // ── Preferred path ─────────────────────────────────────────────────
@@ -8360,7 +8370,7 @@ export class MeleeVanillaChat {
     // but LOST the initiative roll, that same value becomes a penalty on the first pool roll.
     const isFirstTurn = (encounter?.turnState?.turn ?? 1) === 1;
     const hasInitiative = encounter?.turnState?.initiativeOwnerId === participantId;
-    const chargeDexPenalty = (isFirstTurn && !hasInitiative && (p.chargeLevel ?? 0) > 0)
+    const chargeDexPenalty = (isFirstTurn && (p.chargeLostInitiative ?? !hasInitiative) && (p.chargeLevel ?? 0) > 0)
       ? (p.chargeLevel ?? 0) : 0;
 
     const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
@@ -8379,6 +8389,8 @@ export class MeleeVanillaChat {
       meleePoolLink,
       crowdingDexPenalty,
       chargeDexPenalty,
+      canIncreaseTempo: hasInitiative,
+      meleeAction: hasInitiative ? "attack" : "defense",
       onClose: () => {},
       onRoll: async (rollResult, test) => {
         game.neuroshima?.log("[melee-vanilla-chat.onRoll] callback fired", { encounterId, participantId, maneuver: rollResult?.maneuver, tempoLevel: rollResult?.tempoLevel });

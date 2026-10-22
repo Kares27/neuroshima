@@ -823,11 +823,8 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     const condTypeMap = Object.fromEntries(condDefs.map(c => [c.key, c.type ?? "boolean"]));
 
     const effectDurationLabel = (e) => e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—");
-    const isTemporary = (e) => !!(
-      e.duration?.rounds || e.duration?.seconds || e.duration?.turns ||
-      e.getFlag("neuroshima", "fromAura") || e.getFlag("neuroshima", "fromArea")
-    );
-    const isConditionEffect = (e) => e.statuses?.size > 0;
+    const isTemporary = (e) => e.isTemporary;
+    const isConditionEffect = (e) => e.isCondition;
 
     const temporary    = [];
     const passive      = [];
@@ -884,10 +881,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         const srcIcon = originItem?.img  ?? actor.img ?? "icons/svg/mystery-man.svg";
         pushEffect(e, originItem?.id ?? null, srcName, srcIcon, !!originItem);
       } else {
-        const fromAura = e.getFlag("neuroshima", "fromAura");
-        const fromArea = e.getFlag("neuroshima", "fromArea");
-        const sourceActorId = fromAura?.sourceActorId ?? fromArea?.sourceActorId ?? null;
-        const sourceActor = sourceActorId ? game.actors.get(sourceActorId) : null;
+        const sourceActor = e.sourceActor;
         const srcName = sourceActor?.name ?? actor.name;
         const srcIcon = sourceActor?.img  ?? actor.img ?? "icons/svg/mystery-man.svg";
         pushEffect(e, null, srcName, srcIcon, false);
@@ -2762,7 +2756,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
             const myUuidsCheck = [this.document.uuid];
             if (this.document.token) myUuidsCheck.push(this.document.token.uuid);
 
-            // 1. Check actor flag (WFRP-style: set on defender when attack is pending)
+            // 1. Check actor flag (set on defender when attack is pending)
             const opposeFlag = this.document.getFlag("neuroshima", "oppose");
             if (opposeFlag?.messageId) {
                 const pendingMsg = game.messages.get(opposeFlag.messageId);

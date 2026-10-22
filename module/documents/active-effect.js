@@ -1,3 +1,4 @@
+import { getConditions } from "../apps/config/condition-config.js";
 import { NeuroshimaScript, NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import {
   LEGACY_EFFECT_PENALTY_KEY,
@@ -6,6 +7,27 @@ import {
 } from "../helpers/effect-penalty.js";
 
 export class NeuroshimaActiveEffect extends ActiveEffect {
+  /** Distinguish configured conditions from identifiers on applied effects. */
+  get isCondition() {
+    const key = Array.from(this.statuses)[0] || this.getFlag("core", "statusId");
+    return getConditions().some(condition => condition.key === key);
+  }
+
+  /** The applying actor, resolved from the origin rather than the recipient. */
+  get sourceActor() {
+    const resolve = uuid => {
+      if (!uuid) return null;
+      try { return fromUuidSync(uuid); }
+      catch { return null; }
+    };
+    const origin = resolve(this.origin);
+    if (origin?.documentName === "Actor") return origin;
+    if (origin?.actor) return origin.actor;
+    if (this.sourceItem?.actor) return this.sourceItem.actor;
+    const source = this.getFlag("neuroshima", "fromAura") ?? this.getFlag("neuroshima", "fromArea");
+    return resolve(source?.sourceActorUuid) ?? game.actors.get(source?.sourceActorId) ?? null;
+  }
+
   /**
    * ActiveEffect changes re-prepare their actor without producing Actor#_onUpdate.
    * Defer reconciliation until the current effect lifecycle callback has yielded,
@@ -505,7 +527,7 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
    * Convert this effect into plain data suitable for applying directly to an actor
    * via Actor#createEmbeddedDocuments or Actor#applyEffect({ effectData }).
    *
-   * Inspired by WFRP4e's convertToApplied() from warhammer-lib.
+   * Creates a standalone copy with source references and an applied-effect identifier.
    *
    * - Strips the _id so Foundry generates a fresh one on the actor.
    * - Sets transfer = false (the effect lives on the actor, not via transfer).
@@ -535,7 +557,9 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
 
     delete data._id;
     data.transfer = false;
-    data.origin = null;
+    data.origin = this.actor?.uuid || data.origin;
+    // Foundry v13 already includes statuses in its native isTemporary getter.
+    data.statuses = data.statuses?.length ? data.statuses : [this.name.slugify()];
 
     if (!data.system) data.system = {};
     const liveScriptData = this.system?.scriptData ?? [];
@@ -561,7 +585,7 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
 
     const originalTransferType = this.getFlag("neuroshima", "transferType") ?? "owningDocument";
 
-    foundry.utils.setProperty(data, "flags.neuroshima.sourceItem",         this.parent?.uuid ?? null);
+    foundry.utils.setProperty(data, "flags.neuroshima.sourceItem",         this.parent?.documentName === "Item" ? this.parent.uuid : null);
     foundry.utils.setProperty(data, "flags.neuroshima.sourceEffect",       this.uuid);
     foundry.utils.setProperty(data, "flags.neuroshima.originalTransferType", originalTransferType);
 
@@ -635,7 +659,7 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
    * }
    *
    * @example
-   * // WFRP-style: apply effect[0] from item
+   * // Apply effect[0] from item
    * await this.item.effects.contents[0].applyEffect();
    */
   async applyEffect(targets = null, overrides = {}) {

@@ -6,7 +6,7 @@ import { InitiativeTest, TestRules } from "../../tests.mjs";
 
 /**
  * Dialog for unified initiative rolls.
- * Uses WFRP-inspired re-render pattern: userEntry tracks user overrides,
+ * Preserves input across renders: userEntry tracks user overrides,
  * scripts run fresh on every _prepareContext call - no DOM delta accumulation.
  */
 export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
@@ -149,6 +149,9 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
     context.attributes = NEUROSHIMA.attributes;
     context.difficulties = NEUROSHIMA.difficulties;
     context.isMelee = this.isMelee;
+    context.canCharge = attribute === "dexterity";
+    context.maneuver = context.canCharge ? (this.userEntry.maneuver ?? "none") : "none";
+    context.chargeLevel = Math.min(3, Math.max(1, Number(this.userEntry.chargeLevel ?? 2)));
     context.skills = skills;
     context.weaponSkillKey = isCreature ? "experience" : weaponSkillKey;
 
@@ -302,7 +305,9 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
     if (shiftedElement) shiftedElement.innerText = game.i18n.localize(shiftedDifficulty.label);
 
     const targetElement = html.querySelector('.final-target');
-    if (targetElement) targetElement.innerText = attrTotal + attrBonus + shiftedDifficulty.mod;
+    const chargeBonus = this.isMelee && attribute === "dexterity" && this.userEntry.maneuver === "charge"
+      ? Math.min(3, Math.max(1, Number(this.userEntry.chargeLevel ?? 2))) : 0;
+    if (targetElement) targetElement.innerText = attrTotal + attrBonus + shiftedDifficulty.mod + chargeBonus;
 
     const chargeWrapper = html.querySelector('.charge-level-wrapper');
     const maneuverSelect = html.querySelector('[name="maneuver"]');
@@ -385,7 +390,8 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
       skillBonus: combinedSkillBonus,
       attributeBonus: combinedAttrBonus,
       maneuver: formData.maneuver || "none",
-      chargeLevel: parseInt(formData.chargeLevel) || 0,
+      chargeLevel: this.isMelee && (formData.attribute ?? this.rollOptions.attribute ?? "dexterity") === "dexterity"
+        && formData.maneuver === "charge" ? Math.min(3, Math.max(1, parseInt(formData.chargeLevel) || 1)) : 0,
       dieManualBonus: (Number(this.userEntry.dieManualBonus ?? 0) || 0) + (sf.dieManualBonus || 0),
       dieReductionBonus: (Number(this.userEntry.dieReductionBonus ?? 0) || 0) + (sf.dieReductionBonus || 0),
       maximumDifficulty: sf.maximumDifficulty || null,
@@ -451,8 +457,8 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
   async _performRoll(rollData) {
     const attributeKey = rollData.attribute ?? "dexterity";
     const skillKey = rollData.useSkill ? rollData.skill : null;
-    const chargeBonus = rollData.maneuver === "charge"
-      ? Number(rollData.chargeLevel || 2)
+    const chargeBonus = this.isMelee && attributeKey === "dexterity" && rollData.maneuver === "charge"
+      ? Math.min(3, Math.max(1, Math.trunc(Number(rollData.chargeLevel) || 1)))
       : 0;
     const skillValue = skillKey === "experience" && this.actor.type === "creature"
       ? Number(this.actor.system.experience ?? 0)

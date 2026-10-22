@@ -1,4 +1,5 @@
 import { beastActivities, resolveBeastActionItem } from "../helpers/beast-actions.js";
+import { resolveDefensiveManeuver } from "./melee-maneuvers.js";
 /**
  * @file combat-api.js
  * @description Neuroshima 1.5 Melee Combat API — implementacja przebudowy.
@@ -1716,6 +1717,7 @@ export class DuelSegmentEngine {
     onRender, onSyncInitiative, onClearManeuvers
   }) {
     const declaredAction  = state.declaredAction || "attack";
+    if (!["attack", "trick"].includes(declaredAction)) state.fullDefenseStreak = {};
     const responderAction = action || (
       declaredAction === "exit"      ? "blockExit" :
       declaredAction === "nonCombat" ? "interrupt" : "defend"
@@ -1797,6 +1799,22 @@ export class DuelSegmentEngine {
       const ownerEffective     = Math.max(0, ownerSuccessPoints + (_preOwner.successMod ?? 0));
       const responderEffective = Math.max(0, responderSuccessPoints + (_preResp.successMod ?? 0));
       const _preBlockDmgShift  = _preResp.blockDamageShift ?? 0;
+      const resolveManeuverOutcome = () => {
+        outcome = resolveDefensiveManeuver(state, {
+          ownerSide: isOwnerAttacker ? "attacker" : "defender",
+          ownerSuccesses: ownerEffective, responderSuccesses: responderEffective,
+          responderAction, outcome
+        });
+        const ownerManeuver = isOwnerAttacker ? state.attackerManeuver : state.defenderManeuver;
+        // An attacking response already records its hit independently.
+        if (outcome === "takeover" && ownerManeuver === "fury" && responderAction !== "attack") {
+          const hit = { tier: 1, successPoints: 1, damageType: isOwnerAttacker
+            ? (state.defenderDamage1 ?? "D") : (state.damage1 ?? "D"), isFuryHit: true };
+          const key = isOwnerAttacker ? "counterHits" : "hits";
+          state[key] ??= [];
+          state[key].push(hit);
+        }
+      };
 
       await DuelLifecycle.beforeAction(_preDuel, _preSegment, null);
 
@@ -1826,6 +1844,7 @@ export class DuelSegmentEngine {
           else if (ownerEffective < responderEffective)  outcome = "takeover";
           else if (ownerEffective > 0)                   outcome = "draw";
           else                                            outcome = "nothing";
+          resolveManeuverOutcome();
 
           segAttackVal  = isOwnerAttacker ? ownerEffective    : responderEffective;
           segDefenseVal = isOwnerAttacker ? responderEffective : ownerEffective;
@@ -1864,6 +1883,7 @@ export class DuelSegmentEngine {
           else if (ownerEffective < responderEffective)  outcome = "takeover";
           else if (ownerEffective > 0)                   outcome = "draw";
           else                                            outcome = "nothing";
+          resolveManeuverOutcome();
 
           if (outcome === "hit") {
             const hitDmgType = declaredAction === "trick" && state.committedTrickDamage

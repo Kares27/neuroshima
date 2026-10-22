@@ -101,7 +101,7 @@ export class CombatHelper {
     // preApplyDamage (ATTACKER side) — fires before damage type selection.
     // Scripts can modify attackData.damageMelee1/2/3 (melee) or attackData.damage (ranged/thrown)
     // to influence which damage type will ultimately be selected for this hit.
-    // Analogous to WFRP4e preApplyDamage. Fires for ALL attack sources with a known attacker.
+    // Fires for ALL attack sources with a known attacker.
     if (attackerActor) {
         game.neuroshima?.log("[preApplyDamage] fired on attacker", { attacker: attackerActor.name, location });
         await NeuroshimaScriptRunner.executeEvent("preApplyDamage", {
@@ -205,7 +205,7 @@ export class CombatHelper {
     };
 
     // preTakeDamage (DEFENDER side): scripts can modify damageType, piercing, or push extra wounds
-    // before armor reduction is applied. Analogous to WFRP4e preTakeDamage.
+    // before armor reduction is applied. Runs before damage reduction.
     const preArgs = { actor, location, damageType, piercing, rawWounds, attackData, ...attackContext };
     preArgs.role = "target";
     NeuroshimaScriptRunner.executeEventSync("computeTakeDamageModifiers", preArgs, {
@@ -359,7 +359,7 @@ export class CombatHelper {
         
         if (rawWounds.length > 0) {
             // takeDamage (DEFENDER side): fires after armor reduction but BEFORE pain resistance.
-            // Analogous to WFRP4e takeDamage. Scripts can still block (forceSkip) or auto-pass
+            // Scripts can still block (forceSkip) or auto-pass
             // pain resistance (forcePassed) on individual wounds in this mutable array.
             const filteredWounds = rawWounds.filter(w => !w.forceSkip);
 
@@ -374,7 +374,7 @@ export class CombatHelper {
             results = damageResult.results;
             woundIds = damageResult.woundIds;
 
-            if (woundIds.length) await this._applyDamageTypeEffects(actor, attackData);
+            if (woundIds.length) await this._applyDamageTypeEffects(actor, attackData, woundIds);
 
             if (!suppressChat) {
                 ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.DamageApplied", { 
@@ -605,7 +605,7 @@ export class CombatHelper {
     if (itemsToCreate.length > 0) {
       const created = await actor.createEmbeddedDocuments("Item", itemsToCreate);
       woundIds = created.map(i => i.id);
-      if (woundIds.length) await this._applyDamageTypeEffects(actor, attackData);
+      if (woundIds.length) await this._applyDamageTypeEffects(actor, attackData, woundIds);
     }
 
     const damageResult = { attackData, results, negatedItems, woundIds, location };
@@ -797,7 +797,7 @@ export class CombatHelper {
         continue;
       }
 
-      const test = new SkillTest({
+      const test = wound.painTestData ? await SkillTest.recreate(wound.painTestData) : new SkillTest({
         actor,
         attribute: { key: statKey, value: statValue },
         skill: { key: skillKey, value: skillValue },
@@ -815,13 +815,21 @@ export class CombatHelper {
           eventArgs: { damageType: wound.damageType, location, sourceInfo }
         }
       });
+      if (wound.painReroll) test.context.reroll = true;
+      if (wound.painTestData) {
+        test.restoreBasePreData();
+        delete test.preData.fixedDice;
+        delete test.preData.fixedRolledDice;
+        test.context.reroll = true;
+      }
       if (wound.forcePassed === true) {
         test.forceSuccess({ mode: "skipRoll" });
       }
-      await test.roll({ sendToChat: false });
+      await test.roll({ sendToChat: false, restoreInput: !wound.painTestData });
       const data = test.result;
       const passed = data.success === true;
-      const penalty = Number(woundConfig.penalties?.[passed ? 0 : 1] ?? 0);
+      const painPenalties = wound.painPenalties ?? woundConfig.penalties;
+      const penalty = Number(painPenalties?.[passed ? 0 : 1] ?? 0);
       // Keep pain-specific context on the test result so the modern tooltip
       // can explain the wound and its consequence in addition to roll maths.
       Object.assign(data, {
@@ -843,12 +851,13 @@ export class CombatHelper {
         modifiedResults: data.modifiedResults,
         successPoints: data.successPoints,
         target: data.target,
-        skill: skillValue,
+        skill: test.skill?.value ?? skillValue,
         isCritical: false,
         isCritSuccess: data.isCritSuccess,
         isCritFailure: data.isCritFailure,
         annotation: wound.annotation || null,
-        tooltipHtml: test.getDataTooltip()
+        tooltipHtml: test.getDataTooltip(),
+        testData: test.toData(), painPenalties: [...(painPenalties ?? [])]
       });
       processedWounds.push({
         name: wound.name,
@@ -909,6 +918,7 @@ export class CombatHelper {
     }));
     const created = await actor.createEmbeddedDocuments("Item", documents);
     const woundIds = created.map(wound => wound.id);
+    results = results.map((result, index) => ({ ...result, woundId: woundIds[index] }));
     if (!suppressChat && withPainResistance && results.length) {
       await NeuroshimaChatMessage.renderPainResistance(actor, results, woundIds, 0, []);
     }
@@ -924,98 +934,136 @@ export class CombatHelper {
    * @param {number} reducedProjectiles - Number of reduced projectiles/wounds
    * @param {Array} reducedDetails - Detailed reduction data for each reduced projectile
    */
-  static async renderPainResistanceReport(actor, results, woundIds, reducedProjectiles = 0, reducedDetails = []) {
-    return NeuroshimaChatMessage.renderPainResistance(actor, results, woundIds, reducedProjectiles, reducedDetails);
+  static async renderPainResistanceReport(actor, results, woundIds, reducedProjectiles = 0, reducedDetails = [], options = {}) {
+    return NeuroshimaChatMessage.renderPainResistance(actor, results, woundIds, reducedProjectiles, reducedDetails, options);
   }
 
-  /**
-   * Reverses applied damage (deletes associated wound items).
-   */
+  /** Serialize edits and reversal of reports belonging to the same damage application. */
+  static _painReportQueues = new Map();
+
+  static _withPainReportLock(message, operation) {
+    const key = message.getFlag("neuroshima", "damageSource")?.messageId ?? message.id;
+    const previous = this._painReportQueues.get(key) ?? Promise.resolve();
+    const current = previous.catch(() => undefined).then(operation);
+    const tail = current.catch(() => undefined);
+    this._painReportQueues.set(key, tail);
+    tail.finally(() => { if (this._painReportQueues.get(key) === tail) this._painReportQueues.delete(key); });
+    return current;
+  }
+
+  static async _painReportActor(message) {
+    const uuid = message.getFlag("neuroshima", "actorUuid");
+    const document = uuid ? await fromUuid(uuid) : null;
+    return document?.actor ?? document ?? game.actors.get(message.getFlag("neuroshima", "actorId"));
+  }
+
+  static async rerollPainResistance(message, indices, requestingUserId = game.user.id) {
+    if (message?.getFlag("neuroshima", "messageType") !== "painResistanceReport" || !Array.isArray(indices)) {
+      throw new Error("Nieprawidłowy raport odporności na ból.");
+    }
+    if (!game.user.isGM) {
+      const { NeuroshimaSocket } = await import("./socket-helper.js");
+      return NeuroshimaSocket.gmExecute("rerollPainResistance", message.id, indices);
+    }
+    return this._withPainReportLock(message, async () => {
+      const actor = await this._painReportActor(message);
+      const user = game.users.get(requestingUserId);
+      if (!actor || !user?.active || (!user.isGM && !actor.testUserPermission(user, "OWNER"))) {
+        throw new Error("Brak uprawnień do przerzutu tego testu.");
+      }
+      if (message.getFlag("neuroshima", "isReversed")) throw new Error("Obrażenia zostały już cofnięte.");
+      const results = foundry.utils.deepClone(message.getFlag("neuroshima", "results") ?? []);
+      const woundIds = message.getFlag("neuroshima", "woundIds") ?? [];
+      const updates = [], rollback = [];
+      const targets = indices.length ? [...new Set(indices.map(Number))] : results.flatMap((result, index) => {
+        const wound = actor.items.get(result.woundId ?? woundIds[index]);
+        return !result.isCritical && !result.forcePassed && wound?.type === "wound"
+          && !wound.system.isHealing && wound.system.isActive !== false
+          && wound.system.damageType === result.damageType && Number(wound.system.penalty) === Number(result.penalty)
+          ? [index] : [];
+      });
+      for (const index of targets) {
+        if (!Number.isInteger(index)) throw new Error("Nieprawidłowy wynik testu.");
+        const result = results[index];
+        const wound = actor.items.get(result?.woundId ?? woundIds[index]);
+        if (!result || result.isCritical || result.forcePassed || !wound || wound.type !== "wound"
+          || wound.system.isHealing || wound.system.isActive === false
+          || wound.system.damageType !== result.damageType || Number(wound.system.penalty) !== Number(result.penalty)) {
+          throw new Error("Tej rany nie można teraz przerzucić.");
+        }
+        const rerolled = await this.processPainResistance(actor, [{
+          name: result.name, damageType: result.damageType, damageCategory: wound.system.damageCategory,
+          annotation: result.annotation, painTestData: result.testData, painPenalties: result.painPenalties,
+          painReroll: true
+        }], result.location ?? wound.system.location, wound.system.description);
+        results[index] = { ...rerolled.results[0], woundId: wound.id, rerollCount: (result.rerollCount ?? 0) + 1 };
+        updates.push({ _id: wound.id, "system.penalty": results[index].penalty });
+        rollback.push({ _id: wound.id, "system.penalty": wound.system.penalty });
+      }
+      if (!updates.length) return;
+      await actor.updateEmbeddedDocuments("Item", updates);
+      try { await NeuroshimaChatMessage.updatePainResistance(message, actor, results); }
+      catch (error) { await actor.updateEmbeddedDocuments("Item", rollback); throw error; }
+      return { updated: updates.length };
+    });
+  }
+
   static async reverseDamage(message) {
     if (!game.user.isGM) return;
-    
-    game.neuroshima.group("CombatHelper | reverseDamage");
-    
-    // Retrieve flags directly from the message
-    const actorUuid = message.getFlag("neuroshima", "actorUuid");
-    const actorId = message.getFlag("neuroshima", "actorId");
-    const woundIds = message.getFlag("neuroshima", "woundIds") || [];
-    const isReversed = message.getFlag("neuroshima", "isReversed");
-
-    game.neuroshima.log("Pobrane dane z flag:", { actorUuid, actorId, woundIds, isReversed });
-
-    if (isReversed) {
-        game.neuroshima.log("Cancelled: Damage has already been reversed.");
-        game.neuroshima.groupEnd();
-        return;
-    }
-
-    // Resolve the actor (may be a Token document or a library actor)
-    let actor = null;
-    if (actorUuid) {
-        const doc = await fromUuid(actorUuid);
-        actor = doc?.actor || doc; // fromUuid may return a TokenDocument or an Actor
-    } 
-    
-    if (!actor && actorId) {
-        actor = game.actors.get(actorId);
-    }
-
-    if (!actor) {
-        game.neuroshima.error("Actor not found.", { actorUuid, actorId });
-        ui.notifications.error(game.i18n.localize("NEUROSHIMA.Notifications.ActorNotFound"));
-        game.neuroshima.groupEnd();
-        return;
-    }
-
-    game.neuroshima.log(`Actor found: ${actor.name} (${actor.uuid})`);
-
-    // Filter to only wounds that still exist on the actor
-    const actorItems = actor.items;
-    const existingWoundIds = woundIds.filter(id => actorItems.has(id));
-    
-    game.neuroshima.log("Wound lookup result:", { 
-        searchedIds: woundIds, 
-        foundIds: existingWoundIds,
-        allActorItems: actorItems.map(i => i.id)
+    return this._withPainReportLock(message, async () => {
+      if (message.getFlag("neuroshima", "isReversed")) return { reversed: true, alreadyReversed: true };
+      const source = message.getFlag("neuroshima", "damageSource");
+      const reports = source ? game.messages.contents.filter(report => {
+        const link = report.getFlag("neuroshima", "damageSource");
+        return link?.messageId === source.messageId && link?.kind === source.kind
+          && !report.getFlag("neuroshima", "isReversed");
+      }) : [message];
+      if (source?.sessionId) {
+        const session = await game.neuroshima.melee.get(source.sessionId, { messageId: source.messageId });
+        if (session?.operationLedger?.[`${session.id}:damage:${source.kind}`]?.status === "running") {
+          throw new Error("Poczekaj na zakończenie zadawania obrażeń.");
+        }
+      }
+      const batch = [];
+      for (const report of reports) {
+        if (report.getFlag("neuroshima", "isReversed")) continue;
+        const actor = await this._painReportActor(report);
+        if (!actor) throw new Error(game.i18n.localize("NEUROSHIMA.Notifications.ActorNotFound"));
+        batch.push({ report, actor });
+      }
+      for (const { report, actor } of batch) {
+        const ids = report.getFlag("neuroshima", "woundIds") ?? [];
+        const existing = ids.filter(id => actor.items.has(id));
+        if (existing.length) await actor.deleteEmbeddedDocuments("Item", existing);
+        const effects = actor.effects.filter(effect => {
+          const wounds = effect.getFlag("neuroshima", "damageWoundIds") ?? [];
+          return wounds.length && wounds.every(id => ids.includes(id));
+        });
+        if (effects.length) await actor.deleteEmbeddedDocuments("ActiveEffect", effects.map(effect => effect.id));
+        await report.update({
+          "flags.neuroshima.isReversed": true,
+          content: report.content + `<div class="refund-status">${game.i18n.localize("NEUROSHIMA.Notifications.StatusReversed")}</div>`
+        });
+      }
+      if (source) {
+        const origin = game.messages.get(source.messageId);
+        if (source.sessionId) {
+          const session = await game.neuroshima.melee.get(source.sessionId, { messageId: source.messageId });
+          if (!session) throw new Error("Nie odnaleziono sesji źródłowej obrażeń.");
+          await game.neuroshima.melee.dispatch({
+            type: "resetDamage", sessionId: session.id, messageId: source.messageId,
+            expectedRevision: session.revision, commandId: foundry.utils.randomID(),
+            payload: { reportMessageId: message.id, kind: source.kind }
+          });
+        } else if (origin) {
+          const key = source.kind === "hail" ? "hailResult" : "opposedResult";
+          const result = origin.getFlag("neuroshima", key);
+          if (result) await origin.setFlag("neuroshima", key, { ...result, applied: false, beastActionsApplied: false });
+        }
+      }
+      ui.notifications.info(game.i18n.localize("NEUROSHIMA.Notifications.StatusReversed"));
+      return { reversed: true };
     });
-
-    if (existingWoundIds.length > 0) {
-        await actor.deleteEmbeddedDocuments("Item", existingWoundIds);
-        ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.DamageReversed", { 
-            count: existingWoundIds.length, 
-            name: actor.name 
-        }));
-    } else {
-        game.neuroshima.log("Warning: None of the listed wounds were found on the actor.");
-        ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.NoWoundsFoundToReverse"));
-    }
-
-    // Mark the message as reversed
-    await message.setFlag("neuroshima", "isReversed", true);
-
-    // Add a visual status indicator to the message
-    const html = document.createElement("div");
-    html.innerHTML = message.content;
-    
-    const oldStatus = html.querySelector(".refund-status");
-    if (oldStatus) oldStatus.remove();
-
-    const statusDiv = document.createElement("div");
-    statusDiv.className = "refund-status";
-    statusDiv.style.textAlign = "center";
-    statusDiv.style.fontStyle = "italic";
-    statusDiv.style.opacity = "0.7";
-    statusDiv.style.marginTop = "5px";
-    statusDiv.style.borderTop = "1px dashed #777";
-    statusDiv.style.paddingTop = "5px";
-    statusDiv.textContent = game.i18n.localize("NEUROSHIMA.Notifications.StatusReversed");
-    
-    html.appendChild(statusDiv);
-    
-    await message.update({ content: html.innerHTML });
-    
-    game.neuroshima.groupEnd();
   }
 
   /**
@@ -1819,18 +1867,18 @@ export class CombatHelper {
    * @param {Object} attackData - The attack data object (actorId, weaponId, …).
    * @returns {Promise<void>}
    */
-  static async _applyDamageTypeEffects(defender, attackData) {
+  static async _applyDamageTypeEffects(defender, attackData, woundIds = []) {
     const { attacker, weapon } = await this._resolveDamageSource(attackData);
     const sources = new Set(Array.from(attacker?.effects ?? []));
     for (const item of attacker?.items ?? []) {
-      if (item.type === "beast-action" && (item.uuid !== weapon?.uuid || item.system?.applyEffectsAutomatically === false)) continue;
+      if (["beast-action", "beast-segment"].includes(item.type) && (item.uuid !== weapon?.uuid || item.system?.applyEffectsAutomatically === false)) continue;
       for (const effect of item.effects ?? []) {
         if (effect.getFlag?.("neuroshima", "equipTransfer") && item.system?.equipped === false) continue;
         const documentType = effect.getFlag?.("neuroshima", "documentType") ?? "actor";
         if (documentType === "actor" || item.uuid === weapon?.uuid) sources.add(effect);
       }
     }
-    if (weapon?.type !== "beast-action" || weapon.system?.applyEffectsAutomatically !== false) {
+    if (!["beast-action", "beast-segment"].includes(weapon?.type) || weapon.system?.applyEffectsAutomatically !== false) {
       for (const effect of weapon?.effects ?? []) sources.add(effect);
     }
     const toApply = [];
@@ -1845,7 +1893,9 @@ export class CombatHelper {
         if (!await NeuroshimaAuraManager._runPreApplyScript(effect, attacker, defender)) continue;
         if (await NeuroshimaAuraManager._runFilterScript(effect, defender, attacker)) continue;
       }
-      toApply.push(effect.convertToApplied());
+      const data = effect.convertToApplied();
+      foundry.utils.setProperty(data, "flags.neuroshima.damageWoundIds", [...woundIds]);
+      toApply.push(data);
     }
     if (toApply.length) await defender.applyEffect({ effectData: toApply });
   }

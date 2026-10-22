@@ -452,6 +452,7 @@
             "Button": "Odpocznij"
         },
         "PainResistance": {
+            "Rerolled": "Przerzucono",
             "ReportTitle": "Testy Odporności na Ból",
             "Passed": "Zdane",
             "Failed": "Niezdane",

@@ -15,6 +15,7 @@ const setProperty = (object, path, value) => {
   target[keys.at(-1)] = value;
 };
 globalThis.foundry = {
+  abstract: { TypeDataModel: class {} },
   utils: { deepClone: structuredClone, randomID: () => `id${++sequence}`, getProperty, setProperty,
     expandObject: object => { const expanded = {}; for (const [key, value] of Object.entries(object)) setProperty(expanded, key, value); return expanded; },
     escapeHTML: value => String(value), Semaphore: class {} },
@@ -23,6 +24,7 @@ globalThis.foundry = {
 };
 globalThis.ChatMessage = class {};
 globalThis.Item = class {};
+globalThis.ActiveEffect = class {};
 globalThis.game = { i18n: { localize: key => key, format: key => key }, user: { targets: [] },
   settings: { get: (scope, key) => settings[key] }, neuroshima: { log: () => {} } };
 Math.clamp ??= (value, min, max) => Math.min(max, Math.max(min, value));
@@ -32,6 +34,8 @@ const { specialityBonus, specialityCost, advanceSpeciality } = await import("../
 const { SkillTest, RangedWeaponTest } = await import("../module/tests.mjs");
 const { NeuroshimaScriptRunner } = await import("../module/apps/neuroshima-script-engine.js");
 const { CombatHelper } = await import("../module/helpers/combat-helper.js");
+const { NeuroshimaActiveEffect } = await import("../module/documents/active-effect.js");
+const { NeuroshimaAuraManager } = await import("../module/apps/aura-manager.js");
 const { MeleeActionCatalog, MeleeEffectService, runMeleeCoreSelfTests } = await import("../module/combat/melee-system.js");
 
 function actor(type = "character") {
@@ -49,6 +53,126 @@ function speciality(owner, value = 4, discounted = false) {
     async update(data) { for (const [key, val] of Object.entries(data)) setProperty(this, key, val); } };
   owner.items.push(item); return item;
 }
+
+test("applied Damage effects retain status identifiers without becoming configured conditions", () => {
+  const name = { slugify: () => "grab" };
+  const source = { _id: "template", name: "Grab", statuses: [], duration: {}, flags: {}, system: {} };
+  const template = Object.create(NeuroshimaActiveEffect.prototype);
+  Object.defineProperties(template, {
+    actor: { value: { uuid: "Actor.beast" } }, name: { value: name },
+    parent: { value: { documentName: "Item", uuid: "Actor.beast.Item.bite" } },
+    uuid: { value: "Actor.beast.Item.bite.ActiveEffect.grab" }, system: { value: { scriptData: [{ code: "args.fields.difficultyShift += 1;" }] } }
+  });
+  template.toObject = () => structuredClone(source);
+  template.getFlag = (scope, key) => key === "transferType" ? "damage" : undefined;
+  const copy = template.convertToApplied();
+  assert.deepEqual(copy.statuses, ["grab"]);
+  assert.equal(copy.origin, "Actor.beast");
+  assert.equal(copy.flags.neuroshima.sourceItem, "Actor.beast.Item.bite");
+  assert.equal(copy.flags.neuroshima.sourceEffect, template.uuid);
+  assert.equal(copy.flags.neuroshima.originalTransferType, "damage");
+  assert.equal(copy.flags.neuroshima.transferType, "owningDocument");
+  assert.equal(copy.system.scriptData[0].code, template.system.scriptData[0].code);
+  assert.equal(copy._id, undefined);
+  assert.deepEqual(copy.duration, {});
+  assert.deepEqual(source.statuses, []);
+  const applied = Object.create(NeuroshimaActiveEffect.prototype);
+  applied.statuses = new Set(copy.statuses);
+  applied.getFlag = () => undefined;
+  assert.equal(applied.isCondition, false);
+  source.statuses = ["prone"];
+  const conditionCopy = template.convertToApplied();
+  assert.deepEqual(conditionCopy.statuses, ["prone"]);
+  applied.statuses = new Set(conditionCopy.statuses);
+  assert.equal(applied.isCondition, true);
+});
+
+test("aura and area copies use the same applied-effect conversion and retain cleanup metadata", async () => {
+  const previousMerge = foundry.utils.mergeObject;
+  const previousTime = game.time;
+  const previousActors = game.actors;
+  foundry.utils.mergeObject = (base, changes) => Object.assign(base, changes);
+  game.time = { worldTime: 123 };
+  const source = { id: "beast", uuid: "Actor.beast" };
+  game.actors = new Map([[source.id, source]]);
+  const effect = { id: "aura", convertToApplied: () => ({ statuses: ["shadow"], flags: { neuroshima: { sourceEffect: "Effect.aura" } }, duration: {} }) };
+  let created;
+  const target = { async createEmbeddedDocuments(type, data) { created = data[0]; } };
+  try {
+    await NeuroshimaAuraManager._applyAuraCopy(effect, source, target, "token");
+    assert.deepEqual(created.statuses, ["shadow"]);
+    assert.equal(created.origin, source.uuid);
+    assert.equal(created.flags.neuroshima.fromAura.sourceTokenId, "token");
+    assert.equal(created.flags.neuroshima.sourceEffect, "Effect.aura");
+    const area = NeuroshimaAuraManager._buildAreaCopyData(effect, "zone", "aura", source.id);
+    assert.deepEqual(area.statuses, ["shadow"]);
+    assert.equal(area.flags.neuroshima.fromArea.templateId, "zone");
+    assert.equal(area.origin, source.uuid);
+  } finally {
+    foundry.utils.mergeObject = previousMerge;
+    game.time = previousTime;
+    game.actors = previousActors;
+  }
+});
+
+test("effect submission preserves applied identifiers, permits condition edits, and keeps actor copies non-transferred", async () => {
+  const previousConfig = globalThis.CONFIG;
+  const previousMerge = foundry.utils.mergeObject;
+  const previousSheet = foundry.applications.sheets.ActiveEffectConfig;
+  class EffectConfig extends Application {
+    static DEFAULT_OPTIONS = {};
+    static PARTS = {};
+  }
+  foundry.applications.sheets.ActiveEffectConfig = EffectConfig;
+  foundry.utils.mergeObject = (base, changes) => Object.assign(base, changes);
+  globalThis.CONFIG = { statusEffects: [{ id: "prone" }, { id: "dead" }] };
+  try {
+    const { NeuroshimaEffectSheet } = await import("../module/sheets/neuroshima-effect-sheet.js");
+    const document = { parent: { documentName: "Actor" }, statuses: new Set(["grab", "prone"]), getFlag: () => undefined };
+    const sheet = new NeuroshimaEffectSheet({ document });
+    const data = sheet._processFormData(null, null, { object: { name: "Renamed grab", statuses: [] } });
+    assert.deepEqual(data.statuses, ["grab"]);
+    const submitted = await sheet._processSubmitData(null, null, data);
+    assert.deepEqual(submitted.statuses, ["grab"]);
+    assert.equal(submitted.transfer, false);
+    assert.deepEqual(sheet._processFormData(null, null, { object: { statuses: ["dead"] } }).statuses, ["dead", "grab"]);
+    document.parent.documentName = "Item";
+    assert.equal((await sheet._processSubmitData(null, null, { flags: { neuroshima: { transferType: "damage", documentType: "actor" } } })).transfer, false);
+    assert.equal((await sheet._processSubmitData(null, null, { flags: { neuroshima: { transferType: "owningDocument", documentType: "actor" } } })).transfer, true);
+  } finally {
+    globalThis.CONFIG = previousConfig;
+    foundry.utils.mergeObject = previousMerge;
+    foundry.applications.sheets.ActiveEffectConfig = previousSheet;
+  }
+});
+
+test("effect source resolves the applying actor including synthetic tokens and legacy source items", () => {
+  const previousResolver = globalThis.fromUuidSync;
+  const previousActors = game.actors;
+  const source = { documentName: "Actor", uuid: "Scene.scene.Token.beast.Actor.beast", name: "Beast" };
+  const item = { documentName: "Item", actor: source };
+  globalThis.fromUuidSync = uuid => ({ [source.uuid]: source, "Item.source": item })[uuid] ?? null;
+  game.actors = new Map([["beast", source]]);
+  const effect = Object.create(NeuroshimaActiveEffect.prototype);
+  let flags = {};
+  effect.getFlag = (scope, key) => flags[key];
+  try {
+    effect.origin = source.uuid;
+    assert.equal(effect.sourceActor, source);
+    effect.origin = null;
+    flags = { sourceItem: "Item.source" };
+    assert.equal(effect.sourceActor, source);
+    flags = { fromAura: { sourceActorUuid: source.uuid } };
+    assert.equal(effect.sourceActor, source);
+    flags = { fromArea: { sourceActorId: "beast" } };
+    assert.equal(effect.sourceActor, source);
+    flags = {};
+    assert.equal(effect.sourceActor, null);
+  } finally {
+    globalThis.fromUuidSync = previousResolver;
+    game.actors = previousActors;
+  }
+});
 
 test("armor limits share Character/NPC settings, separate other types, and leave sources intact", () => {
   for (const [type, expected] of [["character", 6], ["npc", 6], ["creature", 4], ["vehicle", 9]]) {
@@ -490,4 +614,408 @@ test("damage button locks on the first click and marks applied only after succes
    await NeuroshimaChatMessage.onApplyOpposedDamage({currentTarget:button},{id:"m"});
    assert.equal(button.disabled,false);assert.deepEqual(classes,[]);
  } finally {MeleeOpposedChat.applyOpposedDamage=old;}
+});
+
+
+test("tempo is bounded by the used skill and full defense requires consecutive uncontested successes", async () => {
+ const {maxMeleeTempo,clampMeleeTempo,resolveDefensiveManeuver}=await import("../module/combat/melee-maneuvers.js");
+ const owner=actor(); owner.system.skills={brawl:{value:2},melee:{value:0}};
+ assert.equal(maxMeleeTempo(owner,{system:{skill:"brawl"}}),2);
+ assert.equal(maxMeleeTempo(owner,{system:{skill:"melee"}}),0);
+ owner.system.skills.brawl.value=9;
+ assert.equal(maxMeleeTempo(owner,{system:{skill:"brawl"}}),3);
+ assert.equal(clampMeleeTempo(99,2),2); assert.equal(clampMeleeTempo(-1),0);
+ const state={defenderManeuver:"fullDefense",fullDefenseStreak:{}};
+ const resolve=(attack,defense)=>resolveDefensiveManeuver(state,{ownerSide:"attacker",ownerSuccesses:attack,
+   responderSuccesses:defense,responderAction:"defend",outcome:defense>attack?"takeover":"draw"});
+ assert.equal(resolve(0,1),"blocked");
+ assert.equal(resolve(1,1),"draw");
+ assert.equal(resolve(0,1),"blocked");
+ assert.equal(resolve(0,1),"takeover");
+ assert.equal(resolve(1,2),"blocked");
+ assert.equal(resolve(0,2),"takeover");
+});
+
+test("shared tempo affects a normal defense roll and maneuver bonuses always modify attributes", async () => {
+ const {NeuroshimaWeaponRollDialog}=await import("../module/apps/dialogs/weapon-roll-dialog.js");
+ const {TestRules}=await import("../module/tests.mjs"); const {NEUROSHIMA}=await import("../module/config.js");
+ const owner=actor(); owner.system.attributeTotals={dexterity:10}; owner.system.skills={brawl:{value:3}};
+ let captured;
+ owner._setupTest=(_class,data)=>{captured=data;return {preData:{},result:{},async roll(){}};};
+ const weapon={id:"unarmed",name:"Unarmed",system:{weaponType:"melee",attribute:"dexterity",skill:"brawl",attackBonus:0,defenseBonus:0}};
+ const dialog={actor:owner,weapon,rollType:"melee",_scriptFields:{}};
+ const execute=params=>NeuroshimaWeaponRollDialog.prototype._executeWeaponTest.call(dialog,{weapon,actor:owner,
+   difficulty:"average",meleeAction:"defense",maneuver:"none",...params});
+ await execute({tempoLevel:2});
+ assert.equal(captured.preData.penalties.base,TestRules.shiftDifficulty(NEUROSHIMA.difficulties.average,2).min);
+ assert.equal(captured.context.tempoLevel,2);
+ await execute({maneuver:"fury",meleeAction:"attack"}); assert.equal(captured.preData.attributeBonus,2);
+ assert.equal(captured.preData.skillBonus,0);
+ await execute({maneuver:"fury",meleeAction:"defense"}); assert.equal(captured.preData.attributeBonus,0);
+ await execute({maneuver:"fullDefense",meleeAction:"defense"}); assert.equal(captured.preData.attributeBonus,2);
+ await execute({maneuver:"fullDefense",meleeAction:"attack"}); assert.equal(captured.preData.attributeBonus,0);
+});
+
+test("canonical tempo applies once to both actors, preserves its source and expires with the session", async () => {
+ const {createMeleeSession,MeleeCommandService,MeleeEffectService}=await import("../module/combat/melee-system.js");
+ const previousResolver=globalThis.fromUuid;
+ const attacker=actor(),defender=actor();attacker.uuid="Actor.tempo";defender.uuid="Actor.other";
+ attacker.system.skills={brawl:{value:2}};
+ const weapon={uuid:"Item.fists",system:{skill:"brawl"}};
+ const docs=new Map([[attacker.uuid,attacker],[defender.uuid,defender],[weapon.uuid,weapon]]);
+ for(const owner of [attacker,defender]) owner.addCondition=async(key,value)=>{
+   const effect={uuid:`${owner.uuid}.ActiveEffect.${key}`,statuses:new Set([key]),value,
+     getFlag:()=>effect.value,async setFlag(_scope,_key,next){effect.value=next;},async update(data){Object.assign(effect,data);},
+     async delete(){owner.effects.splice(owner.effects.indexOf(effect),1);}};
+   owner.effects.push(effect);docs.set(effect.uuid,effect);return effect;
+ };
+ globalThis.fromUuid=async uuid=>docs.get(uuid);
+ const session=createMeleeSession({id:"tempo",attacker:{actorUuid:attacker.uuid,weaponUuid:weapon.uuid},
+   defender:{actorUuid:defender.uuid},metadata:{attackerManeuver:"increasedTempo",attackerTempoLevel:3}});
+ try{
+   await MeleeCommandService.syncManeuvers(session);await MeleeCommandService.syncManeuvers(session);
+   assert.equal(session.metadata.tempoLevel,2);
+   assert.equal(attacker.effects.length,1);assert.equal(defender.effects.length,1);
+   assert.equal(defender.effects[0].value,2);assert.equal(defender.effects[0].origin,attacker.uuid);
+   await assert.rejects(MeleeCommandService._submitRoll(session,{side:"defender",payload:{maneuver:"increasedTempo"}}),{code:"INVALID_MANEUVER"});
+   await MeleeEffectService.expire(session,"sessionEnd");
+   assert.equal(attacker.effects.length,0);assert.equal(defender.effects.length,0);
+ }finally{globalThis.fromUuid=previousResolver;}
+});
+
+test("segment resolution applies full-defense takeover and fury hits in both initiative directions", async () => {
+ const {DuelSegmentEngine}=await import("../module/combat/combat-api.js");
+ const previous={resolver:globalThis.fromUuidSync,event:NeuroshimaScriptRunner.executeEvent};
+ globalThis.fromUuidSync=()=>null;NeuroshimaScriptRunner.executeEvent=async()=>{};
+ const die=success=>({isSuccess:success,modified:success?1:20});
+ const make=(owner="attacker")=>({status:"picking",initiativeOwnerSide:owner,waitingFor:"responder",declaredAction:"attack",
+   committedOwnerIndices:[0],attackDice:[die(false),die(false)],defenseDice:[die(true),die(true)],
+   currentSegment:0,segments:[{},{}],hits:[],counterHits:[],usedAttackDice:[],usedDefenseDice:[],
+   attackerUuid:"Actor.a",defenderUuid:"Actor.d",damage1:"L",defenderDamage1:"C"});
+ const resolve=(state,index,owner="attacker")=>DuelSegmentEngine.processResponder(state,{
+   pool:owner==="attacker"?"defender":"attacker",responderPool:owner==="attacker"?"defender":"attacker",
+   isOwnerAttacker:owner==="attacker",diceIndices:[index],action:"defend",message:{id:"test",async setFlag(){}},
+   onRender:async()=>{},onSyncInitiative:async()=>{},onClearManeuvers:async()=>{}
+ });
+ try{
+   const defense=make();defense.defenderManeuver="fullDefense";
+   await resolve(defense,0);assert.equal(defense.segments[0].outcome,"blocked");
+   assert.equal(defense.initiativeOwnerSide,"attacker");
+   defense.committedOwnerIndices=[1];await resolve(defense,1);
+   assert.equal(defense.segments[1].outcome,"takeover");assert.equal(defense.initiativeOwnerSide,"defender");
+   const fury=make();fury.attackerManeuver="fury";
+   await resolve(fury,0);assert.equal(fury.counterHits.length,1);assert.equal(fury.counterHits[0].damageType,"C");
+   const reversed=make("defender");reversed.attackDice=[die(true),die(true)];reversed.defenseDice=[die(false),die(false)];
+   reversed.defenderManeuver="fury";await resolve(reversed,0,"defender");
+   assert.equal(reversed.hits.length,1);assert.equal(reversed.hits[0].damageType,"L");
+ }finally{globalThis.fromUuidSync=previous.resolver;NeuroshimaScriptRunner.executeEvent=previous.event;}
+});
+
+
+test("charge is restricted to Dexterity melee initiative and its bonus is clamped to one through three", async () => {
+ const {NeuroshimaInitiativeRollDialog}=await import("../module/apps/dialogs/initiative-roll-dialog.js");
+ const {InitiativeTest}=await import("../module/tests.mjs");
+ const previous=InitiativeTest.prototype.roll;let captured;
+ InitiativeTest.prototype.roll=async function(){captured=this.attribute.value;return this;};
+ const owner=actor();owner.system.attributeTotals={dexterity:10,perception:11};
+ const dialog={actor:owner,isMelee:true,_scriptFields:{}};
+ try{
+   await NeuroshimaInitiativeRollDialog.prototype._performRoll.call(dialog,{attribute:"dexterity",maneuver:"charge",chargeLevel:99});
+   assert.equal(captured,13);
+   await NeuroshimaInitiativeRollDialog.prototype._performRoll.call(dialog,{attribute:"dexterity",maneuver:"charge",chargeLevel:-5});
+   assert.equal(captured,11);
+   await NeuroshimaInitiativeRollDialog.prototype._performRoll.call(dialog,{attribute:"perception",maneuver:"charge",chargeLevel:3});
+   assert.equal(captured,11);
+   dialog.isMelee=false;
+   await NeuroshimaInitiativeRollDialog.prototype._performRoll.call(dialog,{attribute:"dexterity",maneuver:"charge",chargeLevel:3});
+   assert.equal(captured,10);
+ }finally{InitiativeTest.prototype.roll=previous;}
+});
+
+test("the pool dialog rejects defensive maneuvers after a lost charge and tempo without initiative", async () => {
+ const {NeuroshimaWeaponRollDialog}=await import("../module/apps/dialogs/weapon-roll-dialog.js");
+ const previousUx=foundry.applications.ux;const previousUi=globalThis.ui;
+ let formData={maneuver:"fullDefense"},warnings=0;
+ foundry.applications.ux={FormDataExtended:class{constructor(){this.object=formData;}}};
+ globalThis.ui={notifications:{warn:()=>warnings++}};
+ const dialog={element:{tagName:"FORM"},weapon:{system:{weaponType:"melee"}},actor:actor(),
+   userEntry:{},rollOptions:{},chargeDexPenalty:2,canIncreaseTempo:true};
+ try{
+   await NeuroshimaWeaponRollDialog.prototype._onRoll.call(dialog);assert.equal(warnings,1);
+   dialog.chargeDexPenalty=0;dialog.canIncreaseTempo=false;formData={maneuver:"increasedTempo"};
+   await NeuroshimaWeaponRollDialog.prototype._onRoll.call(dialog);assert.equal(warnings,2);
+   formData={maneuver:"charge"};await NeuroshimaWeaponRollDialog.prototype._onRoll.call(dialog);assert.equal(warnings,3);
+ }finally{foundry.applications.ux=previousUx;globalThis.ui=previousUi;}
+});
+
+
+test("damage buttons restore persisted state on fresh chat renders for session and legacy cards", async () => {
+ const {NeuroshimaChatMessage}=await import("../module/documents/chat-message.js");
+ const previous=game.neuroshima.melee;
+ const button=action=>({dataset:{action},disabled:false,classList:{add(value){this.applied=value;},remove(){delete this.applied;}},innerHTML:"Apply"});
+ const duel=button("applyOpposedDamage"),hail=button("applyHailDamage");
+ const root={querySelectorAll:()=>[duel,hail]};
+ let release;const loaded=new Promise(resolve=>{release=resolve;});
+ game.neuroshima.melee={get:()=>loaded};
+ try{
+   const message={id:"m",getFlag:(_scope,key)=>key==="melee"?{sessionId:"fight"}:null};
+   const restoring=NeuroshimaChatMessage.restoreDamageButtonState(root,message);
+   assert.equal(duel.disabled,true);assert.equal(hail.disabled,true);
+   release({result:{applied:true},hailResult:{applied:false}});await restoring;
+   assert.equal(duel.disabled,true);assert.equal(duel.classList.applied,"applied");
+   assert.match(duel.innerHTML,/DamageApplied/);assert.equal(hail.disabled,false);
+   const fresh=button("applyOpposedDamage");
+   await NeuroshimaChatMessage.restoreDamageButtonState({querySelectorAll:()=>[fresh]},
+     {getFlag:(_scope,key)=>key==="opposedResult"?{beastActionsApplied:true}:null});
+   assert.equal(fresh.disabled,true);assert.equal(fresh.classList.applied,"applied");
+   const oldHail=button("applyHailDamage");
+   await NeuroshimaChatMessage.restoreDamageButtonState({querySelectorAll:()=>[oldHail]},
+     {getFlag:(_scope,key)=>key==="hailResult"?{applied:true}:null});
+   assert.equal(oldHail.disabled,true);
+ }finally{game.neuroshima.melee=previous;}
+});
+
+
+test("selected pain rerolls update existing wounds and report counts without reapplying damage", async () => {
+ const {NeuroshimaChatMessage}=await import("../module/documents/chat-message.js");
+ const {SkillTest}=await import("../module/tests.mjs");
+ const saved={user:game.user,users:game.users,tests:game.neuroshima.tests,resolver:globalThis.fromUuid,
+   Roll:globalThis.Roll,event:NeuroshimaScriptRunner.executeEvent,sync:NeuroshimaScriptRunner.executeEventSync,
+   render:NeuroshimaChatMessage._renderTemplate};
+ const owner=actor();owner.system.skills={painResistance:{value:3}};owner.system.attributeTotals={charisma:10};
+ const gm={id:"gm",active:true,isGM:true},observer={id:"observer",active:true,isGM:false};
+ game.user=gm;game.users=new Map([[gm.id,gm],[observer.id,observer]]);owner.testUserPermission=()=>false;
+ game.neuroshima.tests={SkillTest};globalThis.fromUuid=async uuid=>uuid===owner.uuid?owner:null;
+ NeuroshimaScriptRunner.executeEvent=async()=>{};NeuroshimaScriptRunner.executeEventSync=()=>{};
+ game.neuroshima.NeuroshimaScriptRunner=NeuroshimaScriptRunner;
+ let rolls=0,face=20,rendered;
+ globalThis.Roll=class{async evaluate(){rolls++;this.terms=[{results:[{result:face},{result:face},{result:face}]}];return this;}};
+ NeuroshimaChatMessage._renderTemplate=async(_template,context)=>{rendered=context;return "updated-report";};
+ try{
+   const initial=await CombatHelper.processPainResistance(owner,[{name:"First",damageType:"L"},{name:"Second",damageType:"L"}],"torso","attack");
+   initial.processedWounds.forEach((wound,index)=>owner.items.push({...wound,id:`w${index}`}));
+   owner.updateEmbeddedDocuments=async(_type,updates)=>updates.map(update=>{
+     const wound=owner.items.get(update._id);wound.system.penalty=update["system.penalty"];return wound;
+   });
+   const flags={messageType:"painResistanceReport",actorUuid:owner.uuid,woundIds:["w0","w1"],
+     results:initial.results.map((result,index)=>({...result,woundId:`w${index}`})),reducedCount:0,reducedDetails:[]};
+   const report={id:"report",flags:{neuroshima:flags},getFlag:(_scope,key)=>flags[key],
+     async update(data){for(const[key,value]of Object.entries(data))setProperty(this,key,value);}};
+   const before=structuredClone(flags.results[0]);face=1;
+   const result=await CombatHelper.rerollPainResistance(report,[1]);
+   assert.equal(result.updated,1);assert.equal(rolls,3);assert.equal(owner.items.length,2);
+   assert.deepEqual(flags.results[0],before);assert.equal(flags.results[1].isPassed,true);
+   assert.equal(owner.items.get("w1").system.penalty,flags.results[1].penalty);
+   assert.equal(rendered.passedCount,1);assert.equal(rendered.failedCount,1);
+   assert.ok(flags.results[1].testData);assert.equal(flags.results[1].rerollCount,1);
+   await assert.rejects(CombatHelper.rerollPainResistance(report,[0],observer.id));assert.equal(rolls,3);
+   flags.isReversed=true;await assert.rejects(CombatHelper.rerollPainResistance(report,[0]));assert.equal(rolls,3);
+   flags.isReversed=false;
+   const penalty=owner.items.get("w0").system.penalty;
+   NeuroshimaChatMessage._renderTemplate=async()=>{throw new Error("render failed");};
+   await assert.rejects(CombatHelper.rerollPainResistance(report,[0]),/render failed/);
+   assert.equal(owner.items.get("w0").system.penalty,penalty);assert.deepEqual(flags.results[0],before);
+   NeuroshimaChatMessage._renderTemplate=async(_template,context)=>{rendered=context;return "updated-report";};
+   const all=await CombatHelper.rerollPainResistance(report,[]);
+   assert.equal(all.updated,2);assert.equal(rolls,6);
+   assert.equal(flags.results[0].rerollCount,1);assert.equal(flags.results[1].rerollCount,2);
+   assert.equal(rendered.passedCount,2);assert.equal(rendered.failedCount,0);
+
+ }finally{game.user=saved.user;game.users=saved.users;game.neuroshima.tests=saved.tests;globalThis.fromUuid=saved.resolver;
+   globalThis.Roll=saved.Roll;NeuroshimaScriptRunner.executeEvent=saved.event;NeuroshimaScriptRunner.executeEventSync=saved.sync;
+   NeuroshimaChatMessage._renderTemplate=saved.render;}
+});
+
+test("reversing a damage report removes its whole linked batch and unlocks the source exactly once", async () => {
+ const {MeleeCommandService,createMeleeSession}=await import("../module/combat/melee-system.js");
+ const {NeuroshimaChatMessage}=await import("../module/documents/chat-message.js");
+ const saved={user:game.user,messages:game.messages,melee:game.neuroshima.melee,resolver:globalThis.fromUuid,ui:globalThis.ui};
+ const first=actor(),second=actor();first.uuid="Actor.first";second.uuid="Actor.second";
+ const source={messageId:"attack",sessionId:"fight",kind:"duel"};
+ const report=(id,owner)=>{
+   const flags={messageType:"painResistanceReport",actorUuid:owner.uuid,woundIds:["w"],damageSource:source,isReversed:false};
+   return {id,content:"report",getFlag:(_scope,key)=>flags[key],async update(data){
+     for(const[key,value]of Object.entries(data)){if(key.startsWith("flags.neuroshima."))flags[key.slice(17)]=value;else this[key]=value;}
+   }};
+ };
+ const r1=report("r1",first),r2=report("r2",second);
+ const session=createMeleeSession({id:"fight",attacker:{actorUuid:first.uuid},defender:{actorUuid:second.uuid}});
+ session.result={applied:true,beastActionsApplied:true,hits:[{damageType:"L"}]};session.operationLedger={"fight:damage:duel":{status:"applied"},other:{status:"applied"}};
+ for(const owner of [first,second]){
+   owner.items.push({id:"w",type:"wound"});owner.items.has=id=>owner.items.some(item=>item.id===id);
+   owner.effects.push({id:"effect",getFlag:(_scope,key)=>key==="damageWoundIds"?["w"]:undefined});
+   owner.deleteEmbeddedDocuments=async(type,ids)=>{const list=type==="Item"?owner.items:owner.effects;
+     for(let i=list.length-1;i>=0;i--)if(ids.includes(list[i].id))list.splice(i,1);
+   };
+ }
+ globalThis.fromUuid=async uuid=>uuid===first.uuid?first:uuid===second.uuid?second:null;
+ game.user={id:"gm",isGM:true};globalThis.ui={notifications:{info:()=>{}}};
+ const origin={id:"attack",getFlag:(_scope,key)=>key==="melee"?{sessionId:"fight"}:null};
+ game.messages={contents:[r1,r2,origin],get:id=>({r1,r2,attack:origin})[id]};
+ let resets=0;game.neuroshima.melee={get:async()=>session,dispatch:async command=>{resets++;return MeleeCommandService._apply(session,command);}};
+ try{
+   await CombatHelper.reverseDamage(r1);
+   assert.equal(first.items.length,0);assert.equal(second.items.length,0);
+   assert.equal(first.effects.length,0);assert.equal(second.effects.length,0);
+   assert.equal(r1.getFlag("neuroshima","isReversed"),true);assert.equal(r2.getFlag("neuroshima","isReversed"),true);
+   assert.equal(session.result.applied,false);assert.equal(session.result.beastActionsApplied,false);
+   assert.equal(session.operationLedger["fight:damage:duel"],undefined);assert.ok(session.operationLedger.other);
+   assert.equal(resets,1);
+   const button={dataset:{action:"applyOpposedDamage"},disabled:true,classList:{remove(){},add(){}},innerHTML:"Applied"};
+   await NeuroshimaChatMessage.restoreDamageButtonState({querySelectorAll:()=>[button]},origin);
+   assert.equal(button.disabled,false);
+   assert.equal(MeleeCommandService._claimDamage(session,{userId:"gm",payload:{kind:"duel"}}).claimed,true);
+   assert.equal((await CombatHelper.reverseDamage(r1)).alreadyReversed,true);
+   assert.equal(resets,1);assert.equal(session.operationLedger["fight:damage:duel"].status,"running");
+ }finally{game.user=saved.user;game.messages=saved.messages;game.neuroshima.melee=saved.melee;
+   globalThis.fromUuid=saved.resolver;globalThis.ui=saved.ui;}
+});
+
+
+test("pain-report selection binds once and excludes critical and automatic results", async () => {
+ const {NeuroshimaChatMessage}=await import("../module/documents/chat-message.js");
+ const previous=game.user;game.user={isGM:true};
+ const row=()=>({dataset:{},listeners:[],classList:{toggle(){}},setAttribute(){},addEventListener(_event,listener){this.listeners.push(listener);}});
+ const rows=[row(),row(),row()];const report={dataset:{},querySelectorAll:()=>rows};
+ const message={id:"selection",getFlag:(_scope,key)=>({messageType:"painResistanceReport",results:[{}, {isCritical:true},{forcePassed:true}]})[key]};
+ const root={querySelector:()=>report};
+ try{
+   NeuroshimaChatMessage.bindPainReportSelection(root,message);
+   NeuroshimaChatMessage.bindPainReportSelection(root,message);
+   assert.equal(rows[0].listeners.length,1);assert.equal(rows[1].listeners.length,0);assert.equal(rows[2].listeners.length,0);
+   rows[0].listeners[0]();assert.deepEqual([...NeuroshimaChatMessage._selectedPainResults.get(message.id)],[0]);
+   rows[0].listeners[0]();assert.equal(NeuroshimaChatMessage._selectedPainResults.get(message.id).size,0);
+ }finally{game.user=previous;NeuroshimaChatMessage._selectedPainResults.delete(message.id);}
+});
+
+test("damage reset requires a reversed report and remains restricted to GM commands", async () => {
+ const {MeleeCommandService}=await import("../module/combat/melee-system.js");
+ const previous=game.messages;
+ const flags={damageSource:{sessionId:"fight",messageId:"attack",kind:"duel"},isReversed:false};
+ const report={getFlag:(_scope,key)=>flags[key]};
+ game.messages={get:()=>report,contents:[report]};
+ const session={id:"fight",result:{applied:true},operationLedger:{"fight:damage:duel":{status:"applied"}}};
+ try{
+   await assert.rejects(MeleeCommandService._authorize(session,{type:"resetDamage"},{id:"owner",active:true,isGM:false}),{code:"UNAUTHORIZED"});
+   assert.throws(()=>MeleeCommandService._resetDamage(session,{payload:{reportMessageId:"r",kind:"duel"}}),{code:"INVALID_DAMAGE_REPORT"});
+   assert.equal(session.result.applied,true);
+   flags.isReversed=true;
+   const other={getFlag:(_scope,key)=>key==="damageSource"?flags.damageSource:false};
+   game.messages.contents.push(other);
+   assert.throws(()=>MeleeCommandService._resetDamage(session,{payload:{reportMessageId:"r",kind:"duel"}}),{code:"DAMAGE_NOT_REVERSED"});
+   assert.equal(session.result.applied,true);
+ }finally{game.messages=previous;}
+});
+
+
+test("the render hook supplies the message before its HTML is attached and enables pain selection", async () => {
+ const {NeuroshimaChatMessage}=await import("../module/documents/chat-message.js");
+ const previous={user:game.user,HTMLElement:globalThis.HTMLElement};game.user={isGM:true};
+ const handlers=[],classes=new Set(),attributes={};
+ const row={dataset:{},setAttribute:(key,value)=>{attributes[key]=value;},classList:{toggle(key,enabled){if(enabled)classes.add(key);else classes.delete(key);}},addEventListener:(_event,handler)=>handlers.push(handler)};
+ const surface={dataset:{},querySelectorAll:()=>[row]};
+ class DetachedRoot{dataset={};closest(){return null;}querySelector(selector){return selector===".pain-resistance-report"?surface:null;}querySelectorAll(){return [];}}
+ globalThis.HTMLElement=DetachedRoot;
+ const data={messageType:"painResistanceReport",results:[{rerollCount:1},{isCritical:true},{forcePassed:true},{}]};
+ const message={id:"detached-pain",getFlag:(_scope,key)=>data[key]};
+ try{
+   NeuroshimaChatMessage.onChatAction(new DetachedRoot(),message);
+   assert.equal(handlers.length,1);assert.equal(classes.has("ns-pain-rerolled"),true);
+   assert.deepEqual(NeuroshimaChatMessage.painRerollIndices(message),[0,3]);
+   handlers[0]();assert.equal(classes.has("ns-pain-selected"),true);assert.equal(attributes["aria-selected"],"true");
+   assert.deepEqual(NeuroshimaChatMessage.painRerollIndices(message),[0]);
+   handlers[0]();assert.equal(classes.has("ns-pain-selected"),false);
+   assert.equal(classes.has("ns-pain-rerolled"),true);
+   assert.deepEqual(NeuroshimaChatMessage.painRerollIndices(message),[0,3]);
+ }finally{game.user=previous.user;globalThis.HTMLElement=previous.HTMLElement;NeuroshimaChatMessage._selectedPainResults.delete(message.id);}
+});
+
+
+test("a beast segment is one definition with root fields, fixed segment cost and all fire modes by default", async () => {
+ const previous=foundry.data;const previousMigrate=foundry.abstract.TypeDataModel.migrateData;
+ class Field {constructor(...args){this.args=args;}}
+ foundry.data={fields:Object.fromEntries(["StringField","NumberField","BooleanField","HTMLField","ObjectField","SchemaField","ArrayField"].map(name=>[name,Field]))};
+ foundry.abstract.TypeDataModel.migrateData=source=>source;
+ try{
+   const {BeastSegmentData}=await import("../module/data/item-data.js");
+   const schema=BeastSegmentData.defineSchema();
+   assert.equal(schema.activities,undefined);assert.ok(schema.segmentCost);assert.ok(schema.weaponType);
+   assert.deepEqual(schema.costType.args[0].choices,["segment"]);
+   assert.equal(schema.fireModes.args[0].all.args[0].initial,true);
+   const source={description:"Shared",activities:[{id:"spit",name:"Spit",weaponType:"ranged",segmentCost:2},{id:"howl",name:"Howl"}]};
+   BeastSegmentData.migrateData(source);assert.equal(source.activities,undefined);
+   assert.equal(source.legacyActivities.length,2);assert.equal(source.weaponType,"ranged");assert.equal(source.segmentCost,2);
+ }finally{foundry.data=previous;foundry.abstract.TypeDataModel.migrateData=previousMigrate;}
+});
+
+test("beast package migration preserves all segment definitions, effects, resources and references without duplicate retries", async () => {
+ const {migrateBeastItem,beastActivities,resolveBeastActionItem}=await import("../module/helpers/beast-actions.js");
+ const collection=[];let failUpdate=true,creates=0;
+ class Segment {
+   constructor(data,parent){this.data=structuredClone(data);this.id=data._id;this.uuid=`Actor.beast.Item.${this.id}`;this.type=data.type;this.parent=parent;}
+   get system(){return this.data.system;}
+   getFlag(_scope,key){return this.data.flags?.neuroshima?.[key];}
+   toObject(){return structuredClone(this.data);}
+   static async create(data,options){assert.equal(options.keepEmbeddedIds,true);creates++;const child=new Segment({...data,_id:`child${creates}`},options.parent);collection.push(child);return child;}
+   async update(data){
+     if(failUpdate){failUpdate=false;throw new Error("retry migration");}
+     for(const[path,value]of Object.entries(data)){
+       const keys=path.split(".");if(keys.at(-1).startsWith("-=")){const parent=getProperty(this.data,keys.slice(0,-1).join("."));if(parent)delete parent[keys.at(-1).slice(2)];}
+       else setProperty(this.data,path,value);
+     }
+   }
+ }
+ collection.get=id=>collection.find(item=>item.id===id);
+ const source={_id:"original",type:"beast-segment",name:"Package",img:"paw",effects:[{_id:"effect",name:"Venom"}],
+   system:{description:"Shared",resources:[{name:"Uses",value:2}],tests:{value:"Constitution"},activities:[
+     {id:"spit",name:"Spit",weaponType:"ranged",segmentCost:2,effectIds:["effect"]},
+     {id:"howl",name:"Howl",actionType:"action",segmentCost:1}
+   ]},flags:{neuroshima:{meleeActivities:[{id:"old"}]}}};
+ const root=new Segment(source,{items:collection});collection.push(root);
+ await assert.rejects(migrateBeastItem(root),/retry migration/);
+ assert.equal(collection.length,2);
+ await migrateBeastItem(root);assert.equal(collection.length,2);assert.equal(creates,1);
+ assert.equal(root.id,"original");assert.equal(root.data.name,"Spit");assert.equal(root.system.activities,undefined);
+ assert.equal(root.system.costType,"segment");assert.equal(root.system.segmentCost,2);
+ for(const item of collection){assert.deepEqual(item.data.effects,source.effects);assert.deepEqual(item.system.resources,source.system.resources);assert.deepEqual(item.system.tests,source.system.tests);assert.equal(beastActivities(item).length,1);}
+ assert.equal(collection[1].data.name,"Howl");assert.equal(collection[1].system.costType,"segment");
+ assert.equal(resolveBeastActionItem({items:collection},"original","howl"),collection[1]);
+ assert.equal(await migrateBeastItem(root),0);
+});
+
+test("segment ranged profiles expose configured fire modes and keep them through test recreation", async () => {
+ const {createBeastSegmentWeapon}=await import("../module/helpers/beast-actions.js");
+ const {getAvailableFireModes,getFireModeModifier}=await import("../module/apps/dialogs/weapon-roll-dialog.js");
+ const owner=actor("creature");owner.system.experience=4;
+ const segment={id:"spit",type:"beast-segment",name:"Spit",system:{id:"spit",weaponType:"ranged",damage:"L",fireRate:6}};
+ let weapon=createBeastSegmentWeapon(owner,segment);
+ assert.deepEqual(getAvailableFireModes(weapon).map(mode=>mode.value),[0,1,2,3]);
+ segment.system.fireModes={all:false,single:false,shortBurst:true,longBurst:false,fullAuto:true};
+ segment.system.fireModeModifiers={shortBurst:10,fullAuto:30};weapon=createBeastSegmentWeapon(owner,segment);
+ assert.deepEqual(getAvailableFireModes(weapon).map(mode=>mode.value),[1,3]);assert.equal(getFireModeModifier(weapon,3),30);
+ const previous={tests:game.neuroshima.tests,resolver:globalThis.fromUuid};
+ game.neuroshima.tests={RangedWeaponTest};globalThis.fromUuid=async uuid=>uuid===owner.uuid?owner:null;
+ try{
+   const test=new RangedWeaponTest({actor:owner,item:weapon});
+   const restored=await RangedWeaponTest.recreate(test.toData());
+   assert.deepEqual(restored.item.system.fireModes,segment.system.fireModes);
+   assert.deepEqual(getAvailableFireModes(restored.item).map(mode=>mode.value),[1,3]);
+ }finally{game.neuroshima.tests=previous.tests;globalThis.fromUuid=previous.resolver;}
+});
+
+test("segment sheet saves its definition and fire mode checkboxes directly on the Item", async () => {
+ const {BeastActivitySheet}=await import("../module/apps/beast-activity-sheet.js");
+ let saved;
+ const item={id:"segment",type:"beast-segment",name:"Spit",img:"paw",isOwner:true,
+   system:{id:"segment",segmentCost:1,fireModes:{all:true,single:true}},
+   async update(data){saved=data;}};
+ const sheet={item,activityId:"segment",_saveActivities:BeastActivitySheet.prototype._saveActivities};
+ await BeastActivitySheet._onSubmit.call(sheet,{target:{name:"fireModes.all"}},null,{object:{
+   name:"Volley",segmentCost:3,"fireModes.all":false,"fireModes.single":false,
+   "fireModes.shortBurst":true,"fireModeModifiers.shortBurst":10
+ }});
+ assert.equal(saved.name,"Volley");assert.equal(saved["system.segmentCost"],3);
+ assert.deepEqual(saved["system.fireModes"],{all:false,single:false,shortBurst:true});
+ assert.equal(saved["system.fireModeModifiers"].shortBurst,10);
+ assert.equal(saved["system.activities"],undefined);assert.equal(saved["system.name"],undefined);
 });

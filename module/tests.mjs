@@ -1689,6 +1689,8 @@ export class WeaponTest extends AttackTest {
       isMelee: this.preData.isMelee === true || this.context.isMelee === true,
       meleeAction: this.preData.meleeAction ?? this.context.meleeAction ?? null,
       maneuver: this.preData.maneuver ?? this.context.maneuver ?? "none",
+      tempoLevel: Number(this.context.tempoLevel ?? 0),
+      selectedTempoLevel: Number(this.context.selectedTempoLevel ?? 0),
       diceCount: this.diceCount,
       burstLevel: Number(this.preData.burstLevel ?? this.context.burstLevel ?? 0),
       fireRate: Number(this.preData.fireRate ?? this.context.fireRate ?? this.item?.system?.fireRate ?? 1),

@@ -408,17 +408,27 @@ export class BeastActionData extends foundry.abstract.TypeDataModel {
  * Represents segment-based creature actions (e.g. ranged attacks, special moves).
  */
 export class BeastSegmentData extends foundry.abstract.TypeDataModel {
+  static migrateData(source) {
+    super.migrateData(source);
+    if (source.activities?.length) {
+      source.legacyActivities = source.activities;
+      const description = source.description;
+      Object.assign(source, source.activities[0]);
+      source.description = source.activities[0].description || description || "";
+      delete source.activities;
+    }
+    return source;
+  }
+
   static defineSchema() {
     const fields = foundry.data.fields;
-    const activitySchema = new fields.SchemaField({
+    const activitySchema = {
       ...meleeActivitySchema(),
       id:                      new fields.StringField({ initial: () => foundry.utils.randomID() }),
-      name:                    new fields.StringField({ initial: "" }),
-      img:                     new fields.StringField({ initial: "" }),
       summary:                 new fields.StringField({ initial: "", blank: true }),
       gmNote:                  new fields.StringField({ initial: "", blank: true }),
       actionType:              new fields.StringField({ initial: "attack" }),
-      costType:                new fields.StringField({ initial: "segment" }),
+      costType:                new fields.StringField({ initial: "segment", choices: ["segment"] }),
       segmentCost:             new fields.NumberField({ integer: true, initial: 1, min: 1, max: 3 }),
       skillMode:               new fields.StringField({ initial: "experience", choices: ["experience", "none"] }),
       weaponType:              new fields.StringField({ initial: "melee", choices: ["none", "melee", "ranged", "thrown", "grenade"] }),
@@ -430,6 +440,20 @@ export class BeastSegmentData extends foundry.abstract.TypeDataModel {
       damageCategory:          new fields.StringField({ initial: "physical" }),
       fireRate:                new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       rangedSubtype:           new fields.StringField({ initial: "pistols" }),
+      fireModes: new fields.SchemaField({
+        all: new fields.BooleanField({ initial: true }),
+        single: new fields.BooleanField({ initial: true }),
+        shortBurst: new fields.BooleanField({ initial: false }),
+        longBurst: new fields.BooleanField({ initial: false }),
+        fullAuto: new fields.BooleanField({ initial: false })
+      }),
+      fireModeModifiers: new fields.SchemaField({
+        single: new fields.NumberField({ integer: true, initial: 0 }),
+        shortBurst: new fields.NumberField({ integer: true, initial: 0 }),
+        longBurst: new fields.NumberField({ integer: true, initial: 0 }),
+        fullAuto: new fields.NumberField({ integer: true, initial: 0 })
+      }),
+
       jamming:                 new fields.NumberField({ integer: true, initial: 20, min: 0, max: 20 }),
       damage1:                 new fields.StringField({ initial: "D", nullable: true, blank: true }),
       damage2:                 new fields.StringField({ initial: "L", nullable: true, blank: true }),
@@ -452,12 +476,14 @@ export class BeastSegmentData extends foundry.abstract.TypeDataModel {
       effectTarget:            new fields.StringField({ initial: "target", choices: ["self", "target", "selected", "manual"] }),
       applyEffectsAutomatically: new fields.BooleanField({ initial: true }),
       resolverKind:            new fields.StringField({ initial: "opposedMelee", choices: ["opposedMelee", "directApply"] })
-    });
+    };
     return {
       description: new fields.HTMLField({ initial: "" }),
       resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
       ...testsSchema(),
-      activities: new fields.ArrayField(activitySchema, { initial: [] })
+      ...activitySchema,
+      legacyActivities: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+      testDifficulty: new fields.StringField({ initial: "average" })
     };
   }
 }

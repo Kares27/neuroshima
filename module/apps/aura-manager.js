@@ -516,9 +516,7 @@ export class NeuroshimaAuraManager {
    * Create a copy of an aura effect on a target actor, tagged for cleanup.
    */
   static async _applyAuraCopy(effect, sourceActor, targetActor, sourceTokenId = null, sourceActorUuid = null) {
-    const data = effect.toObject();
-    delete data._id;
-    data.transfer = false;
+    const data = effect.convertToApplied();
     data.origin = sourceActor.uuid;
     data.duration = foundry.utils.mergeObject(data.duration ?? {}, { startTime: game.time.worldTime });
     foundry.utils.setProperty(data, "flags.neuroshima.fromAura", {
@@ -533,7 +531,7 @@ export class NeuroshimaAuraManager {
 
   /**
    * Display scrolling text on all visible tokens of a given actor.
-   * Mirrors warhammer-lib's TokenHelpers.displayScrollingText pattern.
+   * Displays effect feedback above visible actor tokens.
    * @param {string} text
    * @param {Actor}  actor
    */
@@ -765,9 +763,7 @@ export class NeuroshimaAuraManager {
    * Build the effect data object for an area copy.
    */
   static _buildAreaCopyData(effect, templateId, sourceEffectId, sourceActorId) {
-    const data = effect.toObject();
-    delete data._id;
-    data.transfer = false;
+    const data = effect.convertToApplied();
     data.duration = foundry.utils.mergeObject(data.duration ?? {}, { startTime: game.time.worldTime });
     const sourceActor = game.actors.get(sourceActorId);
     if (sourceActor) data.origin = sourceActor.uuid;

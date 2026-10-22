@@ -1,7 +1,7 @@
 /**
  * Active Effect triggers exposed to users.
  *
- * Naming follows the WFRP-style lifecycle: preX -> X. A trigger is a concrete
+ * Naming follows the lifecycle: preX -> X. A trigger is a concrete
  * dropdown choice; scripts do not need separate context filters.
  */
 import { TriggerRegistry } from "./trigger-registry.js";

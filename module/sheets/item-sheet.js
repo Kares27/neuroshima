@@ -1,6 +1,5 @@
 import { NEUROSHIMA } from "../config.js";
 import { TraitBrowserApp } from "../apps/trait-browser.js";
-import { BeastActivitySheet } from "../apps/beast-activity-sheet.js";
 import { normalizeGearType } from "../helpers/gear-types.js";
 import { installMod, attachMod, detachMod, removeMod, buildInstalledMap, buildModDeltaSummary, getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveWeight, getEffectiveCost } from "../helpers/mod-helpers.js";
 import { buildItemPreviewTooltip } from "../helpers/item-tooltip.js";
@@ -66,9 +65,6 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       toggleContainerLock: NeuroshimaItemSheet.prototype._onToggleContainerLock,
       toggleEquip: NeuroshimaItemSheet.prototype._onToggleEquip,
       toggleState: NeuroshimaItemSheet.prototype._onToggleState,
-      addBeastActivity: NeuroshimaItemSheet.prototype._onAddBeastActivity,
-      removeBeastActivity: NeuroshimaItemSheet.prototype._onRemoveBeastActivity,
-      editBeastActivity: NeuroshimaItemSheet.prototype._onEditBeastActivity,
     },
     dragDrop: [{ dragSelector: ".item", dropSelector: "form" }],
     forms: {
@@ -1547,54 +1543,6 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     const item = this.document;
     if (!("equipped" in (item.system ?? {}))) return;
     await this.submit({ updateData: { "system.equipped": !item.system.equipped } });
-  }
-
-  async _onAddBeastActivity() {
-    const item = this.document;
-    if (item.type !== "beast-segment") return;
-    const activities = foundry.utils.deepClone(item.system.activities ?? []);
-    const base = {
-      id: foundry.utils.randomID(),
-      name: "",
-      img: "",
-      summary: "",
-      gmNote: "",
-      actionType: "",
-      attribute: "dexterity",
-      damage: "",
-      piercing: 0,
-      effectIds: []
-    };
-    base.costType = "segment";
-    base.segmentCost = 1;
-    base.skillMode = "experience";
-    base.weaponType = "melee";
-    base.damage1 = "D";
-    base.damage2 = "L";
-    base.damage3 = "C";
-    base.range = 0;
-    activities.push(base);
-    const updated = await item.update({ "system.activities": activities });
-    if (updated) {
-      BeastActivitySheet.open(updated, base.id);
-    }
-  }
-
-  async _onRemoveBeastActivity(event, target) {
-    const item = this.document;
-    if (item.type !== "beast-segment") return;
-    const activityId = target.closest("[data-activity-id]")?.dataset.activityId ?? target.dataset.activityId;
-    if (!activityId) return;
-    const activities = (item.system.activities ?? []).filter(a => a.id !== activityId);
-    await item.update({ "system.activities": activities });
-  }
-
-  async _onEditBeastActivity(event, target) {
-    const item = this.document;
-    if (item.type !== "beast-segment") return;
-    const activityId = target.closest("[data-activity-id]")?.dataset.activityId ?? target.dataset.activityId;
-    if (!activityId) return;
-    BeastActivitySheet.open(item, activityId);
   }
 
 }

@@ -6,7 +6,7 @@ import { AttributeTest, SkillTest, TestRules } from "../../tests.mjs";
 
 /**
  * Dialog for skill/attribute rolls.
- * Uses WFRP-inspired re-render pattern: userEntry tracks user overrides,
+ * Preserves input across renders: userEntry tracks user overrides,
  * scripts run fresh on every _prepareContext call, without DOM delta accumulation.
  */
 export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {

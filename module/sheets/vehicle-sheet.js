@@ -485,11 +485,8 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
     const condDefs = getConditions();
     const condTypeMap = Object.fromEntries(condDefs.map(c => [c.key, c.type ?? "boolean"]));
     const effectDurationLabel = (e) => e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—");
-    const isTemporary = (e) => !!(
-      e.duration?.rounds || e.duration?.seconds || e.duration?.turns ||
-      e.getFlag("neuroshima", "fromAura") || e.getFlag("neuroshima", "fromArea")
-    );
-    const isConditionEffect = (e) => e.statuses?.size > 0;
+    const isTemporary = (e) => e.isTemporary;
+    const isConditionEffect = (e) => e.isCondition;
 
     const temporary     = [];
     const passive       = [];
@@ -523,10 +520,7 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
     };
 
     for (const e of actor.effects) {
-      const fromAura = e.getFlag("neuroshima", "fromAura");
-      const fromArea = e.getFlag("neuroshima", "fromArea");
-      const sourceActorId = fromAura?.sourceActorId ?? fromArea?.sourceActorId ?? null;
-      const sourceActor = sourceActorId ? game.actors.get(sourceActorId) : null;
+      const sourceActor = e.sourceActor;
       pushEffect(e, null, sourceActor?.name ?? actor.name, sourceActor?.img ?? actor.img ?? "icons/svg/mystery-man.svg", false);
     }
 

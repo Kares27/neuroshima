@@ -1,4 +1,5 @@
 import { expandDialogModifiers } from "../../helpers/dialog-script-groups.js";
+import { maxMeleeTempo, clampMeleeTempo } from "../../combat/melee-maneuvers.js";
 
 import { NEUROSHIMA } from "../../config.js";
 import { NeuroshimaDice } from "../../helpers/dice.js";
@@ -62,7 +63,7 @@ function getFireRateOptions(weapon) {
 
 /**
  * Dialog for weapon rolls (ranged and melee).
- * Uses WFRP-inspired re-render pattern: userEntry tracks user overrides,
+ * Preserves input across renders: userEntry tracks user overrides,
  * scripts run fresh on every _prepareContext call - no DOM delta accumulation.
  */
 export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
@@ -111,6 +112,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     this.opposedLink = foundry.utils.deepClone(options.opposedLink ?? null);
     this.crowdingDexPenalty = options.crowdingDexPenalty || 0;
     this.chargeDexPenalty   = options.chargeDexPenalty   || 0;
+    this.canIncreaseTempo = options.canIncreaseTempo ?? options.meleeAction !== "defense";
     this.rollOptions.gradCios = options.gradCios ?? false;
 
     this.shooterMovedPenalty = 0;
@@ -176,8 +178,11 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     const isOpenRaw       = this.userEntry.isOpen          ?? this.rollOptions.isOpen;
     const isOpen          = isOpenRaw === true || isOpenRaw === "true";
     const meleeAction     = this.userEntry.meleeAction     ?? this.rollOptions.meleeAction ?? "attack";
-    const maneuver        = this.userEntry.maneuver        ?? this.rollOptions.maneuver ?? "none";
-    const tempoLevel      = this.userEntry.tempoLevel      ?? this.rollOptions.tempoLevel ?? 1;
+    let maneuver = this.userEntry.maneuver ?? this.rollOptions.maneuver ?? "none";
+    const maxTempoLevel = maxMeleeTempo(this.actor, this.weapon);
+    if (maneuver === "charge" || (maneuver === "fullDefense" && this.chargeDexPenalty > 0)
+      || (maneuver === "increasedTempo" && (!this.canIncreaseTempo || maxTempoLevel === 0))) maneuver = "none";
+    const tempoLevel = clampMeleeTempo(this.userEntry.tempoLevel ?? this.rollOptions.tempoLevel ?? 1, maxTempoLevel);
     const meleeDiceCount  = this.fixedMeleeDiceCount ?? this.userEntry.meleeDiceCount ?? 3;
     const aimingLevel     = this.userEntry.aimingLevel     ?? this.rollOptions.aimingLevel ?? 0;
     const fireModeOptions = getAvailableFireModes(this.weapon);
@@ -366,7 +371,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     context.meleeAction     = meleeAction;
     context.maneuver        = maneuver;
     context.tempoLevel      = tempoLevel;
-    context.maxTempoLevel   = Math.min(3, Math.max(1, weaponSkillValue));
+    context.maxTempoLevel   = maxTempoLevel;
     context.meleeDiceCount  = meleeDiceCount;
     context.fixedMeleeDiceCount = this.fixedMeleeDiceCount;
     context.gradCiosDefense = this.gradCiosDefense;
@@ -386,13 +391,16 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     context.distance        = distance;
     context.distancePenalty = distancePenalty;
     context.dialogModifiers = dialogModifiers;
-    context.maneuvers = NEUROSHIMA.maneuvers || {
+    context.maneuvers = { ...(NEUROSHIMA.maneuvers || {
       none: "NEUROSHIMA.Roll.Maneuvers.None",
       charge: "NEUROSHIMA.Roll.Maneuvers.Charge",
       fury: "NEUROSHIMA.Roll.Maneuvers.Fury",
       fullDefense: "NEUROSHIMA.Roll.Maneuvers.FullDefense",
       increasedTempo: "NEUROSHIMA.Roll.Maneuvers.IncreasedTempo"
-    };
+    }) };
+    delete context.maneuvers.charge;
+    if (!this.canIncreaseTempo || maxTempoLevel === 0) delete context.maneuvers.increasedTempo;
+    if (this.chargeDexPenalty > 0) delete context.maneuvers.fullDefense;
 
     return context;
   }
@@ -508,7 +516,8 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     burstLevel = normalizeFireModeLevel(this.weapon, burstLevel);
     const fireRate       = Number(formData.fireRate ?? this.userEntry.fireRate ?? this.rollOptions.fireRate ?? this.weapon?.system?.fireRate ?? 1);
     const fireModeModifier = getFireModeModifier(this.weapon, burstLevel);
-    const tempoLevel     = formData.tempoLevel      !== undefined ? parseInt(formData.tempoLevel)    : (this.userEntry.tempoLevel    ?? this.rollOptions.tempoLevel    ?? 1);
+    const tempoLevel = clampMeleeTempo(formData.tempoLevel ?? this.userEntry.tempoLevel ?? this.rollOptions.tempoLevel ?? 1,
+      maxMeleeTempo(this.actor, this.weapon));
     const maneuver       = formData.maneuver        || (this.userEntry.maneuver ?? this.rollOptions.maneuver ?? "none");
     const isMelee        = this.rollType === "melee";
     const bonusMode      = game.settings.get("neuroshima", "meleeBonusMode") || "attribute";
@@ -528,10 +537,11 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     const weaponModifier  = formData.useWeaponModifier  ? (parseInt(formData.weaponModifier) || 0) : 0;
 
     let weaponBonus = 0;
+    let maneuverAttributeBonus = 0;
     if (isMelee) {
       const action = formData.meleeAction || "attack";
       weaponBonus = action === "attack" ? (this.weapon.system.attackBonus || 0) : (this.weapon.system.defenseBonus || 0);
-      if ((maneuver === 'fury' && action === 'attack') || (maneuver === 'fullDefense' && action === 'defense')) weaponBonus += 2;
+      if ((maneuver === 'fury' && action === 'attack') || (maneuver === 'fullDefense' && action === 'defense')) maneuverAttributeBonus = 2;
     }
 
     const locationPenalty = this.isLauncher
@@ -598,7 +608,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     if (isMelee && (bonusMode === "attribute" || bonusMode === "both")) effectiveWeaponBonus = weaponBonus;
 
     const targetElement = html.querySelector('.final-target');
-    if (targetElement) targetElement.innerText = attrTotal + attrBonus + activeDiff.mod + effectiveWeaponBonus - (this.crowdingDexPenalty || 0) - (this.chargeDexPenalty || 0);
+    if (targetElement) targetElement.innerText = attrTotal + attrBonus + activeDiff.mod + effectiveWeaponBonus + maneuverAttributeBonus - (this.crowdingDexPenalty || 0) - (this.chargeDexPenalty || 0);
 
     const aimingDisplay   = html.querySelector('.aiming-display');
     const diceCountDisplay= html.querySelector('.dice-count');
@@ -666,7 +676,14 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     const aimingLevel      = formData.aimingLevel !== undefined ? parseInt(formData.aimingLevel) : (ue.aimingLevel ?? this.rollOptions.aimingLevel ?? 0);
     // selectedTempo = what the user explicitly chose in the dialog (saved to lastWeaponRoll for recall).
     // tempoLevel    = effective value passed to the roll engine — includes any condition-forced shift.
-    const selectedTempo    = formData.maneuver === "increasedTempo" ? (parseInt(formData.tempoLevel) || 1) : 0;
+    if (formData.maneuver === "charge"
+      || (formData.maneuver === "fullDefense" && this.chargeDexPenalty > 0)
+      || (formData.maneuver === "increasedTempo" && (!this.canIncreaseTempo || maxMeleeTempo(this.actor, this.weapon) === 0))) {
+      ui.notifications.warn("Ten manewr jest niedostępny w tej fazie walki.");
+      return;
+    }
+    const selectedTempo = formData.maneuver === "increasedTempo"
+      ? clampMeleeTempo(parseInt(formData.tempoLevel) || 1, maxMeleeTempo(this.actor, this.weapon)) : 0;
     const tempoLevel       = Math.max(this._conditionTempo, selectedTempo);
     const meleeDiceCount   = this.fixedMeleeDiceCount
       ?? (formData.meleeDiceCount !== undefined ? Math.min(3, Math.max(1, parseInt(formData.meleeDiceCount) || 3)) : 3);
@@ -703,6 +720,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       meleeAction:     formData.meleeAction,
       maneuver:        formData.maneuver,
       tempoLevel:      tempoLevel,
+      selectedTempoLevel: selectedTempo,
       meleeDiceCount:  meleeDiceCount,
       aimingLevel:     aimingLevel,
       burstLevel:      burstLevel,
@@ -810,8 +828,8 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     if (isMelee && ["skill", "both"].includes(bonusMode)) skillBonus += weaponBonus;
     let difficulty = NEUROSHIMA.difficulties[params.difficulty]
       ?? NEUROSHIMA.difficulties.average;
-    if (isMelee && maneuver === "increasedTempo") {
-      difficulty = TestRules.shiftDifficulty(difficulty, Number(params.tempoLevel ?? 0));
+    if (isMelee && Number(params.tempoLevel) > 0) {
+      difficulty = TestRules.shiftDifficulty(difficulty, clampMeleeTempo(params.tempoLevel));
     }
     const location = params.hitLocation ?? "torso";
     const locationPenalty = ["random", "torso"].includes(location)
@@ -878,6 +896,8 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
         applySkillDifficultyShift: !isMelee,
         meleeAction,
         maneuver,
+        tempoLevel: isMelee ? clampMeleeTempo(params.tempoLevel) : 0,
+        selectedTempoLevel: isMelee ? clampMeleeTempo(params.selectedTempoLevel) : 0,
         hitLocation: location,
         burstLevel: Number(params.burstLevel ?? 0),
         fireRate: isMelee ? 0 : Number(params.fireRate ?? weapon.system.fireRate ?? 1),

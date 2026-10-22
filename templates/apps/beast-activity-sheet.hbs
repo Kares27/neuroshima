@@ -18,7 +18,7 @@
         <div class="header-details">
             <div class="item-subtitle">
                 <h4 class="item-type">
-                    {{#if isSegmentItem}}{{localize "NEUROSHIMA.BeastSegment.Activities"}}{{else}}{{localize "NEUROSHIMA.BeastAction.Sheet.Title"}}{{/if}}
+                    {{#if isSegmentItem}}{{localize "NEUROSHIMA.BeastSegment.Label"}}{{else}}{{localize "NEUROSHIMA.BeastAction.Sheet.Title"}}{{/if}}
                 </h4>
             </div>
             <div class="item-name-row">
@@ -211,6 +211,46 @@
 
             {{!-- ===== Ranged ===== --}}
             {{#if isRanged}}
+            <fieldset class="fire-modes-section">
+            <legend>{{localize "NEUROSHIMA.Items.Fields.FireModes"}}</legend>
+            <div class="fire-modes-table">
+                <div class="fire-mode-column fire-mode-all-column">
+                    <label class="fire-mode-checkbox fire-mode-all">
+                        <input type="checkbox" name="fireModes.all" {{checked activity.fireModes.all}} {{#unless editable}}disabled{{/unless}}/>
+                        <span class="fire-mode-label">{{localize "NEUROSHIMA.Items.Fields.FireModeAll"}}</span>
+                    </label>
+                    <div class="fire-mode-modifier-label">{{localize "NEUROSHIMA.Items.Fields.FireModeModifiers"}}</div>
+                </div>
+                <div class="fire-mode-column">
+                    <label class="fire-mode-checkbox">
+                        <input type="checkbox" name="fireModes.single" {{checked activity.fireModes.single}} {{#if activity.fireModes.all}}disabled{{/if}} {{#unless editable}}disabled{{/unless}}/>
+                        <span class="fire-mode-label">{{localize "NEUROSHIMA.Items.Fields.FireModeSingle"}}</span>
+                    </label>
+                    <div class="fire-mode-modifier-field"><input type="number" name="fireModeModifiers.single" value="{{activity.fireModeModifiers.single}}" data-dtype="Number" step="1" {{#unless editable}}disabled{{/unless}}/></div>
+                </div>
+                <div class="fire-mode-column">
+                    <label class="fire-mode-checkbox">
+                        <input type="checkbox" name="fireModes.shortBurst" {{checked activity.fireModes.shortBurst}} {{#if activity.fireModes.all}}disabled{{/if}} {{#unless editable}}disabled{{/unless}}/>
+                        <span class="fire-mode-label">{{localize "NEUROSHIMA.Items.Fields.FireModeShort"}}</span>
+                    </label>
+                    <div class="fire-mode-modifier-field"><input type="number" name="fireModeModifiers.shortBurst" value="{{activity.fireModeModifiers.shortBurst}}" data-dtype="Number" step="1" {{#unless editable}}disabled{{/unless}}/></div>
+                </div>
+                <div class="fire-mode-column">
+                    <label class="fire-mode-checkbox">
+                        <input type="checkbox" name="fireModes.longBurst" {{checked activity.fireModes.longBurst}} {{#if activity.fireModes.all}}disabled{{/if}} {{#unless editable}}disabled{{/unless}}/>
+                        <span class="fire-mode-label">{{localize "NEUROSHIMA.Items.Fields.FireModeLong"}}</span>
+                    </label>
+                    <div class="fire-mode-modifier-field"><input type="number" name="fireModeModifiers.longBurst" value="{{activity.fireModeModifiers.longBurst}}" data-dtype="Number" step="1" {{#unless editable}}disabled{{/unless}}/></div>
+                </div>
+                <div class="fire-mode-column">
+                    <label class="fire-mode-checkbox">
+                        <input type="checkbox" name="fireModes.fullAuto" {{checked activity.fireModes.fullAuto}} {{#if activity.fireModes.all}}disabled{{/if}} {{#unless editable}}disabled{{/unless}}/>
+                        <span class="fire-mode-label">{{localize "NEUROSHIMA.Items.Fields.FireModeFull"}}</span>
+                    </label>
+                    <div class="fire-mode-modifier-field"><input type="number" name="fireModeModifiers.fullAuto" value="{{activity.fireModeModifiers.fullAuto}}" data-dtype="Number" step="1" {{#unless editable}}disabled{{/unless}}/></div>
+                </div>
+            </div>
+        </fieldset>
             <fieldset class="bas-fieldset">
                 <legend>{{localize "NEUROSHIMA.BeastSegment.CombatStats"}}</legend>
                 <div class="bas-row">

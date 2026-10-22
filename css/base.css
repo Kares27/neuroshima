@@ -3584,6 +3584,24 @@ li.chat-message.message.flexcol > .message-content {
     transition: transform 0.2s ease;
 }
 
+.pain-resistance-report .wound-item[data-pain-result-index] {
+  cursor: pointer;
+}
+.neuroshima.pain-resistance-report .wound-item.ns-pain-rerolled {
+  outline: 1px dashed rgba(181, 154, 98, 0.7);
+  outline-offset: -1px;
+}
+.neuroshima.pain-resistance-report .wound-item.ns-pain-selected,
+.neuroshima.pain-resistance-report .wound-item.ns-pain-selected:hover {
+  outline: 2px solid var(--ns-border-focus);
+  outline-offset: -2px;
+  box-shadow: 0 0 6px var(--ns-border-focus);
+}
+.pain-resistance-report .pain-reroll-badge {
+  color: var(--ns-border-focus);
+  font-size: 0.75em;
+  white-space: nowrap;
+}
 .pain-resistance-report .wound-item:hover .wound-icon {
     transform: scale(1.2);
 }

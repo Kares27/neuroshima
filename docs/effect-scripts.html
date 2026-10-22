@@ -249,7 +249,7 @@
 
   <h3>Gdzie dodawać skrypty?</h3>
   <p>Otwórz dowolny ActiveEffect (na aktorze lub itemie) → zakładka <strong>Skrypty</strong> → Dodaj Skrypt.</p>
-  <p>Item <code>beast-action</code> reprezentuje teraz jedną akcję. Jego zakładki to <strong>Opis | Aktywacja | Efekty</strong>, a domyślnie otwiera się <strong>Efekty</strong>. Lista zawiera bezpośrednio <code>item.effects</code>: tworzysz i edytujesz zwykłe Active Effects, bez dodatkowego podpinania do aktywności. Efekt ze skryptem Enable jest sterowany tym skryptem — nie przełączaj go ręcznie. Itemy <code>beast-segment</code> nadal mają aktywności i ich powiązania z efektami.</p>
+  <p>Itemy <code>beast-action</code> i <code>beast-segment</code> reprezentują pojedyncze definicje. Ich zakładki to <strong>Opis | Aktywacja | Efekty</strong>, a domyślnie otwiera się <strong>Efekty</strong>. Lista zawiera bezpośrednio <code>item.effects</code>: tworzysz i edytujesz zwykłe Active Effects, bez dodatkowego podpinania do aktywności. Efekt ze skryptem Enable jest sterowany tym skryptem — nie przełączaj go ręcznie. Koszt segmentów oraz parametry ataku ustawiasz bezpośrednio na itemie segmentu.</p>
   <p>Na akcji bestii ustaw <strong>Effect Application → Damage</strong>, aby po zadaniu obrażeń
     nałożyć efekt na przeciwnika. Efekty pochodzą tylko z akcji, która zadała obrażenia;
     nie trzeba wpisywać ich do <code>system.effectIds</code>. Sam wybór akcji nie nakłada efektu.
@@ -1327,7 +1327,7 @@ args.dice.<span class="fn">copy</span>(<span class="var">bestIndex</span>, <span
 
   <!-- preApplyDamage -->
   <h3 id="trigger-preApplyDamage">preApplyDamage — <em>Pre-Apply Damage</em> <span class="badge" style="background:var(--accent-blue,#4a9eff)">ATTACKER</span></h3>
-  <p>Uruchamiany na aktorze <strong>zadającym</strong> obrażenia, <strong>przed</strong> wyborem finalnego typu obrażeń dla tego trafienia. Odpala się dla każdego źródła obrażeń gdzie znany jest atakujący (<code>actorId</code> w <code>attackData</code>): walka wręcz, broń dystansowa, miotana, granat. Analogiczny do WFRP4e <em>preApplyDamage</em>.</p>
+  <p>Uruchamiany na aktorze <strong>zadającym</strong> obrażenia, <strong>przed</strong> wyborem finalnego typu obrażeń dla tego trafienia. Odpala się dla każdego źródła obrażeń gdzie znany jest atakujący (<code>actorId</code> w <code>attackData</code>): walka wręcz, broń dystansowa, miotana, granat.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Aktor ATAKUJĄCY (posiadacz efektu)</td></tr>
@@ -1348,7 +1348,7 @@ args.attackData.damageMelee3 = <span class="kw">this</span>.<span class="fn">inc
 
   <!-- applyDamage -->
   <h3 id="trigger-applyDamage">applyDamage — <em>Apply Damage</em> <span class="badge" style="background:var(--accent-blue,#4a9eff)">ATTACKER</span></h3>
-  <p>Uruchamiany na aktorze <strong>zadającym</strong> obrażenia, <strong>po</strong> wyborze finalnego typu obrażeń, ale <strong>przed</strong> redukcją pancerza obrońcy. Odpala się dla każdego źródła obrażeń z poznanym atakującym. Skrypty mogą nadpisać wybrany typ obrażeń ustawiając <code>args.attackData.damageOverride</code>. Analogiczny do WFRP4e <em>applyDamage</em>.</p>
+  <p>Uruchamiany na aktorze <strong>zadającym</strong> obrażenia, <strong>po</strong> wyborze finalnego typu obrażeń, ale <strong>przed</strong> redukcją pancerza obrońcy. Odpala się dla każdego źródła obrażeń z poznanym atakującym. Skrypty mogą nadpisać wybrany typ obrażeń ustawiając <code>args.attackData.damageOverride</code>.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Aktor ATAKUJĄCY</td></tr>
@@ -1368,7 +1368,7 @@ args.attackData.damageMelee3 = <span class="kw">this</span>.<span class="fn">inc
 
   <!-- preTakeDamage -->
   <h3 id="trigger-preTakeDamage">preTakeDamage — <em>Pre-Take Damage</em> <span class="badge" style="background:var(--accent-green,#4caf50)">DEFENDER</span></h3>
-  <p>Uruchamiany na aktorze <strong>otrzymującym</strong> obrażenia, <strong>przed</strong> redukcją pancerza. Odpala się dla każdego źródła obrażeń (melee, ranged, thrown, grenade, radiacja). Pozwala zmodyfikować typ obrażeń, przebicie lub surową listę ran. Analogiczny do WFRP4e <em>preTakeDamage</em>.</p>
+  <p>Uruchamiany na aktorze <strong>otrzymującym</strong> obrażenia, <strong>przed</strong> redukcją pancerza. Odpala się dla każdego źródła obrażeń (melee, ranged, thrown, grenade, radiacja). Pozwala zmodyfikować typ obrażeń, przebicie lub surową listę ran.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Aktor OTRZYMUJĄCY obrażenia</td></tr>
@@ -1397,7 +1397,7 @@ args.piercing = <span class="num">0</span>;</code></pre>
 
   <!-- takeDamage -->
   <h3 id="trigger-takeDamage">takeDamage — <em>Take Damage</em> <span class="badge" style="background:var(--accent-green,#4caf50)">DEFENDER</span></h3>
-  <p>Uruchamiany na aktorze <strong>otrzymującym</strong> obrażenia, <strong>po</strong> redukcji pancerza ale <strong>przed</strong> testem odporności na ból. Odpala się dla każdego źródła obrażeń. Rany są jeszcze <strong>mutowalnymi obiektami</strong> — możesz je blokować (<code>forceSkip</code>) lub automatycznie zdać test bólu (<code>forcePassed</code>). Analogiczny do WFRP4e <em>takeDamage</em>.</p>
+  <p>Uruchamiany na aktorze <strong>otrzymującym</strong> obrażenia, <strong>po</strong> redukcji pancerza ale <strong>przed</strong> testem odporności na ból. Odpala się dla każdego źródła obrażeń. Rany są jeszcze <strong>mutowalnymi obiektami</strong> — możesz je blokować (<code>forceSkip</code>) lub automatycznie zdać test bólu (<code>forcePassed</code>).</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Aktor OTRZYMUJĄCY obrażenia</td></tr>
@@ -2214,7 +2214,7 @@ args.participant.successMod += <span class="num">1</span>;</code></pre>
   </div>
 
   <h3 id="trigger-opposedAttacker">opposedAttacker — <em>Opposed Attacker</em></h3>
-  <p>Odpala się <strong>po ustaleniu wyniku wymiany</strong> (hit/block/takeover), ale <strong>przed aplikowaniem obrażeń</strong>. Odpala się <strong>tylko na aktorze-atakującym</strong> (posiadaczu inicjatywy). Analogiczny do <code>opposedAttacker</code> w WFRP4e.</p>
+  <p>Odpala się <strong>po ustaleniu wyniku wymiany</strong> (hit/block/takeover), ale <strong>przed aplikowaniem obrażeń</strong>. Odpala się <strong>tylko na aktorze-atakującym</strong> (posiadaczu inicjatywy).</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td><code>args.actor</code></td><td>Actor</td><td>Aktor-atakujący</td></tr>
@@ -2765,7 +2765,7 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
     <tr><td><code>speciality</code></td><td>Specjalność: <code>system.skills</code> (lista kluczy umiejętności), <code>system.value</code> (0–20), <code>system.fromSpecialization</code> (tańszy rozwój XP).</td></tr>
     <tr><td><code>trait</code></td><td>Cecha</td></tr>
     <tr><td><code>beast-action</code></td><td>Jedna akcja bestii; jej dane są bezpośrednio w <code>item.system</code>, a efekty w <code>item.effects</code>.</td></tr>
-    <tr><td><code>beast-segment</code></td><td>Item segmentów bestii; zachowuje tablicę aktywności <code>system.activities</code>.</td></tr>
+    <tr><td><code>beast-segment</code></td><td>Jedna definicja akcji za segmenty. Konfiguracja znajduje się bezpośrednio w <code>item.system</code>; nazwa i obraz to <code>item.name</code> oraz <code>item.img</code>.</td></tr>
       <tr><td><code>disease</code></td><td>Choroba (przewlekła lub przejściowa)</td></tr>
     </tbody>
   </table>
@@ -2800,8 +2800,10 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
       <tr><td><code>system.testRequired</code><br><code>testType</code>, <code>testKey</code><br><code>testAttributeOverride</code><br><code>testIsOpen</code>, <code>testSuccesses</code><br><code>testDifficulty</code></td><td>pola konfiguracji</td><td>Wymagany test; konfiguracja jest w zakładce Aktywacja. Wszystkie wymienione klucze mają prefiks <code>system.</code>.</td></tr>
       <tr><td><code>item.effects</code></td><td>kolekcja ActiveEffect</td><td>Bezpośrednie efekty itemu. Transfer, zakres i kod określa każdy efekt oddzielnie.</td></tr>
       <tr><td><code>system.effectIds</code><br><code>system.onFailureEffectIds</code><br><code>system.effectTiming</code><br><code>system.effectTarget</code><br><code>system.applyEffectsAutomatically</code></td><td>pola zgodności</td><td>Nadal obsługują wcześniejsze powiązania i konsekwencje testów. Brak interfejsu podpinania w nowej akcji bestii nie oznacza usunięcia działania zapisanych powiązań.</td></tr>
-      <tr><td><code>system.legacyActivities</code></td><td>Array</td><td>Pole migracyjne starych kontenerów. Nie dopisuj tu nowych akcji; twórz osobne itemy <code>beast-action</code>.</td></tr>
-      <tr><td><code>system.activities</code></td><td>Array</td><td>Nadal właściwe dla <code>beast-segment</code>; nie jest bieżącym modelem <code>beast-action</code>.</td></tr>
+      <tr><td><code>system.legacyActivities</code></td><td>Array</td><td>Pole migracyjne starych kontenerów akcji i segmentów. Nie dopisuj tu nowych definicji; twórz osobne itemy <code>beast-action</code> lub <code>beast-segment</code>. Migracja rozdziela wpisy, zachowując efekty i zasoby.</td></tr>
+      <tr><td><code>system.activities</code></td><td>Array (dane historyczne)</td><td>Dawny model kontenerowy obu typów. Nie używaj go w nowych definicjach.</td></tr>
+      <tr><td><code>beast-segment: system.segmentCost</code></td><td>number</td><td>Koszt pojedynczej definicji: od 1 do 3 segmentów. Rzut uruchamiasz kliknięciem jej nazwy w tabeli Segmenty bestii.</td></tr>
+      <tr><td><code>beast-segment: system.fireModes</code><br><code>system.fireModeModifiers</code></td><td>obiekty</td><td>Tryby ognia i ich modyfikatory, tak jak na broni dystansowej. Klucze trybów: <code>all</code>, <code>single</code>, <code>shortBurst</code>, <code>longBurst</code>, <code>fullAuto</code>. Domyślnie segment udostępnia wszystkie tryby; konfiguracja jest przekazywana do dialogu rzutu.</td></tr>
     </tbody>
   </table>
   <div class="callout info">
@@ -3577,7 +3579,7 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
       <span class="trigger-badge" style="color:var(--accent);">manual</span>
       <span class="trigger-badge">startRound</span>
       <span class="trigger-badge">deleteEffect</span>
-      &nbsp;Zapal skręta — <code>convertToApplied()</code> (wzorzec WFRP)
+      &nbsp;Zapal skręta — <code>convertToApplied()</code>
     </div>
     <p style="margin:6px 0 4px; font-size:0.88em; color:#888;">
       Item <strong>Skręt</strong> zawiera <strong>3 efekty</strong>:<br>
@@ -4448,7 +4450,7 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
   </p>
 
   <div class="callout info">
-    <strong>Jak to działa — podejście WFRP-style:</strong><br>
+    <strong>Jak to działa:</strong><br>
     1. Skrypt <code>manual</code> (np. na potworze) wywołuje <code>postRequiredTest</code> — w czacie pojawia się karta.<br>
     2. Każdy gracz klika przycisk — system otwiera dla <em>jego postaci</em> (identyfikowanej przez UUID) dialog rzutu.<br>
     3. Po rzucie system automatycznie aplikuje konsekwencje (<code>onSuccess</code> / <code>onFailure</code>) bezpośrednio
@@ -4546,7 +4548,7 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
     karta zostanie mimo to wysłana, ale konsekwencja nie zostanie zaaplikowana.
   </div>
 
-  <h3>Wzorzec WFRP-style — konsekwencja bez efektu na aktorze gracza</h3>
+  <h3>Wzorzec — konsekwencja bez efektu na aktorze gracza</h3>
   <p>
     To podstawowy i zalecany sposób używania <code>postRequiredTest</code>. Wystarczy <strong>jeden skrypt</strong>
     z triggerem <code>manual</code>. System automatycznie identyfikuje postać gracza przez jej UUID
@@ -5893,6 +5895,20 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
   <!-- ── Duration ──────────────────────────────────────────────────────────── -->
   <h3>Czas trwania efektu — <code>convertToApplied()</code> duration</h3>
   <p>
+    Każda kopia tworzona przez <code>convertToApplied()</code>
+    zachowuje istniejące <code>statuses</code>, a gdy są puste, otrzymuje identyfikator z nazwy efektu
+    (<code>name.slugify()</code>). Foundry v13 rozpoznaje ją dzięki temu jako <code>isTemporary</code>,
+    również bez czasu trwania. Dotyczy to także Damage oraz kopii aur i obszarów.
+    Tylko identyfikatory z konfiguracji stanów oznaczają właściwe stany; pozostałe efekty trafiają
+    na kartach do Tymczasowych (lub Nieaktywnych po wyłączeniu).
+    Źródłem <code>origin</code> jest aktor nakładający efekt, jeżeli jest dostępny;
+    odnośniki do źródłowego itemu i efektu pozostają w dotychczasowych flagach.
+    Karty pobierają nazwę i ikonę źródła z <code>effect.sourceActor</code>, również dla aktorów tokenowych.
+    Zapis formularza efektu zachowuje identyfikatory <code>statuses</code>, których nie ma na liście
+    skonfigurowanych stanów, więc zwykłe Submit nie zmienia efektu tymczasowego w pasywny.
+    Tymczasowość nie usuwa efektu automatycznie przy śmierci źródła ani zakończeniu walki.
+  </p>
+  <p>
     Metoda <code>convertToApplied(overrides?)</code> tworzy kopię efektu gotową do nałożenia na aktora.
     Argument <code>overrides</code> to płaski obiekt z polami nadpisującymi dane efektu — najczęściej używany do ustawienia czasu trwania.
   </p>
@@ -5927,7 +5943,7 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
       </tr>
       <tr>
         <td><em>(brak pól)</em></td>
-        <td>Efekt stały — nie wygasa automatycznie, wymaga ręcznego usunięcia lub skryptu <code>deleteEffect</code></td>
+        <td>Efekt tymczasowy bez limitu czasu — pozostaje do ręcznego usunięcia lub usunięcia przez skrypt</td>
         <td><code>convertToApplied()</code> bez argumentów</td>
       </tr>
     </tbody>
@@ -5952,7 +5968,7 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
 });
 <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffect</span>({ effectData: [<span class="var">effTurns</span>] });
 
-<span class="cmt">// Efekt stały — bez duration</span>
+<span class="cmt">// Efekt tymczasowy bez limitu czasu — bez duration</span>
 <span class="kw">const</span> <span class="var">effPermanent</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">0</span>].<span class="fn">convertToApplied</span>();
 <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffect</span>({ effectData: [<span class="var">effPermanent</span>] });</code></pre>
 
@@ -6170,7 +6186,14 @@ this.addAnnotation(`Sztuczka pozwoliła oddać strzał mimo zacięcia!`);</code>
     </tr>
     <tr><td><code>this.getMeleeOpponentParticipant(actor?)</code></td><td>Zwraca dane głównego przeciwnika z <code>encounter.participants</code> albo <code>null</code>.</td></tr>
     <tr><td><code>this.getMeleeOpponentActor(actor?)</code></td><td>Rozwiązuje dokument Actor głównego przeciwnika albo zwraca <code>null</code>.</td></tr>
-    <tr><td><code>this.getMeleeManeuver(actor?)</code></td><td>Zwraca klucz aktualnego manewru, np. <code>"fury"</code>, <code>"fullDefense"</code> lub <code>"none"</code>.</td></tr>
+    <tr><td><code>this.getMeleeManeuver(actor?)</code></td><td>Zwraca klucz aktualnego manewru, np. <code>"fury"</code>, <code>"fullDefense"</code> lub <code>"none"</code>.
+      Zwiększone tempo wybiera posiadacz Inicjatywy: maksymalnie <code>min(3, używana umiejętność walki)</code>.
+      Stan <code>maneuver-pace</code> otrzymują obie strony, a obrońca korzysta z podwyższonego PT bez wybierania tego manewru.
+      W sesji czatu stan jest usuwany wraz z końcem sesji.
+      Furia daje +2 do atrybutu w ataku, a przejęcie Inicjatywy przez przeciwnika powoduje trafienie.
+      Pełna obrona daje +2 do atrybutu w obronie; przejęcie wymaga dwóch kolejnych sukcesów obrony przeciw porażkom atakującego.
+      Szarża jest wybierana w teście Inicjatywy na Zręczności (+1–3); przegrana oznacza taką samą karę przez pierwszą turę
+      i blokadę wyboru Pełnej obrony w jej dialogu.</td></tr>
     <tr><td><code>this.activateForMelee(actor?)</code></td><td>Oznacza ten efekt jako aktywowany dla bieżącej tury/duelu. Używaj, gdy gracz świadomie włączył sztuczkę.</td></tr>
     <tr><td><code>this.isActiveForMelee(args, actor?)</code></td><td>Sprawdza aktywację zarówno w encounter, jak i w aktualnym <code>DuelContext</code>.</td></tr>
     <tr><td><code>this.deactivateForMelee(args, actor?)</code></td><td>Zużywa/usuwa aktywację tego efektu w bieżącej walce.</td></tr>
@@ -6969,6 +6992,24 @@ console.<span class="fn">log</span>(<span class="var">diceRoll</span>.total);
     <li><code>results</code> — wyniki testu bólu (puste przy bypass)</li>
     <li><code>woundIds</code> — identyfikatory ran (do flag wiadomości chatu)</li>
   </ul>
+  <div class="callout info">
+    <strong>Przerzut i cofanie obrażeń w raporcie odporności na ból.</strong><br>
+    Rozwiń listę ran, kliknij wyniki testów do zaznaczenia, a następnie użyj prawego przycisku myszy
+    i opcji <strong>Przerzuć</strong>. Pomarańczowa ramka oznacza bieżący wybór.
+    Bez zaznaczenia przerzucane są wszystkie dostępne testy w raporcie.
+    Wykonany przerzut pozostawia przerywaną ramkę i ikonę przerzutu z tooltipem <strong>Przerzucono</strong>;
+    oznaczenie pozostaje po odświeżeniu i nie oznacza zaznaczenia do kolejnego przerzutu.
+    Przerzut aktualizuje wynik oraz karę istniejącej rany;
+    nie tworzy nowej rany i nie nakłada ponownie efektów Damage. Nowe raporty zachowują dane testu
+    i powiązanie z dokumentem rany. Ran krytycznych bez testu, wyników automatycznie zdanych,
+    ran leczonych lub zmienionych od czasu raportu nie można w ten sposób przerzucić.
+    Przerzut jest dostępny MG i właścicielowi aktora; zapis wykonuje MG po sprawdzeniu uprawnień.<br><br>
+    Raporty tworzone z kart obrażeń walki wręcz przechowują też źródłową wiadomość i sesję.
+    Cofnięcie obejmuje wszystkie aktywne raporty z tego samego zadania obrażeń, w tym kontrataki;
+    usuwa ich rany oraz powiązane kopie efektów Damage i odblokowuje źródłowy przycisk.
+    Zakończony test walki pozostaje bez zmian. Starsze raporty bez zapisanego powiązania ze źródłem
+    nadal pozwalają cofnąć rany, lecz nie pozwalają automatycznie ustalić karty do odblokowania.
+  </div>
 
   <div class="example-block">
     <div class="example-header">
@@ -7640,7 +7681,7 @@ args.test.preData.penalties.mod += <span class="num">10</span>;
   </p>
 
   <div class="example-block">
-    <div class="example-header"><span class="trigger-badge">manual</span> Nałóż efekt przez indeks listy — styl WFRP</div>
+    <div class="example-header"><span class="trigger-badge">manual</span> Nałóż efekt przez indeks listy</div>
     <pre><code><span class="cmt">// Trigger: manual — "Użyj efektu"</span>
 <span class="cmt">// Nałóż pierwszy efekt z listy this.item.effects na zaznaczony cel</span>
 <span class="kw">const</span> <span class="var">effect</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">0</span>];

@@ -168,7 +168,7 @@ export class ResourceHandle {
 
 /**
  * Represents a single executable script attached to an ActiveEffect.
- * Inspired by WFRP4e's script system but adapted for Neuroshima 1.5.
+ * Active Effect script system for Neuroshima 1.5.
  */
 export function normalizeLegacySuccessScriptData(value) {
   if (typeof value === "string") {
@@ -3658,7 +3658,7 @@ export class NeuroshimaScript {
  * args.dice, args.result, and args.links. Result-action ctx.dice/ctx.result
  * reference the same API objects as args.dice/args.result.
  *
- * ── Cztery wyzwalacze obrażeń (wzorowane na WFRP4e) ──────────────────────────
+ * ── Cztery wyzwalacze obrażeń ──────────────────────────
  *
  * Obrażenia w walce wręcz i dystansowej obsługiwane są przez cztery wyzwalacze:
  * dwa po stronie ATAKUJĄCEGO i dwa po stronie OBROŃCY. Kolejność wykonania:
@@ -3670,7 +3670,6 @@ export class NeuroshimaScript {
  *                    BEFORE the damage type for this hit is selected. Fires for ALL attack
  *                    sources that carry a known attacker (actorId in attackData): melee,
  *                    ranged, thrown, grenade. Runs inside applyDamageToActor.
- *                    Analogous to WFRP4e preApplyDamage.
  *                    args: { actor (attacker), defenderActor, weapon, location, attackData }
  *                         attackData — mutable: modify damageMelee1/2/3 (melee) or
  *                                      attackData.damage (ranged/thrown) to influence
@@ -3681,7 +3680,6 @@ export class NeuroshimaScript {
  *                    AFTER the damage type has been selected for this hit, but BEFORE
  *                    armor reduction on the defender. Fires for ALL attack sources that
  *                    carry a known attacker. Runs inside applyDamageToActor.
- *                    Analogous to WFRP4e applyDamage.
  *                    args: { actor (attacker), defenderActor, weapon, location, attackData }
  *                         attackData.damageType   — selected damage type (read: current value)
  *                         attackData.damageOverride — set this to replace the selected type
@@ -3690,7 +3688,7 @@ export class NeuroshimaScript {
  *
  * preTakeDamage    — Pre-Take Damage (DEFENDER side): fires on the actor RECEIVING damage,
  *                    BEFORE armor reduction is applied to the incoming hit.
- *                    Analogous to WFRP4e preTakeDamage.
+ *                    Runs before damage reduction.
  *                    args: { actor (defender), location, damageType, rawWounds, piercing,
  *                            isMelee, isRanged, isThrown, isGrenade, attackLabel, weaponType }
  *                    Use: args.damageType = "D"    → downgrade incoming damage type before armor
@@ -3699,7 +3697,7 @@ export class NeuroshimaScript {
  *
  * takeDamage       — Take Damage (DEFENDER side): fires on the actor RECEIVING damage,
  *                    AFTER armor reduction but BEFORE pain resistance is processed.
- *                    Analogous to WFRP4e takeDamage. Args carry mutable wound plain-objects
+ *                    Args carry mutable wound plain-objects
  *                    (not yet Item documents) — you can still block or skip wounds here.
  *                    args: { actor (defender), wounds: [{name, damageType, forcePassed?, forceSkip?, annotation?}], location }
  *                    Use: wound.forcePassed = true  → auto-pass pain resistance for that wound
@@ -3831,7 +3829,6 @@ export class NeuroshimaScript {
  * opposedAttacker   — Opposed Attacker: fires AFTER hit/block/takeover is determined but BEFORE
  *                    damage is applied. Fires on the ATTACKER's actor only. Use to react to the
  *                    exchange outcome or inject secondary effects (e.g. mark a reclaim intent).
- *                    Analogous to WFRP4e's opposedAttacker trigger.
  *                    args: { actor, resultType, diceCount, attackerId, defenderId,
  *                            attacker (participant), defender (participant),
  *                            attackerSuccesses, defenderSuccesses, encounter,
@@ -3843,7 +3840,6 @@ export class NeuroshimaScript {
  * opposedDefender   — Opposed Defender: fires AFTER hit/block/takeover is determined but BEFORE
  *                    damage is applied. Fires on the DEFENDER's actor only. Use to react to the
  *                    exchange outcome from the defender's perspective (e.g. Garda — reduce damage).
- *                    Analogous to WFRP4e's opposedDefender trigger.
  *                    args: { actor, resultType, diceCount, attackerId, defenderId,
  *                            attacker (participant), defender (participant),
  *                            attackerSuccesses, defenderSuccesses, encounter,
@@ -3960,7 +3956,7 @@ export class NeuroshimaScript {
  *       Stores flags.neuroshima.sourceEffect for later cleanup via removeEffectsAppliedFromThis().
  *     Examples:
  *       await this.effect.applyEffect();                           // apply to current targets
- *       await this.item.effects.contents[0].applyEffect();        // WFRP-style index access
+ *       await this.item.effects.contents[0].applyEffect();        // Index access
  *       await this.item.effects.getName("Trucizna").applyEffect(this.getTargets());
  *       await effect.applyEffect(null, { "duration.seconds": 3600 });
  *
@@ -4798,7 +4794,7 @@ export class NeuroshimaScriptRunner {
 
     // Effects that require explicit application to an actor (via convertToApplied / applyEffect)
     // are NOT collected passively from items — they only fire when the applied copy lives on the actor.
-    // This mirrors WFRP4e behaviour: "other", "target", "damage", "auraActor", "areaActor" effects
+    // Applied-effect templates: "other", "target", "damage", "auraActor", "areaActor" effects
     // on items are templates; only "owningDocument" effects transfer passively.
     const PASSIVE_TRANSFER_TYPES = new Set(["owningDocument"]);
 
@@ -5187,7 +5183,7 @@ export class NeuroshimaScriptRunner {
 
   /**
    * Compute dialog modifiers (hide/activate/run scripts) and return combined field deltas.
-   * This is the single WFRP-style dialog modifier pipeline.
+   * This is the shared dialog modifier pipeline.
    *
    * Sources of dialog modifiers collected into allScriptEntries:
    *  1. Own `dialog` trigger scripts (non-targeter) — active effects on the rolling actor.
@@ -5218,7 +5214,7 @@ export class NeuroshimaScriptRunner {
     game.neuroshima?.log?.(`[dialog] fired`, { _actor: actor.name, ...rollContext, _targets: targetActors.map(a => a?.name) });
 
     const scriptFlags = options.scriptFlags ?? rollContext.scriptFlags ?? {};
-    // Like Warhammer dialog flags: shared within one calculation, reset on every
+    // Dialog flags are shared within one calculation, reset on every
     // render and final-difficulty pass. Keep the object identity for submission.
     for (const key of Object.keys(scriptFlags)) delete scriptFlags[key];
     scriptFlags.dialogOnce = Object.create(null);
