@@ -465,6 +465,7 @@
             "AttemptCount": "Attempts"
         },
         "Movement": {
+            "Base": "Base movement per segment (m)",
             "Label": "Movement",
             "PerSegment": "Movement per segment (m)",
             "Seg2": "Movement for 2 segments (m)",

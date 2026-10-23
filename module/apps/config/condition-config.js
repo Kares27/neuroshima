@@ -18,6 +18,29 @@ const DEFEATED_CHECK_CODE = `if (!this.usesAutomaticDefeat) return;
 if (this.isDefeated) await this.apply();
 else await this.remove();`;
 
+const DEATH_CHECK_CODE = `await this.checkAutomaticDeath();`;
+
+/** Persist one death notification per uninterrupted stay at or above the damage limit. */
+export async function checkAutomaticDeath(context) {
+  if (!context.usesAutomaticDefeat) return;
+  const actor = context.actor;
+  const triggered = actor.getFlag("neuroshima", "automaticDeathTriggered") === true;
+  if (!context.isDefeated) {
+    if (triggered) await actor.setFlag("neuroshima", "automaticDeathTriggered", false);
+    await context.remove();
+    return;
+  }
+  if (triggered) return;
+  // Save before creating the effect: both operations can request another condition check.
+  await actor.setFlag("neuroshima", "automaticDeathTriggered", true);
+  try {
+    await context.apply();
+  } catch (error) {
+    await actor.setFlag("neuroshima", "automaticDeathTriggered", false);
+    throw error;
+  }
+}
+
 /**
  * Canonical overload predicate shared by the built-in condition and tests.
  * Disabled or invalid encumbrance can never keep the automatic condition active.
@@ -48,7 +71,7 @@ export const DEFAULT_CONDITIONS = [
   {
     id: "dead", name: "Martwy", key: "dead", img: "icons/svg/skull.svg",
     type: "boolean", allowNegative: false, builtin: true, booleanOnly: true, scripts: [],
-    conditionCheckCode: DEFEATED_CHECK_CODE
+    conditionCheckCode: DEATH_CHECK_CODE
   },
   { id: "asleep",      name: "Śpiący",        key: "asleep",      img: "icons/svg/sleep.svg",       type: "boolean", allowNegative: false, builtin: true, booleanOnly: true,  scripts: [], conditionCheckCode: "" },
   { id: "unconscious", name: "Nieprzytomny",  key: "unconscious", img: "icons/svg/unconscious.svg", type: "boolean", allowNegative: false, builtin: true, booleanOnly: true,  scripts: [], conditionCheckCode: "" },
@@ -56,7 +79,7 @@ export const DEFAULT_CONDITIONS = [
   {
     id: "prone", name: "Leżący", key: "prone", img: "icons/svg/falling.svg",
     type: "boolean", allowNegative: false, builtin: true, booleanOnly: true, scripts: [],
-    conditionCheckCode: DEFEATED_CHECK_CODE
+    conditionCheckCode: ""
   },
   { id: "restrained",  name: "Unieruchomiony", key: "restrained",  img: "icons/svg/net.svg",        type: "int",     allowNegative: false, builtin: true, booleanOnly: false, intOnly: true, scripts: [], conditionCheckCode: "" },
   { id: "paralyzed",   name: "Sparaliżowany",  key: "paralyzed",   img: "icons/svg/paralysis.svg",  type: "boolean", allowNegative: false, builtin: true, booleanOnly: true,  scripts: [], conditionCheckCode: "" },
@@ -176,7 +199,8 @@ export function getConditions() {
       }
       if (
         (saved.key === "dead" || saved.key === "prone")
-        && conditionCheckCode.trim() === LEGACY_DEFEATED_CHECK_CODE.trim()
+        && (conditionCheckCode.trim() === LEGACY_DEFEATED_CHECK_CODE.trim()
+          || conditionCheckCode.trim() === DEFEATED_CHECK_CODE.trim())
       ) {
         conditionCheckCode = def?.conditionCheckCode ?? conditionCheckCode;
       }

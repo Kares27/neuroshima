@@ -380,25 +380,16 @@
 
   {{#if isDone}}
   {{#if hasAnyHits}}
+  <div class="duel-damage-summary">
+    <table>
+      <thead><tr><th>{{attackerName}}</th><th>{{defenderName}}</th></tr></thead>
+      <tbody><tr>
+        <td>{{#each exchangeDamageSummary.attacker}}<div class="received-wound">{{count}}&times; <span class="hit-badge {{damageClass}}" data-tooltip="{{damageTooltip}}">{{damageType}}</span></div>{{else}}&mdash;{{/each}}</td>
+        <td>{{#each exchangeDamageSummary.defender}}<div class="received-wound">{{count}}&times; <span class="hit-badge {{damageClass}}" data-tooltip="{{damageTooltip}}">{{damageType}}</span></div>{{else}}&mdash;{{/each}}</td>
+      </tr></tbody>
+    </table>
+  </div>
   <div class="apply-damage-section opposed-apply-row" data-gm-only="true">
-    <div class="hits-detail">
-      {{#each hitsDetail}}
-      <div class="hit-row">
-        <span class="hit-source">{{sourceName}}</span>
-        <span class="hit-arrow">→</span>
-        <span class="hit-target">{{targetName}}</span>
-        <span class="hit-badge {{damageClass}}" data-tooltip="{{damageTooltip}}">{{lookup this "damageLabel"}}</span>
-      </div>
-      {{/each}}
-      {{#each counterHitsDetail}}
-      <div class="hit-row hit-row--counter">
-        <span class="hit-source">{{sourceName}}</span>
-        <span class="hit-arrow">→</span>
-        <span class="hit-target">{{targetName}}</span>
-        <span class="hit-badge hit-badge--counter {{damageClass}}" data-tooltip="{{damageTooltip}}">{{lookup this "damageLabel"}}</span>
-      </div>
-      {{/each}}
-    </div>
     <button type="button" class="btn btn-primary apply-damage-button apply-opposed-damage-btn" data-action="applyOpposedDamage">
       <i class="fas fa-hand-holding-medical"></i> {{localize "NEUROSHIMA.MeleeDuel.DuelApplyDamage"}}
     </button>

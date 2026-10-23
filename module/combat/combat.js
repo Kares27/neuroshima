@@ -1,3 +1,4 @@
+import { exchangeDamageHits, summarizeExchangeDamage } from "./melee-damage-summary.js";
 import { beastActivities } from "../helpers/beast-actions.js";
 /**
  * @file combat.js
@@ -2871,14 +2872,20 @@ export class MeleeOpposedChat {
       };
     };
 
-    const hitsDetail = (hits || []).map(h => _buildHit(h, attackerNameLabel, defenderNameLabel));
-
-    let counterHitsDetail = [];
-    if ((state.counterHits || []).length > 0) {
-      counterHitsDetail = state.counterHits.map(h =>
-        _buildHit(h, defenderNameLabel, attackerNameLabel)
-      );
+    const projectedHits = exchangeDamageHits(state, attackerActor, defenderActor);
+    const hitsDetail = projectedHits.filter(h => !h.isCounter).map(h => ({
+      ..._buildHit(h, h.sourceName, h.targetName), actionName: h.actionName
+    }));
+    const exchangeDamageSummary = summarizeExchangeDamage(projectedHits);
+    for (const rows of Object.values(exchangeDamageSummary)) {
+      for (const row of rows) {
+        const meta = _dmgMeta(row.damageType);
+        row.damageClass = meta.cls;
+        row.damageTooltip = meta.tooltip;
+      }
     }
+
+    const counterHitsDetail = projectedHits.filter(h => h.isCounter).map(h => _buildHit(h, h.sourceName, h.targetName));
     const hasCounterHits = counterHitsDetail.length > 0;
     const hasAnyHits = hitsDetail.length > 0 || hasCounterHits;
 
@@ -2890,7 +2897,7 @@ export class MeleeOpposedChat {
       defenderImg:  defenderActor?.img  ?? "",
       phaseBanner, segmentDots, attackDiceChips, defenseDiceChips, resolvedSegs,
       hits: hits || [], hasHits: (hits || []).length > 0, isDone: status === "done",
-      hitsDetail, counterHitsDetail, hasCounterHits, hasAnyHits,
+      hitsDetail, counterHitsDetail, hasCounterHits, hasAnyHits, exchangeDamageSummary,
       isOwnerAttacker, isOwnerTurn, isResponderTurn,
       ownerPool, responderPool, ownerActorUuid, responderActorUuid,
       committedOwnerCount: committedIndices.length,

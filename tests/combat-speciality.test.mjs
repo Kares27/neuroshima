@@ -1019,3 +1019,113 @@ test("segment sheet saves its definition and fire mode checkboxes directly on th
  assert.equal(saved["system.fireModeModifiers"].shortBurst,10);
  assert.equal(saved["system.activities"],undefined);assert.equal(saved["system.name"],undefined);
 });
+
+test("pain report details remain visible to the patient owner below the configured role, including reversed reports", async () => {
+ const {NeuroshimaChatMessage}=await import("../module/documents/chat-message.js");
+ const previous={user:game.user,resolver:globalThis.fromUuidSync};
+ const patient=actor();const data={messageType:"painResistanceReport",actorUuid:patient.uuid,isReversed:true};
+ const message={getFlag:(_scope,key)=>data[key]};
+ try{
+   game.user={isGM:false,role:1};globalThis.fromUuidSync=()=>({actor:patient});
+   assert.equal(NeuroshimaChatMessage.canViewPainReportDetails(message,4),true);
+   assert.equal(NeuroshimaChatMessage.canRerollPainReport(message),false);
+   patient.isOwner=false;assert.equal(NeuroshimaChatMessage.canViewPainReportDetails(message,4),false);
+   game.user.role=4;assert.equal(NeuroshimaChatMessage.canViewPainReportDetails(message,4),true);
+   game.user={isGM:true,role:1};assert.equal(NeuroshimaChatMessage.canViewPainReportDetails(message,4),true);
+ }finally{game.user=previous.user;globalThis.fromUuidSync=previous.resolver;}
+});
+
+test("exchange damage display uses selected beast definitions, preserves repeats and includes counters", async () => {
+ const {exchangeDamageHits,summarizeExchangeDamage}=await import("../module/combat/melee-damage-summary.js");
+ const attacker=actor("creature");attacker.name="Beast";
+ attacker.items.push({id:"claw",type:"beast-action",name:"Claw",system:{id:"claw",damage:"2L + 1D"}});
+ const defender=actor();defender.name="Hero";
+ const hits=exchangeDamageHits({hits:[{damageType:"D"}],allBeastQueue:["claw::claw","claw::claw"],counterHits:[{damageType:"C"}]},attacker,defender);
+ assert.equal(hits.length,3);assert.equal(hits[0].damageType,"2L + 1D");assert.equal(hits[0].actionName,"Claw");
+ assert.equal(hits[2].sourceName,"Hero");assert.equal(hits[2].targetName,"Beast");assert.equal(hits[2].isCounter,true);
+ const rows=summarizeExchangeDamage(hits);
+ assert.deepEqual(rows.defender,[{damageType:"L",count:4},{damageType:"D",count:2}]);
+ assert.deepEqual(rows.attacker,[{damageType:"C",count:1}]);
+ const normal=exchangeDamageHits({hits:[{damageType:"K"}]},defender,attacker);
+ assert.equal(normal[0].damageType,"K");
+});
+
+test("movement sheets keep the editable source separate from multiplied Active Effect values across repeated saves", async () => {
+ const {NeuroshimaBaseActorSheet}=await import("../module/sheets/actor-sheet-base.js");
+ for(const type of ["character","npc","creature"]){
+   const document={type,_source:{system:{movement:2}},system:{movement:4}};
+   const sheet=new NeuroshimaBaseActorSheet({document});
+   for(let i=0;i<4;i++){
+     const context=await sheet._prepareContext({});
+     assert.equal(context.movementBase,2);assert.equal(context.movementEffective,4);
+     document._source.system.movement=context.movementBase;
+     document.system.movement=document._source.system.movement*2;
+   }
+   document._source.system.movement=3;document.system.movement=6;
+   assert.equal((await sheet._prepareContext({})).movementBase,3);
+   assert.equal((await sheet._prepareContext({})).movementEffective,6);
+ }
+ const vehicle=new NeuroshimaBaseActorSheet({document:{type:"vehicle",system:{movement:"wheeled"}}});
+ assert.equal((await vehicle._prepareContext({})).movementBase,undefined);
+});
+
+test("automatic death fires once, survives manual removal and resets only after healing below the limit", async () => {
+ const {checkAutomaticDeath}=await import("../module/apps/config/condition-config.js");
+ for(const type of ["npc","creature"]){
+   let flag=false,applied=0,removed=0,present=false;
+   const actor={type,getFlag:()=>flag,async setFlag(_scope,_key,value){flag=value;}};
+   const ctx={actor,usesAutomaticDefeat:true,isDefeated:true,
+     async apply(){applied++;present=true;},async remove(){removed++;present=false;}};
+   await checkAutomaticDeath(ctx);assert.equal(applied,1);assert.equal(flag,true);
+   present=false;
+   for(let i=0;i<5;i++)await checkAutomaticDeath(ctx);
+   assert.equal(applied,1);assert.equal(present,false);
+   ctx.isDefeated=false;await checkAutomaticDeath(ctx);assert.equal(flag,false);assert.equal(removed,1);
+   ctx.isDefeated=true;await checkAutomaticDeath(ctx);assert.equal(applied,2);assert.equal(flag,true);
+   // The persistent flag also suppresses a fresh context after reloading.
+   await checkAutomaticDeath({...ctx});assert.equal(applied,2);
+ }
+ let writes=0;
+ await checkAutomaticDeath({usesAutomaticDefeat:false,actor:{setFlag(){writes++;}}});assert.equal(writes,0);
+});
+
+test("failed automatic death application remains retryable", async () => {
+ const {checkAutomaticDeath}=await import("../module/apps/config/condition-config.js");
+ let flag=false;
+ const ctx={usesAutomaticDefeat:true,isDefeated:true,actor:{getFlag:()=>flag,async setFlag(_s,_k,v){flag=v;}},async apply(){throw Error("create failed");}};
+ await assert.rejects(checkAutomaticDeath(ctx),/create failed/);assert.equal(flag,false);
+});
+
+test("creature wound controls persist to the embedded Item and actor saves exclude stale wound snapshots", async () => {
+ const {NeuroshimaCreatureSheet}=await import("../module/sheets/creature-sheet.js");
+ const owner=actor("creature");const wound={id:"wound",type:"wound",system:{penalty:30,damageType:"C",location:"head"},async update(data){for(const [key,value]of Object.entries(data))setProperty(this,key,value);}};
+ owner.items.push(wound);
+ const sheet=new NeuroshimaCreatureSheet({document:owner});sheet.isEditable=true;
+ for(const [property,value,type]of [["penalty","12","number"],["damageType","L","select-one"],["location","torso","select-one"]]){
+   await sheet._onChangeForm({}, {target:{name:`items.wound.system.${property}`,value,type}});
+ }
+ assert.deepEqual(wound.system,{penalty:12,damageType:"L",location:"torso"});
+ const data={name:"Beast",items:{wound:{system:{penalty:30}}},"items.wound.system.damageType":"C"};
+ await sheet._processSubmitData({},null,data);
+ assert.deepEqual(data,{name:"Beast"});assert.equal(wound.system.penalty,12);
+ await sheet._onChangeForm({}, {target:{name:"items.wound.system.penalty",value:"-3",type:"number"}});
+ assert.equal(wound.system.penalty,0);
+ owner.isOwner=false;
+ await sheet._onChangeForm({}, {target:{name:"items.wound.system.penalty",value:"9",type:"number"}});
+ assert.equal(wound.system.penalty,0);
+});
+
+test("prone stays manual and stored built-in defeat checks are cleared without changing custom scripts", async () => {
+ const {getConditions,DEFAULT_CONDITIONS}=await import("../module/apps/config/condition-config.js");
+ const previous=game.settings.get;
+ const oldCode='if (!this.usesAutomaticDefeat) return;\nif (this.isDefeated) await this.apply();\nelse await this.remove();';
+ try{
+   assert.equal(DEFAULT_CONDITIONS.find(c=>c.key==="prone").conditionCheckCode,"");
+   game.settings.get=()=>[{key:"prone",conditionCheckCode:oldCode},{key:"dead",conditionCheckCode:oldCode}];
+   let conditions=getConditions();
+   assert.equal(conditions.find(c=>c.key==="prone").conditionCheckCode,"");
+   assert.equal(conditions.find(c=>c.key==="dead").conditionCheckCode,"await this.checkAutomaticDeath();");
+   game.settings.get=()=>[{key:"prone",conditionCheckCode:"// Custom manual setup"}];
+   conditions=getConditions();assert.equal(conditions.find(c=>c.key==="prone").conditionCheckCode,"// Custom manual setup");
+ }finally{game.settings.get=previous;}
+});

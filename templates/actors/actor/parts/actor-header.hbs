@@ -113,9 +113,12 @@
 
         <div class="header-stats-row">
             <div class="stat-box movement-summary">
+                    <div class="movement-fields movement-base-field">
+                        <input type="number" name="system.movement" value="{{movementBase}}" min="0" class="movement-base" title="{{localize 'NEUROSHIMA.Movement.Base'}}" aria-label="{{localize 'NEUROSHIMA.Movement.Base'}}"/>
+                    </div>
                 <label>{{localize "NEUROSHIMA.Movement.Label"}}</label>
                 <div class="movement-fields">
-                    <input type="number" name="system.movement" value="{{system.movement}}" min="0" class="movement-base" title="{{localize 'NEUROSHIMA.Movement.PerSegment'}}"/>
+                    <input type="number" value="{{movementEffective}}" disabled class="movement-seg" title="{{localize 'NEUROSHIMA.Movement.PerSegment'}}" aria-label="{{localize 'NEUROSHIMA.Movement.PerSegment'}}"/>
                     <input type="number" value="{{combat.movement2}}" disabled class="movement-seg" title="{{localize 'NEUROSHIMA.Movement.Seg2'}}"/>
                     <input type="number" value="{{combat.movement3}}" disabled class="movement-seg" title="{{localize 'NEUROSHIMA.Movement.Seg3'}}"/>
                 </div>

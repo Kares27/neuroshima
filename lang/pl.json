@@ -468,6 +468,7 @@
             "AttemptCount": "Próby"
         },
         "Movement": {
+            "Base": "Bazowy ruch na segment (m)",
             "Label": "Ruch",
             "PerSegment": "Ruch na segment (m)",
             "Seg2": "Ruch za 2 segmenty (m)",

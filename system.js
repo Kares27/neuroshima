@@ -2794,7 +2794,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
 
     // Permission check for Pain Resistance details
     const painResistanceMinRole = game.settings.get("neuroshima", "painResistanceMinRole");
-    if (game.user.role < painResistanceMinRole && !game.user.isGM) {
+    if (!NeuroshimaChatMessage.canViewPainReportDetails(message, painResistanceMinRole)) {
         const painResistanceDetails = html.querySelector(".pain-resistance-details");
         if (painResistanceDetails) {
             painResistanceDetails.remove();

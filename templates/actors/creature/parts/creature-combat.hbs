@@ -47,6 +47,21 @@
     {{/each}}
 
     {{!-- ===== Two-column: Natural Armor | Beast Actions + Maneuvers ===== --}}
+            <div class="creature-quick-actions">
+                <div class="section-header">
+                    <i class="fas fa-bolt"></i>
+                    <span class="header-label">{{localize "NEUROSHIMA.Creature.QuickActions"}}</span>
+                </div>
+                <div class="creature-quick-actions-buttons">
+                    <button type="button" class="creature-attack-button" data-action="rollBeastAttack" data-tooltip="{{localize 'NEUROSHIMA.Actions.Attack'}}" aria-label="{{localize 'NEUROSHIMA.Actions.Attack'}}" {{#unless inventory.beastActionItems.length}}disabled{{/unless}}>
+                        <i class="fas fa-hand-fist"></i>
+                    </button>
+                    <button type="button" data-action="rollMeleeInitiative" data-tooltip="{{localize 'NEUROSHIMA.Creature.QuickInitiative'}}" aria-label="{{localize 'NEUROSHIMA.Creature.QuickInitiative'}}">
+                        <i class="fas fa-dice"></i>
+                    </button>
+                </div>
+            </div>
+
     <div class="creature-combat-columns">
 
         {{!-- LEFT: Combined armor — natural values + equipped items per location --}}
@@ -142,21 +157,6 @@
         {{!-- RIGHT: Beast Actions + Beast Maneuvers stacked --}}
         <div class="creature-combat-col">
 
-            <div class="creature-quick-actions">
-                <div class="section-header">
-                    <i class="fas fa-bolt"></i>
-                    <span class="header-label">{{localize "NEUROSHIMA.Creature.QuickActions"}}</span>
-                </div>
-                <div class="creature-quick-actions-buttons">
-                    <button type="button" class="creature-attack-button" data-action="rollBeastAttack" {{#unless inventory.beastActionItems.length}}disabled{{/unless}}>
-                        <i class="fas fa-hand-fist"></i> {{localize "NEUROSHIMA.Actions.Attack"}}
-                    </button>
-                    <button type="button" data-action="rollMeleeInitiative">
-                        <i class="fas fa-dice"></i> {{localize "NEUROSHIMA.Creature.QuickInitiative"}}
-                    </button>
-                </div>
-            </div>
-
             {{!-- Beast Actions (success-based) --}}
             <div class="section-header">
                 <i class="fas fa-paw"></i>
@@ -186,7 +186,7 @@
                 {{/each}}
 
                 {{#each inventory.beastActionItems}}
-                <li class="item" data-item-id="{{this.id}}">
+                <li class="item" data-item-id="{{this.id}}" draggable="true">
                     <img class="item-img" src="{{this.img}}" title="{{this.name}}" width="16" height="16"/>
                     <span class="item-name">{{this.name}}</span>
                     <span class="beast-action-meta">
@@ -218,7 +218,7 @@
 
             <ul class="item-list creature-actions-list">
                 {{#each inventory.beastSegmentItems}}
-                <li class="item beast-segment-item" data-item-id="{{this.id}}">
+                <li class="item beast-segment-item" data-item-id="{{this.id}}" draggable="true">
                     <img class="item-img" src="{{this.img}}" title="{{this.name}}" width="16" height="16"/>
                     <span class="item-name beast-roll-name" data-action="rollBeastAction" data-item-id="{{this.id}}" title="{{localize 'NEUROSHIMA.BeastSegment.RollAction'}}">{{this.name}}</span>
                     <span class="beast-action-meta">

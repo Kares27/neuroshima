@@ -8,6 +8,7 @@ import {
 
 import {
   getConditions,
+  checkAutomaticDeath,
   isDefeatedByDamage,
   isOverweightEncumbrance
 } from "../apps/config/condition-config.js";
@@ -128,6 +129,10 @@ export class NeuroshimaConditionCheckContext {
 
   async remove() {
     return this._actor.removeCondition(this._condDef.key, { automaticOnly: true });
+  }
+
+  async checkAutomaticDeath() {
+    return checkAutomaticDeath(this);
   }
 
   // ── Actor stat helpers ────────────────────────────────────────────────────

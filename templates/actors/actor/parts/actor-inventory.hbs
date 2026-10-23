@@ -8,7 +8,12 @@
         <div class="encumbrance-bar-container">
             <div class="encumbrance-label">
                 <i class="fas fa-weight-hanging" style="color: {{system.encumbrance.color}};"></i>
+                {{#if inventoryMaxLoadEditable}}
+                <span>{{localize "NEUROSHIMA.Encumbrance"}}: {{system.encumbrance.value}} /</span>
+                <input type="number" name="system.maxLoad" value="{{system.maxLoad}}" min="0" step="1" class="encumbrance-maxload-input" title="{{localize 'NEUROSHIMA.HomeBase.MaxLoad'}}"> kg
+                {{else}}
                 <span>{{localize "NEUROSHIMA.Encumbrance"}}: {{system.encumbrance.value}} / {{system.encumbrance.max}} kg</span>
+                {{/if}}
             </div>
             <div class="encumbrance-bar">
                 <div class="encumbrance-fill" style="width: {{system.encumbrance.pct}}%; background: {{system.encumbrance.color}};"></div>

@@ -243,6 +243,14 @@ export class NeuroshimaChatMessage extends ChatMessage {
       !result.isCritical && !result.forcePassed ? [index] : []);
   }
 
+  static canViewPainReportDetails(message, minRole = game.settings.get("neuroshima", "painResistanceMinRole")) {
+    if (game.user.isGM || game.user.role >= minRole) return true;
+    if (message?.getFlag("neuroshima", "messageType") !== "painResistanceReport") return false;
+    const uuid = message.getFlag("neuroshima", "actorUuid");
+    const document = uuid ? fromUuidSync(uuid) : game.actors?.get(message.getFlag("neuroshima", "actorId"));
+    return (document?.actor ?? document)?.isOwner === true;
+  }
+
   static canRerollPainReport(message) {
     if (message?.getFlag("neuroshima", "messageType") !== "painResistanceReport"
       || message.getFlag("neuroshima", "isReversed")) return false;

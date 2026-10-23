@@ -1,3 +1,4 @@
+import { buildItemPreviewTooltip } from "../helpers/item-tooltip.js";
 import { clampArmor, preserveArmorSourceValues } from "../helpers/armor-limit.js";
 import { beastActivities, resolveBeastActionItem, createBeastSegmentWeapon, createBeastCombatWeapon } from "../helpers/beast-actions.js";
 import { NEUROSHIMA } from "../config.js";
@@ -6,7 +7,7 @@ import { NeuroshimaDice } from "../helpers/dice.js";
 import { RestDialog } from "../apps/dialogs/minor-dialogs.js";
 import { getConditions } from "../apps/config/condition-config.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
-import { getEffectiveArmorRatings, getEffectiveRadiationResistance } from "../helpers/mod-helpers.js";
+import { getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveRadiationResistance } from "../helpers/mod-helpers.js";
 import { BeastActivitySheet } from "../apps/beast-activity-sheet.js";
 import {
   EFFECT_PENALTY_KEY,
@@ -14,6 +15,7 @@ import {
 } from "../helpers/effect-penalty.js";
 import {
   buildBreakdownTooltip,
+  buildRichTextTooltip,
   collectAttributeEffectSources,
   collectDocumentEffectSources,
   renderTooltipSections
@@ -48,8 +50,27 @@ function _collectCreatureArmorBonusByEffect(actor) {
  */
 export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
   async _processSubmitData(event, form, submitData) {
+    // Embedded items save through their own change handler, never an actor form snapshot.
+    delete submitData.items;
+    for (const key of Object.keys(submitData)) {
+      if (key.startsWith("items.")) delete submitData[key];
+    }
     preserveArmorSourceValues(this.document, event, submitData);
     return super._processSubmitData(event, form, submitData);
+  }
+
+  async _onChangeForm(formConfig, event) {
+    const input = event.target;
+    const name = input?.getAttribute?.("name") ?? input?.name;
+    if (!name?.startsWith("items.")) return super._onChangeForm(formConfig, event);
+    if (!this.document.isOwner || !this.isEditable) return;
+    const [, itemId, ...path] = name.split(".");
+    const item = this.document.items.get(itemId);
+    const property = path.join(".");
+    if (!item || item.type !== "wound"
+      || !["system.location", "system.damageType", "system.penalty"].includes(property)) return;
+    const value = input.type === "number" ? Math.max(0, Math.round(Number(input.value) || 0)) : input.value;
+    await item.update({ [property]: value });
   }
 
   /** @override */
@@ -675,6 +696,18 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         await NeuroshimaScriptRunner.executeManual(this.document, effect, Number(scriptIndex));
       },
       invokeEffectScript: NeuroshimaBaseActorSheet.prototype._onInvokeEffectScript,
+      consolidateMoney: async function() {
+        if (!this.document.isOwner) return;
+        const items = this.document.items.filter(item => item.type === "money" && item.system.coinValue > 0)
+          .sort((a, b) => b.system.coinValue - a.system.coinValue);
+        let remaining = items.reduce((sum, item) => sum + item.system.quantity * item.system.coinValue, 0);
+        const updates = items.map(item => {
+          const quantity = Math.floor(remaining / item.system.coinValue);
+          remaining -= quantity * item.system.coinValue;
+          return { _id: item.id, "system.quantity": quantity };
+        });
+        if (updates.length) await this.document.updateEmbeddedDocuments("Item", updates);
+      },
       toggleGearCategory: NeuroshimaBaseActorSheet.prototype._onToggleGearCategory,
 
       toggleCondition: async function(event, target) {
@@ -851,7 +884,17 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
 
     context.enableEncumbrance = game.settings.get("neuroshima", "enableEncumbrance");
 
-    const items = actor.items.contents;
+    const items = [...actor.items.contents].sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
+    context.inventoryMaxLoadEditable = true;
+    context.itemDescriptions = Object.fromEntries(await Promise.all(items.map(async item => [item.id,
+      await foundry.applications.ux.TextEditor.enrichHTML(item.system.description || "", {
+        async: true, secrets: item.isOwner, relativeTo: item,
+        rollData: { ...item.getRollData(), actor: actor.getRollData() }
+      })
+    ])));
+    context.itemPreviewTooltips = Object.fromEntries(items.map(item => [item.id,
+      buildItemPreviewTooltip(item.img, item.name, item.system.weight, item.system.cost, context.itemDescriptions[item.id])
+    ]));
     const armorItems = items.filter(i => i.type === "armor");
     const equippedWeapons = items.filter(i => i.type === "weapon" && i.system.equipped &&
       (i.system.weaponType === "melee" || i.system.weaponType === "ranged" || i.system.weaponType === "thrown"));
@@ -875,7 +918,10 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       weaponsRanged:  topItems.filter(i => i.type === "weapon" && ["ranged", "launcher"].includes(i.system.weaponType)),
       weaponsThrown:  topItems.filter(i => i.type === "weapon" && i.system.weaponType === "thrown"),
       grenades:       topItems.filter(i => i.type === "grenade"),
-      armor:          armorItems,
+      armor:          topItems.filter(i => i.type === "armor"),
+      money:          topItems.filter(i => i.type === "money"),
+      weaponMods:     topItems.filter(i => i.type === "weapon-mod"),
+      armorMods:      topItems.filter(i => i.type === "armor-mod"),
       gear:           topItems.filter(i => i.type === "gear"),
       hasWearableGear: topItems.some(i => i.type === "gear" && i.isEquippable),
       ammo:           topItems.filter(i => i.type === "ammo"),
@@ -906,6 +952,45 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       wounds:         topItems.filter(i => i.type === "wound")
     };
     this._prepareGearGroups(context.inventory);
+    context.moneyData = { totalBaseUnitsFormatted: context.inventory.money.reduce((sum, item) =>
+      sum + (Number(item.system.quantity) || 0) * (Number(item.system.coinValue) || 0), 0).toLocaleString(game.i18n.lang) };
+    context.currencyDisplayName = game.settings.get("neuroshima", "currencyNameLabel") || "Gamble";
+    const armorEffectiveResistances = {};
+    for (const armorItem of context.inventory.armor) {
+      const effRes = getEffectiveArmorResistances(armorItem);
+      const rows = Object.entries(effRes).map(([category, locs]) => ({
+        category,
+        categoryLabel: game.i18n.localize(NEUROSHIMA.damageCategories[category]?.label ?? category),
+        head:     locs.head     ?? 0,
+        torso:    locs.torso    ?? 0,
+        leftArm:  locs.leftArm  ?? 0,
+        rightArm: locs.rightArm ?? 0,
+        leftLeg:  locs.leftLeg  ?? 0,
+        rightLeg: locs.rightLeg ?? 0
+      }));
+      armorEffectiveResistances[armorItem.id] = rows.length > 0 ? rows : null;
+    }
+    context.armorEffectiveResistances = armorEffectiveResistances;
+
+    const attachedModsByItemId = {};
+    for (const modItem of actor.items) {
+      if (!["weapon-mod", "armor-mod"].includes(modItem.type)) continue;
+      const parentId = modItem.getFlag("neuroshima", "modParentId");
+      if (!parentId) continue;
+      const parentItem = actor.items.get(parentId);
+      if (!parentItem) continue;
+      const modState = parentItem.system?.mods?.[modItem.id];
+      if (!modState?.attached) continue;
+      if (!attachedModsByItemId[parentId]) attachedModsByItemId[parentId] = [];
+      const effectText = modItem.system?.effectText ?? "";
+      attachedModsByItemId[parentId].push({
+        name: modItem.name,
+        effectText,
+        tooltipHtml: buildRichTextTooltip({ title: modItem.name, html: effectText })
+      });
+    }
+    context.attachedModsByItemId = attachedModsByItemId;
+
 
     const anatomicalArmor = this._prepareAnatomicalArmor(armorItems.filter(i => i.system.equipped), actor);
 
@@ -1281,7 +1366,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
   async _onDropItem(event, data) {
     const item = await fromUuid(data.uuid);
     if (!item) return;
-    if (["weapon", "armor", "gear", "ammo", "magazine", "wound", "beast-action"].includes(item.type)) {
+    if (["weapon", "armor", "gear", "ammo", "magazine", "wound", "beast-action", "beast-segment", "grenade", "container", "money", "weapon-mod", "armor-mod"].includes(item.type)) {
       return super._onDropItem(event, data);
     }
   }
@@ -1325,6 +1410,18 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       }
     }
     return locations;
+  }
+
+  /** Use the native Item payload when dragging a beast definition. */
+  _onDragStart(event) {
+    const row = event.target.closest?.(".item[data-item-id]");
+    const item = this.document.items.get(row?.dataset.itemId);
+    if (item && ["beast-action", "beast-segment"].includes(item.type)) {
+      if (!this.document.isOwner || !event.dataTransfer) return;
+      event.dataTransfer.setData("text/plain", JSON.stringify(item.toDragData()));
+      return;
+    }
+    return super._onDragStart(event);
   }
 
   /** @override */

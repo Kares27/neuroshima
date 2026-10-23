@@ -10229,3 +10229,24 @@ button.jam-toggle-btn.header-control {
 .neuroshima.roll-card .ns-effect-action.is-used .ns-effect-action__name {
   color: #b6b0a6 !important;
 }
+
+.neuroshima .duel-damage-summary {
+    margin: 8px 0;
+    overflow-x: auto;
+}
+.neuroshima .duel-damage-summary table {
+    width: 100%;
+    table-layout: fixed;
+    font-size: 0.85em;
+}
+.neuroshima .duel-damage-summary th,
+.neuroshima .duel-damage-summary td {
+    padding: 6px;
+    overflow-wrap: anywhere;
+    text-align: center;
+    vertical-align: top;
+}
+.neuroshima .duel-damage-summary .received-wound {
+    padding: 2px 0;
+    font-weight: bold;
+}

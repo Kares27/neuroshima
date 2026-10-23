@@ -95,6 +95,16 @@ export class NeuroshimaBaseActorSheet extends HandlebarsApplicationMixin(ActorSh
   _collapsedGearTypes = new Set();
   _gearGroupDomPrefix = null;
 
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options);
+    if (["character", "npc", "creature"].includes(this.document.type)) {
+      // Editable fields must use source values, before Active Effects are applied.
+      context.movementBase = this.document._source.system.movement;
+      context.movementEffective = this.document.system.movement;
+    }
+    return context;
+  }
+
   static _SCROLL_SELECTORS = [
     "section.window-content",
     ".skill-table",
