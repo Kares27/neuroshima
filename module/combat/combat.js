@@ -1,3 +1,4 @@
+import { postBeastRequiredTest } from "../helpers/beast-required-test.js";
 import { exchangeDamageHits, summarizeExchangeDamage } from "./melee-damage-summary.js";
 import { beastActivities, isBeastAbility, isBeastAction } from "../helpers/beast-actions.js";
 /**
@@ -5891,8 +5892,8 @@ export class MeleeResolution {
    * @private
    */
   static async _applyBeastActivityEffects(attackerActor, defenderActor, weapon, diceCount) {
-    const wType = weapon?.type;
-    if (!isBeastAbility(weapon)) return;
+    // Segment effects are already handled by the shared damage pipeline.
+    if (!isBeastAction(weapon)) return;
     if (!defenderActor) return;
 
     const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
@@ -5904,27 +5905,11 @@ export class MeleeResolution {
       if (actCost !== diceCount) continue;
 
       if (activity.testRequired) {
-        const resolveUuids = (ids = []) =>
-          ids.map(id => weapon.effects.get(id)).filter(Boolean).map(e => e.uuid);
-
-        game.neuroshima?.log("[MeleeResolution._applyBeastActivityEffects] posting required test", { activityName: activity.name, testType: activity.testType, testKey: activity.testKey, defenderName: defenderActor?.name, defenderUuid: defenderActor?.uuid });
-        await NeuroshimaScriptRunner.postRequiredTest({
-          title:                 activity.name || weapon.name,
-          testType:              activity.testType             || "attribute",
-          testKey:               activity.testKey              || "constitution",
-          testAttributeOverride: activity.testAttributeOverride || "",
-          requiredSuccesses:     activity.testSuccesses        ?? 1,
-          isOpen:                activity.testIsOpen           ?? false,
-          baseDifficulty:        activity.testDifficulty       || "average",
-          defenderActorUuid:     defenderActor?.uuid ?? "",
-          whisperToDefender:     true,
-          onSuccessEffectUuids:  resolveUuids(activity.effectIds),
-          onFailureEffectUuids:  resolveUuids(activity.onFailureEffectIds)
-        });
+        await postBeastRequiredTest(weapon, activity, defenderActor, NeuroshimaScriptRunner);
         continue;
       }
 
-      for (const effectId of (activity.effectIds ?? [])) {
+      for (const effectId of new Set([...(activity.effectIds ?? []), ...(activity.alwaysEffectIds ?? [])])) {
         const effect = weapon.effects.get(effectId);
         if (!effect) continue;
         try {

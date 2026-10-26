@@ -1,3 +1,4 @@
+import { postBeastRequiredTest, applyBeastEffectIds } from "../helpers/beast-required-test.js";
 import { beastActivities, resolveBeastActionItem, isBeastAction } from "../helpers/beast-actions.js";
 import { resolveDefensiveManeuver } from "./melee-maneuvers.js";
 /**
@@ -2216,56 +2217,14 @@ export class DuelBeastActionEngine {
 
     const selectedActivities = this.validateSelected(rd, selectedActionIds, attackerActor);
 
-    const _applyLinkedEffects = async (item, activity, targetActor) => {
-      const linkedEffectIds = new Set(activity.effectIds ?? []);
-      for (const effect of item.effects) {
-        if (!linkedEffectIds.has(effect.id)) continue;
-        try {
-          const { _id, ...rest } = effect.toObject();
-          const existingFlags = rest.flags ?? {};
-          const existingNS    = existingFlags.neuroshima ?? {};
-          await ActiveEffect.implementation.create(
-            {
-              ...rest,
-              disabled: false,
-              transfer: false,
-              origin:   item.uuid,
-              flags: {
-                ...existingFlags,
-                neuroshima: {
-                  ...existingNS,
-                  sourceActivityId:     activity.id,
-                  sourceItemId:         item.id,
-                  sourceMeleeMessageId: rd.messageId ?? null
-                }
-              }
-            },
-            { parent: targetActor }
-          );
-        } catch (err) {
-          console.error("Neuroshima | Failed to apply beast effect:", err);
-        }
-      }
-    };
+    const _applyLinkedEffects = (item, activity, targetActor) => applyBeastEffectIds(
+      item, [...(activity.effectIds ?? []), ...(activity.alwaysEffectIds ?? [])], targetActor,
+      { sourceActivityId: activity.id, sourceItemId: item.id, sourceMeleeMessageId: rd.messageId ?? null }
+    );
 
     for (const { item: beastItem, activity } of selectedActivities) {
         if (activity.testRequired) {
-          const resolveUuids = (ids = []) =>
-            ids.map(id => beastItem.effects.get(id)).filter(Boolean).map(e => e.uuid);
-          game.neuroshima?.log("[DuelBeastActionEngine] posting required test", { activityName: activity.name });
-          await NeuroshimaScriptRunner.postRequiredTest({
-            title:                 activity.name || beastItem.name,
-            testType:              activity.testType              || "attribute",
-            testKey:               activity.testKey               || "constitution",
-            testAttributeOverride: activity.testAttributeOverride || "",
-            requiredSuccesses:     activity.testSuccesses         ?? 1,
-            isOpen:                activity.testIsOpen            ?? false,
-            baseDifficulty:        activity.testDifficulty        || "average",
-            defenderActorUuid:     defenderActor?.uuid ?? "",
-            whisperToDefender:     true,
-            onSuccessEffectUuids:  resolveUuids(activity.effectIds),
-            onFailureEffectUuids:  resolveUuids(activity.onFailureEffectIds)
-          });
+          await postBeastRequiredTest(beastItem, activity, defenderActor, NeuroshimaScriptRunner);
           continue;
         }
         if (activity.applyEffectsAutomatically === false) continue;
@@ -2332,7 +2291,7 @@ export class DuelBeastActionEngine {
         }
 
         const hitTiming = activity.effectTiming ?? "onUse";
-        if ((hitTiming === "onHit" || hitTiming === "afterDamage") &&
+        if (!activity.testRequired && (hitTiming === "onHit" || hitTiming === "afterDamage") &&
             activity.applyEffectsAutomatically !== false) {
           const effectTarget    = activity.effectTarget ?? "target";
           let hitEffectTarget = null;

@@ -1,4 +1,5 @@
-import { isBeastAbility } from "../helpers/beast-actions.js";
+import { postBeastRequiredTest, applyBeastEffectIds } from "./beast-required-test.js";
+import { isBeastAbility, isBeastSegment, beastActivities } from "../helpers/beast-actions.js";
 import { clampArmor } from "./armor-limit.js";
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaChatMessage } from "../documents/chat-message.js";
@@ -1870,21 +1871,29 @@ export class CombatHelper {
    */
   static async _applyDamageTypeEffects(defender, attackData, woundIds = []) {
     const { attacker, weapon } = await this._resolveDamageSource(attackData);
+    if (isBeastSegment(weapon) && weapon.system?.testRequired) {
+      await postBeastRequiredTest(weapon, beastActivities(weapon)[0], defender, NeuroshimaScriptRunner);
+    }
+    if (isBeastSegment(weapon) && !weapon.system?.testRequired && weapon.system?.applyEffectsAutomatically !== false) {
+      await applyBeastEffectIds(weapon, weapon.system?.alwaysEffectIds, defender, { damageWoundIds: [...woundIds] });
+    }
     const sources = new Set(Array.from(attacker?.effects ?? []));
     for (const item of attacker?.items ?? []) {
-      if (isBeastAbility(item) && (item.uuid !== weapon?.uuid || item.system?.applyEffectsAutomatically === false)) continue;
+      if (isBeastAbility(item) && (item.uuid !== weapon?.uuid || item.system?.applyEffectsAutomatically === false || item.system?.testRequired)) continue;
       for (const effect of item.effects ?? []) {
         if (effect.getFlag?.("neuroshima", "equipTransfer") && item.system?.equipped === false) continue;
         const documentType = effect.getFlag?.("neuroshima", "documentType") ?? "actor";
         if (documentType === "actor" || item.uuid === weapon?.uuid) sources.add(effect);
       }
     }
-    if (!isBeastAbility(weapon) || weapon.system?.applyEffectsAutomatically !== false) {
+    if (!isBeastAbility(weapon) || (weapon.system?.applyEffectsAutomatically !== false && !weapon.system?.testRequired)) {
       for (const effect of weapon?.effects ?? []) sources.add(effect);
     }
     const toApply = [];
     const seen = new Set();
     for (const effect of sources) {
+      if (isBeastSegment(weapon) && !weapon.system?.testRequired && weapon.system?.alwaysEffectIds?.includes(effect.id)
+        && effect.parent?.uuid === weapon.uuid) continue;
       if (effect.disabled || effect.getFlag?.("neuroshima", "transferType") !== "damage") continue;
       const key = effect.uuid ?? effect;
       if (seen.has(key)) continue;

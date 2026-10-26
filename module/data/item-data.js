@@ -358,6 +358,9 @@ export class BeastAbilityData extends foundry.abstract.TypeDataModel {
       source.description = source.activities[0].description || description || "";
       delete source.activities;
     }
+    if (source.testEffectIds === undefined) {
+      source.testEffectIds = [...new Set([...(source.effectIds ?? []), ...(source.onFailureEffectIds ?? []), ...(source.alwaysEffectIds ?? [])])];
+    }
     return source;
   }
 
@@ -409,6 +412,8 @@ export class BeastAbilityData extends foundry.abstract.TypeDataModel {
       blastZones:              blastZonesField(),
       effectIds:               new fields.ArrayField(new fields.StringField(), { initial: [] }),
       testRequired:            new fields.BooleanField({ initial: false }),
+      testEffectIds: new fields.ArrayField(new fields.StringField(), { initial: [] }),
+      alwaysEffectIds: new fields.ArrayField(new fields.StringField(), { initial: [] }),
       testType:                new fields.StringField({ initial: "attribute", choices: ["attribute", "skill"] }),
       testKey:                 new fields.StringField({ initial: "constitution", blank: true }),
       testAttributeOverride:   new fields.StringField({ initial: "", blank: true }),

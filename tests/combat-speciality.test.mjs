@@ -1185,3 +1185,85 @@ test("retired beast item types retain identity, category and native effects thro
    }
  }finally{Item.migrateData=previous;}
 });
+
+test("required-test effects save success, failure and unconditional selections from existing ability effects", async () => {
+ const {BeastActivitySheet}=await import("../module/apps/beast-activity-sheet.js");
+ let saved;const effects=[{id:"success"},{id:"failure"},{id:"always"}];
+ const item={id:"ability",type:"beast-ability",name:"Ability",isOwner:true,effects,system:{id:"ability"},async update(data){saved=data;}};
+ const sheet={item,activityId:"ability",_saveActivities:BeastActivitySheet.prototype._saveActivities};
+ await BeastActivitySheet._onSubmit.call(sheet,{target:{name:"testEffects.success.success"}},null,{object:{
+   testRequired:true,"testEffects.success.success":true,"testEffects.success.failure":false,
+   "testEffects.failure.failure":true,"testEffects.always.always":true,"testEffects.unknown.success":true
+ }});
+ assert.deepEqual(saved["system.effectIds"],["success"]);assert.deepEqual(saved["system.onFailureEffectIds"],["failure"]);
+ assert.deepEqual(saved["system.alwaysEffectIds"],["always"]);
+});
+
+test("required ability tests belong to the target and unconditional effects occur in both outcomes without duplicates", async () => {
+ const {postBeastRequiredTest}=await import("../module/helpers/beast-required-test.js");
+ const effects=new Map(["pass","fail","always"].map(id=>[id,{uuid:`Item.ability.ActiveEffect.${id}`}]))
+ const item={name:"Grab",effects};const target=actor();const cards=[];
+ const activity={effectIds:["pass","always"],onFailureEffectIds:["fail"],alwaysEffectIds:["always","missing"],testSuccesses:2,testIsOpen:true};
+ assert.equal(await postBeastRequiredTest(item,activity,target,{async postRequiredTest(data){cards.push(data);}}),1);
+ assert.equal(cards[0].defenderActorUuid,target.uuid);assert.equal(cards[0].requiredSuccesses,2);
+ assert.deepEqual(cards[0].onSuccessEffectUuids,["Item.ability.ActiveEffect.pass","Item.ability.ActiveEffect.always"]);
+ assert.deepEqual(cards[0].onFailureEffectUuids,["Item.ability.ActiveEffect.fail","Item.ability.ActiveEffect.always"]);
+ assert.equal(await postBeastRequiredTest(item,activity,null,{}),0);
+});
+
+test("segment damage requests the configured test without prematurely applying outcome effects", async () => {
+ const previous={resolve:CombatHelper._resolveDamageSource,post:NeuroshimaScriptRunner.postRequiredTest};
+ const target=actor();let applied=0;target.applyEffect=async()=>{applied++;};const cards=[];
+ const item={uuid:"Item.segment",name:"Venom",type:"beast-ability",effects:new Map(),system:{id:"segment",abilityCategory:"segment",testRequired:true,effectIds:["poison"]}};
+ const effect={id:"poison",uuid:"Item.segment.ActiveEffect.poison",parent:item,disabled:false,getFlag:(_s,key)=>key==="transferType"?"damage":"actor"};
+ // Foundry collections iterate documents; a tiny collection supports both iteration and get.
+ const effects=[effect];effects.get=id=>effects.find(e=>e.id===id);item.effects=effects;
+ try{
+   CombatHelper._resolveDamageSource=async()=>({attacker:{effects:[],items:[item]},weapon:item});
+   NeuroshimaScriptRunner.postRequiredTest=async data=>{cards.push(data);};
+   await CombatHelper._applyDamageTypeEffects(target,{},["wound"]);
+   assert.equal(cards.length,1);assert.equal(cards[0].defenderActorUuid,target.uuid);
+   assert.equal(applied,0);assert.deepEqual(cards[0].onSuccessEffectUuids,[effect.uuid]);
+ }finally{CombatHelper._resolveDamageSource=previous.resolve;NeuroshimaScriptRunner.postRequiredTest=previous.post;}
+});
+
+test("switching a required test to skills replaces an attribute key and preserves the chosen skill", async () => {
+ const {BeastActivitySheet}=await import("../module/apps/beast-activity-sheet.js");
+ const {NEUROSHIMA}=await import("../module/config.js");
+ const item={id:"ability",type:"beast-ability",name:"Ability",isOwner:true,system:{id:"ability",testType:"attribute",testKey:"constitution"},async update(data){for(const[path,value]of Object.entries(data))setProperty(this,path,value);}};
+ const sheet={item,activityId:"ability",_saveActivities:BeastActivitySheet.prototype._saveActivities};
+ await BeastActivitySheet._onSubmit.call(sheet,{target:{name:"testType"}},null,{object:{testType:"skill",testKey:"constitution"}});
+ const skills=Object.values(NEUROSHIMA.skillConfiguration).flatMap(groups=>Object.values(groups).flat());
+ assert.equal(skills.includes(item.system.testKey),true);
+ await BeastActivitySheet._onSubmit.call(sheet,{target:{name:"testKey"}},null,{object:{testType:"skill",testKey:"listening"}});
+ assert.equal(item.system.testKey,"listening");
+});
+
+test("required-test effect links are explicitly added and removed without deleting native effects", async () => {
+ const {BeastActivitySheet}=await import("../module/apps/beast-activity-sheet.js");
+ const effects=[{id:"poison"},{id:"fear"}];effects.get=id=>effects.find(effect=>effect.id===id);
+ const item={id:"ability",type:"beast-ability",isOwner:true,name:"Ability",effects,system:{id:"ability",testEffectIds:[],effectIds:[],onFailureEffectIds:[],alwaysEffectIds:[]},async update(data){for(const[path,value]of Object.entries(data))setProperty(this,path,value);}};
+ const sheet={item,element:{querySelector:()=>({value:"poison"})},_saveActivities:BeastActivitySheet.prototype._saveActivities};
+ await BeastActivitySheet._onAddRequiredTestEffect.call(sheet);
+ await BeastActivitySheet._onAddRequiredTestEffect.call(sheet);
+ assert.deepEqual(item.system.testEffectIds,["poison"]);assert.deepEqual(item.system.alwaysEffectIds,["poison"]);
+ assert.equal(item.system.testEffectIds.includes("fear"),false);
+ item.system.effectIds=["poison"];item.system.onFailureEffectIds=["poison"];
+ await BeastActivitySheet._onRemoveRequiredTestEffect.call(sheet,null,{dataset:{effectId:"poison"}});
+ for(const field of ["testEffectIds","effectIds","onFailureEffectIds","alwaysEffectIds"])assert.deepEqual(item.system[field],[]);
+ assert.equal(effects.length,2);
+});
+
+test("creature action and segment add buttons create abilities with matching category and name", async () => {
+ const {NeuroshimaCreatureSheet}=await import("../module/sheets/creature-sheet.js");
+ for(const category of ["action","segment"]){
+   let createdData,opened=false;
+   const created={sheet:{render(){opened=true;}}};
+   const sheet={document:{async createEmbeddedDocuments(type,items){assert.equal(type,"Item");[createdData]=items;return [created];}}};
+   await NeuroshimaCreatureSheet.DEFAULT_OPTIONS.actions.createItem.call(sheet,null,{dataset:{type:"beast-ability",category}});
+   assert.equal(createdData.type,"beast-ability");assert.equal(createdData.system.abilityCategory,category);
+   assert.equal(createdData.system.costType,category==="segment"?"segment":"success");
+   assert.equal(createdData.name,game.i18n.localize(category==="segment"?"NEUROSHIMA.BeastAbility.NewSegment":"NEUROSHIMA.BeastAbility.NewAction"));
+   assert.equal(opened,true);
+ }
+});

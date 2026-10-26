@@ -39,7 +39,8 @@
         }
     },
     "NEUROSHIMA": {
-        "BeastAbility": {"Use": "Use", "Category": "Category", "Action": "Action", "Segment": "Segment"},
+        "BeastRequired": {"AddEffect": "Add effect", "UnlinkEffect": "Unlink from test requirement","NeedTarget": "Select a target for this ability.", "Success": "Success", "Failure": "Failure", "Always": "Always"},
+        "BeastAbility": {"NewAction": "Beast Action", "NewSegment": "Beast Segment","Use": "Use", "Category": "Category", "Action": "Action", "Segment": "Segment"},
         "ArmorLimit": {
             "Name": "Armor Level Restriction",
             "Hint": "Caps final armor after effects. Disabling restores calculations without a limit.",

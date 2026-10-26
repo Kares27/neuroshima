@@ -3129,3 +3129,88 @@ input[type="color"].rep-color-input::-moz-color-swatch {
     flex: 1;
     min-width: 0;
 }
+
+.neuroshima.beast-activity-sheet .bas-test-effects {
+    width: 100%;
+    table-layout: fixed;
+}
+.neuroshima.beast-activity-sheet .bas-test-effects th:first-child {
+    width: 46%;
+}
+.neuroshima.beast-activity-sheet .bas-test-effects th,
+.neuroshima.beast-activity-sheet .bas-test-effects td {
+    padding: 5px;
+    overflow-wrap: anywhere;
+    text-align: center;
+}
+.neuroshima.beast-activity-sheet .bas-test-effects td:first-child {
+    text-align: left;
+}
+.neuroshima.beast-activity-sheet .bas-test-effects input[type="checkbox"] {
+    margin: 0;
+}
+
+.neuroshima.beast-activity-sheet .bas-test-effects {
+    margin: 4px 0 0;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 3px;
+    border-spacing: 0;
+    background: var(--ns-bg-panel);
+    color: var(--ns-text-main);
+    font-size: 0.9em;
+}
+.neuroshima.beast-activity-sheet .bas-test-effects thead {
+    background: var(--ns-bg-header);
+    color: var(--ns-text-main);
+    border: none;
+    text-shadow: none;
+}
+.neuroshima.beast-activity-sheet .bas-test-effects th {
+    font-size: 0.85em;
+    text-transform: uppercase;
+    font-weight: bold;
+    border-bottom: 1px solid var(--ns-border-main);
+}
+.neuroshima.beast-activity-sheet .bas-test-effects th:first-child {
+    width: 43%;
+    text-align: left;
+}
+.neuroshima.beast-activity-sheet .bas-test-effects th:last-child {
+    width: 28px;
+}
+.neuroshima.beast-activity-sheet .bas-test-effects tbody tr {
+    background: transparent;
+    border-bottom: 1px solid var(--ns-border-main);
+}
+.neuroshima.beast-activity-sheet .bas-test-effects tbody tr:last-child {
+    border-bottom: none;
+}
+.neuroshima.beast-activity-sheet .bas-test-effects tbody tr:hover {
+    background: var(--ns-bg-header);
+}
+.neuroshima.beast-activity-sheet .bas-test-effect-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+.neuroshima.beast-activity-sheet .bas-test-effect-name img {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+    border: none;
+    border-radius: 2px;
+}
+.neuroshima.beast-activity-sheet .bas-test-effect-picker select {
+    flex: 1;
+    min-width: 0;
+}
+.neuroshima.beast-activity-sheet .bas-test-effect-picker button {
+    flex: 0 0 28px;
+    width: 28px;
+    padding: 0;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 3px;
+    background: var(--ns-bg-panel);
+    color: var(--ns-text-main);
+}

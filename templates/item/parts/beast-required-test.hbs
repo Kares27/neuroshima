@@ -10,6 +10,7 @@
                 </div>
 
                 {{#if activity.testRequired}}
+
                 <div class="bas-row">
                     <div class="bas-field-group">
                         <label class="bas-label">{{localize "NEUROSHIMA.BeastAction.Sheet.TestType"}}</label>
@@ -60,7 +61,7 @@
                             {{#each testSkillGroups}}
                             <optgroup label="{{this.attrLabel}}">
                                 {{#each this.skills}}
-                                <option value="{{this.key}}" {{#if (eq this.key ../../../activity.testKey)}}selected{{/if}}>{{this.label}}</option>
+                                <option value="{{this.key}}" {{#if (eq this.key @root.activity.testKey)}}selected{{/if}}>{{this.label}}</option>
                                 {{/each}}
                             </optgroup>
                             {{/each}}
@@ -82,4 +83,22 @@
                 </div>
                 {{/if}}
                 {{/if}}
+                {{#if editable}}{{#if availableRequiredTestEffects.length}}
+                <div class="bas-row bas-test-effect-picker">
+                    <select data-required-effect-select aria-label="{{localize 'NEUROSHIMA.Tabs.Effects'}}">
+                        {{#each availableRequiredTestEffects}}<option value="{{id}}">{{name}}</option>{{/each}}
+                    </select>
+                    <button type="button" data-action="addRequiredTestEffect" title="{{localize 'NEUROSHIMA.BeastRequired.AddEffect'}}" aria-label="{{localize 'NEUROSHIMA.BeastRequired.AddEffect'}}"><i class="fas fa-plus" aria-hidden="true"></i></button>
+                </div>
+                {{/if}}{{/if}}
+                <table class="bas-test-effects">
+                    <thead><tr><th>{{localize "NEUROSHIMA.Tabs.Effects"}}</th><th>{{localize "NEUROSHIMA.BeastRequired.Success"}}</th><th>{{localize "NEUROSHIMA.BeastRequired.Failure"}}</th><th>{{localize "NEUROSHIMA.BeastRequired.Always"}}</th><th></th></tr></thead>
+                    <tbody>{{#each requiredTestEffects}}<tr>
+                        <td><div class="bas-test-effect-name"><img src="{{img}}" alt=""/><span>{{name}}</span></div></td>
+                        <td><input type="checkbox" name="testEffects.{{id}}.success" {{checked success}} {{#unless @root.editable}}disabled{{/unless}}></td>
+                        <td><input type="checkbox" name="testEffects.{{id}}.failure" {{checked failure}} {{#unless @root.editable}}disabled{{/unless}}></td>
+                        <td><input type="checkbox" name="testEffects.{{id}}.always" {{checked always}} {{#unless @root.editable}}disabled{{/unless}}></td>
+                    <td>{{#if @root.editable}}<a data-action="removeRequiredTestEffect" data-effect-id="{{id}}" title="{{localize 'NEUROSHIMA.BeastRequired.UnlinkEffect'}}"><i class="fas fa-unlink"></i></a>{{/if}}</td>
+                    </tr>{{/each}}</tbody>
+                </table>
             </fieldset>

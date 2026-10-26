@@ -1,3 +1,5 @@
+import { postBeastRequiredTest, applyBeastEffectIds } from "../helpers/beast-required-test.js";
+import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { buildItemPreviewTooltip } from "../helpers/item-tooltip.js";
 import { clampArmor, preserveArmorSourceValues } from "../helpers/armor-limit.js";
 import { beastActivities, resolveBeastActionItem, createBeastSegmentWeapon, createBeastCombatWeapon, isBeastAbility, isBeastAction, isBeastSegment } from "../helpers/beast-actions.js";
@@ -426,6 +428,18 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         const actor = this.document;
 
         if ((act.actionType ?? "attack") === "action") {
+          const targetActor = Array.from(game.user.targets ?? [])[0]?.actor;
+          if (act.testRequired) {
+            if (!targetActor) {
+              ui.notifications.warn(game.i18n.localize("NEUROSHIMA.BeastRequired.NeedTarget"));
+              return;
+            }
+            await postBeastRequiredTest(item, act, targetActor, NeuroshimaScriptRunner);
+          } else if (act.applyEffectsAutomatically !== false) {
+            const recipient = act.effectTarget === "self" ? actor : act.effectTarget === "target" ? targetActor : null;
+            await applyBeastEffectIds(item, [...(act.effectIds ?? []), ...(act.alwaysEffectIds ?? [])], recipient);
+          }
+
           const effects = (act.effectIds ?? [])
             .map(id => item.effects.get(id))
             .filter(Boolean)
@@ -532,6 +546,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         const itemData = { name, type };
         if (type === "beast-ability" && ["action", "segment"].includes(target.dataset.category)) {
           itemData.system = { abilityCategory: target.dataset.category, costType: target.dataset.category === "segment" ? "segment" : "success" };
+          itemData.name = game.i18n.localize(target.dataset.category === "segment" ? "NEUROSHIMA.BeastAbility.NewSegment" : "NEUROSHIMA.BeastAbility.NewAction");
         }
         const [created] = await this.document.createEmbeddedDocuments("Item", [itemData]);
         if (created && type === "beast-ability") created.sheet.render(true);

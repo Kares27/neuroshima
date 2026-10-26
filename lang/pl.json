@@ -42,7 +42,8 @@
         }
     },
     "NEUROSHIMA": {
-        "BeastAbility": {"Use": "Użycie", "Category": "Kategoria", "Action": "Akcja", "Segment": "Segment"},
+        "BeastRequired": {"AddEffect": "Dodaj efekt", "UnlinkEffect": "Odłącz od wymogu testu","NeedTarget": "Wybierz cel zdolności.", "Success": "Sukces", "Failure": "Porażka", "Always": "Zawsze"},
+        "BeastAbility": {"NewAction": "Akcja Bestii", "NewSegment": "Segment Bestii","Use": "Użycie", "Category": "Kategoria", "Action": "Akcja", "Segment": "Segment"},
         "ArmorLimit": {
             "Name": "Restrykcja Poziomu Pancerza",
             "Hint": "Ogranicza końcowy pancerz po uwzględnieniu efektów. Wyłączenie przywraca obliczenia bez limitu.",

@@ -292,9 +292,6 @@ export class MeleeSessionPresenter {
           .map(activity => [activity.runtimeId || `${activity.sourceEffectUuid || activity.sourceItemUuid || "legacy"}::${activity.id}`, activity]));
         context.ownerExtraActions = [...byId.values()];
       }
-      context.pendingMeleeOutcomes = (session.pendingOutcomes ?? [])
-        .filter(outcome => outcome.status === "pending")
-        .map(outcome => ({ id: outcome.id, label: outcome.label }));
       context.damageModifierSummary = (session.exchange.declaration?.damageSnapshot?.modifiers ?? []).map(modifier => ({
         sourceName: modifier.sourceName,
         tier: modifier.tier,
@@ -480,17 +477,6 @@ export class MeleeSessionPresenter {
       }
     }));
     if (session.exchange && message) {
-      root.querySelectorAll("[data-melee-outcome-id]").forEach(button => button.addEventListener("click", async event => {
-        event.preventDefault();
-        event.stopPropagation();
-        const latest = await game.neuroshima.melee.get(session.id, { messageId: message.id });
-        await game.neuroshima.melee.dispatch({
-          type: "approveOutcome", side: null,
-          payload: { outcomeId: button.dataset.meleeOutcomeId },
-          sessionId: latest.id, messageId: message.id,
-          expectedRevision: latest.revision, commandId: foundry.utils.randomID()
-        });
-      }));
       message._neuroshimaMeleeSession = { ...session, duelState: meleeSessionDuelState(session) };
       const { MeleeOpposedChat } = await import("../combat/combat.js");
       MeleeOpposedChat.onRenderDuelCard(root, message);

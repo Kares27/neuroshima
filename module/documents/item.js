@@ -106,7 +106,9 @@ export class NeuroshimaItem extends Item {
     // Apply localized type name when the item has a generic or empty name
     const isGenericName = !data.name || data.name.includes("New") || data.name.includes("Item");
     if (isGenericName) {
-      updates.name = game.i18n.localize(`NEUROSHIMA.Items.Type.${data.type.charAt(0).toUpperCase() + data.type.slice(1)}`);
+      updates.name = data.type === "beast-ability"
+        ? game.i18n.localize(data.system?.abilityCategory === "segment" ? "NEUROSHIMA.BeastAbility.NewSegment" : "NEUROSHIMA.BeastAbility.NewAction")
+        : game.i18n.localize(`NEUROSHIMA.Items.Type.${data.type.charAt(0).toUpperCase() + data.type.slice(1)}`);
     }
 
     if (Object.keys(updates).length > 0) {

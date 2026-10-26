@@ -75,6 +75,8 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
       closeOnSubmit: false
     },
     actions: {
+      addRequiredTestEffect: BeastActivitySheet._onAddRequiredTestEffect,
+      removeRequiredTestEffect: BeastActivitySheet._onRemoveRequiredTestEffect,
       pickIcon:                  BeastActivitySheet._onPickIcon,
       createEffect:              BeastActivitySheet._onCreateEffect,
       deleteEffect:              BeastActivitySheet._onDeleteEffect,
@@ -285,6 +287,13 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
       enrichedDescription,
       itemTest: this.item.system.tests?.value ?? "",
       owner: this.item.isOwner,
+      availableRequiredTestEffects: this.item.effects.filter(e => !(activity.testEffectIds ?? [...effectIds, ...failureEffectIds, ...(activity.alwaysEffectIds ?? [])]).includes(e.id)).map(e => ({ id: e.id, name: e.name })),
+      requiredTestEffects: this.item.effects.filter(e => (activity.testEffectIds ?? [...effectIds, ...failureEffectIds, ...(activity.alwaysEffectIds ?? [])]).includes(e.id)).map(e => ({
+        id: e.id, name: e.name, img: e.img || "icons/svg/aura.svg",
+        success: (activity.effectIds ?? []).includes(e.id),
+        failure: (activity.onFailureEffectIds ?? []).includes(e.id),
+        always: (activity.alwaysEffectIds ?? []).includes(e.id)
+      })),
       itemEffects: this.item.effects.map(e => ({
         ...toEffectRow(e),
         scriptControlled: !!e.getFlag("neuroshima", "enableScript"),
@@ -437,10 +446,23 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     if (raw.damage3                 !== undefined) act.damage3                 = raw.damage3;
     if (raw.damage                  !== undefined) act.damage                  = raw.damage;
     if (raw.piercing                !== undefined) act.piercing                = raw.piercing;
+    if (raw.testEffects) {
+      const valid = new Set(this.item.effects.map(effect => effect.id));
+      for (const [key, field] of [["success", "effectIds"], ["failure", "onFailureEffectIds"], ["always", "alwaysEffectIds"]]) {
+        act[field] = Object.entries(raw.testEffects).filter(([id, selection]) => valid.has(id)
+          && [true, "true", "on"].includes(selection[key])).map(([id]) => id);
+      }
+    }
     if (raw.testRequired !== undefined) act.testRequired  = raw.testRequired === true || raw.testRequired === "true" || raw.testRequired === "on";
     if (raw.testIsOpen !== undefined) act.testIsOpen    = raw.testIsOpen   === "open" || raw.testIsOpen === true || raw.testIsOpen === "true";
     if (raw.testType                !== undefined) act.testType                = raw.testType;
     if (raw.testKey                 !== undefined) act.testKey                 = raw.testKey;
+    if (raw.testType !== undefined || raw.testKey !== undefined) {
+      const keys = act.testType === "skill"
+        ? Object.values(NEUROSHIMA.skillConfiguration ?? {}).flatMap(groups => Object.values(groups).flat())
+        : Object.keys(NEUROSHIMA.attributes ?? {});
+      if (keys.length && !keys.includes(act.testKey)) act.testKey = keys[0];
+    }
     if (raw.testAttributeOverride   !== undefined) act.testAttributeOverride   = raw.testAttributeOverride;
     if (raw.testSuccesses           !== undefined) act.testSuccesses           = Number(raw.testSuccesses) || 1;
     if (raw.testDifficulty          !== undefined) act.testDifficulty          = raw.testDifficulty || "average";
@@ -467,6 +489,27 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
    * @param {PointerEvent} event
    * @param {HTMLElement}  target
    */
+  static async _onAddRequiredTestEffect() {
+    if (!this.item.isOwner) return;
+    const id = this.element?.querySelector("[data-required-effect-select]")?.value;
+    if (!this.item.effects.get(id)) return;
+    const activities = foundry.utils.deepClone(beastActivities(this.item));
+    const activity = activities[0];
+    activity.testEffectIds = [...new Set([...(activity.testEffectIds ?? []), ...(activity.effectIds ?? []), ...(activity.onFailureEffectIds ?? []), ...(activity.alwaysEffectIds ?? []), id])];
+    activity.alwaysEffectIds = [...new Set([...(activity.alwaysEffectIds ?? []), id])];
+    await this._saveActivities(activities);
+  }
+
+  static async _onRemoveRequiredTestEffect(_event, target) {
+    if (!this.item.isOwner) return;
+    const id = target.dataset.effectId;
+    const activities = foundry.utils.deepClone(beastActivities(this.item));
+    for (const field of ["testEffectIds", "effectIds", "onFailureEffectIds", "alwaysEffectIds"]) {
+      activities[0][field] = (activities[0][field] ?? []).filter(value => value !== id);
+    }
+    await this._saveActivities(activities);
+  }
+
   static async _onPickIcon(event, target) {
     if (!this.item.isOwner) return;
     const activity = this.activity;

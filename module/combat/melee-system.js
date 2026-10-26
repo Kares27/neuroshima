@@ -2139,7 +2139,7 @@ export class MeleeCommandService {
         operations, data: { difference: 0, location: session.metadata.location ?? null, parameters: ownerInstance.parameters }
       });
       session.pendingOutcomes.push(outcome);
-      if (outcome.approval === "automatic") await this._applyOutcome(session, outcome);
+      await this._applyOutcome(session, outcome);
     }
     await MeleeEffectService.expire(session, "segmentEnd", { segmentIndex });
     if (initiativeBefore !== session.initiative.ownerId) {
@@ -2286,7 +2286,7 @@ export class MeleeCommandService {
           data: { difference: 0, location: session.metadata.location ?? null }
         });
         session.pendingOutcomes.push(outcome);
-        if (outcome.approval === "automatic") await this._applyOutcome(session, outcome);
+        await this._applyOutcome(session, outcome);
       }
     }
     exchangeAdapter.applyDuelState(state);
@@ -2430,7 +2430,7 @@ export class MeleeCommandService {
       });
       session.pendingOutcomes.push(outcome);
       created.push(outcome.id);
-      if (outcome.approval === "automatic") await this._applyOutcome(session, outcome);
+      await this._applyOutcome(session, outcome);
     }
     return { resolved: true, isSuccess: command.payload?.isSuccess === true, outcomeIds: created };
   }

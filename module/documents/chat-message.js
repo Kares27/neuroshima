@@ -631,11 +631,15 @@ export class NeuroshimaChatMessage extends ChatMessage {
         try {
           const effectDoc = await fromUuid(uuid);
           if (!effectDoc) continue;
-          const { _id, ...rest } = effectDoc.toObject();
-          await ActiveEffect.implementation.create(
-            { ...rest, disabled: false, transfer: false, origin: effectDoc.parent?.uuid ?? uuid },
-            { parent: targetActor }
-          );
+          if (typeof effectDoc.convertToApplied === "function" && typeof targetActor.applyEffect === "function") {
+            await targetActor.applyEffect({ effectData: [effectDoc.convertToApplied()] });
+          } else {
+            const { _id, ...rest } = effectDoc.toObject();
+            await ActiveEffect.implementation.create(
+              { ...rest, disabled: false, transfer: false, origin: effectDoc.parent?.uuid ?? uuid },
+              { parent: targetActor }
+            );
+          }
         } catch (err) {
           console.error("Neuroshima | onExecuteRequiredTest | failed to apply effect uuid:", uuid, err);
         }
