@@ -17,6 +17,15 @@ import { isGearTypeEquippable, normalizeGearType } from "../helpers/gear-types.j
  *   `containerId` flag (DnD5e-style container pattern).
  */
 export class NeuroshimaItem extends Item {
+  static migrateData(source) {
+    if (["beast-trait", "beast-action", "beast-segment"].includes(source.type)) {
+      source.system ??= {};
+      source.system.abilityCategory = source.type === "beast-segment" ? "segment" : "action";
+      source.type = "beast-ability";
+    }
+    return super.migrateData(source);
+  }
+
   /** Whether this Item is allowed to expose and use its equipped state. */
   get isEquippable() {
     if (!("equipped" in (this.system ?? {}))) return false;
@@ -61,8 +70,7 @@ export class NeuroshimaItem extends Item {
       "vehicle-mod":     "systems/neuroshima/assets/img/tire-iron.svg",
       "weapon-mod":      "systems/neuroshima/assets/img/modification.svg",
       "armor-mod":       "systems/neuroshima/assets/img/modification.svg",
-      "beast-action":    "systems/neuroshima/assets/img/paw.svg",
-      "beast-segment":   "systems/neuroshima/assets/img/paw.svg",
+      "beast-ability": "icons/svg/pawprint.svg",
       profession:        "systems/neuroshima/assets/img/profession.svg",
       speciality:        "icons/svg/upgrade.svg",
       specialization:    "systems/neuroshima/assets/img/specialization.svg",

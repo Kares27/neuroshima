@@ -1,3 +1,4 @@
+import { isBeastAction } from "./module/helpers/beast-actions.js";
 import { refreshArmorLimits } from "./module/helpers/armor-limit.js";
 import { BeastActivitySheet } from "./module/apps/beast-activity-sheet.js";
 import { NEUROSHIMA } from "./module/config.js";
@@ -7,7 +8,7 @@ import { NeuroshimaItem } from "./module/documents/item.js";
 import { NeuroshimaChatMessage } from "./module/documents/chat-message.js";
 import { NeuroshimaActiveEffect, NeuroshimaActiveEffectData } from "./module/documents/active-effect.js";
 import { NeuroshimaActorData, NeuroshimaNPCData, NeuroshimaCreatureData, NeuroshimaVehicleData, HomeBaseData } from "./module/data/actor-data.js";
-import { WeaponData, GrenadeData, ArmorData, GearData, AmmoData, MagazineData, TrickData, TraitData, WoundData, BeastActionData, BeastSegmentData, SpecialityData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData, MoneyData, ReputationData, DiseaseData, WeaponModData, ArmorModData, FacilitiesData, ContainerData } from "./module/data/item-data.js";
+import { WeaponData, GrenadeData, ArmorData, GearData, AmmoData, MagazineData, TrickData, TraitData, BeastAbilityData, WoundData, SpecialityData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData, MoneyData, ReputationData, DiseaseData, WeaponModData, ArmorModData, FacilitiesData, ContainerData } from "./module/data/item-data.js";
 import { NeuroshimaActorSheet } from "./module/sheets/actor-sheet.js";
 import { NeuroshimaNPCSheet } from "./module/sheets/npc-sheet.js";
 import { NeuroshimaCreatureSheet } from "./module/sheets/creature-sheet.js";
@@ -406,9 +407,8 @@ Hooks.once('init', async function() {
     CONFIG.Item.dataModels.magazine = MagazineData;
     CONFIG.Item.dataModels.trick = TrickData;
     CONFIG.Item.dataModels.trait = TraitData;
+    CONFIG.Item.dataModels["beast-ability"] = BeastAbilityData;
     CONFIG.Item.dataModels.wound = WoundData;
-    CONFIG.Item.dataModels["beast-action"]      = BeastActionData;
-    CONFIG.Item.dataModels["beast-segment"]     = BeastSegmentData;
     CONFIG.Item.dataModels.speciality = SpecialityData;
     CONFIG.Item.dataModels["specialization"]    = SpecializationData;
     CONFIG.Item.dataModels["origin"]            = OriginData;
@@ -581,7 +581,7 @@ Hooks.once('init', async function() {
     });
 
     foundry.documents.collections.Items.registerSheet("neuroshima", BeastActivitySheet, {
-        types: ["beast-action", "beast-segment"], makeDefault: true, label: "NEUROSHIMA.BeastAction.Sheet.Title"
+        types: ["beast-ability"], makeDefault: true, label: "NEUROSHIMA.Items.Type.BeastAbility"
     });
 
     // Internal schema version — used by the migration system to track which
@@ -2120,7 +2120,7 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
             }
 
             if (!weapon && attackerActor.type === "creature") {
-                const sourceItems = attackerActor.items.filter(i => i.type === "beast-action");
+                const sourceItems = attackerActor.items.filter(i => isBeastAction(i));
                 if (sourceItems.length) {
                     const sourceItem = sourceItems[0];
                     const byTier = {};

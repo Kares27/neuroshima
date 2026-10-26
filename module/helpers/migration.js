@@ -40,7 +40,7 @@ import { collectTraitSnapshots } from "./trait-snapshot.js";
 import { normalizeEffectPenaltyChanges } from "./effect-penalty.js";
 import { GEAR_TYPE_KEYS, normalizeGearType } from "./gear-types.js";
 
-const CURRENT_SCHEMA_VERSION = "2.3";
+const CURRENT_SCHEMA_VERSION = "2.4";
 
 export function registerMigrationHook() {
     const migrateImported = async item => {

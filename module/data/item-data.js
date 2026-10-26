@@ -347,12 +347,8 @@ export class WoundData extends foundry.abstract.TypeDataModel {
   }
 }
 
-/**
- * Data model for a single Beast Action (an innate Creature activity).
- * Beast actions are innate, non-countable abilities — no quantity or weight tracking.
- * Beast actions cost successes; segment-based maneuvers have their own item model.
- */
-export class BeastActionData extends foundry.abstract.TypeDataModel {
+/** One creature ability, configured as a success-cost action or a segment activity. */
+export class BeastAbilityData extends foundry.abstract.TypeDataModel {
   static migrateData(source) {
     super.migrateData(source);
     if (source.activities?.length) {
@@ -371,64 +367,11 @@ export class BeastActionData extends foundry.abstract.TypeDataModel {
       ...meleeActivitySchema(),
       id:                      new fields.StringField({ initial: () => foundry.utils.randomID() }),
       summary:                 new fields.StringField({ initial: "", blank: true }),
-      gmNote:                  new fields.StringField({ initial: "", blank: true }),
+      gmNote:                  new fields.HTMLField({ initial: "" }),
       actionType:              new fields.StringField({ initial: "attack" }),
-      costType:                new fields.StringField({ initial: "success", choices: ["success"] }),
-      successCost:             new fields.NumberField({ integer: true, initial: 1, min: 0, max: 3 }),
-      segmentCost:             new fields.NumberField({ integer: true, initial: 1, min: 1, max: 3 }),
-      attribute:               new fields.StringField({ initial: "dexterity" }),
-      damage:                  new fields.StringField({ initial: "", nullable: true, blank: true }),
-      piercing:                new fields.NumberField({ integer: true, initial: 0, min: 0, max: 10 }),
-      effectIds:               new fields.ArrayField(new fields.StringField(), { initial: [] }),
-      testRequired:            new fields.BooleanField({ initial: false }),
-      testType:                new fields.StringField({ initial: "attribute", choices: ["attribute", "skill"] }),
-      testKey:                 new fields.StringField({ initial: "constitution", blank: true }),
-      testAttributeOverride:   new fields.StringField({ initial: "", blank: true }),
-      testIsOpen:              new fields.BooleanField({ initial: false }),
-      testSuccesses:           new fields.NumberField({ integer: true, initial: 1, min: 1, max: 10 }),
-      onFailureEffectIds:      new fields.ArrayField(new fields.StringField(), { initial: [] }),
-      effectTiming:            new fields.StringField({ initial: "onUse", choices: ["onUse", "onHit", "afterDamage"] }),
-      effectTarget:            new fields.StringField({ initial: "target", choices: ["self", "target", "selected", "manual"] }),
-      applyEffectsAutomatically: new fields.BooleanField({ initial: true }),
-      resolverKind:            new fields.StringField({ initial: "opposedMelee", choices: ["opposedMelee", "directApply"] })
-    };
-    return {
-      description: new fields.HTMLField({ initial: "" }),
-      resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
-      ...testsSchema(),
-      ...activitySchema,
-      legacyActivities: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
-      testDifficulty: new fields.StringField({ initial: "average" })
-    };
-  }
-}
-
-/**
- * Data model for Beast Segment items.
- * Represents segment-based creature actions (e.g. ranged attacks, special moves).
- */
-export class BeastSegmentData extends foundry.abstract.TypeDataModel {
-  static migrateData(source) {
-    super.migrateData(source);
-    if (source.activities?.length) {
-      source.legacyActivities = source.activities;
-      const description = source.description;
-      Object.assign(source, source.activities[0]);
-      source.description = source.activities[0].description || description || "";
-      delete source.activities;
-    }
-    return source;
-  }
-
-  static defineSchema() {
-    const fields = foundry.data.fields;
-    const activitySchema = {
-      ...meleeActivitySchema(),
-      id:                      new fields.StringField({ initial: () => foundry.utils.randomID() }),
-      summary:                 new fields.StringField({ initial: "", blank: true }),
-      gmNote:                  new fields.StringField({ initial: "", blank: true }),
-      actionType:              new fields.StringField({ initial: "attack" }),
-      costType:                new fields.StringField({ initial: "segment", choices: ["segment"] }),
+      abilityCategory: new fields.StringField({ initial: "action", choices: ["action", "segment"] }),
+      costType: new fields.StringField({ initial: "success", choices: ["success", "segment"] }),
+      successCost: new fields.NumberField({ integer: true, initial: 1, min: 0, max: 3 }),
       segmentCost:             new fields.NumberField({ integer: true, initial: 1, min: 1, max: 3 }),
       skillMode:               new fields.StringField({ initial: "experience", choices: ["experience", "none"] }),
       weaponType:              new fields.StringField({ initial: "melee", choices: ["none", "melee", "ranged", "thrown", "grenade"] }),

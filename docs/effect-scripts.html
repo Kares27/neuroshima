@@ -249,7 +249,7 @@
 
   <h3>Gdzie dodawać skrypty?</h3>
   <p>Otwórz dowolny ActiveEffect (na aktorze lub itemie) → zakładka <strong>Skrypty</strong> → Dodaj Skrypt.</p>
-  <p>Itemy <code>beast-action</code> i <code>beast-segment</code> reprezentują pojedyncze definicje. Ich zakładki to <strong>Opis | Aktywacja | Efekty</strong>, a domyślnie otwiera się <strong>Efekty</strong>. Lista zawiera bezpośrednio <code>item.effects</code>: tworzysz i edytujesz zwykłe Active Effects, bez dodatkowego podpinania do aktywności. Efekt ze skryptem Enable jest sterowany tym skryptem — nie przełączaj go ręcznie. Koszt segmentów oraz parametry ataku ustawiasz bezpośrednio na itemie segmentu.</p>
+  <p>Itemy <code>beast-ability</code> reprezentują pojedyncze zdolności z kategorią Akcja lub Segment. Ich zakładki to <strong>Opis | Użycie | Efekty</strong>, a domyślnie otwiera się <strong>Efekty</strong>. Lista zawiera bezpośrednio <code>item.effects</code>: tworzysz i edytujesz zwykłe Active Effects, bez dodatkowego podpinania do aktywności. Efekt ze skryptem Enable jest sterowany tym skryptem — nie przełączaj go ręcznie. Koszt segmentów oraz parametry ataku ustawiasz bezpośrednio na itemie segmentu.</p>
   <p>Na akcji bestii ustaw <strong>Effect Application → Damage</strong>, aby po zadaniu obrażeń
     nałożyć efekt na przeciwnika. Efekty pochodzą tylko z akcji, która zadała obrażenia;
     nie trzeba wpisywać ich do <code>system.effectIds</code>. Sam wybór akcji nie nakłada efektu.
@@ -2764,15 +2764,14 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
     <tr><td><code>specialization</code></td><td>Specjalizacja</td></tr>
     <tr><td><code>speciality</code></td><td>Specjalność: <code>system.skills</code> (lista kluczy umiejętności), <code>system.value</code> (0–20), <code>system.fromSpecialization</code> (tańszy rozwój XP).</td></tr>
     <tr><td><code>trait</code></td><td>Cecha</td></tr>
-    <tr><td><code>beast-action</code></td><td>Jedna akcja bestii; jej dane są bezpośrednio w <code>item.system</code>, a efekty w <code>item.effects</code>.</td></tr>
-    <tr><td><code>beast-segment</code></td><td>Jedna definicja akcji za segmenty. Konfiguracja znajduje się bezpośrednio w <code>item.system</code>; nazwa i obraz to <code>item.name</code> oraz <code>item.img</code>.</td></tr>
+    <tr><td><code>beast-ability</code></td><td>Zdolność Bestii: kategoria <code>system.abilityCategory</code> określa akcję lub segment. Konfiguracja znajduje się w <code>item.system</code>, a efekty w <code>item.effects</code>.</td></tr>
       <tr><td><code>disease</code></td><td>Choroba (przewlekła lub przejściowa)</td></tr>
     </tbody>
   </table>
 
   <!-- ITEM FIELDS -->
   <h3 id="keys-item-fields">Pola Itemów</h3>
-  <p>Klucze dostępne przez <code>args.item.system.&lt;pole&gt;</code> lub <code>this.item.system.&lt;pole&gt;</code>, jeśli dany kontekst udostępnia item. Dostępność pól zależy od jego modelu: np. <code>beast-action</code> nie ma pól wagi, ceny ani ilości. Przed odczytem opcjonalnych pól używaj <code>?.</code> i wartości domyślnej.</p>
+  <p>Klucze dostępne przez <code>args.item.system.&lt;pole&gt;</code> lub <code>this.item.system.&lt;pole&gt;</code>, jeśli dany kontekst udostępnia item. Dostępność pól zależy od jego modelu: np. <code>beast-ability</code> nie ma pól wagi, ceny ani ilości. Przed odczytem opcjonalnych pól używaj <code>?.</code> i wartości domyślnej.</p>
 
   <h4 class="key-group">Pola wspólne i ekwipunkowe (zależnie od typu)</h4>
   <table>
@@ -2788,7 +2787,7 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
     </tbody>
   </table>
 
-  <p><strong>Akcja bestii (<code>beast-action</code>):</strong> poniższe pola odczytuj bezpośrednio z <code>item.system</code>, bez <code>system.activities[0]</code>. Nazwa i obraz są polami dokumentu: <code>item.name</code> i <code>item.img</code>.</p>
+  <p><strong>Akcja bestii (<code>beast-ability</code>):</strong> poniższe pola odczytuj bezpośrednio z <code>item.system</code>, bez <code>system.activities[0]</code>. Nazwa i obraz są polami dokumentu: <code>item.name</code> i <code>item.img</code>.</p>
   <table>
     <thead><tr><th>Pole</th><th>Typ</th><th>Opis</th></tr></thead>
     <tbody>
@@ -2800,10 +2799,11 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
       <tr><td><code>system.testRequired</code><br><code>testType</code>, <code>testKey</code><br><code>testAttributeOverride</code><br><code>testIsOpen</code>, <code>testSuccesses</code><br><code>testDifficulty</code></td><td>pola konfiguracji</td><td>Wymagany test; konfiguracja jest w zakładce Aktywacja. Wszystkie wymienione klucze mają prefiks <code>system.</code>.</td></tr>
       <tr><td><code>item.effects</code></td><td>kolekcja ActiveEffect</td><td>Bezpośrednie efekty itemu. Transfer, zakres i kod określa każdy efekt oddzielnie.</td></tr>
       <tr><td><code>system.effectIds</code><br><code>system.onFailureEffectIds</code><br><code>system.effectTiming</code><br><code>system.effectTarget</code><br><code>system.applyEffectsAutomatically</code></td><td>pola zgodności</td><td>Nadal obsługują wcześniejsze powiązania i konsekwencje testów. Brak interfejsu podpinania w nowej akcji bestii nie oznacza usunięcia działania zapisanych powiązań.</td></tr>
-      <tr><td><code>system.legacyActivities</code></td><td>Array</td><td>Pole migracyjne starych kontenerów akcji i segmentów. Nie dopisuj tu nowych definicji; twórz osobne itemy <code>beast-action</code> lub <code>beast-segment</code>. Migracja rozdziela wpisy, zachowując efekty i zasoby.</td></tr>
+      <tr><td><code>system.abilityCategory</code></td><td>string</td><td><code>action</code> ? koszt sukces?w i wyb?r w walce wr?cz; <code>segment</code> ? koszt segment?w i w?asny dialog rzutu. Kategori? ustawiasz w nag??wku itemu; zak?adka U?ycie nie zawiera zasob?w.</td></tr>
+      <tr><td><code>system.legacyActivities</code></td><td>Array</td><td>Pole migracyjne starych kontenerów akcji i segmentów. Nie dopisuj tu nowych definicji; twórz osobne itemy <code>beast-ability</code> lub <code>beast-ability</code>. Migracja rozdziela wpisy, zachowując efekty i zasoby.</td></tr>
       <tr><td><code>system.activities</code></td><td>Array (dane historyczne)</td><td>Dawny model kontenerowy obu typów. Nie używaj go w nowych definicjach.</td></tr>
-      <tr><td><code>beast-segment: system.segmentCost</code></td><td>number</td><td>Koszt pojedynczej definicji: od 1 do 3 segmentów. Rzut uruchamiasz kliknięciem jej nazwy w tabeli Segmenty bestii.</td></tr>
-      <tr><td><code>beast-segment: system.fireModes</code><br><code>system.fireModeModifiers</code></td><td>obiekty</td><td>Tryby ognia i ich modyfikatory, tak jak na broni dystansowej. Klucze trybów: <code>all</code>, <code>single</code>, <code>shortBurst</code>, <code>longBurst</code>, <code>fullAuto</code>. Domyślnie segment udostępnia wszystkie tryby; konfiguracja jest przekazywana do dialogu rzutu.</td></tr>
+      <tr><td><code>beast-ability: system.segmentCost</code></td><td>number</td><td>Koszt pojedynczej definicji: od 1 do 3 segmentów. Rzut uruchamiasz kliknięciem jej nazwy w tabeli Segmenty bestii.</td></tr>
+      <tr><td><code>beast-ability: system.fireModes</code><br><code>system.fireModeModifiers</code></td><td>obiekty</td><td>Tryby ognia i ich modyfikatory, tak jak na broni dystansowej. Klucze trybów: <code>all</code>, <code>single</code>, <code>shortBurst</code>, <code>longBurst</code>, <code>fullAuto</code>. Domyślnie segment udostępnia wszystkie tryby; konfiguracja jest przekazywana do dialogu rzutu.</td></tr>
     </tbody>
   </table>
   <div class="callout info">
@@ -5046,7 +5046,7 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
     Jeśli źródła nie da się odtworzyć, karta powstaje bez automatycznych konsekwencji.
     Karta jest szeptana do właścicieli odbiorcy i MG.
     Nie włączaj jednocześnie tej opcji i skryptu <code>immediate</code> wysyłającego tę samą kartę — obie ścieżki mogą się wykonać.
-    Jest to osobna konfiguracja od pól wymaganego testu na itemie <code>beast-action</code>.
+    Jest to osobna konfiguracja od pól wymaganego testu na itemie <code>beast-ability</code>.
   </div>
 
   <h4>Test Independent</h4>

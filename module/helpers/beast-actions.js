@@ -1,12 +1,17 @@
+/** Category predicates are the only runtime distinction between creature abilities. */
+export const isBeastAbility = item => item?.type === "beast-ability";
+export const isBeastSegment = item => isBeastAbility(item) && item.system?.abilityCategory === "segment";
+export const isBeastAction = item => isBeastAbility(item) && !isBeastSegment(item);
+
 /** Each beast action or segment Item defines one activity. */
 export function beastActivities(item) {
   if (!item) return [];
-  if (!["beast-action", "beast-segment"].includes(item.type)) return Array.from(item.system?.activities ?? []);
+  if (!isBeastAbility(item)) return Array.from(item.system?.activities ?? []);
   const legacy = item.system?.legacyActivities?.length ? item.system.legacyActivities
     : item._source?.system?.activities ?? item.system?.activities;
   if (Array.isArray(legacy) && legacy.length) return legacy;
   const system = item.system?.toObject?.(false) ?? item.system ?? {};
-  return [{ ...system, id: system.id || item.id, name: item.name, img: item.img }];
+  return [{ ...system, costType: isBeastSegment(item) ? "segment" : "success", id: system.id || item.id, name: item.name, img: item.img }];
 }
 
 /** Shared roll profile for the creature's entire action table. */
@@ -28,7 +33,8 @@ export function resolveBeastActionItem(actor, itemId, activityId) {
   const original = actor.items.get(itemId);
   if (beastActivities(original).some(activity => activity.id === activityId)) return original;
   return actor.items.find(item => item.type === original?.type &&
-    item.getFlag("neuroshima", original?.type === "beast-segment" ? "beastSegmentOrigin" : "beastActionOrigin") === `${original?.uuid}#${activityId}`) ?? null;
+    ["beastAbilityOrigin", "beastSegmentOrigin", "beastActionOrigin"].some(flag =>
+      item.getFlag("neuroshima", flag) === `${original?.uuid}#${activityId}`)) ?? null;
 }
 
 /** Build flat item data without discarding shared resources, tests or embedded effects. */
@@ -43,8 +49,8 @@ export function flattenBeastItem(source, activity = {}) {
   delete data.system.img;
   data.system.id = activity.id || data.system.id || source._id;
   data.system.description = activity.description || source.system?.description || "";
-  data.system.costType = source.type === "beast-segment" ? "segment" : "success";
-  if (source.type === "beast-segment" && !data.system.fireModes) data.system.fireModes = { all: true };
+  data.system.costType = source.system?.abilityCategory === "segment" ? "segment" : "success";
+  if (source.system?.abilityCategory === "segment" && !data.system.fireModes) data.system.fireModes = { all: true };
   return data;
 }
 
@@ -54,7 +60,7 @@ const migrating = new WeakSet();
  * Child provenance makes retries safe if a previous run stopped partway through.
  */
 export async function migrateBeastItem(item) {
-  if (!["beast-action", "beast-segment"].includes(item?.type) || migrating.has(item)) return 0;
+  if (!isBeastAbility(item) || migrating.has(item)) return 0;
   const source = item.toObject();
   const stored = source.system?.activities?.length ? source.system.activities : source.system?.legacyActivities;
   if (!Array.isArray(stored) || !stored.length) return 0;
@@ -62,10 +68,11 @@ export async function migrateBeastItem(item) {
   migrating.add(item);
   try {
     const collection = item.parent?.items ?? item.collection;
-    const originFlag = item.type === "beast-segment" ? "beastSegmentOrigin" : "beastActionOrigin";
+    const originFlag = "beastAbilityOrigin";
     for (const activity of legacy.slice(1)) {
       const provenance = `${item.uuid}#${activity.id}`;
-      if (collection?.some(existing => existing.getFlag("neuroshima", originFlag) === provenance)) continue;
+      if (collection?.some(existing => [originFlag, "beastSegmentOrigin", "beastActionOrigin"]
+        .some(flag => existing.getFlag("neuroshima", flag) === provenance))) continue;
       const data = flattenBeastItem(source, activity);
       delete data._id;
       if (data.flags?.neuroshima) delete data.flags.neuroshima.meleeActivities;

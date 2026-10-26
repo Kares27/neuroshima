@@ -15,6 +15,7 @@
             "gear": "Item",
             "trick": "Trick",
             "trait": "Trait",
+            "beast-ability": "Beast Ability",
             "ammo": "Ammo",
             "magazine": "Magazine",
             "wound": "Wound",
@@ -38,6 +39,7 @@
         }
     },
     "NEUROSHIMA": {
+        "BeastAbility": {"Use": "Use", "Category": "Category", "Action": "Action", "Segment": "Segment"},
         "ArmorLimit": {
             "Name": "Armor Level Restriction",
             "Hint": "Caps final armor after effects. Disabling restores calculations without a limit.",
@@ -1382,6 +1384,7 @@
                 "Gear": "Item",
                 "Trick": "Trick",
                 "Trait": "Trait",
+                "BeastAbility": "Beast Ability",
                 "Ammo": "Ammo",
                 "Magazine": "Magazine",
                 "Magazines": "Magazines",

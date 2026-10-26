@@ -1,5 +1,5 @@
 import { exchangeDamageHits, summarizeExchangeDamage } from "./melee-damage-summary.js";
-import { beastActivities } from "../helpers/beast-actions.js";
+import { beastActivities, isBeastAbility, isBeastAction } from "../helpers/beast-actions.js";
 /**
  * @file combat.js
  * @description Merged Neuroshima 1.5 melee combat module.
@@ -2208,7 +2208,7 @@ export class MeleeOpposedChat {
     const affordableBeastActions = [];
     if (isCreatureAttacker && netSuccesses > 0) {
 
-      const beastItems = attackerActor.items.filter(i => i.type === "beast-action");
+      const beastItems = attackerActor.items.filter(i => isBeastAction(i));
       for (const item of beastItems) {
         for (const act of beastActivities(item)) {
           if (act.costType !== "success") continue;
@@ -3986,7 +3986,7 @@ export class MeleeOpposedChat {
     const affordableBeastActions = [];
     if (isCreatureAttacker && netSuccesses > 0) {
 
-      for (const item of attackerActor.items.filter(i => i.type === "beast-action")) {
+      for (const item of attackerActor.items.filter(i => isBeastAction(i))) {
         for (const act of beastActivities(item)) {
           if (act.costType !== "success") continue;
           const cost = act.successCost ?? 1;
@@ -4524,7 +4524,7 @@ export class MeleeOpposedChat {
     if (attackerActor?.type === "creature") {
 
       const beastItems = attackerActor.items.filter(i =>
-        i.type === "beast-action"
+        isBeastAction(i)
       );
       for (const beastItem of beastItems) {
         for (const activity of beastActivities(beastItem)) {
@@ -5720,7 +5720,7 @@ export class MeleeResolution {
       d1 = attacker.damageMelee1 ?? "D";
       d2 = attacker.damageMelee2 ?? attacker.damageMelee1 ?? "D";
       d3 = attacker.damageMelee3 ?? attacker.damageMelee2 ?? attacker.damageMelee1 ?? "D";
-    } else if (weapon?.type === "beast-action") {
+    } else if (isBeastAction(weapon)) {
       const acts = beastActivities(weapon);
       const getActDmg = (cost) => acts.find(a => a.successCost === cost && a.damage)?.damage ?? null;
       d1 = this._shiftDamageType(getActDmg(1) ?? "D", s1);
@@ -5788,7 +5788,7 @@ export class MeleeResolution {
     if (!attackerActor || !defenderActor) return;
 
     const weapon = attackerActor.items.get(attacker.weaponId);
-    const isBeastActionWeapon = weapon?.type === "beast-action";
+    const isBeastActionWeapon = isBeastAction(weapon);
     const beastActionDamage = isBeastActionWeapon ? (weapon.system.damage || null) : undefined;
     const { CombatHelper } = await import("../helpers/combat-helper.js");
 
@@ -5892,13 +5892,13 @@ export class MeleeResolution {
    */
   static async _applyBeastActivityEffects(attackerActor, defenderActor, weapon, diceCount) {
     const wType = weapon?.type;
-    if (wType !== "beast-action" && wType !== "beast-segment") return;
+    if (!isBeastAbility(weapon)) return;
     if (!defenderActor) return;
 
     const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
 
     for (const activity of beastActivities(weapon)) {
-      const actCost = wType === "beast-action"
+      const actCost = isBeastAction(weapon)
         ? (activity.successCost ?? 1)
         : (activity.segmentCost  ?? 1);
       if (actCost !== diceCount) continue;
@@ -8279,7 +8279,7 @@ export class MeleeVanillaChat {
     const atkIsCreature = atkActor?.type === "creature";
     const atkBeastActions = atkIsCreature
       ? (atkActor.items || [])
-          .filter(i => i.type === "beast-action")
+          .filter(i => isBeastAction(i))
           .flatMap(i => beastActivities(i).map(act => ({
             id: `${i.id}::${act.id}`,
             itemId: i.id,
@@ -8324,7 +8324,7 @@ export class MeleeVanillaChat {
         beastActions: atkBeastActions,
         damageTiers: (() => {
           if (!atkWeapon) return null;
-          if (atkWeapon.type === "beast-action") {
+          if (isBeastAction(atkWeapon)) {
             const firstAct = beastActivities(atkWeapon)[0];
             const dmg = firstAct?.damage || null;
             return dmg ? { s1: dmg, s2: dmg, s3: dmg } : null;

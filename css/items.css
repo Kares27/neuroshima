@@ -3109,3 +3109,23 @@ input[type="color"].rep-color-input::-moz-color-swatch {
 .neuroshima.beast-action-sheet.sheet.item .bas-field-group select {
     font-size: inherit;
 }
+
+.neuroshima.beast-activity-sheet.sheet.item .bas-tab[data-tab="description"] prose-mirror {
+    display: flex;
+    flex-direction: column;
+    min-height: 180px;
+    width: 100%;
+}
+.neuroshima.beast-activity-sheet.sheet.item .bas-tab[data-tab="description"] prose-mirror .editor-content {
+    min-height: 140px;
+}
+
+.neuroshima.beast-activity-sheet .bas-ability-category {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.neuroshima.beast-activity-sheet .bas-ability-category select {
+    flex: 1;
+    min-width: 0;
+}

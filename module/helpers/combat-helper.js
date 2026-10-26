@@ -1,3 +1,4 @@
+import { isBeastAbility } from "../helpers/beast-actions.js";
 import { clampArmor } from "./armor-limit.js";
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaChatMessage } from "../documents/chat-message.js";
@@ -1871,14 +1872,14 @@ export class CombatHelper {
     const { attacker, weapon } = await this._resolveDamageSource(attackData);
     const sources = new Set(Array.from(attacker?.effects ?? []));
     for (const item of attacker?.items ?? []) {
-      if (["beast-action", "beast-segment"].includes(item.type) && (item.uuid !== weapon?.uuid || item.system?.applyEffectsAutomatically === false)) continue;
+      if (isBeastAbility(item) && (item.uuid !== weapon?.uuid || item.system?.applyEffectsAutomatically === false)) continue;
       for (const effect of item.effects ?? []) {
         if (effect.getFlag?.("neuroshima", "equipTransfer") && item.system?.equipped === false) continue;
         const documentType = effect.getFlag?.("neuroshima", "documentType") ?? "actor";
         if (documentType === "actor" || item.uuid === weapon?.uuid) sources.add(effect);
       }
     }
-    if (!["beast-action", "beast-segment"].includes(weapon?.type) || weapon.system?.applyEffectsAutomatically !== false) {
+    if (!isBeastAbility(weapon) || weapon.system?.applyEffectsAutomatically !== false) {
       for (const effect of weapon?.effects ?? []) sources.add(effect);
     }
     const toApply = [];

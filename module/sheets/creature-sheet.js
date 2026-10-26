@@ -1,6 +1,6 @@
 import { buildItemPreviewTooltip } from "../helpers/item-tooltip.js";
 import { clampArmor, preserveArmorSourceValues } from "../helpers/armor-limit.js";
-import { beastActivities, resolveBeastActionItem, createBeastSegmentWeapon, createBeastCombatWeapon } from "../helpers/beast-actions.js";
+import { beastActivities, resolveBeastActionItem, createBeastSegmentWeapon, createBeastCombatWeapon, isBeastAbility, isBeastAction, isBeastSegment } from "../helpers/beast-actions.js";
 import { NEUROSHIMA } from "../config.js";
 import { createLoadedMagazineFromWeapon } from "../helpers/ammunition.js";
 import { NeuroshimaDice } from "../helpers/dice.js";
@@ -8,7 +8,6 @@ import { RestDialog } from "../apps/dialogs/minor-dialogs.js";
 import { getConditions } from "../apps/config/condition-config.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
 import { getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveRadiationResistance } from "../helpers/mod-helpers.js";
-import { BeastActivitySheet } from "../apps/beast-activity-sheet.js";
 import {
   EFFECT_PENALTY_KEY,
   LEGACY_EFFECT_PENALTY_KEY
@@ -341,7 +340,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
 
       rollBeastAttack: async function(event, target) {
         const actor = this.document;
-        const sourceItems = actor.items.filter(i => i.type === "beast-action");
+        const sourceItems = actor.items.filter(i => isBeastAction(i));
         if (!sourceItems.length) return;
 
         const syntheticWeapon = createBeastCombatWeapon(actor);
@@ -417,7 +416,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         const itemId     = target.dataset.itemId;
         const activityId = target.dataset.activityId;
         const item       = activityId ? resolveBeastActionItem(this.document, itemId, activityId) : this.document.items.get(itemId);
-        if (!item || item.type !== "beast-segment") return;
+        if (!item || !isBeastSegment(item)) return;
 
         const act = activityId
           ? beastActivities(item).find(a => a.id === activityId)
@@ -531,8 +530,11 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         const type = target.dataset.type || "weapon";
         const name = `${game.i18n.localize("DOCUMENT.New")} ${game.i18n.localize(`TYPES.Item.${type}`) || type}`;
         const itemData = { name, type };
+        if (type === "beast-ability" && ["action", "segment"].includes(target.dataset.category)) {
+          itemData.system = { abilityCategory: target.dataset.category, costType: target.dataset.category === "segment" ? "segment" : "success" };
+        }
         const [created] = await this.document.createEmbeddedDocuments("Item", [itemData]);
-        if (created && (type === "beast-action" || type === "beast-segment")) created.sheet.render(true);
+        if (created && type === "beast-ability") created.sheet.render(true);
         return created;
       },
 
@@ -930,7 +932,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         return m;
       }),
       beastActions:      equippedWeapons,
-      beastActionItems: topItems.filter(i => i.type === "beast-action")
+      beastActionItems: topItems.filter(i => isBeastAction(i))
         .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0)).map(item => ({
           id: item.id, name: item.name, img: item.img,
           successCost: item.system.successCost ?? 1,
@@ -938,7 +940,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
           actionType: item.system.actionType || "",
           hasEffects: (item.system.effectIds ?? []).length > 0
         })),
-      beastSegmentItems: topItems.filter(i => i.type === "beast-segment").sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0)).map(item => ({
+      beastSegmentItems: topItems.filter(i => isBeastSegment(i)).sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0)).map(item => ({
         id: item.id, name: item.name, img: item.img,
         segmentCost: item.system.segmentCost ?? 1,
         skillMode: item.system.skillMode || "experience",
@@ -1366,7 +1368,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
   async _onDropItem(event, data) {
     const item = await fromUuid(data.uuid);
     if (!item) return;
-    if (["weapon", "armor", "gear", "ammo", "magazine", "wound", "beast-action", "beast-segment", "grenade", "container", "money", "weapon-mod", "armor-mod"].includes(item.type)) {
+    if (["weapon", "armor", "gear", "ammo", "magazine", "wound", "beast-ability", "grenade", "container", "money", "weapon-mod", "armor-mod"].includes(item.type)) {
       return super._onDropItem(event, data);
     }
   }
@@ -1416,7 +1418,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
   _onDragStart(event) {
     const row = event.target.closest?.(".item[data-item-id]");
     const item = this.document.items.get(row?.dataset.itemId);
-    if (item && ["beast-action", "beast-segment"].includes(item.type)) {
+    if (item && isBeastAbility(item)) {
       if (!this.document.isOwner || !event.dataTransfer) return;
       event.dataTransfer.setData("text/plain", JSON.stringify(item.toDragData()));
       return;

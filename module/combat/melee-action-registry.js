@@ -1,4 +1,4 @@
-import { beastActivities } from "../helpers/beast-actions.js";
+import { beastActivities, isBeastAction } from "../helpers/beast-actions.js";
 /**
  * @file melee-action-registry.js
  * @description Data layer for melee action normalization in Neuroshima 1.5.
@@ -94,7 +94,7 @@ export class MeleeActionRegistry {
   static collectBeastActions(actor, committedSuccessPoints) {
     const flat = [];
     for (const item of actor.items.filter(i =>
-      i.type === "beast-action"
+      isBeastAction(i)
     )) {
       for (const act of beastActivities(item)) {
         if (act.costType !== "success") continue;
@@ -116,7 +116,7 @@ export class MeleeActionRegistry {
   static collectAffordableBeastActions(actor, netSuccesses) {
     const flat = [];
     for (const item of actor.items.filter(i =>
-      i.type === "beast-action"
+      isBeastAction(i)
     )) {
       for (const act of beastActivities(item)) {
         if (act.costType !== "success") continue;

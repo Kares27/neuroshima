@@ -4232,8 +4232,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         stats.push({ label: loc("NEUROSHIMA.Reputation.Value"), value: s.value });
         break;
       }
-      case "beastAction":
-      case "beast-action": {
+      case "beast-ability": {
         const activities = beastActivities(item);
         if (activities.length === 0) {
           stats.push({ label: loc("NEUROSHIMA.BeastAction.Activities"), value: "—" });

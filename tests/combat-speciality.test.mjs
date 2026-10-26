@@ -254,7 +254,7 @@ test("speciality advancement charges XP with an undoable item reference, cancell
 
 test("beast action preserves explicit links without automatically applying Target templates", () => {
   const effect = (id, transferType, disabled = false) => ({ id, disabled, getFlag: (scope, key) => key === "transferType" ? transferType : "actor" });
-  const item = { id: "bite", uuid: "Item.bite", type: "beast-action", name: "Bite", img: "", system: { id: "bite", successCost: 2, costType: "success", effectIds: ["old"] },
+  const item = { id: "bite", uuid: "Item.bite", type:"beast-ability", name: "Bite", img: "", system: { id: "bite", successCost: 2, costType: "success", effectIds: ["old"] },
     effects: [effect("target", "target"), effect("old", "target"), effect("passive", "owningDocument"), effect("disabled", "target", true)] };
   const action = MeleeActionCatalog.fromBeastItem(item)[0];
   assert.equal(action.activation.successCost, 2);
@@ -288,7 +288,7 @@ test("speciality modifiers match multiple skills and are unavailable to creature
 });
 
 test("beast custom operations do not transfer Target effects on mere action selection", () => {
-  const item = { id: "grab", uuid: "Item.grab", type: "beast-action", name: "Grab",
+  const item = { id: "grab", uuid: "Item.grab", type:"beast-ability", name: "Grab",
     system: { id: "grab", successCost: 2, operations: [{ type: "script", data: { code: "custom" } }] },
     effects: [{ id: "target", getFlag: (scope, key) => key === "transferType" ? "target" : "actor" }] };
   const action = MeleeActionCatalog.fromBeastItem(item)[0];
@@ -487,8 +487,8 @@ test("public melee commit rejects spectators including requests relayed through 
 test("Damage transfers the used beast action's effects, never other actions or Target templates", async () => {
  const attacker=actor("creature"); attacker.uuid="Scene.s.Token.t.Actor.a";
  const effect=(id,transferType="damage",documentType="actor")=>({uuid:`Effect.${id}`,disabled:false,getFlag:(scope,key)=>({transferType,documentType})[key],convertToApplied:()=>({name:id})});
- const used={id:"bite",uuid:`${attacker.uuid}.Item.bite`,actor:attacker,type:"beast-action",system:{},effects:[effect("venom"),effect("explicitTarget","target"),effect("damageItem","damage","item")]};
- const unused={id:"tail",uuid:`${attacker.uuid}.Item.tail`,type:"beast-action",system:{},effects:[effect("unused")]};
+ const used={id:"bite",uuid:`${attacker.uuid}.Item.bite`,actor:attacker,type:"beast-ability",system:{},effects:[effect("venom"),effect("explicitTarget","target"),effect("damageItem","damage","item")]};
+ const unused={id:"tail",uuid:`${attacker.uuid}.Item.tail`,type:"beast-ability",system:{},effects:[effect("unused")]};
  attacker.items.push(used,unused); attacker.effects.push(effect("actorPassive"));
  globalThis.fromUuid=async uuid=>uuid===used.uuid?used:attacker;
  const defender=actor("npc");let applied=[];defender.applyEffect=async data=>{applied.push(...data.effectData);};
@@ -548,7 +548,7 @@ test("one beast damage click carries the selected action through declaration, pa
  const {MeleeOpposedChat}=await import("../module/combat/combat.js");
  const atk=actor("creature");atk.uuid="Actor.beast";atk.id="beast";
  const def=actor("npc");def.uuid="Actor.victim";def.id="victim";
- const bite={id:"bite",uuid:"Actor.beast.Item.bite",type:"beast-action",name:"Bite",actor:atk,
+ const bite={id:"bite",uuid:"Actor.beast.Item.bite",type:"beast-ability",name:"Bite",actor:atk,
    system:{id:"bite",costType:"success",successCost:2,damage:"L",effectIds:[]},effects:[]};
  const venom={uuid:`${bite.uuid}.ActiveEffect.venom`,getFlag:(scope,key)=>key==="transferType"?"damage":"actor",
    convertToApplied:()=>({name:"Venom",flags:{neuroshima:{sourceEffect:"venom"}}})};
@@ -937,13 +937,13 @@ test("a beast segment is one definition with root fields, fixed segment cost and
  foundry.data={fields:Object.fromEntries(["StringField","NumberField","BooleanField","HTMLField","ObjectField","SchemaField","ArrayField"].map(name=>[name,Field]))};
  foundry.abstract.TypeDataModel.migrateData=source=>source;
  try{
-   const {BeastSegmentData}=await import("../module/data/item-data.js");
-   const schema=BeastSegmentData.defineSchema();
+   const {BeastAbilityData}=await import("../module/data/item-data.js");
+   const schema=BeastAbilityData.defineSchema();
    assert.equal(schema.activities,undefined);assert.ok(schema.segmentCost);assert.ok(schema.weaponType);
-   assert.deepEqual(schema.costType.args[0].choices,["segment"]);
+   assert.deepEqual(schema.costType.args[0].choices,["success","segment"]);
    assert.equal(schema.fireModes.args[0].all.args[0].initial,true);
    const source={description:"Shared",activities:[{id:"spit",name:"Spit",weaponType:"ranged",segmentCost:2},{id:"howl",name:"Howl"}]};
-   BeastSegmentData.migrateData(source);assert.equal(source.activities,undefined);
+   BeastAbilityData.migrateData(source);assert.equal(source.activities,undefined);
    assert.equal(source.legacyActivities.length,2);assert.equal(source.weaponType,"ranged");assert.equal(source.segmentCost,2);
  }finally{foundry.data=previous;foundry.abstract.TypeDataModel.migrateData=previousMigrate;}
 });
@@ -966,8 +966,8 @@ test("beast package migration preserves all segment definitions, effects, resour
    }
  }
  collection.get=id=>collection.find(item=>item.id===id);
- const source={_id:"original",type:"beast-segment",name:"Package",img:"paw",effects:[{_id:"effect",name:"Venom"}],
-   system:{description:"Shared",resources:[{name:"Uses",value:2}],tests:{value:"Constitution"},activities:[
+ const source={_id:"original",type:"beast-ability",name:"Package",img:"paw",effects:[{_id:"effect",name:"Venom"}],
+   system:{abilityCategory:"segment",description:"Shared",resources:[{name:"Uses",value:2}],tests:{value:"Constitution"},activities:[
      {id:"spit",name:"Spit",weaponType:"ranged",segmentCost:2,effectIds:["effect"]},
      {id:"howl",name:"Howl",actionType:"action",segmentCost:1}
    ]},flags:{neuroshima:{meleeActivities:[{id:"old"}]}}};
@@ -987,7 +987,7 @@ test("segment ranged profiles expose configured fire modes and keep them through
  const {createBeastSegmentWeapon}=await import("../module/helpers/beast-actions.js");
  const {getAvailableFireModes,getFireModeModifier}=await import("../module/apps/dialogs/weapon-roll-dialog.js");
  const owner=actor("creature");owner.system.experience=4;
- const segment={id:"spit",type:"beast-segment",name:"Spit",system:{id:"spit",weaponType:"ranged",damage:"L",fireRate:6}};
+ const segment={id:"spit",type:"beast-ability",name:"Spit",system:{abilityCategory:"segment",id:"spit",weaponType:"ranged",damage:"L",fireRate:6}};
  let weapon=createBeastSegmentWeapon(owner,segment);
  assert.deepEqual(getAvailableFireModes(weapon).map(mode=>mode.value),[0,1,2,3]);
  segment.system.fireModes={all:false,single:false,shortBurst:true,longBurst:false,fullAuto:true};
@@ -1006,8 +1006,8 @@ test("segment ranged profiles expose configured fire modes and keep them through
 test("segment sheet saves its definition and fire mode checkboxes directly on the Item", async () => {
  const {BeastActivitySheet}=await import("../module/apps/beast-activity-sheet.js");
  let saved;
- const item={id:"segment",type:"beast-segment",name:"Spit",img:"paw",isOwner:true,
-   system:{id:"segment",segmentCost:1,fireModes:{all:true,single:true}},
+ const item={id:"segment",type:"beast-ability",name:"Spit",img:"paw",isOwner:true,
+   system:{abilityCategory:"segment",id:"segment",segmentCost:1,fireModes:{all:true,single:true}},
    async update(data){saved=data;}};
  const sheet={item,activityId:"segment",_saveActivities:BeastActivitySheet.prototype._saveActivities};
  await BeastActivitySheet._onSubmit.call(sheet,{target:{name:"fireModes.all"}},null,{object:{
@@ -1038,7 +1038,7 @@ test("pain report details remain visible to the patient owner below the configur
 test("exchange damage display uses selected beast definitions, preserves repeats and includes counters", async () => {
  const {exchangeDamageHits,summarizeExchangeDamage}=await import("../module/combat/melee-damage-summary.js");
  const attacker=actor("creature");attacker.name="Beast";
- attacker.items.push({id:"claw",type:"beast-action",name:"Claw",system:{id:"claw",damage:"2L + 1D"}});
+ attacker.items.push({id:"claw",type:"beast-ability",name:"Claw",system:{id:"claw",damage:"2L + 1D"}});
  const defender=actor();defender.name="Hero";
  const hits=exchangeDamageHits({hits:[{damageType:"D"}],allBeastQueue:["claw::claw","claw::claw"],counterHits:[{damageType:"C"}]},attacker,defender);
  assert.equal(hits.length,3);assert.equal(hits[0].damageType,"2L + 1D");assert.equal(hits[0].actionName,"Claw");
@@ -1128,4 +1128,60 @@ test("prone stays manual and stored built-in defeat checks are cleared without c
    game.settings.get=()=>[{key:"prone",conditionCheckCode:"// Custom manual setup"}];
    conditions=getConditions();assert.equal(conditions.find(c=>c.key==="prone").conditionCheckCode,"// Custom manual setup");
  }finally{game.settings.get=previous;}
+});
+
+test("beast descriptions save native editor fields and beast abilities expose description, resources and tests", async () => {
+ const {BeastActivitySheet}=await import("../module/apps/beast-activity-sheet.js");
+ let saved;
+ const item={id:"action",type:"beast-ability",name:"Bite",img:"icon",isOwner:true,system:{id:"action"},async update(data){saved=data;}};
+ const sheet={item,activityId:"action",_saveActivities:BeastActivitySheet.prototype._saveActivities};
+ await BeastActivitySheet._onSubmit.call(sheet,{target:{name:"system.description"}},null,{object:{"system.description":"<p>Description</p>","system.gmNote":"<p>Effect</p>"}});
+ assert.equal(saved["system.description"],"<p>Description</p>");assert.equal(saved["system.gmNote"],"<p>Effect</p>");
+ const previous=foundry.data;class Field {constructor(...args){this.args=args;}}
+ foundry.data={fields:Object.fromEntries(["HTMLField","ArrayField","ObjectField","SchemaField","StringField","BooleanField","NumberField"].map(key=>[key,Field]))};
+ try{
+   const {BeastAbilityData}=await import("../module/data/item-data.js");
+   const schema=BeastAbilityData.defineSchema();assert.ok(schema.description);assert.ok(schema.resources);assert.ok(schema.tests);assert.equal(schema.traitCategory,undefined);
+ }finally{foundry.data=previous;}
+});
+
+test("former beast traits migrate to beast abilities without changing embedded effects or resources", async () => {
+ const previous=Item.migrateData;Item.migrateData=source=>source;
+ try{
+   const {NeuroshimaItem}=await import("../module/documents/item.js");
+   const source={_id:"ability",type:"beast-trait",system:{description:"Text",resources:[{value:2}]},effects:[{_id:"effect",name:"Aura"}]};
+   const expected=structuredClone(source);expected.type="beast-ability";expected.system.abilityCategory="action";
+   assert.deepEqual(NeuroshimaItem.migrateData(source),expected);
+   assert.deepEqual(NeuroshimaItem.migrateData(source),expected);
+ }finally{Item.migrateData=previous;}
+});
+
+test("one ability switches categories without losing attack fields and only actions enter success spending", async () => {
+ const {BeastActivitySheet}=await import("../module/apps/beast-activity-sheet.js");
+ const {isBeastAction,isBeastSegment}=await import("../module/helpers/beast-actions.js");
+ const {MeleeActionRegistry}=await import("../module/combat/melee-action-registry.js");
+ const owner=actor("creature");
+ const item={id:"ability",type:"beast-ability",name:"Bite",img:"x",isOwner:true,system:{id:"bite",abilityCategory:"action",successCost:2,damage:"C",fireModes:{all:false,single:true}},
+   async update(data){for(const[path,value]of Object.entries(data))setProperty(this,path,value);}};
+ owner.items.push(item);
+ const sheet={item,activityId:"bite",_saveActivities:BeastActivitySheet.prototype._saveActivities};
+ assert.equal(isBeastAction(item),true);assert.equal(MeleeActionRegistry.collectBeastActions(owner,3).length,1);
+ await BeastActivitySheet._onSubmit.call(sheet,{target:{name:"abilityCategory"}},null,{object:{abilityCategory:"segment",segmentCost:2,weaponType:"ranged"}});
+ assert.equal(isBeastSegment(item),true);assert.equal(MeleeActionRegistry.collectBeastActions(owner,3).length,0);
+ assert.equal(item.system.damage,"C");assert.equal(item.system.fireModes.single,true);
+ await BeastActivitySheet._onSubmit.call(sheet,{target:{name:"abilityCategory"}},null,{object:{abilityCategory:"action"}});
+ assert.equal(isBeastAction(item),true);assert.equal(item.system.successCost,2);assert.equal(item.system.weaponType,"ranged");
+ assert.equal(MeleeActionRegistry.collectBeastActions(owner,3).length,1);
+});
+
+test("retired beast item types retain identity, category and native effects through import migration", async () => {
+ const previous=Item.migrateData;Item.migrateData=source=>source;
+ try{
+   const {NeuroshimaItem}=await import("../module/documents/item.js");
+   for(const [type,category]of [["beast-action","action"],["beast-segment","segment"]]){
+     const source={_id:"kept",type,system:{damage:"C",successCost:2,segmentCost:3,resources:[{value:2}]},effects:[{_id:"effect"}],flags:{neuroshima:{beastSegmentOrigin:"old"}}};
+     NeuroshimaItem.migrateData(source);assert.equal(source.type,"beast-ability");assert.equal(source.system.abilityCategory,category);assert.equal(source._id,"kept");assert.equal(source.effects[0]._id,"effect");assert.equal(source.system.resources[0].value,2);
+     NeuroshimaItem.migrateData(source);assert.equal(source.system.abilityCategory,category);
+   }
+ }finally{Item.migrateData=previous;}
 });

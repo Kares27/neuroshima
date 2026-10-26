@@ -1,4 +1,4 @@
-import { beastActivities, createBeastCombatWeapon } from "../helpers/beast-actions.js";
+import { beastActivities, createBeastCombatWeapon, isBeastAbility } from "../helpers/beast-actions.js";
 import { clampMeleeTempo, maxMeleeTempo } from "./melee-maneuvers.js";
 /**
  * Canonical Neuroshima melee engine.
@@ -569,7 +569,7 @@ export function meleeParticipantFromActor(actor, { weapon = null } = {}) {
     weaponUuid: weapon?.uuid ?? null,
     isUnarmed: weapon?.isUnarmed === true,
     isBeastCombat: weapon?.isBeastCombat === true,
-    beastItemUuid: ["beast-action", "beast-segment"].includes(weapon?.type) ? weapon.uuid : null
+    beastItemUuid: isBeastAbility(weapon) ? weapon.uuid : null
   };
 }
 
@@ -903,7 +903,7 @@ export class MeleeActionCatalog {
     if (item && !items.some(candidate => candidate.uuid === item.uuid)) items.unshift(item);
     for (const candidate of items) {
       const configured = array(candidate.getFlag?.("neuroshima", "meleeActivities"));
-      if (candidate.type === "beast-action" || candidate.type === "beast-segment") {
+      if (isBeastAbility(candidate)) {
         if (!configured.length) results.push(...this.fromBeastItem(candidate));
       }
       for (const activity of configured) {
@@ -1607,7 +1607,7 @@ export class MeleeCommandService {
     const source = actors[owner];
     const participant = session.participants[owner];
     let weapon = participant.weaponUuid ? await fromUuid(participant.weaponUuid) : createUnarmedWeapon(source);
-    if (participant.isBeastCombat || ["beast-action", "beast-segment"].includes(weapon?.type)) {
+    if (participant.isBeastCombat || isBeastAbility(weapon)) {
       weapon = createBeastCombatWeapon(source);
     }
     const tempo = clampMeleeTempo(session.metadata[`${owner}TempoLevel`], maxMeleeTempo(source, weapon));
@@ -2478,7 +2478,7 @@ export class MeleeMigration {
   static previewDocument(document) {
     if (!document) return { documentUuid: null, activities: [], writes: 0 };
     let activities = [];
-    if (["beast-action", "beast-segment"].includes(document.type)) {
+    if (isBeastAbility(document)) {
       activities = MeleeActionCatalog.fromBeastItem(document);
     } else if (document.documentName === "ActiveEffect") {
       activities = MeleeActionCatalog.fromEffect(document);
@@ -2505,13 +2505,13 @@ export class MeleeMigration {
       report.actors++;
       for (const item of actor.items ?? []) {
         seenItems.add(item.uuid);
-        if (["beast-action", "beast-segment"].includes(item.type)) report.beastActivities += beastActivities(item).length;
+        if (isBeastAbility(item)) report.beastActivities += beastActivities(item).length;
       }
       for (const effect of actor.effects ?? []) report.effectActions += array(effect.system?.actionDefs).length;
     }
     for (const item of items ?? []) {
       if (seenItems.has(item.uuid)) continue;
-      if (["beast-action", "beast-segment"].includes(item.type)) report.beastActivities += beastActivities(item).length;
+      if (isBeastAbility(item)) report.beastActivities += beastActivities(item).length;
       for (const effect of item.effects ?? []) report.effectActions += array(effect.system?.actionDefs).length;
     }
     for (const combat of combats ?? []) {
@@ -2548,7 +2548,7 @@ export class MeleeMigration {
     for (const item of documents) {
       if (!item?.uuid || seen.has(item.uuid)) continue;
       seen.add(item.uuid);
-      if (["beast-action", "beast-segment"].includes(item.type) &&
+      if (isBeastAbility(item) &&
           Number(item.getFlag("neuroshima", "meleeSchemaVersion") ?? 0) < MELEE_VERSION) {
         const activities = beastActivities(item).map(activity => {
           const raw = activity.toObject?.() ?? clone(activity);
@@ -2851,7 +2851,7 @@ export async function runMeleeCoreSelfTests() {
   assert(costly.activation.segmentCost === 3 && costly.activation.successCost === 1,
     "success and segment costs remain independent");
   const beastItem = {
-    id: "beast", uuid: "Actor.a.Item.beast", type: "beast-action", name: "Bite", img: "bite.webp",
+    id: "beast", uuid: "Actor.a.Item.beast", type: "beast-ability", name: "Bite", img: "bite.webp",
     system: { activities: [{ id: "bite-1", name: "Bite", costType: "success", successCost: 2, damage: "C" }] }
   };
   const beasts = MeleeActionCatalog.fromBeastItem(beastItem);

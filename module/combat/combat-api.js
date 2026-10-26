@@ -1,4 +1,4 @@
-import { beastActivities, resolveBeastActionItem } from "../helpers/beast-actions.js";
+import { beastActivities, resolveBeastActionItem, isBeastAction } from "../helpers/beast-actions.js";
 import { resolveDefensiveManeuver } from "./melee-maneuvers.js";
 /**
  * @file combat-api.js
@@ -1546,7 +1546,7 @@ export class DuelDeclarationEngine {
         const itemId = compositeId.slice(0, separator);
         const activityId = compositeId.slice(separator + 2);
         const item = resolveBeastActionItem(ownerActor, itemId, activityId);
-        const activity = item?.type === "beast-action"
+        const activity = isBeastAction(item)
           ? beastActivities(item).find(entry => entry.id === activityId)
           : null;
         if (!activity || activity.costType !== "success") return false;
@@ -2174,7 +2174,7 @@ export class DuelBeastActionEngine {
       const itemId = compositeId.slice(0, separator);
       const activityId = compositeId.slice(separator + 2);
       const item = resolveBeastActionItem(attackerActor, itemId, activityId);
-      const activity = item?.type === "beast-action"
+      const activity = isBeastAction(item)
         ? beastActivities(item).find(entry => entry.id === activityId)
         : null;
       if (!item || !activity || activity.costType !== "success") {

@@ -1,5 +1,5 @@
 import { clampArmor } from "../helpers/armor-limit.js";
-import { beastActivities } from "../helpers/beast-actions.js";
+import { beastActivities, isBeastAction } from "../helpers/beast-actions.js";
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { EffectActionRuntime } from "../effects/effect-action-runtime.js";
@@ -810,7 +810,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
     const myUuidsCheck = [attackerActor.uuid];
     if (attackerActor.token) myUuidsCheck.push(attackerActor.token.uuid);
 
-    const sourceItems = attackerActor.items.filter(i => i.type === "beast-action");
+    const sourceItems = attackerActor.items.filter(i => isBeastAction(i));
 
     const byTier = {};
     for (const item of sourceItems) {

@@ -1,4 +1,4 @@
-import { beastActivities } from "../helpers/beast-actions.js";
+import { beastActivities, isBeastAbility, isBeastSegment } from "../helpers/beast-actions.js";
 import { NEUROSHIMA } from "../config.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
@@ -27,7 +27,7 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
    * Open (or focus) the sheet for a specific activity.
    * Uses the native Item sheet instance.
    *
-   * @param {Item}   item       - The beast-action or beast-segment item that owns the activity.
+   * @param {Item}   item       - The Beast Ability item.
    * @param {string} activityId - The `id` field of the target activity schema object.
    * @returns {BeastActivitySheet}
    */
@@ -43,7 +43,7 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
    */
   constructor({ item, activityId, document, ...options } = {}, legacyOptions = {}) {
     super({ ...options, ...legacyOptions, document: document ?? item });
-    if (["beast-action", "beast-segment"].includes(this.document.type)) {
+    if (isBeastAbility(this.document)) {
       this.tabGroups.sheet = "effects";
       this.options.classes.push("beast-action-sheet");
     }
@@ -139,7 +139,7 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
   get title() {
     const act = this.activity;
     const base = act?.name || this.item.name;
-    const label = this.item.type === "beast-segment" ? "NEUROSHIMA.BeastSegment.Label" : "NEUROSHIMA.BeastAction.Sheet.Title";
+    const label = "NEUROSHIMA.Items.Type.BeastAbility";
     return `${game.i18n.localize(label)}: ${base}`;
   }
 
@@ -153,12 +153,12 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     return {
       activation: {
         id: "activation", group: "sheet",
-        label: "NEUROSHIMA.BeastAction.Sheet.TabActivation",
+        label: "NEUROSHIMA.BeastAbility.Use",
         cssClass: current === "activation" ? "active" : ""
       },
       description: {
         id: "description", group: "sheet",
-        label: "NEUROSHIMA.BeastAction.Sheet.TabDescription",
+        label: "NEUROSHIMA.Tabs.Description",
         cssClass: current === "description" ? "active" : ""
       },
       effects: {
@@ -193,7 +193,7 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     const rawFailureIds   = activity.onFailureEffectIds ?? [];
     const cleanFailureIds = rawFailureIds.filter(id => validEffectIds.has(id));
 
-    if (this.item.type === "beast-segment" && this.item.isOwner &&
+    if (isBeastSegment(this.item) && this.item.isOwner &&
         (cleanEffectIds.length < rawEffectIds.length || cleanFailureIds.length < rawFailureIds.length)) {
       const activities = foundry.utils.deepClone(beastActivities(this.item));
       const idx = activities.findIndex(a => a.id === this.activityId);
@@ -224,7 +224,7 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
       .filter(e => !effectIds.has(e.id) && !failureEffectIds.has(e.id))
       .map(e => ({ id: e.id, name: e.name }));
 
-    const isSegmentItem = this.item.type === "beast-segment";
+    const isSegmentItem = isBeastSegment(this.item);
 
     const actionTypes = {
       action: "NEUROSHIMA.BeastActivity.ActionType.Action",
@@ -314,7 +314,6 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
       isThrown:               isAttack && actWeaponType === "thrown",
       isGrenade:              isAttack && actWeaponType === "grenade",
       showBeastActionDamage:  !isSegmentItem && actActionType === "attack",
-      isFlatAction:           true,
       editable:               this.item.isOwner
     };
   }
@@ -406,9 +405,15 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     if (raw.name                    !== undefined) act.name                    = raw.name;
     if (raw.img                     !== undefined) act.img                     = raw.img;
     if (raw.system?.tests?.value !== undefined) act.tests = { ...act.tests, value: raw.system.tests.value };
-    if (raw.description !== undefined) act.description = raw.description;
+    if (raw.system?.description !== undefined) act.description = raw.system.description;
+    else if (raw.description !== undefined) act.description = raw.description;
     if (raw.summary                 !== undefined) act.summary                 = raw.summary;
-    if (raw.gmNote                  !== undefined) act.gmNote                  = raw.gmNote;
+    if (raw.system?.gmNote !== undefined) act.gmNote = raw.system.gmNote;
+    else if (raw.gmNote !== undefined) act.gmNote = raw.gmNote;
+    if (["action", "segment"].includes(raw.abilityCategory)) {
+      act.abilityCategory = raw.abilityCategory;
+      act.costType = raw.abilityCategory === "segment" ? "segment" : "success";
+    }
     if (raw.actionType              !== undefined) act.actionType              = raw.actionType;
     if (raw.costType                !== undefined) act.costType                = raw.costType;
     if (raw.segmentCost             !== undefined) act.segmentCost             = raw.segmentCost;
@@ -445,7 +450,7 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     if (raw.applyEffectsAutomatically !== undefined) act.applyEffectsAutomatically = raw.applyEffectsAutomatically === true || raw.applyEffectsAutomatically === "true" || raw.applyEffectsAutomatically === "on";
 
     const changedField = event?.target?.name ?? "";
-    const STRUCTURAL_FIELDS = ["fireModes.all", "testRequired", "testIsOpen", "testType", "actionType", "weaponType"];
+    const STRUCTURAL_FIELDS = ["abilityCategory","fireModes.all", "testRequired", "testIsOpen", "testType", "actionType", "weaponType"];
     const needsRerender = !changedField || STRUCTURAL_FIELDS.includes(changedField);
     this._selfUpdating = !needsRerender;
     try {

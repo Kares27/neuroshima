@@ -382,8 +382,6 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       "weapon-mod": ["description", "stats", "resources", "effects"],
       "armor-mod": ["description", "stats", "resources", "effects"],
       container: ["contents", "description", "stats", "effects"],
-      "beast-action": ["stats", "description", "effects"],
-      "beast-segment": ["stats", "description", "effects"]
     };
     let allowedTabs = tabsByType[item.type] || ["description", "stats", "resources", "effects"];
 
@@ -398,9 +396,6 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     }
 
     context.tabs = this._getTabs();
-    if ((item.type === "beast-action" || item.type === "beast-segment") && context.tabs.stats) {
-      context.tabs.stats.label = "NEUROSHIMA.Tabs.Stats";
-    }
     if (context.isLimitedView || isContainerLocked) {
       const allowed = new Set(allowedTabs);
       for (const [id, tab] of Object.entries(context.tabs)) {
@@ -435,7 +430,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.isJammedWeapon = item.type === "weapon" && "jammed" in item.system;
 
     // Non-countable item types have no quantity, cost, or weight
-    const NON_COUNTABLE = ["speciality","wound", "vehicle-damage", "vehicle-mod", "beast-action", "beast-segment", "specialization", "origin", "profession", "trick", "trait", "reputation", "disease", "facilities"];
+    const NON_COUNTABLE = ["speciality","wound", "vehicle-damage", "vehicle-mod",  "specialization", "origin", "profession", "trick", "trait", "beast-ability", "reputation", "disease", "facilities"];
     context.isNonCountable = NON_COUNTABLE.includes(item.type);
     context.isModItem = item.type === "weapon-mod" || item.type === "armor-mod";
     context.isTrait = item.type === "trait";
@@ -447,7 +442,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     }));
 
     // Prepare type label
-    let typeLabelKey = item.type.charAt(0).toUpperCase() + item.type.slice(1);
+    let typeLabelKey = item.type === "beast-ability" ? "BeastAbility" : item.type.charAt(0).toUpperCase() + item.type.slice(1);
     if (item.type === "weapon" && item.system.weaponType) {
       typeLabelKey += item.system.weaponType.charAt(0).toUpperCase() + item.system.weaponType.slice(1);
     }
@@ -1195,8 +1190,6 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       "armor-mod": ["description", "stats", "resources", "effects"],
       facilities: ["description", "stats", "resources", "effects"],
       container: ["contents", "description", "stats", "effects"],
-      "beast-action": ["stats", "description", "effects"],
-      "beast-segment": ["stats", "description", "effects"]
     };
 
     const allowedTabs = tabsByType[item.type] || ["description", "stats", "resources", "effects"];
