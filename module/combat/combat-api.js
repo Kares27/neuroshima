@@ -2223,10 +2223,7 @@ export class DuelBeastActionEngine {
     );
 
     for (const { item: beastItem, activity } of selectedActivities) {
-        if (activity.testRequired) {
-          await postBeastRequiredTest(beastItem, activity, defenderActor, NeuroshimaScriptRunner);
-          continue;
-        }
+        if (activity.testRequired) continue;
         if (activity.applyEffectsAutomatically === false) continue;
         const timing = activity.effectTiming ?? "onUse";
         if (timing === "onHit" || timing === "afterDamage") continue;
@@ -2290,6 +2287,9 @@ export class DuelBeastActionEngine {
           }
         }
 
+        if (!damage && activity.testRequired) {
+          await postBeastRequiredTest(actionItem, activity, defenderActor, NeuroshimaScriptRunner);
+        }
         const hitTiming = activity.effectTiming ?? "onUse";
         if (!activity.testRequired && (hitTiming === "onHit" || hitTiming === "afterDamage") &&
             activity.applyEffectsAutomatically !== false) {

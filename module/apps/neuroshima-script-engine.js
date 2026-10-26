@@ -1,3 +1,4 @@
+import { requiredTestSuccesses } from "../helpers/required-test.js";
 import { specialityChoices } from "../helpers/speciality.js";
 import { dialogScriptSignature, dialogScriptGroupId, groupDialogModifiers } from "../helpers/dialog-script-groups.js";
 import { NeuroshimaChoiceRouter } from "../helpers/choice-router.js";
@@ -5829,6 +5830,7 @@ export class NeuroshimaScriptRunner {
     whisperToDefender = false,
     continuation = null
   } = {}) {
+    requiredSuccesses = requiredTestSuccesses({ isOpen, requiredSuccesses });
     const _normalizeConsequence = (c) => {
       if (!c) return null;
       const arr = Array.isArray(c) ? c : [typeof c === "string" ? { addCondition: c } : c];

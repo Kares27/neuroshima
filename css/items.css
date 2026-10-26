@@ -3146,7 +3146,7 @@ input[type="color"].rep-color-input::-moz-color-swatch {
 .neuroshima.beast-activity-sheet .bas-test-effects td:first-child {
     text-align: left;
 }
-.neuroshima.beast-activity-sheet .bas-test-effects input[type="checkbox"] {
+.neuroshima.beast-activity-sheet .bas-test-effects input[type="radio"] {
     margin: 0;
 }
 

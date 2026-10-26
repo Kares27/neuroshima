@@ -1,3 +1,4 @@
+import { normalizeRequiredEffects } from "../helpers/required-test.js";
 import { beastActivities, isBeastAbility, isBeastSegment } from "../helpers/beast-actions.js";
 import { NEUROSHIMA } from "../config.js";
 
@@ -187,6 +188,7 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
   async _prepareContext(options) {
     const activity = this.activity;
     if (!activity) return { missing: true };
+    Object.assign(activity, normalizeRequiredEffects(activity));
 
     const validEffectIds = new Set(this.item.effects.map(e => e.id));
     const rawEffectIds   = activity.effectIds ?? [];
@@ -450,7 +452,7 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
       const valid = new Set(this.item.effects.map(effect => effect.id));
       for (const [key, field] of [["success", "effectIds"], ["failure", "onFailureEffectIds"], ["always", "alwaysEffectIds"]]) {
         act[field] = Object.entries(raw.testEffects).filter(([id, selection]) => valid.has(id)
-          && [true, "true", "on"].includes(selection[key])).map(([id]) => id);
+          && selection === key).map(([id]) => id);
       }
     }
     if (raw.testRequired !== undefined) act.testRequired  = raw.testRequired === true || raw.testRequired === "true" || raw.testRequired === "on";

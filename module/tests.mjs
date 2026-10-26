@@ -1130,6 +1130,10 @@ export class NeuroshimaTest extends NeuroshimaTestBase {
   get diceCount() { return 3; }
 
   evaluateSuccessState() {
+    if (this.preData.requiredSuccesses != null) {
+      return Number(this.result.successPoints ?? 0) >= Number(this.preData.requiredSuccesses)
+        && this.result.openNaturalFailure !== true;
+    }
     if (this.result.isOpen) {
       if (this.result.openMargin != null) {
         return Number(this.result.openMargin) >= 0 && this.result.openNaturalFailure !== true;

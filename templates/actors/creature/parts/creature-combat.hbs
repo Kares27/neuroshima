@@ -186,7 +186,7 @@
                 {{/each}}
 
                 {{#each inventory.beastActionItems}}
-                <li class="item" data-item-id="{{this.id}}" draggable="true">
+                <li class="item draggable" data-item-id="{{this.id}}" draggable="true">
                     <img class="item-img" src="{{this.img}}" title="{{this.name}}" width="16" height="16"/>
                     <span class="item-name">{{this.name}}</span>
                     <span class="beast-action-meta">
@@ -218,7 +218,7 @@
 
             <ul class="item-list creature-actions-list">
                 {{#each inventory.beastSegmentItems}}
-                <li class="item beast-segment-item" data-item-id="{{this.id}}" draggable="true">
+                <li class="item draggable beast-segment-item" data-item-id="{{this.id}}" draggable="true">
                     <img class="item-img" src="{{this.img}}" title="{{this.name}}" width="16" height="16"/>
                     <span class="item-name beast-roll-name" data-action="rollBeastAction" data-item-id="{{this.id}}" title="{{localize 'NEUROSHIMA.BeastSegment.RollAction'}}">{{this.name}}</span>
                     <span class="beast-action-meta">

@@ -1192,8 +1192,8 @@ test("required-test effects save success, failure and unconditional selections f
  const item={id:"ability",type:"beast-ability",name:"Ability",isOwner:true,effects,system:{id:"ability"},async update(data){saved=data;}};
  const sheet={item,activityId:"ability",_saveActivities:BeastActivitySheet.prototype._saveActivities};
  await BeastActivitySheet._onSubmit.call(sheet,{target:{name:"testEffects.success.success"}},null,{object:{
-   testRequired:true,"testEffects.success.success":true,"testEffects.success.failure":false,
-   "testEffects.failure.failure":true,"testEffects.always.always":true,"testEffects.unknown.success":true
+   testRequired:true,"testEffects.success":"success",
+   "testEffects.failure":"failure","testEffects.always":"always","testEffects.unknown":"success"
  }});
  assert.deepEqual(saved["system.effectIds"],["success"]);assert.deepEqual(saved["system.onFailureEffectIds"],["failure"]);
  assert.deepEqual(saved["system.alwaysEffectIds"],["always"]);
@@ -1266,4 +1266,98 @@ test("creature action and segment add buttons create abilities with matching cat
    assert.equal(createdData.name,game.i18n.localize(category==="segment"?"NEUROSHIMA.BeastAbility.NewSegment":"NEUROSHIMA.BeastAbility.NewAction"));
    assert.equal(opened,true);
  }
+});
+
+test("required tests use two successes when closed and the configured threshold when open", async () => {
+ const {requiredTestSuccesses,requiredTestPassed}=await import("../module/helpers/required-test.js");
+ assert.equal(requiredTestSuccesses({isOpen:false,requiredSuccesses:7}),2);
+ assert.equal(requiredTestPassed({isOpen:false,requiredSuccesses:1},{successPoints:1,isSuccess:true}),false);
+ assert.equal(requiredTestPassed({isOpen:false,requiredSuccesses:7},{successPoints:2,isSuccess:false}),true);
+ assert.equal(requiredTestPassed({isOpen:true,requiredSuccesses:4},{successPoints:3,isSuccess:true}),false);
+ assert.equal(requiredTestPassed({isOpen:true,requiredSuccesses:4},{successPoints:4,isSuccess:false}),true);
+ const test=new SkillTest({actor:actor(),preData:{requiredSuccesses:4}});
+ Object.assign(test.result,{isOpen:true,successPoints:3,openMargin:3});assert.equal(test.evaluateSuccessState(),false);
+ test.result.successPoints=4;assert.equal(test.evaluateSuccessState(),true);
+ const previous={tests:game.neuroshima.tests,resolver:globalThis.fromUuid};
+ game.neuroshima.tests={SkillTest};globalThis.fromUuid=async()=>test.actor;
+ try{const restored=await SkillTest.recreate(test.toData());assert.equal(restored.preData.requiredSuccesses,4);}
+ finally{game.neuroshima.tests=previous.tests;globalThis.fromUuid=previous.resolver;}
+});
+
+test("legacy mixed required effect outcomes normalize to exactly one outcome", async () => {
+ const {normalizeRequiredEffects}=await import("../module/helpers/required-test.js");
+ const result=normalizeRequiredEffects({testEffectIds:["unset"],effectIds:["pass","mixed","always"],onFailureEffectIds:["fail","mixed"],alwaysEffectIds:["always"]});
+ assert.deepEqual(result.effectIds,["pass"]);assert.deepEqual(result.onFailureEffectIds,["fail"]);
+ assert.deepEqual(new Set(result.alwaysEffectIds),new Set(["mixed","always","unset"]));
+ for(const id of result.testEffectIds)assert.equal([result.effectIds,result.onFailureEffectIds,result.alwaysEffectIds].filter(list=>list.includes(id)).length,1);
+ assert.deepEqual(normalizeRequiredEffects(result),result);
+});
+
+test("beast required test is dispatched exactly once after damage, never by exchange resolution or cached operations", async () => {
+ const {MeleeActionCatalog,MeleeOperationRegistry}=await import("../module/combat/melee-system.js");
+ const {DuelBeastActionEngine}=await import("../module/combat/combat-api.js");
+ const beast=actor("creature"),target=actor("npc");target.uuid="Actor.target";
+ const effect={id:"venom",uuid:"Item.bite.ActiveEffect.venom",disabled:false,getFlag:()=>"damage"};
+ const effects=[effect];effects.get=id=>effects.find(entry=>entry.id===id);
+ const item={id:"bite",uuid:"Item.bite",type:"beast-ability",name:"Bite",system:{id:"bite",abilityCategory:"action",testRequired:true,damage:"L",successCost:1,onFailureEffectIds:["venom"]},effects};
+ beast.items.push(item);effect.parent=item;
+ const events=[];
+ const previous={resolver:globalThis.fromUuid,resolve:CombatHelper._resolveDamageSource,post:NeuroshimaScriptRunner.postRequiredTest};
+ try{
+   globalThis.fromUuid=async uuid=>uuid===item.uuid?item:uuid===target.uuid?target:null;
+   CombatHelper._resolveDamageSource=async()=>({attacker:beast,weapon:item});
+   NeuroshimaScriptRunner.postRequiredTest=async data=>{events.push("test");assert.deepEqual(data.onFailureEffectUuids,[effect.uuid]);};
+   assert.equal(MeleeActionCatalog.fromBeastItem(item)[0].operations.some(op=>op.type==="requiredTest"),false);
+   const cached=await MeleeOperationRegistry.get("requiredTest")({action:{definition:{source:{itemUuid:item.uuid}}}});
+   assert.equal(cached.deferred,true);assert.deepEqual(events,[]);
+   await DuelBeastActionEngine.processSelected({netSuccesses:1,isBeastAttack:true,defenderUuid:target.uuid},["bite::bite"],{
+     attackerActor:beast,defenderActor:target,NeuroshimaScriptRunner,
+     CombatHelper:{async applyDamageToActor(defender,data){events.push("damage");await CombatHelper._applyDamageTypeEffects(defender,data,["wound"]);return {results:[],woundIds:["wound"],reducedDetails:[]};}}
+   });
+   assert.deepEqual(events,["damage","test"]);
+ }finally{globalThis.fromUuid=previous.resolver;CombatHelper._resolveDamageSource=previous.resolve;NeuroshimaScriptRunner.postRequiredTest=previous.post;}
+});
+
+test("creature abilities drag with the native Item UUID payload from their bound row", async () => {
+ const {NeuroshimaCreatureSheet}=await import("../module/sheets/creature-sheet.js");
+ const payload={type:"Item",uuid:"Actor.beast.Item.ability"};
+ const ability={id:"ability",type:"beast-ability",toDragData:()=>payload};
+ const row={dataset:{itemId:"ability"},closest:()=>row};
+ const owner={isOwner:true,items:new Map([[ability.id,ability]])};
+ let data;
+ const event={currentTarget:row,target:{closest:()=>null},dataTransfer:{setData(type,value){assert.equal(type,"text/plain");data=JSON.parse(value);}}};
+ NeuroshimaCreatureSheet.prototype._onDragStart.call({document:owner},event);
+ assert.deepEqual(data,payload);
+ data=null;owner.isOwner=false;
+ NeuroshimaCreatureSheet.prototype._onDragStart.call({document:owner},event);assert.equal(data,null);
+});
+
+test("dropping an owned ability uses a detached fresh-ID copy and preserves embedded effect references", async () => {
+ const previous=foundry.applications.sidebar;
+ class Directory {async _getDroppedEntryFromData(){return this.entry;}async _createDroppedEntry(){return "native";}}
+ foundry.applications.sidebar={tabs:{ItemDirectory:Directory}};
+ try{
+   const {NeuroshimaItemDirectory}=await import("../module/apps/item-directory.js");
+   const data={_id:"shared",type:"beast-ability",system:{testEffectIds:["effect"],onFailureEffectIds:["effect"]},effects:[{_id:"effect"}]};
+   const entry={id:"shared",type:"beast-ability",parent:{uuid:"Actor.beast"},toObject:()=>structuredClone(data)};
+   const directory=new NeuroshimaItemDirectory();directory.entry=entry;
+   directory.documentClass=class {
+     constructor(source,options){this.data=source;this.id=source._id;this.type=source.type;this.parent=options.parent;assert.equal(options.pack,null);}
+     toObject(){return structuredClone(this.data);}
+   };
+   const copy=await directory._getDroppedEntryFromData({type:"Item"});
+   assert.notEqual(copy.id,entry.id);assert.equal(copy.parent,null);assert.equal(entry.id,"shared");
+   assert.deepEqual(copy.toObject().system.onFailureEffectIds,["effect"]);assert.equal(copy.toObject().effects[0]._id,"effect");
+   const previousMerge=foundry.utils.mergeObject;
+   foundry.utils.mergeObject=(source,updates)=>({...source,...updates});
+   directory.documentClass.create=async(source,options)=>{
+     assert.equal(options.keepEmbeddedIds,true);assert.equal(source.folder,"folder");
+     assert.equal(source.effects[0]._id,source.system.onFailureEffectIds[0]);return source;
+   };
+   try{await directory._createDroppedEntry(copy,{folder:"folder"});}
+   finally{foundry.utils.mergeObject=previousMerge;}
+
+   directory.entry={type:"weapon",parent:{}};assert.equal(await directory._getDroppedEntryFromData({}),directory.entry);
+   directory.entry={type:"beast-ability",parent:null};assert.equal(await directory._getDroppedEntryFromData({}),directory.entry);
+ }finally{foundry.applications.sidebar=previous;}
 });

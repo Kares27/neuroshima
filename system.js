@@ -1,3 +1,4 @@
+import { NeuroshimaItemDirectory } from "./module/apps/item-directory.js";
 import { isBeastAction } from "./module/helpers/beast-actions.js";
 import { refreshArmorLimits } from "./module/helpers/armor-limit.js";
 import { BeastActivitySheet } from "./module/apps/beast-activity-sheet.js";
@@ -109,6 +110,7 @@ Hooks.once('init', async function() {
     CONFIG.defaultFontFamily = "Special Elite";
 
     CONFIG.ui.combat = NeuroshimaCombatTracker;
+    CONFIG.ui.items = NeuroshimaItemDirectory;
     CONFIG.Token.rulerClass = NeuroshimaTokenRuler;
     MeleeCombatApp.registerHooks();
     MeleeVanillaChat.registerHooks();

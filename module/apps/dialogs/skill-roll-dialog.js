@@ -20,6 +20,8 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
     this.skillKey = options.skillKey ?? "";
     this.testType = options.testType ?? null;
     this.testSubtype = options.testSubtype ?? null;
+    this.requiredSuccesses = options.requiredSuccesses ?? null;
+    this.requiredTestMode = this.testType === "required" ? options.lastRoll?.isOpen === true : null;
 
     const lastRoll =
       options.lastRoll
@@ -218,7 +220,8 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
       ?? "average";
 
     const isOpenRaw =
-      this.userEntry.isOpen
+      this.requiredTestMode
+      ?? this.userEntry.isOpen
       ?? this.rollOptions.isOpen
       ?? true;
 
@@ -490,6 +493,7 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
     context.baseDifficulty =
       effectDifficulty;
 
+    context.testModeLocked = this.requiredTestMode !== null;
     context.isOpen =
       isOpen;
 
@@ -705,7 +709,8 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
     }
 
     const isOpenRaw =
-      this.userEntry.isOpen
+      this.requiredTestMode
+      ?? this.userEntry.isOpen
       ?? this.rollOptions.isOpen
       ?? true;
 
@@ -969,7 +974,8 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
     }
 
     const isOpen =
-      this.userEntry.isOpen
+      this.requiredTestMode
+      ?? this.userEntry.isOpen
       ?? this.rollOptions.isOpen
       ?? true;
 
@@ -1127,6 +1133,7 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
       skill: { key: currentSkill.key || null, value: Number(currentSkill.value ?? 0) },
       preData: {
         label: this.label,
+        requiredSuccesses: this.testType === "required" ? this.requiredSuccesses : null,
         skillBonus: combinedSkillBonus,
         attributeBonus: combinedAttrBonus,
         finalDifficultyShift: Number(sf.finalDifficultyShift ?? 0),

@@ -957,18 +957,8 @@ function fallbackBeastOperations(item, activity) {
   if (activity.damage && activity.damage !== "—") operations.push({
     type: "damage", target: "opponent", data: { damage: activity.damage }
   });
-  if (activity.testRequired) operations.push({ type: "requiredTest", target: "opponent", data: {
-    title: activity.name || item.name,
-    testType: activity.testType || "attribute",
-    testKey: activity.testKey || "constitution",
-    testAttributeOverride: activity.testAttributeOverride || "",
-    requiredSuccesses: activity.testSuccesses ?? 1,
-    isOpen: activity.testIsOpen ?? false,
-    baseDifficulty: activity.testDifficulty || "average",
-    onSuccessEffectIds: array(activity.effectIds),
-    onFailureEffectIds: array(activity.onFailureEffectIds)
-  }});
-  else for (const effectId of array(activity.effectIds)) operations.push({
+  // Required ability tests are dispatched after damage, not during exchange resolution.
+  if (!activity.testRequired) for (const effectId of array(activity.effectIds)) operations.push({
     type: "applyEffect", target: activity.effectTarget === "self" ? "self" : "opponent",
     data: { sourceItemUuid: item.uuid, effectId, timing: activity.effectTiming || "onUse" }
   });
@@ -1237,6 +1227,12 @@ registerMeleeOperation("modifyDamage", async ({ operation, pendingOutcome }) => 
 registerMeleeOperation("applyEffect", async context => MeleeEffectService.applyFromOperation(context));
 registerMeleeOperation("removeEffect", async context => MeleeEffectService.removeFromOperation(context));
 registerMeleeOperation("requiredTest", async ({ operation, target, actor, session, action, pendingOutcome }) => {
+  const sourceUuid = action?.definition?.source?.itemUuid || action?.sourceItemUuid || action?.sourceUuid?.split("#")[0];
+  const sourceItem = sourceUuid ? await fromUuid(sourceUuid) : null;
+  if (isBeastAbility(sourceItem) && sourceItem.system?.testRequired) {
+    return { deferred: true, reason: "abilityTestAfterDamage" };
+  }
+
   const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
   const rollingSide = sideForActor(session, target?.uuid)
     ?? (action.side === "attacker" ? "defender" : "attacker");

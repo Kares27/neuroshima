@@ -95,9 +95,9 @@
                     <thead><tr><th>{{localize "NEUROSHIMA.Tabs.Effects"}}</th><th>{{localize "NEUROSHIMA.BeastRequired.Success"}}</th><th>{{localize "NEUROSHIMA.BeastRequired.Failure"}}</th><th>{{localize "NEUROSHIMA.BeastRequired.Always"}}</th><th></th></tr></thead>
                     <tbody>{{#each requiredTestEffects}}<tr>
                         <td><div class="bas-test-effect-name"><img src="{{img}}" alt=""/><span>{{name}}</span></div></td>
-                        <td><input type="checkbox" name="testEffects.{{id}}.success" {{checked success}} {{#unless @root.editable}}disabled{{/unless}}></td>
-                        <td><input type="checkbox" name="testEffects.{{id}}.failure" {{checked failure}} {{#unless @root.editable}}disabled{{/unless}}></td>
-                        <td><input type="checkbox" name="testEffects.{{id}}.always" {{checked always}} {{#unless @root.editable}}disabled{{/unless}}></td>
+                        <td><input type="radio" name="testEffects.{{id}}" value="success" {{checked success}} {{#unless @root.editable}}disabled{{/unless}}></td>
+                        <td><input type="radio" name="testEffects.{{id}}" value="failure" {{checked failure}} {{#unless @root.editable}}disabled{{/unless}}></td>
+                        <td><input type="radio" name="testEffects.{{id}}" value="always" {{checked always}} {{#unless @root.editable}}disabled{{/unless}}></td>
                     <td>{{#if @root.editable}}<a data-action="removeRequiredTestEffect" data-effect-id="{{id}}" title="{{localize 'NEUROSHIMA.BeastRequired.UnlinkEffect'}}"><i class="fas fa-unlink"></i></a>{{/if}}</td>
                     </tr>{{/each}}</tbody>
                 </table>

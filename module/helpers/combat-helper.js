@@ -1871,7 +1871,7 @@ export class CombatHelper {
    */
   static async _applyDamageTypeEffects(defender, attackData, woundIds = []) {
     const { attacker, weapon } = await this._resolveDamageSource(attackData);
-    if (isBeastSegment(weapon) && weapon.system?.testRequired) {
+    if (isBeastAbility(weapon) && weapon.system?.testRequired) {
       await postBeastRequiredTest(weapon, beastActivities(weapon)[0], defender, NeuroshimaScriptRunner);
     }
     if (isBeastSegment(weapon) && !weapon.system?.testRequired && weapon.system?.applyEffectsAutomatically !== false) {

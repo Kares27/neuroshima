@@ -1,4 +1,3 @@
-import { postBeastRequiredTest } from "../helpers/beast-required-test.js";
 import { exchangeDamageHits, summarizeExchangeDamage } from "./melee-damage-summary.js";
 import { beastActivities, isBeastAbility, isBeastAction } from "../helpers/beast-actions.js";
 /**
@@ -5904,10 +5903,7 @@ export class MeleeResolution {
         : (activity.segmentCost  ?? 1);
       if (actCost !== diceCount) continue;
 
-      if (activity.testRequired) {
-        await postBeastRequiredTest(weapon, activity, defenderActor, NeuroshimaScriptRunner);
-        continue;
-      }
+      if (activity.testRequired) continue;
 
       for (const effectId of new Set([...(activity.effectIds ?? []), ...(activity.alwaysEffectIds ?? [])])) {
         const effect = weapon.effects.get(effectId);

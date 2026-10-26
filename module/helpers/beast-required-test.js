@@ -1,20 +1,22 @@
+import { requiredTestSuccesses, normalizeRequiredEffects } from "./required-test.js";
 /** Post the ability's required test for its target using the native test pipeline. */
 export async function postBeastRequiredTest(item, activity, target, runner) {
   if (!target) return 0;
   const resolve = ids => [...new Set(ids ?? [])].map(id => item.effects.get(id)?.uuid).filter(Boolean);
-  const always = activity.alwaysEffectIds ?? [];
+  const outcomes = normalizeRequiredEffects(activity);
+  const always = outcomes.alwaysEffectIds;
   await runner.postRequiredTest({
     title: `${activity.name || item.name}: ${target.name}`,
     testType: activity.testType || "attribute",
     testKey: activity.testKey || "constitution",
     testAttributeOverride: activity.testAttributeOverride || "",
-    requiredSuccesses: activity.testSuccesses ?? 1,
+    requiredSuccesses: requiredTestSuccesses({ isOpen: activity.testIsOpen === true, requiredSuccesses: activity.testSuccesses }),
     isOpen: activity.testIsOpen ?? false,
     baseDifficulty: activity.testDifficulty || "average",
     defenderActorUuid: target.uuid,
     whisperToDefender: true,
-    onSuccessEffectUuids: resolve([...(activity.effectIds ?? []), ...always]),
-    onFailureEffectUuids: resolve([...(activity.onFailureEffectIds ?? []), ...always])
+    onSuccessEffectUuids: resolve([...outcomes.effectIds, ...always]),
+    onFailureEffectUuids: resolve([...outcomes.onFailureEffectIds, ...always])
   });
   return 1;
 }

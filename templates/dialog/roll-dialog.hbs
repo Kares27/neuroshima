@@ -78,7 +78,7 @@
     <div class="rd-dropdowns-row">
         <div class="form-group">
             <label>{{localize "NEUROSHIMA.Roll.Test"}}</label>
-            <select name="isOpen">
+            <select name="isOpen" {{#if testModeLocked}}disabled{{/if}}>
                 <option value="true" {{#if isOpen}}selected{{/if}}>{{localize "NEUROSHIMA.Roll.OpenTestShort"}}</option>
                 <option value="false" {{#unless isOpen}}selected{{/unless}}>{{localize "NEUROSHIMA.Roll.ClosedTestShort"}}</option>
             </select>

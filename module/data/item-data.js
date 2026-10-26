@@ -1,3 +1,4 @@
+import { normalizeRequiredEffects } from "../helpers/required-test.js";
 /**
  * Base schema for all Neuroshima items.
  */
@@ -361,6 +362,7 @@ export class BeastAbilityData extends foundry.abstract.TypeDataModel {
     if (source.testEffectIds === undefined) {
       source.testEffectIds = [...new Set([...(source.effectIds ?? []), ...(source.onFailureEffectIds ?? []), ...(source.alwaysEffectIds ?? [])])];
     }
+    Object.assign(source, normalizeRequiredEffects(source));
     return source;
   }
 

@@ -839,7 +839,6 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         await childItem.unsetFlag("neuroshima", "containerId");
       }
     },
-    dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]
   };
 
   /** @override */
@@ -1431,7 +1430,8 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
 
   /** Use the native Item payload when dragging a beast definition. */
   _onDragStart(event) {
-    const row = event.target.closest?.(".item[data-item-id]");
+    const row = event.currentTarget?.closest?.(".item[data-item-id]")
+      ?? event.target?.closest?.(".item[data-item-id]");
     const item = this.document.items.get(row?.dataset.itemId);
     if (item && isBeastAbility(item)) {
       if (!this.document.isOwner || !event.dataTransfer) return;

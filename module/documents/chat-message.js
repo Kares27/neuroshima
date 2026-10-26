@@ -1,3 +1,4 @@
+import { requiredTestSuccesses, requiredTestPassed } from "../helpers/required-test.js";
 import { clampArmor } from "../helpers/armor-limit.js";
 import { beastActivities, isBeastAction } from "../helpers/beast-actions.js";
 import { NEUROSHIMA } from "../config.js";
@@ -652,8 +653,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       const successConsequence = data.onSuccess ?? null;
       const failureConsequence = data.onFailure ?? null;
       resultCallback = async ({ isSuccess, successPoints, successes }) => {
-        const points = Number(successPoints ?? successes);
-        if (Number.isFinite(points)) isSuccess = points >= Number(data.requiredSuccesses ?? 1);
+        isSuccess = requiredTestPassed(data, { isSuccess, successPoints, successes });
         if (successConsequence || failureConsequence) {
           const consequence = isSuccess ? successConsequence : failureConsequence;
           if (consequence) {
@@ -703,6 +703,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
         currentAttribute: attrKey,
         lastRoll,
         resultCallback,
+        requiredSuccesses: requiredTestSuccesses(data),
         testType: "required",
         testSubtype: "skill"
       });
@@ -721,6 +722,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
         currentAttribute: data.testKey,
         lastRoll,
         resultCallback,
+        requiredSuccesses: requiredTestSuccesses(data),
         testType: "required",
         testSubtype: "attribute"
       });
