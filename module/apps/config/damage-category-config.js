@@ -1,121 +1,54 @@
-const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
+export const BUILTIN_DAMAGE_CATEGORIES = ["physical", "explosive"];
+export const CONFIGURABLE_DAMAGE_CATEGORIES = ["explosive"];
 
-export class DamageCategoryConfig extends HandlebarsApplicationMixin(ApplicationV2) {
-    static DEFAULT_OPTIONS = {
-        id: "damage-category-config",
-        tag: "form",
-        classes: ["neuroshima", "damage-category-config"],
-        window: {
-            title: "NEUROSHIMA.Settings.DamageCategoryConfig.Title",
-            resizable: true
-        },
-        position: { width: 500, height: "auto" },
-        form: {
-            handler: async function(event, form, formData) {
-                await this._onSubmit(event, form, formData);
-            },
-            submitOnChange: false,
-            closeOnSubmit: true
-        },
-        actions: {
-            addCategoryRow:    DamageCategoryConfig.prototype._onAddRow,
-            deleteCategoryRow: DamageCategoryConfig.prototype._onDeleteRow
-        }
-    };
+export function loadCustomDamageCategories() {
+  try {
+    const value = JSON.parse(game.settings.get("neuroshima", "customDamageCategories") || "[]");
+    return Array.isArray(value) ? value : [];
+  } catch { return []; }
+}
 
-    static PARTS = {
-        form: {
-            template: "systems/neuroshima/templates/apps/damage-category-config.hbs",
-            scrollable: [".dcc-list-custom"]
-        }
-    };
-
-    _loadCustomCategories() {
-        try {
-            const raw = JSON.parse(game.settings.get("neuroshima", "customDamageCategories") || "[]");
-            if (Array.isArray(raw)) return raw;
-        } catch(e) {}
-        return [];
+/** Validate the complete category draft before any settings are written. */
+export function normalizeDamageCategorySettings(rows = [], builtinLimits = {}, builtinGlobalDamage = {}) {
+  const custom = [];
+  const limits = {};
+  const globalDamage = {};
+  const keys = new Set(BUILTIN_DAMAGE_CATEGORIES);
+  const readLimit = (key, value) => {
+    if (value === "" || value == null) return;
+    const number = Number(value);
+    if (!Number.isFinite(number) || number < 0) throw new Error("Invalid armor category limit");
+    limits[key] = number;
+  };
+  for (const key of CONFIGURABLE_DAMAGE_CATEGORIES) {
+    readLimit(key, builtinLimits[key]);
+    globalDamage[key] = builtinGlobalDamage[key] !== false;
+  }
+  for (const row of rows) {
+    const key = String(row.key ?? "").trim().replace(/\s+/g, "_").toLowerCase();
+    const label = String(row.label ?? "").trim();
+    if (!key && !label) continue;
+    if (!/^[a-z][a-z0-9_]*$/.test(key) || !label || keys.has(key) || ["constructor", "prototype"].includes(key)) {
+      throw new Error("Invalid or duplicate damage category");
     }
-
-    async _prepareContext(options) {
-        const NEUROSHIMA = game.neuroshima.config;
-        const builtinRows = Object.entries(NEUROSHIMA.damageCategories)
-            .filter(([key]) => ["physical", "explosive"].includes(key))
-            .map(([key, cat]) => ({
-                key,
-                label: game.i18n.localize(cat.label),
-                color: cat.color
-            }));
-
-        const customRows = (this._pendingCustom ?? this._loadCustomCategories()).map((c, i) => ({
-            idx:   i,
-            key:   c.key   ?? "",
-            label: c.label ?? "",
-            color: c.color ?? "#888888"
-        }));
-
-        return { builtinRows, customRows };
-    }
-
-    async _onRender(context, options) {
-        await super._onRender(context, options);
-        this._pendingCustom = null;
-    }
-
-    async _onSubmit(event, form, formData) {
-        const data = formData.object;
-        const custom = [];
-        let i = 0;
-        while (data[`custom.${i}.key`] !== undefined) {
-            const key   = String(data[`custom.${i}.key`]   ?? "").trim().replace(/\s+/g, "_").toLowerCase();
-            const label = String(data[`custom.${i}.label`] ?? "").trim();
-            const color = String(data[`custom.${i}.color`] ?? "#888888").trim();
-            if (key && label) custom.push({ key, label, color });
-            i++;
-        }
-        await game.settings.set("neuroshima", "customDamageCategories", JSON.stringify(custom));
-        _applyCustomDamageCategories(custom);
-        ui.notifications.info(game.i18n.localize("NEUROSHIMA.Settings.DamageCategoryConfig.Saved"));
-        SettingsConfig.reloadConfirm({ world: true });
-    }
-
-    async _onAddRow(event, target) {
-        this._pendingCustom = this._captureCurrentCustom();
-        this._pendingCustom.push({ key: "", label: "", color: "#888888" });
-        this.render();
-    }
-
-    async _onDeleteRow(event, target) {
-        const idx = parseInt(target.dataset.idx ?? "-1");
-        if (idx < 0) return;
-        this._pendingCustom = this._captureCurrentCustom();
-        this._pendingCustom.splice(idx, 1);
-        this.render();
-    }
-
-    _captureCurrentCustom() {
-        const fd = new FormDataExtended(this.element);
-        const data = fd.object;
-        const custom = [];
-        let i = 0;
-        while (data[`custom.${i}.key`] !== undefined) {
-            custom.push({
-                key:   String(data[`custom.${i}.key`]   ?? "").trim(),
-                label: String(data[`custom.${i}.label`] ?? "").trim(),
-                color: String(data[`custom.${i}.color`] ?? "#888888").trim()
-            });
-            i++;
-        }
-        return custom;
-    }
+    keys.add(key);
+    const color = /^#[0-9a-f]{6}$/i.test(row.color ?? "") ? row.color : "#888888";
+    custom.push({ key, label, color });
+    readLimit(key, row.maxArmor);
+    globalDamage[key] = row.globalDamage !== false;
+  }
+  return { custom, limits, globalDamage };
 }
 
 export function _applyCustomDamageCategories(customArray) {
-    const NEUROSHIMA = game.neuroshima?.config;
-    if (!NEUROSHIMA) return;
-    for (const cat of (customArray ?? [])) {
-        if (!cat.key || !cat.label) continue;
-        NEUROSHIMA.damageCategories[cat.key] = { label: cat.label, color: cat.color ?? "#888888" };
-    }
+  const config = game.neuroshima?.config;
+  if (!config) return;
+  for (const key of Object.keys(config.damageCategories)) {
+    if (!BUILTIN_DAMAGE_CATEGORIES.includes(key)) delete config.damageCategories[key];
+  }
+  for (const category of customArray ?? []) {
+    if (!category.key || !category.label || BUILTIN_DAMAGE_CATEGORIES.includes(category.key)
+      || ["__proto__", "constructor", "prototype"].includes(category.key)) continue;
+    config.damageCategories[category.key] = { label: category.label, color: category.color ?? "#888888" };
+  }
 }

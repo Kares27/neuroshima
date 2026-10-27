@@ -1,3 +1,4 @@
+import { armorLocationProtections } from "../helpers/armor-location.js";
 import { advanceSpeciality } from "../helpers/speciality.js";
 import { clampArmor } from "../helpers/armor-limit.js";
 import { beastActivities } from "../helpers/beast-actions.js";
@@ -326,12 +327,12 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       const rows = Object.entries(effRes).map(([category, locs]) => ({
         category,
         categoryLabel: game.i18n.localize(NEUROSHIMA.damageCategories[category]?.label ?? category),
-        head:     locs.head     ?? 0,
-        torso:    locs.torso    ?? 0,
-        leftArm:  locs.leftArm  ?? 0,
-        rightArm: locs.rightArm ?? 0,
-        leftLeg:  locs.leftLeg  ?? 0,
-        rightLeg: locs.rightLeg ?? 0
+        head:     clampArmor(actor, locs.head ?? 0, category),
+        torso:    clampArmor(actor, locs.torso ?? 0, category),
+        leftArm:  clampArmor(actor, locs.leftArm ?? 0, category),
+        rightArm: clampArmor(actor, locs.rightArm ?? 0, category),
+        leftLeg:  clampArmor(actor, locs.leftLeg ?? 0, category),
+        rightLeg: clampArmor(actor, locs.rightLeg ?? 0, category)
       }));
       armorEffectiveResistances[armorItem.id] = rows.length > 0 ? rows : null;
     }
@@ -2403,12 +2404,14 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     for (const item of equippedArmor) {
       const armor = item.system.armor || {};
       const ratings = getEffectiveArmorRatings(item);
+      const resistances = getEffectiveArmorResistances(item);
+      const resistanceRatings = getEffectiveArmorResistances(item, { includeDamage: false });
       const damages = armor.damage || {};
       const durDamage = armor.durabilityDamage || 0;
       const durability = armor.durability || 0;
 
       for (const [loc, rating] of Object.entries(ratings)) {
-        if (rating > 0 && locations[loc]) {
+        if (locations[loc] && (rating > 0 || Object.entries(resistanceRatings).some(([category, row]) => category !== "physical" && Number(row[loc]) > 0))) {
           const locDamage = damages[loc] || 0;
           const currentAP = Math.max(0, rating - locDamage);
           const currentDur = Math.max(0, durability - durDamage);
@@ -2416,6 +2419,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
           locations[loc].totalAP += currentAP;
           locations[loc].items.push({
             id: item.id,
+            uuid: item.uuid,
             name: item.name,
             img: item.img,
             durability: durability,
@@ -2424,6 +2428,8 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
             rating: rating,
             damage: locDamage,
             currentRating: clampArmor(actor, currentAP),
+            explosiveDamaged: Number(armor.resistanceDamage?.explosive?.[loc]) > 0,
+            explosiveProtection: clampArmor(actor, resistances.explosive?.[loc] ?? 0, "explosive"),
             radiationProtection: armor.radiationProtection ?? 0
           });
         }
@@ -2442,7 +2448,10 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       }
     }
 
-    for (const loc of Object.values(locations)) loc.totalAP = clampArmor(actor, loc.totalAP);
+    for (const [key, loc] of Object.entries(locations)) {
+      loc.totalAP = clampArmor(actor, loc.totalAP);
+      loc.protections = actor ? armorLocationProtections(actor, key) : [];
+    }
     const effectBonus = _collectArmorBonusByEffect(actor);
     for (const [key, loc] of Object.entries(locations)) {
       const sources = [

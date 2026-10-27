@@ -1,8 +1,9 @@
+import { armorLocationProtections } from "../helpers/armor-location.js";
 import { postBeastRequiredTest, applyBeastEffectIds } from "../helpers/beast-required-test.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { buildItemPreviewTooltip } from "../helpers/item-tooltip.js";
 import { clampArmor, preserveArmorSourceValues } from "../helpers/armor-limit.js";
-import { beastActivities, resolveBeastActionItem, createBeastSegmentWeapon, createBeastCombatWeapon, isBeastAbility, isBeastAction, isBeastSegment } from "../helpers/beast-actions.js";
+import { beastActivities, resolveBeastActionItem, createBeastSegmentWeapon, createBeastSegmentGrenade, createBeastCombatWeapon, isBeastAbility, isBeastAction, isBeastSegment } from "../helpers/beast-actions.js";
 import { NEUROSHIMA } from "../config.js";
 import { createLoadedMagazineFromWeapon } from "../helpers/ammunition.js";
 import { NeuroshimaDice } from "../helpers/dice.js";
@@ -63,6 +64,13 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
   async _onChangeForm(formConfig, event) {
     const input = event.target;
     const name = input?.getAttribute?.("name") ?? input?.name;
+    if (name === "system.naturalArmorReduction") {
+      if (!this.document.isOwner || !this.isEditable || input.value.trim() === "") return;
+      const value = Number(input.value);
+      if (!Number.isFinite(value)) return;
+      await this.document.update({ "system.naturalArmorReduction": Math.max(0, value) });
+      return;
+    }
     if (!name?.startsWith("items.")) return super._onChangeForm(formConfig, event);
     if (!this.document.isOwner || !this.isEditable) return;
     const [, itemId, ...path] = name.split(".");
@@ -123,7 +131,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         const system  = actor.system;
         const attrValue = system.attributeTotals?.[attrKey] ?? (system.attributes[attrKey] || 0);
         const label     = game.i18n.localize(NEUROSHIMA.attributes[attrKey]?.label || attrKey);
-        return NeuroshimaCreatureSheet._showRollDialog({ stat: attrValue, skill: 0, label, actor, isSkill: false });
+        return NeuroshimaCreatureSheet._showRollDialog({ stat: attrValue, skill: 0, label, actor, isSkill: false, currentAttribute: attrKey });
       },
 
       rollSkill: async function(event, target) {
@@ -151,7 +159,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         const system = actor.system;
         const exp    = system.experience ?? 0;
         const label  = game.i18n.localize("NEUROSHIMA.Creature.Experience");
-        return NeuroshimaCreatureSheet._showRollDialog({ stat: 0, skill: exp, label, actor, isSkill: true, currentAttribute: "dexterity" });
+        return NeuroshimaCreatureSheet._showRollDialog({ stat: 0, skill: exp, label, actor, isSkill: true, currentAttribute: "dexterity", skillKey: "experience" });
       },
 
       rollKondycja: async function() {
@@ -159,7 +167,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         const system = actor.system;
         const con    = system.attributeTotals?.["constitution"] ?? (system.attributes?.["constitution"] || 0);
         const label  = game.i18n.localize("NEUROSHIMA.Creature.Kondycja");
-        return NeuroshimaCreatureSheet._showRollDialog({ stat: con, skill: 0, label, actor, isSkill: false });
+        return NeuroshimaCreatureSheet._showRollDialog({ stat: con, skill: 0, label, actor, isSkill: false, currentAttribute: "constitution" });
       },
 
       toggleDifficulties: async function() {
@@ -517,17 +525,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         }
 
         if (weaponType === "grenade") {
-          const grenade = {
-            id:     item.id,
-            name:   act.name || item.name,
-            img:    act.img  || item.img,
-            type:   "grenade",
-            actor:  null,
-            system: {
-              damageCategory: act.damageCategory || "physical",
-              blastZones: act.blastZones ?? []
-            }
-          };
+          const grenade = createBeastSegmentGrenade(actor, item, act);
           const { NeuroshimaGrenadeRollDialog } = await import("../apps/dialogs/grenade-roll-dialog.js");
           const grenadeDialog = new NeuroshimaGrenadeRollDialog({ actor, grenade });
           grenadeDialog.render(true);
@@ -977,12 +975,12 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       const rows = Object.entries(effRes).map(([category, locs]) => ({
         category,
         categoryLabel: game.i18n.localize(NEUROSHIMA.damageCategories[category]?.label ?? category),
-        head:     locs.head     ?? 0,
-        torso:    locs.torso    ?? 0,
-        leftArm:  locs.leftArm  ?? 0,
-        rightArm: locs.rightArm ?? 0,
-        leftLeg:  locs.leftLeg  ?? 0,
-        rightLeg: locs.rightLeg ?? 0
+        head:     clampArmor(actor, locs.head ?? 0, category),
+        torso:    clampArmor(actor, locs.torso ?? 0, category),
+        leftArm:  clampArmor(actor, locs.leftArm ?? 0, category),
+        rightArm: clampArmor(actor, locs.rightArm ?? 0, category),
+        leftLeg:  clampArmor(actor, locs.leftLeg ?? 0, category),
+        rightLeg: clampArmor(actor, locs.rightLeg ?? 0, category)
       }));
       armorEffectiveResistances[armorItem.id] = rows.length > 0 ? rows : null;
     }
@@ -1010,6 +1008,8 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
 
     const anatomicalArmor = this._prepareAnatomicalArmor(armorItems.filter(i => i.system.equipped), actor);
 
+    context.naturalArmorReductionAll = clampArmor(actor, Number(actor._source?.system?.naturalArmorReduction ?? 0));
+    const commonReduction = Math.max(0, Number(system.naturalArmorReduction) || 0);
     const bonusAll      = Number(system.armorBonus?.all) || 0;
     const natArmorLabel = game.i18n.localize("NEUROSHIMA.Creature.NaturalArmor");
     const effectBonus   = _collectCreatureArmorBonusByEffect(actor);
@@ -1021,6 +1021,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       const bonus      = bonusAll + bonusLoc;
 
       const armorSources = [
+        ...(commonReduction !== 0 ? [{ label: "NEUROSHIMA.Creature.NaturalArmor.CommonReduction", value: commonReduction }] : []),
         ...(reduction !== 0 ? [{ label: natArmorLabel, value: reduction }] : []),
         ...locItems.map(item => ({ label: item.name, value: Number(item.currentRating ?? 0) })),
         ...[...(effectBonus.all ?? []), ...(effectBonus[key] ?? [])]
@@ -1034,12 +1035,13 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         hitPenalty:       system.naturalArmor?.[key]?.hitPenalty ?? 0,
         weakPoint:        system.naturalArmor?.[key]?.weakPoint  ?? false,
         items:            locItems,
+        protections:      armorLocationProtections(actor, key),
         totalAP:          itemsAP,
-        totalEffectiveAP: clampArmor(actor, reduction + itemsAP + bonus),
+        totalEffectiveAP: clampArmor(actor, commonReduction + reduction + itemsAP + bonus),
         tooltip:          buildBreakdownTooltip({
           title: data.label,
           sources: armorSources,
-          totalValue: clampArmor(actor, reduction + itemsAP + bonus)
+          totalValue: clampArmor(actor, commonReduction + reduction + itemsAP + bonus)
         })
       };
     });
@@ -1402,11 +1404,13 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
     for (const item of equippedArmor) {
       const armor    = item.system.armor || {};
       const ratings  = getEffectiveArmorRatings(item);
+      const resistances = getEffectiveArmorResistances(item);
+      const resistanceRatings = getEffectiveArmorResistances(item, { includeDamage: false });
       const damages  = armor.damage      || {};
       const durDamage   = armor.durabilityDamage || 0;
       const durability  = armor.durability       || 0;
       for (const [loc, rating] of Object.entries(ratings)) {
-        if (rating > 0 && locations[loc]) {
+        if (locations[loc] && (rating > 0 || Object.entries(resistanceRatings).some(([category, row]) => category !== "physical" && Number(row[loc]) > 0))) {
           const locDamage   = damages[loc] || 0;
           const currentAP   = Math.max(0, rating - locDamage);
           const currentDur  = Math.max(0, durability - durDamage);
@@ -1420,6 +1424,8 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
             currentDurability: currentDur,
             rating,
             damage:           locDamage,
+            explosiveDamaged: Number(armor.resistanceDamage?.explosive?.[loc]) > 0,
+            explosiveProtection: clampArmor(this.document, resistances.explosive?.[loc] ?? 0, "explosive"),
             currentRating:    clampArmor(this.document, currentAP)
           });
         }

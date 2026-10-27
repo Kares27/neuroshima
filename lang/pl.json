@@ -43,8 +43,10 @@
     },
     "NEUROSHIMA": {
         "BeastRequired": {"AddEffect": "Dodaj efekt", "UnlinkEffect": "Odłącz od wymogu testu","NeedTarget": "Wybierz cel zdolności.", "Success": "Sukces", "Failure": "Porażka", "Always": "Zawsze"},
-        "BeastAbility": {"NewAction": "Akcja Bestii", "NewSegment": "Segment Bestii","Use": "Użycie", "Category": "Kategoria", "Action": "Akcja", "Segment": "Segment"},
+        "BeastAbility": {"SuccessActions": "Akcje za sukcesy", "SegmentActions": "Akcje za Segmenty","NewAction": "Akcja Bestii", "NewSegment": "Segment Bestii","Use": "Użycie", "Category": "Kategoria", "Action": "Akcja", "Segment": "Segment"},
         "ArmorLimit": {
+            "CategoryMax": "Maks. pancerz",
+            "CategoryHint": "Przy włączonej restrykcji limit typu ogranicza końcową ochronę po efektach i modyfikacjach. Puste pole oznacza brak dodatkowego limitu; obowiązuje limit rodzaju aktora.",
             "Name": "Restrykcja Poziomu Pancerza",
             "Hint": "Ogranicza końcowy pancerz po uwzględnieniu efektów. Wyłączenie przywraca obliczenia bez limitu.",
             "Character": "Actor & BN",
@@ -536,6 +538,32 @@
                 "Label": "Skonfiguruj Udźwig",
                 "Hint": "Otwiera menu konfiguracji obliczania udźwigu dla aktorów.",
                 "Saved": "Ustawienia udźwigu zostały zapisane i zaktualizowane."
+            },
+            "Transfer": {
+                "Title": "Eksport i import ustawień",
+                "MenuHint": "Przenieś konfigurację Neuroshimy 1.5 między światami za pomocą pliku JSON.",
+                "Export": "Eksportuj do JSON",
+                "ExportHint": "Eksportuje wszystkie ustawienia świata należące do systemu, również konfigurację z dodatkowych menu i skrypty warunków. Pomija stan walk oraz znacznik migracji. Nie zawiera aktorów, przedmiotów ani ustawień modułów.",
+                "Import": "Importuj z JSON",
+                "ImportHint": "Wybierz wcześniej wyeksportowany plik i sprawdź podsumowanie. Import zastępuje ustawienia zawarte w pliku; pozostałe zachowują obecne wartości. Po zapisie Foundry zaproponuje przeładowanie świata.",
+                "File": "Plik ustawień JSON",
+                "ImportSave": "Importuj i zapisz",
+                "SourceVersion": "Wersja systemu w pliku",
+                "Changes": "Ustawienia do zmiany",
+                "Skipped": "Pominięte ustawienia",
+                "Summary": "Rozpoznano: {count}. Do zmiany: {changes}. Pominięto: {skipped}.",
+                "Imported": "Zaimportowano ustawienia. Zmieniono: {count}.",
+                "Errors": {
+                    "Permission": "Tylko MG może eksportować i importować ustawienia świata.",
+                    "InvalidJSON": "Nie można odczytać pliku: nieprawidłowy JSON.",
+                    "InvalidFile": "To nie jest obsługiwany plik ustawień Neuroshimy.",
+                    "InvalidValue": "Nieprawidłowa wartość ustawienia: {key}. Nie zapisano importu.",
+                    "NoSettings": "Plik nie zawiera rozpoznanych ustawień do importu.",
+                    "Busy": "Trwa już import ustawień.",
+                    "SaveFailed": "Zapis importu nie powiódł się. Przywrócono poprzednie ustawienia.",
+                    "RollbackFailed": "Import nie powiódł się. Nie udało się przywrócić ustawień: {keys}. Sprawdź konfigurację przed dalszą grą.",
+                    "Unexpected": "Nie udało się przenieść ustawień. Szczegóły znajdują się w konsoli."
+                }
             },
             "CombatConfig": {
                 "Title": "Ustawienia Walki",
@@ -1648,6 +1676,10 @@
             "ChangeStateChanged": "Wartość reputacji zmieniła się podczas otwartego dialogu. Spróbuj ponownie."
         },
         "Armor": {
+            "Name": "Nazwa",
+            "GlobalDamage": "Cały pancerz",
+            "GlobalDamageHint": "Zaznaczone: uszkodzenie lub naprawa ochrony tego typu zmienia wszystkie części danego pancerza. Odznaczone: zmienia tylko wybraną część. Wytrzymałość działa bez zmian.",
+            "ProtectionDetails": "Ochrona według typu obrażeń",
             "TotalPenalty": "Kara",
             "None": "Brak pancerza",
             "SumAP": "Suma AP"
@@ -1815,6 +1847,8 @@
             "KondycjaHint": "Ogólna wytrzymałość fizyczna stworzenia",
             "NaturalArmor":
             {
+                "AllReduction": "Wspólna redukcja pancerza, doliczana do każdej części ciała",
+                "CommonReduction": "Wspólny pancerz",
             "Title": "Pancerz",
             "Location": "Część ciała",
             "Reduction": "Redukcja",

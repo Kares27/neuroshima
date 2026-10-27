@@ -1361,3 +1361,466 @@ test("dropping an owned ability uses a detached fresh-ID copy and preserves embe
    directory.entry={type:"beast-ability",parent:null};assert.equal(await directory._getDroppedEntryFromData({}),directory.entry);
  }finally{foundry.applications.sidebar=previous;}
 });
+
+test("ability model migrations do not inject empty outcome arrays into partial updates", async () => {
+ const previous=foundry.abstract.TypeDataModel.migrateData;foundry.abstract.TypeDataModel.migrateData=source=>source;
+ try{
+   const {BeastAbilityData}=await import("../module/data/item-data.js");
+   const partial={description:"Edited"};BeastAbilityData.migrateData(partial);
+   assert.deepEqual(partial,{description:"Edited"});
+   const outcome={onFailureEffectIds:["poison"]};BeastAbilityData.migrateData(outcome);
+   assert.deepEqual(outcome,{onFailureEffectIds:["poison"]});
+ }finally{foundry.abstract.TypeDataModel.migrateData=previous;}
+});
+
+function migrationDocument(documentName,data){
+ const source=structuredClone(data);
+ const doc={documentName,id:source._id,uuid:`${documentName}.${source._id}`,name:source.name??"Document",type:source.type,
+   _source:source,system:source.system??{},effects:[],updates:[],toObject(){return structuredClone(this._source);},
+   async update(update){this.updates.push(structuredClone(update));for(const[path,value]of Object.entries(update)){
+     const keys=path.split('.');if(keys.at(-1).startsWith('-=')){const parent=getProperty(this._source,keys.slice(0,-1).join('.'));if(parent)delete parent[keys.at(-1).slice(2)];}
+     else setProperty(this._source,path,structuredClone(value));
+   }this.system=this._source.system??{};this.type=this._source.type;},getFlag(_scope,key){return this._source.flags?.neuroshima?.[key];}};
+ return doc;
+}
+
+test("current document migration persists canonical ability data and legacy effect scripts and is idempotent", async () => {
+ const {migrateCurrentDocument}=await import("../module/helpers/document-migrations.js");
+ const ability=migrationDocument("Item",{_id:"ability",type:"beast-ability",system:{abilityCategory:"segment",costType:"success",resources:[{value:3}],effectIds:["effect"],onFailureEffectIds:["effect"]}});
+ const effect=migrationDocument("ActiveEffect",{_id:"effect",system:{},flags:{neuroshima:{scripts:[{trigger:"manual",code:"args.result.addSuccesses(1);"}]}},changes:[]});
+ ability.effects=[effect];
+ await migrateCurrentDocument(ability);
+ assert.equal(ability.system.costType,"segment");assert.deepEqual(ability.system.alwaysEffectIds,["effect"]);
+ assert.deepEqual(ability.system.resources,[{value:3}]);assert.equal(effect._source.system.scriptData[0].code,"args.result.addSuccessPoints(1);");
+ assert.equal(effect._source.flags.neuroshima.scripts,undefined);
+ await migrateCurrentDocument(ability);assert.equal(ability.updates.length,1);assert.equal(effect.updates.length,1);
+});
+
+test("version 2.5 migration covers world actors, unlinked scene actors, world items, managed packs and required-test cards", async () => {
+ const {migrateCurrentWorld}=await import("../module/helpers/migration.js");
+ const previous={actors:game.actors,scenes:game.scenes,items:game.items,packs:game.packs,messages:game.messages,settings:game.settings};
+ const ability=id=>migrationDocument("Item",{_id:id,type:"beast-ability",system:{abilityCategory:"action",effectIds:["effect"]}});
+ const worldActor=migrationDocument("Actor",{_id:"actor",type:"creature",system:{}});worldActor.items=[ability("owned")];
+ const tokenActor=migrationDocument("Actor",{_id:"token",type:"creature",system:{}});tokenActor.items=[ability("token-owned")];
+ const packActor=migrationDocument("Actor",{_id:"pack-actor",type:"npc",system:{}});packActor.items=[ability("pack-owned")];
+ const worldItem=ability("world"),packItem=ability("packed");
+ const locks=[];
+ const pack=(type,document)=>({collection:`world.${type}`,metadata:{packageType:"world",type},locked:true,async configure({locked}){locks.push(locked);this.locked=locked;},async getDocuments(){return [document];}});
+ const actorPack=pack("Actor",packActor),itemPack=pack("Item",packItem);
+ const message={data:{isOpen:false,requiredSuccesses:1},getFlag:()=>message.data,async update(data){message.updateData=data;}};
+ try{
+   game.actors=[worldActor];game.scenes=[{tokens:[{actorLink:true,actor:worldActor},{actorLink:false,actor:tokenActor},{actorLink:false,actor:tokenActor}]}];game.items=[worldItem];
+   game.packs=[actorPack,itemPack,{metadata:{packageType:"module",type:"Actor"},collection:"other.actors",async getDocuments(){throw Error("Foreign pack was touched");}}];
+   game.messages=[message];game.settings={get:()=>[]};
+   const report=await migrateCurrentWorld();assert.deepEqual(report,{actors:3,items:5,packs:2,messages:1});
+   for(const item of [worldActor.items[0],tokenActor.items[0],worldItem,packActor.items[0],packItem])assert.equal(item.updates.length,1);
+   assert.deepEqual(locks,[false,true,false,true]);assert.equal(actorPack.locked,true);assert.equal(itemPack.locked,true);
+   assert.deepEqual(message.updateData,{"flags.neuroshima.requiredTestData.requiredSuccesses":2});
+ }finally{Object.assign(game,previous);}
+});
+
+test("failed compendium migration restores its lock and never advances the schema version", async () => {
+ const {registerMigrationHook}=await import("../module/helpers/migration.js");
+ const previous={Hooks:globalThis.Hooks,ui:globalThis.ui,user:game.user,users:game.users,actors:game.actors,scenes:game.scenes,items:game.items,packs:game.packs,messages:game.messages,settings:game.settings,error:console.error};
+ let ready,savedVersion=false,failed=0;const locks=[];
+ const pack={collection:"world.failed",metadata:{type:"Item",packageType:"world"},locked:true,async configure({locked}){locks.push(locked);this.locked=locked;},async getDocuments(){throw Error("Simulated migration failure");}};
+ try{
+   globalThis.Hooks={on(){},once(_hook,callback){ready=callback;}};globalThis.ui={notifications:{info(){},error(){failed++;}}};console.error=()=>{};
+   game.user={id:"gm",isGM:true};game.users={activeGM:{id:"gm"}};game.actors=[];game.scenes=[];game.items=[];game.packs=[pack];game.messages=[];
+   game.settings={get:()=>"2.4",async set(_scope,key){if(key==="schemaVersion")savedVersion=true;}};
+   registerMigrationHook();await ready();assert.equal(savedVersion,false);assert.equal(failed,1);assert.equal(pack.locked,true);assert.deepEqual(locks,[false,true]);
+ }finally{globalThis.Hooks=previous.Hooks;globalThis.ui=previous.ui;console.error=previous.error;for(const key of ['user','users','actors','scenes','items','packs','messages','settings'])game[key]=previous[key];}
+});
+
+test("splitting a hydrated legacy package does not leak its first activity's tests or damage into siblings", async () => {
+ const {flattenBeastItem}=await import("../module/helpers/beast-actions.js");
+ const source={_id:"package",type:"beast-ability",name:"Package",effects:[{_id:"effect"}],system:{abilityCategory:"segment",description:"Shared",resources:[{value:2}],tests:{value:"Shared test"},
+   legacyActivities:[{id:"first",testRequired:true,effectIds:["effect"]},{id:"second",name:"Second"}],
+   damage:"K",testRequired:true,effectIds:["effect"],onFailureEffectIds:["effect"],testEffectIds:["effect"]}};
+ const child=flattenBeastItem(source,source.system.legacyActivities[1]);
+ assert.equal(child.system.damage,undefined);assert.equal(child.system.testRequired,undefined);assert.equal(child.system.effectIds,undefined);
+ assert.deepEqual(child.system.resources,[{value:2}]);assert.deepEqual(child.system.tests,{value:"Shared test"});assert.deepEqual(child.effects,[{_id:"effect"}]);
+ assert.equal(child.system.abilityCategory,"segment");assert.equal(child.system.costType,"segment");
+});
+
+test("legacy effect scripts are migrated before imported effects run their creation triggers", async () => {
+ const previous=ActiveEffect.prototype._preCreate;ActiveEffect.prototype._preCreate=async()=>{};
+ const source={flags:{neuroshima:{scripts:[{trigger:"applyEffect",code:"args.test.addSuccesses(2);"}]}},system:{},changes:[]};
+ const effect={_source:source,changes:[],parent:{documentName:"Item"},determineTransfer:()=>false,
+   updateSource(data){for(const[path,value]of Object.entries(data)){const keys=path.split('.');if(keys.at(-1).startsWith('-='))delete getProperty(source,keys.slice(0,-1).join('.'))[keys.at(-1).slice(2)];else setProperty(source,path,value);}}};
+ try{
+   await NeuroshimaActiveEffect.prototype._preCreate.call(effect,source,{},{});
+   assert.equal(source.system.scriptData[0].code,"args.test.addSuccessPoints(2);");assert.equal(source.flags.neuroshima.scripts,undefined);
+ }finally{ActiveEffect.prototype._preCreate=previous;}
+});
+
+test("creature armor header stores independent common armor and adds it to each location without overwriting local values", async () => {
+ const {NeuroshimaCreatureSheet}=await import("../module/sheets/creature-sheet.js");
+ const {NEUROSHIMA}=await import("../module/config.js");
+ const beast=actor("creature");
+ const locations=Object.entries(NEUROSHIMA.bodyLocations).filter(([,data])=>!data.paperDollOnly).map(([key])=>key);
+ beast.system.naturalArmor=Object.fromEntries(locations.map(key=>[key,{reduction:key==="head"?1:0,hitPenalty:20,weakPoint:key==="head"}]));
+ const local=structuredClone(beast.system.naturalArmor);
+ const sheet=new NeuroshimaCreatureSheet({document:beast});sheet.isEditable=true;
+ await sheet._onChangeForm({}, {target:{name:"system.naturalArmorReduction",value:"2.5"}});
+ assert.equal(beast.system.naturalArmorReduction,2.5);assert.deepEqual(beast.system.naturalArmor,local);
+ for(const key of locations)assert.equal(CombatHelper.getArmorRating(beast,key).totalSP,key==="head"?3.5:2.5);
+ assert.equal(CombatHelper.getArmorRating(beast,"head").weakPoint,true);
+ await sheet._onChangeForm({}, {target:{name:"system.naturalArmorReduction",value:"8"}});
+ assert.equal(CombatHelper.getArmorRating(beast,"head").totalSP,4);assert.deepEqual(beast.system.naturalArmor,local);
+ await sheet._onChangeForm({}, {target:{name:"system.naturalArmorReduction",value:""}});
+ assert.equal(beast.system.naturalArmorReduction,8);
+ beast.isOwner=false;await sheet._onChangeForm({}, {target:{name:"system.naturalArmorReduction",value:"2"}});
+ assert.equal(beast.system.naturalArmorReduction,8);
+});
+
+test("armor category limits cap aggregate protection after scripts for builtin and custom categories", () => {
+ const previous={limits:settings.armorCategoryLimits,enabled:settings.armorLimitEnabled,script:NeuroshimaScriptRunner.executeEventSync};
+ settings.armorCategoryLimits={explosive:3,acid:2};settings.armorLimitEnabled=true;
+ try{
+   for(const type of ["character","npc","creature","vehicle"]){
+     assert.equal(clampArmor(actor(type),30,"explosive"),3);assert.equal(clampArmor(actor(type),30,"acid"),2);
+   }
+   const patient=actor();patient.items.push({type:"armor",name:"Armor",system:{equipped:true,armor:{resistances:[{category:"explosive",torso:12},{category:"acid",torso:9}]}}});
+   assert.equal(CombatHelper.getArmorRating(patient,"torso","explosive").totalSP,3);
+   assert.equal(CombatHelper.getArmorRating(patient,"torso","acid").totalSP,2);
+   NeuroshimaScriptRunner.executeEventSync=(trigger,args)=>{if(trigger==="APCalc")args.bonusSP=100;};
+   assert.equal(CombatHelper.reduceArmorDamageWithDetails(patient,"torso","K",0,{},"explosive").totalArmor,3);
+   settings.armorLimitEnabled=false;assert.equal(CombatHelper.getArmorRating(patient,"torso","explosive").totalSP,12);
+ }finally{settings.armorCategoryLimits=previous.limits;settings.armorLimitEnabled=previous.enabled;NeuroshimaScriptRunner.executeEventSync=previous.script;}
+});
+
+test("custom category settings retain optional limits and reject collisions or invalid caps before saving", async () => {
+ const {normalizeDamageCategorySettings}=await import("../module/apps/config/damage-category-config.js");
+ const result=normalizeDamageCategorySettings([{key:"acid",label:"Acid",color:"#123456",maxArmor:"2.5"}],{physical:"",explosive:"3"});
+ assert.deepEqual(result.custom,[{key:"acid",label:"Acid",color:"#123456"}]);assert.deepEqual(result.limits,{explosive:3,acid:2.5});
+ assert.throws(()=>normalizeDamageCategorySettings([{key:"explosive",label:"Duplicate"}]),/duplicate/);
+ assert.throws(()=>normalizeDamageCategorySettings([],{explosive:-1}),/Invalid/);
+ assert.throws(()=>normalizeDamageCategorySettings([{key:"constructor",label:"Invalid"}]),/Invalid/);
+ assert.deepEqual(normalizeDamageCategorySettings([{key:"acid",label:"Acid",maxArmor:""}]).limits,{});
+});
+
+test("combat category actions preserve draft combat controls and unarmed thresholds", async () => {
+ const {CombatConfig}=await import("../module/apps/config/combat-config.js");
+ const config=new CombatConfig();let renders=0;
+ config.render=()=>{renders++;};config._readConfigDraft=()=>({armorLimitEnabled:true,meleeBonusMode:"both"});
+ config._readUnarmedDamageTable=()=>[{maxBuild:null,damage1:"L",damage2:"C",damage3:"K"}];
+ config._readDamageCategories=()=>({custom:[{key:"acid",label:"Acid",maxArmor:"2"}],builtinLimits:{explosive:"3"}});
+ config._onAddCategoryRow();
+ assert.equal(config._configDraft.meleeBonusMode,"both");assert.equal(config._unarmedDamageTable[0].damage1,"L");
+ assert.equal(config._damageDraft.custom.length,2);assert.equal(config._damageDraft.builtinLimits.explosive,"3");assert.equal(renders,1);
+});
+
+test("combat settings save custom types and their caps together and reject invalid limits before writing", async () => {
+ const {CombatConfig}=await import("../module/apps/config/combat-config.js");
+ const previous={settings:game.settings,config:game.neuroshima.config,ui:globalThis.ui,SettingsConfig:globalThis.SettingsConfig,error:console.error};
+ const writes=new Map();let errors=0;
+ try{
+   game.settings={get:(_scope,key)=>key==="customDamageCategories"?"[]":key==="meleeCombatType"?"default":false,async set(_scope,key,value){writes.set(key,value);}};
+   game.neuroshima.config={damageCategories:{physical:{},explosive:{},obsolete:{}}};
+   globalThis.ui={notifications:{info(){},error(){errors++;}}};globalThis.SettingsConfig={reloadConfirm(){}};console.error=()=>{};
+   const app=new CombatConfig();app._readDamageCategories=()=>({custom:[{key:"acid",label:"Acid",color:"#123456",maxArmor:"2.5"}],builtinLimits:{explosive:"3"}});
+   app._readUnarmedDamageTable=()=>[{maxBuild:null,damage1:"D",damage2:"L",damage3:"C"}];
+   const data={armorLimitEnabled:true,armorLimitCharacter:6,armorLimitCreature:6,armorLimitVehicle:6,meleeCombatType:"default",meleeBonusMode:"attribute",damageApplicationMinRole:4,painResistanceMinRole:4,combatActionsMinRole:1,unjamMinRole:1};
+   await app._onSubmit(null,null,{object:data});
+   assert.deepEqual(writes.get("armorCategoryLimits"),{explosive:3,acid:2.5});
+   assert.equal(JSON.parse(writes.get("customDamageCategories"))[0].key,"acid");assert.equal(game.neuroshima.config.damageCategories.obsolete,undefined);
+   writes.clear();app._readDamageCategories=()=>({custom:[],builtinLimits:{explosive:-2}});
+   await app._onSubmit(null,null,{object:data});assert.equal(writes.size,0);assert.equal(errors,1);
+ }finally{game.settings=previous.settings;game.neuroshima.config=previous.config;globalThis.ui=previous.ui;globalThis.SettingsConfig=previous.SettingsConfig;console.error=previous.error;}
+});
+
+test("physical armor uses only actor-type restrictions while category settings show explosive and custom types", async () => {
+ const {CombatConfig}=await import("../module/apps/config/combat-config.js");
+ const {normalizeDamageCategorySettings,_applyCustomDamageCategories}=await import("../module/apps/config/damage-category-config.js");
+ const previous={limits:settings.armorCategoryLimits,config:game.neuroshima.config};
+ settings.armorCategoryLimits={physical:1,explosive:3};
+ game.neuroshima.config={damageCategories:{physical:{label:"Physical"},explosive:{label:"Explosive"}}};
+ try{
+   assert.equal(clampArmor(actor(),10,"physical"),6);
+   assert.equal(clampArmor(actor("creature"),10,"physical"),4);
+   assert.equal(clampArmor(actor(),10,"explosive"),3);
+   const context=await new CombatConfig()._prepareContext({});
+   assert.deepEqual(context.builtinRows.map(row=>row.key),["explosive"]);
+   assert.deepEqual(normalizeDamageCategorySettings([],{physical:1,explosive:3}).limits,{explosive:3});
+   assert.throws(()=>normalizeDamageCategorySettings([{key:"physical",label:"Replacement"}]),/duplicate/);
+   _applyCustomDamageCategories([]);assert.ok(game.neuroshima.config.damageCategories.physical);
+ }finally{settings.armorCategoryLimits=previous.limits;game.neuroshima.config=previous.config;}
+});
+
+
+test("body-location protection previews match damage totals and include resistance-only armor", async () => {
+  const { NEUROSHIMA } = await import("../module/config.js");
+  const { armorLocationProtections } = await import("../module/helpers/armor-location.js");
+  const { NeuroshimaActorSheet } = await import("../module/sheets/actor-sheet.js");
+  const { NeuroshimaCreatureSheet } = await import("../module/sheets/creature-sheet.js");
+  const originalCategories = NEUROSHIMA.damageCategories;
+  const originalLimits = settings.armorCategoryLimits;
+  try {
+    NEUROSHIMA.damageCategories = { ...originalCategories, fire: { label: "Fire" } };
+    settings.armorCategoryLimits = { explosive: 3, fire: 2 };
+    const owner = actor();
+    const armor = { id: "vest", uuid: "Actor.a.Item.vest", name: "Vest", type: "armor", actor: owner,
+      system: { equipped: true, armor: { ratings: {}, resistances: [
+        { category: "explosive", head: 2, torso: 1 }, { category: "fire", head: 4 }
+      ] }, mods: { lining: { attached: true } } } };
+    const lining = { id: "lining", type: "armor-mod", getFlag: () => "vest",
+      system: { resistanceDeltas: [{ category: "explosive", head: 2 }] } };
+    const second = { id: "helmet", name: "Helmet", type: "armor",
+      system: { equipped: true, armor: { ratings: { head: 1 }, resistances: [{ category: "explosive", head: 1 }] } } };
+    const unequipped = { type: "armor", system: { equipped: false, armor: { resistances: [{ category: "fire", torso: 9 }] } } };
+    owner.items.push(armor, lining, second, unequipped);
+    const rows = armorLocationProtections(owner, "head");
+    assert.equal(rows.some(row => row.key === "physical"), false);
+    assert.equal(rows.some(row => row.key === "explosive"), false);
+    assert.equal(rows.find(row => row.key === "fire").value, 2);
+    assert.equal(armorLocationProtections(owner, "torso").some(row => row.key === "fire"), false);
+    const equipped = [armor, second];
+    const prepared = NeuroshimaActorSheet.prototype._prepareAnatomicalArmor.call({}, equipped, owner);
+    assert.equal(prepared.head.items.find(item => item.id === "vest").explosiveProtection, 3);
+    assert.equal(prepared.torso.items.length, 1);
+    assert.deepEqual(prepared.head.protections, rows);
+    const creatureItems = NeuroshimaCreatureSheet.prototype._prepareAnatomicalArmor.call({ document: owner }, equipped);
+    assert.equal(creatureItems.torso.items.length, 1);
+    assert.equal(creatureItems.head.items[0].explosiveProtection, 3);
+    settings.armorLimitEnabled = false;
+    assert.equal(armorLocationProtections(owner, "head").find(row => row.key === "fire").value, 4);
+    armor.system.armor.resistanceDamage = { fire: { head: 4 } };
+    assert.equal(armorLocationProtections(owner, "head").find(row => row.key === "fire").value, 0);
+    armor.system.equipped = false;
+    assert.equal(armorLocationProtections(owner, "head").some(row => row.key === "fire"), false);
+    armor.system.equipped = true;
+    lining.system.resistanceDeltas.push({ category: "fire", torso: 2 });
+    assert.equal(armorLocationProtections(owner, "torso").find(row => row.key === "fire").value, 2);
+    armor.system.mods.lining.attached = false;
+    assert.equal(armorLocationProtections(owner, "torso").some(row => row.key === "fire"), false);
+  } finally {
+    NEUROSHIMA.damageCategories = originalCategories;
+    settings.armorCategoryLimits = originalLimits;
+    settings.armorLimitEnabled = true;
+  }
+});
+
+
+test("armor resistance damage is per item, category and location, respects ownership and survives recalculation", async () => {
+  const { NEUROSHIMA } = await import("../module/config.js");
+  const { getEffectiveArmorResistances } = await import("../module/helpers/mod-helpers.js");
+  const { modifyArmorResistance, armorLocationProtections } = await import("../module/helpers/armor-location.js");
+  const categories = NEUROSHIMA.damageCategories;
+  const previousGlobalDamage = settings.armorCategoryGlobalDamage;
+  settings.armorCategoryGlobalDamage = { fire: false, explosive: false };
+  try {
+    NEUROSHIMA.damageCategories = { ...categories, fire: { label: "Fire" } };
+    const owner = actor();
+    const armor = { id: "vest", type: "armor", name: "Vest", isOwner: true,
+      system: { equipped: true, armor: { resistances: [
+        { category: "fire", head: 3, torso: 2 }, { category: "explosive", head: 4 }
+      ] } }, async update(data) { for (const [key,value] of Object.entries(data)) setProperty(this,key,value); } };
+    owner.items.push(armor);
+    const sheet = { document: owner, isEditable: true };
+    const target = { dataset: { itemId: "vest", location: "head", category: "fire" } };
+    await modifyArmorResistance(sheet, {type:"contextmenu"}, target);
+    assert.equal(armor.system.armor.resistanceDamage.fire.head, 1);
+    assert.equal(getEffectiveArmorResistances(armor).fire.head, 2);
+    assert.equal(getEffectiveArmorResistances(armor).fire.head, 2);
+    assert.equal(CombatHelper.getArmorRating(owner,"head","fire").totalSP, 2);
+    assert.equal(armorLocationProtections(owner,"head").find(row=>row.key==="fire").items[0].damaged,true);
+    assert.equal(getEffectiveArmorResistances(armor).fire.torso, 2);
+    assert.equal(getEffectiveArmorResistances(armor).explosive.head, 4);
+    assert.equal(getEffectiveArmorResistances(armor,{includeDamage:false}).fire.head,3);
+    sheet.isEditable=false;
+    await modifyArmorResistance(sheet,{type:"contextmenu"},target);
+    assert.equal(armor.system.armor.resistanceDamage.fire.head,1);
+    sheet.isEditable=true;
+    for(let i=0;i<5;i++) await modifyArmorResistance(sheet,{type:"contextmenu"},target);
+    assert.equal(getEffectiveArmorResistances(armor).fire.head,0);
+    assert.equal(armor.system.armor.resistanceDamage.fire.head,3);
+    await modifyArmorResistance(sheet,{type:"click"},target);
+    assert.equal(getEffectiveArmorResistances(armor).fire.head,1);
+    target.dataset.category="explosive";
+    await modifyArmorResistance(sheet,{type:"contextmenu"},target);
+    assert.equal(CombatHelper.getArmorRating(owner,"head","explosive").totalSP,3);
+    assert.equal(armor.system.armor.resistances[1].head,4);
+  } finally { NEUROSHIMA.damageCategories=categories; settings.armorCategoryGlobalDamage=previousGlobalDamage; }
+});
+
+
+test("category damage defaults to the whole armor and can be restricted to one location", async () => {
+  const { modifyArmorResistance } = await import("../module/helpers/armor-location.js");
+  const { getEffectiveArmorResistances } = await import("../module/helpers/mod-helpers.js");
+  const previous = settings.armorCategoryGlobalDamage;
+  try {
+    settings.armorCategoryGlobalDamage = {};
+    const owner = actor();
+    const vest = { id: "vest", type: "armor", isOwner: true,
+      system: { armor: { durabilityDamage: 2, damage: { head: 1 }, resistances: [
+        { category: "explosive", head: 3, torso: 5, leftArm: 1 }
+      ] } }, async update(data) { for (const [key,value] of Object.entries(data)) setProperty(this,key,value); } };
+    const other = { id: "other", type: "armor", system: { armor: { resistances: [{ category: "explosive", head: 4 }] } } };
+    owner.items.push(vest, other);
+    const sheet = { document: owner, isEditable: true };
+    const target = { dataset: { itemId: "vest", category: "explosive", location: "head" } };
+    await modifyArmorResistance(sheet, { type: "contextmenu" }, target);
+    assert.deepEqual(vest.system.armor.resistanceDamage.explosive,{head:1,torso:1,leftArm:1});
+    assert.equal(getEffectiveArmorResistances(vest).explosive.torso,4);
+    assert.equal(vest.system.armor.durabilityDamage,2);
+    assert.deepEqual(vest.system.armor.damage,{head:1});
+    assert.equal(other.system.armor.resistanceDamage,undefined);
+    settings.armorCategoryGlobalDamage = { explosive: false };
+    await modifyArmorResistance(sheet, { type: "contextmenu" }, target);
+    assert.deepEqual(vest.system.armor.resistanceDamage.explosive,{head:2,torso:1,leftArm:1});
+    settings.armorCategoryGlobalDamage = { explosive: true };
+    await modifyArmorResistance(sheet, { type: "click" }, target);
+    assert.deepEqual(vest.system.armor.resistanceDamage.explosive,{head:1,torso:0,leftArm:0});
+  } finally { settings.armorCategoryGlobalDamage=previous; }
+});
+
+test("combat category checkboxes retain false values through draft capture and normalization", async () => {
+  const { CombatConfig } = await import("../module/apps/config/combat-config.js");
+  const { normalizeDamageCategorySettings } = await import("../module/apps/config/damage-category-config.js");
+  const customRow = { querySelector: selector => ({
+    "[data-category-key]": { value: "acid" }, "[data-category-label]": { value: "Acid" },
+    "[data-category-color]": { value: "#123456" }, "[data-category-limit]": { value: "3" },
+    "[data-category-global-damage]": { checked: false }
+  })[selector] };
+  const builtinRow = { dataset: { damageBuiltinRow: "explosive" }, querySelector: selector => ({
+    "[data-category-limit]": { value: "4" }, "[data-category-global-damage]": { checked: false }
+  })[selector] };
+  const app = new CombatConfig();
+  app.element={querySelectorAll:selector=>selector==="[data-damage-custom-row]"?[customRow]:[builtinRow]};
+  const draft=app._readDamageCategories();
+  assert.equal(draft.custom[0].globalDamage,false);
+  assert.equal(draft.builtinGlobalDamage.explosive,false);
+  const normalized=normalizeDamageCategorySettings(draft.custom,draft.builtinLimits,draft.builtinGlobalDamage);
+  assert.deepEqual(normalized.globalDamage,{explosive:false,acid:false});
+  assert.deepEqual(normalizeDamageCategorySettings([{key:"acid",label:"Acid"}]).globalDamage,{explosive:true,acid:true});
+});
+
+
+test("speciality attribute checkbox selects and clears only its own skills and enforces edit permissions", async () => {
+  const { NeuroshimaItemSheet } = await import("../module/sheets/item-sheet.js");
+  const { NEUROSHIMA } = await import("../module/config.js");
+  const [attribute, groups] = Object.entries(NEUROSHIMA.skillConfiguration)[0];
+  const keys = [...new Set(Object.values(groups).flat())];
+  const other = Object.entries(NEUROSHIMA.skillConfiguration).slice(1).flatMap(([,groups])=>Object.values(groups).flat()).find(key=>!keys.includes(key));
+  assert.ok(other);
+  const item = { type: "speciality", isOwner:true, system: {skills:[keys[0],other]},
+    async update(data) { this.system.skills = data["system.skills"]; } };
+  const sheet=new NeuroshimaItemSheet({document:item});sheet.isEditable=true;
+  const event={target:{dataset:{specialityAttribute:attribute},checked:true}};
+  await sheet._onChangeForm({},event);
+  assert.deepEqual(new Set(item.system.skills),new Set([...keys,other]));
+  assert.equal(item.system.skills.length,keys.length+1);
+  event.target.checked=false;
+  await sheet._onChangeForm({},event);
+  assert.deepEqual(item.system.skills,[other]);
+  sheet.isEditable=false;event.target.checked=true;
+  await sheet._onChangeForm({},event);
+  assert.deepEqual(item.system.skills,[other]);
+  sheet.isEditable=true;item.isOwner=false;
+  await sheet._onChangeForm({},event);
+  assert.deepEqual(item.system.skills,[other]);
+});
+
+
+test("creature attribute rolls pass their key so perception dialog effects are visible and apply once", async () => {
+  const { NeuroshimaCreatureSheet } = await import("../module/sheets/creature-sheet.js");
+  const { NeuroshimaScript } = await import("../module/apps/neuroshima-script-engine.js");
+  const original = Object.getOwnPropertyDescriptor(NeuroshimaCreatureSheet,"_showRollDialog");
+  const beast=actor("creature");
+  beast.system.attributes={perception:9,constitution:8,dexterity:7};
+  beast.system.attributeTotals={perception:12,constitution:10,dexterity:9};
+  NeuroshimaCreatureSheet._showRollDialog=async options=>options;
+  try {
+    const options=await NeuroshimaCreatureSheet.DEFAULT_OPTIONS.actions.rollAttribute.call({document:beast},null,{dataset:{attribute:"perception"}});
+    assert.equal(options.currentAttribute,"perception");
+    assert.equal(options.stat,12);
+    assert.equal(options.isSkill,false);
+    const code="if (args.flags.shadow) return; args.flags.shadow = true; args.fields.difficultyShift += 1;";
+    const hideScript='return !(args.attribute?.key === "perception" || ["spotting", "vigilance", "listening"].includes(args.skill?.key));';
+    const scripts=Array.from({length:4},(_,i)=>new NeuroshimaScript({trigger:"dialog",label:"Quiet",code,hideScript},
+      {id:`aura${i}`,uuid:`Actor.beast.ActiveEffect.aura${i}`,name:"Quiet",actor:beast,getFlag:()=>undefined}));
+    class Runner extends NeuroshimaScriptRunner { static getScripts(actor,trigger) { return trigger==="dialog"?scripts:[]; } }
+    const context={rollType:"attribute",attribute:{key:options.currentAttribute,value:options.stat},difficulty:"average"};
+    const preview=await Runner.computeDialogFields(beast,context);
+    assert.ok(preview.dialogModifiers.length>0);
+    const selected=new Set(preview.dialogModifiers.map(mod=>mod._effectId));
+    const applied=await Runner.computeDialogFields(beast,context,selected);
+    assert.equal(applied.scriptFields.difficultyShift,1);
+    const unrelated=await Runner.computeDialogFields(beast,{...context,attribute:{key:"dexterity",value:9}},selected);
+    assert.equal(unrelated.dialogModifiers.length,0);
+    assert.equal(unrelated.scriptFields.difficultyShift,0);
+    const constitution=await NeuroshimaCreatureSheet.DEFAULT_OPTIONS.actions.rollKondycja.call({document:beast});
+    assert.equal(constitution.currentAttribute,"constitution");
+  } finally {
+    if(original)Object.defineProperty(NeuroshimaCreatureSheet,"_showRollDialog",original);
+    else delete NeuroshimaCreatureSheet._showRollDialog;
+  }
+});
+
+
+test("creature experience and initiative dialogs retain the experience skill key", async () => {
+  const { NeuroshimaCreatureSheet } = await import("../module/sheets/creature-sheet.js");
+  const { NeuroshimaInitiativeRollDialog } = await import("../module/apps/dialogs/initiative-roll-dialog.js");
+  const original=Object.getOwnPropertyDescriptor(NeuroshimaCreatureSheet,"_showRollDialog");
+  const beast=actor("creature");beast.system.experience=5;
+  NeuroshimaCreatureSheet._showRollDialog=async options=>options;
+  try {
+    const options=await NeuroshimaCreatureSheet.DEFAULT_OPTIONS.actions.rollExperience.call({document:beast});
+    assert.equal(options.skillKey,"experience");
+    assert.equal(options.currentAttribute,"dexterity");
+    assert.equal(options.skill,5);
+    assert.equal(new NeuroshimaInitiativeRollDialog({actor:beast}).rollOptions.skill,"experience");
+    assert.equal(new NeuroshimaInitiativeRollDialog({actor:beast,skill:""}).rollOptions.skill,"");
+    assert.equal(new NeuroshimaInitiativeRollDialog({actor:actor("npc")}).rollOptions.skill,"");
+  } finally {
+    if(original)Object.defineProperty(NeuroshimaCreatureSheet,"_showRollDialog",original);
+    else delete NeuroshimaCreatureSheet._showRollDialog;
+  }
+});
+
+test("beast blast profiles preserve attribute, skill mode and source keys through dialogs and recreation", async () => {
+  const { createBeastSegmentGrenade,createBeastSegmentWeapon }=await import("../module/helpers/beast-actions.js");
+  const { NeuroshimaGrenadeRollDialog }=await import("../module/apps/dialogs/grenade-roll-dialog.js");
+  const { GrenadeTest }=await import("../module/tests.mjs");
+  const owner=actor("creature");owner.system.experience=5;
+  owner.system.attributeTotals={perception:13,dexterity:10,constitution:11};
+  owner.system.skills={throwing:{value:2},brawl:{value:3}};
+  const ability={id:"acid",type:"beast-ability",name:"Acid",img:"acid.svg",system:{
+    abilityCategory:"segment",id:"acid-activity",weaponType:"grenade",attribute:"perception",skillMode:"experience",damageCategory:"explosive",blastZones:[{radius:3,damage:"C"}]
+  }};
+  const grenade=createBeastSegmentGrenade(owner,ability);
+  assert.equal(grenade.actor,owner);
+  assert.equal(grenade.isSynthetic,true);
+  assert.equal(grenade.beastItemId,"acid");
+  assert.equal(grenade.beastActivityId,"acid-activity");
+  const dialog=new NeuroshimaGrenadeRollDialog({actor:owner,grenade});
+  const stats=dialog._getRollStats();
+  assert.equal(stats.attribute.key,"perception");assert.equal(stats.attribute.value,13);
+  assert.equal(stats.skill.key,"experience");assert.equal(stats.skill.value,5);
+  const changed=dialog._getRollStats({attributeKey:"constitution",skillKey:"brawl"});
+  assert.equal(changed.attribute.value,11);assert.equal(changed.skill.value,3);
+  const noSkill=createBeastSegmentGrenade(owner,ability,{...ability.system,skillMode:"none"});
+  assert.equal(new NeuroshimaGrenadeRollDialog({actor:owner,grenade:noSkill})._getRollStats().skill,null);
+  const native=new NeuroshimaGrenadeRollDialog({actor:owner,grenade:{system:{}}})._getRollStats();
+  assert.equal(native.attribute.key,"dexterity");assert.equal(native.skill.key,"throwing");assert.equal(native.skill.value,2);
+  const previous={tests:game.neuroshima.tests,resolver:globalThis.fromUuid};
+  game.neuroshima.tests={GrenadeTest,RangedWeaponTest};globalThis.fromUuid=async uuid=>uuid===owner.uuid?owner:null;
+  try {
+    const test=new GrenadeTest({actor:owner,item:grenade,...stats});
+    await test.prepare();
+    assert.equal(test.result.beastItemId,"acid");assert.equal(test.result.beastActivityId,"acid-activity");
+    const restored=await GrenadeTest.recreate(test.toData());
+    assert.equal(restored.item.beastItemId,"acid");assert.equal(restored.item.beastActivityId,"acid-activity");
+    assert.equal(restored.item.system.attribute,"perception");assert.equal(restored.item.system.skill,"experience");
+    assert.deepEqual(restored.item.system.blastZones,ability.system.blastZones);
+    grenade.update=()=>{throw new Error("Ability must not consume grenade quantity");};
+    await test.postTest();
+    const weapon=createBeastSegmentWeapon(owner,ability,{...ability.system,weaponType:"ranged"});
+    const ranged=await RangedWeaponTest.recreate(new RangedWeaponTest({actor:owner,item:weapon}).toData());
+    assert.equal(ranged.item.beastActivityId,"acid-activity");
+    let saved;
+    await GrenadeTest.prototype.postTest.call({context:{},result:{},item:{actor:owner,system:{quantity:2},async update(data){saved=data;}}});
+    assert.equal(saved["system.quantity"],1);
+  } finally {game.neuroshima.tests=previous.tests;globalThis.fromUuid=previous.resolver;}
+});

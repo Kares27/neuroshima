@@ -21,7 +21,8 @@
         "css/actor.css",
         "css/items.css",
         "css/melee.css",
-        "css/item-piles.css"
+        "css/item-piles.css",
+        "css/settings.css"
     ],
     "packs": [
         {
@@ -30,6 +31,18 @@
         "system": "neuroshima",
         "path": "packs/items",
         "type": "Item",
+        "flags": {},
+        "ownership": {
+            "PLAYER": "OBSERVER",
+            "ASSISTANT": "OWNER"
+      }
+    },
+    {
+        "name": "Podręcznik Łowcy",
+        "label": "Podręcznik Łowcy",
+        "system": "neuroshima",
+        "path": "packs/bestiary",
+        "type": "Actor",
         "flags": {},
         "ownership": {
             "PLAYER": "OBSERVER",

@@ -513,7 +513,7 @@ export class CombatHelper {
       NeuroshimaScriptRunner.executeEventSync("APCalc", vArmorArgs, {
         metadata: { role: "target", damage: vArmorArgs }
       });
-      const armorSP = clampArmor(actor, Number(vArmorArgs.sp ?? rawSP) + Number(vArmorArgs.bonusSP ?? 0));
+      const armorSP = clampArmor(actor, Number(vArmorArgs.sp ?? rawSP) + Number(vArmorArgs.bonusSP ?? 0), attackData.damageCategory ?? attackerWeapon?.system?.damageCategory ?? "physical");
 
       const vConfig = NEUROSHIMA.vehicleDamageConfiguration;
       const origPoints = vConfig[vehicleDmgTypeFinal]?.damagePoints ?? 1;
@@ -1270,6 +1270,12 @@ export class CombatHelper {
     let weakPoint = false;
 
     if (actor.type === "creature" && actor.system.naturalArmor) {
+      const commonReduction = Math.max(0, Number(actor.system.naturalArmorReduction) || 0);
+      totalSP += commonReduction;
+      if (commonReduction > 0) details.push({
+        name: game.i18n.localize("NEUROSHIMA.Creature.NaturalArmor.CommonReduction"),
+        ratings: commonReduction, damage: 0, effective: commonReduction
+      });
       const naturalPart = actor.system.naturalArmor[location];
       if (naturalPart) {
         const reduction = Number(naturalPart.reduction) || 0;
@@ -1341,7 +1347,7 @@ export class CombatHelper {
       }
     }
 
-    return { totalSP: clampArmor(actor, totalSP), uncappedSP: totalSP, details, weakPoint };
+    return { totalSP: clampArmor(actor, totalSP, damageCategory), uncappedSP: totalSP, details, weakPoint };
   }
 
   /**
@@ -1407,7 +1413,7 @@ export class CombatHelper {
     NeuroshimaScriptRunner.executeEventSync("APCalc", armorArgs, {
       metadata: { role: "target", damage: armorArgs }
     });
-    totalArmorRating = clampArmor(actor, Number(armorArgs.sp ?? totalArmorRating) + Number(armorArgs.bonusSP ?? 0));
+    totalArmorRating = clampArmor(actor, Number(armorArgs.sp ?? totalArmorRating) + Number(armorArgs.bonusSP ?? 0), damageCategory);
     reductionData.totalArmor = totalArmorRating;
 
     // Piercing only applies to physical armor

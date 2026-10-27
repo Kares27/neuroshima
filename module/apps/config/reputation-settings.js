@@ -9,7 +9,7 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
     static DEFAULT_OPTIONS = {
         id: "reputation-settings",
         tag: "form",
-        classes: ["neuroshima", "reputation-settings"],
+        classes: ["neuroshima", "neuroshima-settings", "reputation-settings"],
         window: {
             title: "NEUROSHIMA.Settings.ReputationConfig.Title",
             resizable: true

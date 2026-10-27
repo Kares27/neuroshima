@@ -465,6 +465,7 @@ export class NeuroshimaCreatureData extends NeuroshimaActorData {
       movement:     new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       experience: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       kondycja:   new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      naturalArmorReduction: new fields.NumberField({ initial: 0, min: 0, step: 0.5 }),
       naturalArmor: new fields.SchemaField({
         head:     naturalArmorPart(),
         torso:    naturalArmorPart(),

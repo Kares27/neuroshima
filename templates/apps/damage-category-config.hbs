@@ -1,65 +1,28 @@
-<div class="damage-category-config-form">
-
-    <section class="dcc-section">
-        <div class="dcc-section-head">
-            <h3>{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.BuiltinHeader"}}</h3>
-        </div>
-        <p class="dcc-hint">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.BuiltinHint"}}</p>
-        <div class="dcc-list dcc-list-builtin">
-            <div class="dcc-list-header">
-                <span class="dcc-col-key">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.ColKey"}}</span>
-                <span class="dcc-col-label">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.ColLabel"}}</span>
-                <span class="dcc-col-color">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.ColColor"}}</span>
-            </div>
-            {{#each builtinRows as |row|}}
-            <div class="dcc-list-row">
-                <span class="dcc-col-key dcc-muted">{{row.key}}</span>
-                <span class="dcc-col-label dcc-muted">{{row.label}}</span>
-                <span class="dcc-col-color">
-                    <span class="dcc-color-swatch" style="background:{{row.color}};"></span>
-                    <span class="dcc-muted">{{row.color}}</span>
-                </span>
-            </div>
-            {{/each}}
-        </div>
-    </section>
-
-    <section class="dcc-section">
-        <div class="dcc-section-head">
-            <h3>{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.CustomHeader"}}</h3>
-            <button type="button" class="dcc-add-btn" data-action="addCategoryRow">
-                <i class="fas fa-plus"></i> {{localize "NEUROSHIMA.Settings.DamageCategoryConfig.AddCategory"}}
-            </button>
-        </div>
-        <p class="dcc-hint">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.CustomHint"}}</p>
-        <div class="dcc-list dcc-list-custom">
-            <div class="dcc-list-header">
-                <span class="dcc-col-key">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.ColKey"}}</span>
-                <span class="dcc-col-label">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.ColLabel"}}</span>
-                <span class="dcc-col-color">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.ColColor"}}</span>
-                <span class="dcc-col-action"></span>
-            </div>
-            {{#if customRows.length}}
-            {{#each customRows as |row|}}
-            <div class="dcc-list-row">
-                <input class="dcc-col-key" type="text" name="custom.{{row.idx}}.key" value="{{row.key}}" placeholder="my_type"/>
-                <input class="dcc-col-label" type="text" name="custom.{{row.idx}}.label" value="{{row.label}}" placeholder="My Type"/>
-                <input class="dcc-col-color dcc-color-input" type="color" name="custom.{{row.idx}}.color" value="{{row.color}}"/>
-                <a class="dcc-col-action dcc-delete-btn" data-action="deleteCategoryRow" data-idx="{{row.idx}}" title="{{localize 'NEUROSHIMA.Settings.DamageCategoryConfig.DeleteCategory'}}">
-                    <i class="fas fa-trash"></i>
-                </a>
-            </div>
-            {{/each}}
-            {{else}}
-            <div class="dcc-list-row dcc-row-empty">
-                {{localize "NEUROSHIMA.Settings.DamageCategoryConfig.CustomEmpty"}}
-            </div>
-            {{/if}}
-        </div>
-    </section>
-
-    <footer class="dcc-footer">
-        <button type="submit"><i class="fas fa-save"></i> {{localize "NEUROSHIMA.Settings.DamageCategoryConfig.Save"}}</button>
-    </footer>
-
+﻿<div class="config-section damage-categories-config">
+    <h3>{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.Title"}}</h3>
+    <p class="notes">{{localize "NEUROSHIMA.ArmorLimit.CategoryHint"}}</p>
+    <h4>{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.BuiltinHeader"}}</h4>
+    <table>
+        <thead><tr><th>{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.ColKey"}}</th><th>{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.ColLabel"}}</th><th>{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.ColColor"}}</th><th>{{localize "NEUROSHIMA.ArmorLimit.CategoryMax"}}</th><th>{{localize "NEUROSHIMA.Armor.GlobalDamage"}}</th></tr></thead>
+        <tbody>{{#each builtinRows as |row|}}<tr data-damage-builtin-row="{{row.key}}">
+            <td>{{row.key}}</td><td>{{row.label}}</td><td><span class="damage-category-swatch" style="background:{{row.color}}"></span></td>
+            <td><input type="number" data-category-limit name="categoryLimits.{{row.key}}" value="{{row.maxArmor}}" min="0" step="0.5" placeholder="—" aria-label="{{row.label}}"></td>
+            <td class="damage-category-global"><input type="checkbox" data-category-global-damage name="categoryGlobalDamage.{{row.key}}" {{checked row.globalDamage}} title="{{localize 'NEUROSHIMA.Armor.GlobalDamageHint'}}" aria-label="{{localize 'NEUROSHIMA.Armor.GlobalDamage'}}"></td>
+        </tr>{{/each}}</tbody>
+    </table>
+    <div class="config-section-heading">
+        <h4>{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.CustomHeader"}}</h4>
+        <button type="button" data-action="addCategoryRow"><i class="fas fa-plus"></i> {{localize "NEUROSHIMA.Settings.DamageCategoryConfig.AddCategory"}}</button>
+    </div>
+    <table>
+        <thead><tr><th>{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.ColKey"}}</th><th>{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.ColLabel"}}</th><th>{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.ColColor"}}</th><th>{{localize "NEUROSHIMA.ArmorLimit.CategoryMax"}}</th><th>{{localize "NEUROSHIMA.Armor.GlobalDamage"}}</th><th></th></tr></thead>
+        <tbody>{{#each customRows as |row|}}<tr data-damage-custom-row="{{row.idx}}">
+            <td><input type="text" data-category-key name="custom.{{row.idx}}.key" value="{{row.key}}" placeholder="my_type" aria-label="{{localize 'NEUROSHIMA.Settings.DamageCategoryConfig.ColKey'}}"></td>
+            <td><input type="text" data-category-label name="custom.{{row.idx}}.label" value="{{row.label}}" aria-label="{{localize 'NEUROSHIMA.Settings.DamageCategoryConfig.ColLabel'}}"></td>
+            <td><input type="color" data-category-color name="custom.{{row.idx}}.color" value="{{row.color}}" aria-label="{{localize 'NEUROSHIMA.Settings.DamageCategoryConfig.ColColor'}}"></td>
+            <td><input type="number" data-category-limit name="custom.{{row.idx}}.maxArmor" value="{{row.maxArmor}}" min="0" step="0.5" placeholder="—" aria-label="{{localize 'NEUROSHIMA.ArmorLimit.CategoryMax'}}"></td>
+            <td class="damage-category-global"><input type="checkbox" data-category-global-damage name="custom.{{row.idx}}.globalDamage" {{checked row.globalDamage}} title="{{localize 'NEUROSHIMA.Armor.GlobalDamageHint'}}" aria-label="{{localize 'NEUROSHIMA.Armor.GlobalDamage'}}"></td>
+            <td><button type="button" data-action="deleteCategoryRow" data-idx="{{row.idx}}" title="{{localize 'NEUROSHIMA.Settings.DamageCategoryConfig.DeleteCategory'}}"><i class="fas fa-trash"></i></button></td>
+        </tr>{{/each}}</tbody>
+    </table>
 </div>

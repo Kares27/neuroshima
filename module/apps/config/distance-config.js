@@ -60,7 +60,7 @@ export class DistanceConfig extends HandlebarsApplicationMixin(ApplicationV2) {
   static DEFAULT_OPTIONS = {
     id: "distance-config",
     tag: "form",
-    classes: ["neuroshima", "distance-config"],
+    classes: ["neuroshima", "neuroshima-settings", "distance-config"],
     window: {
       title: "NEUROSHIMA.Settings.DistanceConfig.Title",
       resizable: true

@@ -2813,6 +2813,7 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
     oznaczony <code>isBeastCombat</code>. Nie jest to rzeczywisty item jednej z akcji: profil ma <code>id</code> i <code>uuid</code> równe <code>null</code>.
     Nie używaj więc <code>args.weapon.id</code> do wskazania wybranej akcji i nie zakładaj, że wszystkie efekty itemów są automatycznie nakładane na przeciwnika.
     Starsze kontenery są rozdzielane przez migrację; zgodność dawnych odwołań czatu jest zachowana.
+    Krok schematu 2.5 utrwala aktualne dane zdolności i przypisania efektów, migruje starsze skrypty AE oraz progi wymaganych testów. Obejmuje dokumenty świata, niezależnych aktorów tokenów oraz kompendia Actor/Item świata i systemu. Nieudany krok nie podnosi wersji schematu; blokady kompendiów są przywracane. Dokumenty importowane później przechodzą normalizację przy imporcie.
   </div>
 
   <h4 class="key-group">Cecha (<code>trait</code>)</h4>
@@ -4882,6 +4883,7 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
   <h4>Naturalna Zbroja (Bestia)</h4>
   <table>
     <tbody><tr><th>Klucz</th><th>Opis</th></tr>
+    <tr><td>system.naturalArmorReduction</td><td>Wspólna redukcja pancerza bestii, doliczana do każdej części ciała bez zmiany jej lokalnej wartości. Domyślnie 0; limit pancerza jest stosowany po zsumowaniu. Limity według rodzaju aktora i typu obrażeń ustawiasz w Ustawieniach Walki. Przy włączonych restrykcjach obowiązuje niższy z ustawionych limitów, także po działaniu APCalc.</td></tr>
     <tr><td>system.naturalArmor.head.reduction</td><td>Redukcja — Głowa</td></tr>
     <tr><td>system.naturalArmor.torso.reduction</td><td>Redukcja — Tułów</td></tr>
     <tr><td>system.naturalArmor.rightArm.reduction</td><td>Redukcja — Prawa Ręka</td></tr>

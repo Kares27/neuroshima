@@ -18,7 +18,7 @@ export class HealingConfig extends HandlebarsApplicationMixin(ApplicationV2) {
     static DEFAULT_OPTIONS = {
         id: "healing-config",
         tag: "form",
-        classes: ["neuroshima", "healing-config"],
+        classes: ["neuroshima", "neuroshima-settings", "healing-config"],
         window: {
             title: "NEUROSHIMA.Settings.HealingConfig.Title",
             resizable: true

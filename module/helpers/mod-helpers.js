@@ -270,7 +270,7 @@ export function getEffectiveArmorRatings(armorItem) {
  * @param {Item} armorItem
  * @returns {Object.<string, {head,torso,leftArm,rightArm,leftLeg,rightLeg}>}
  */
-export function getEffectiveArmorResistances(armorItem) {
+export function getEffectiveArmorResistances(armorItem, { includeDamage = true } = {}) {
   const locs = ["head", "torso", "leftArm", "rightArm", "leftLeg", "rightLeg"];
   const merged = {};
 
@@ -301,6 +301,12 @@ export function getEffectiveArmorResistances(armorItem) {
     }
   }
 
+  if (includeDamage) {
+    const damage = armorItem.system?.armor?.resistanceDamage ?? {};
+    for (const [category, row] of Object.entries(merged)) {
+      for (const loc of locs) row[loc] = Math.max(0, row[loc] - Math.max(0, Number(damage[category]?.[loc]) || 0));
+    }
+  }
   return merged;
 }
 

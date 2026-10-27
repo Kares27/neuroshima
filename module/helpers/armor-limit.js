@@ -1,15 +1,19 @@
 /** Final armor cap; source values stay intact when the option is toggled. */
-export function clampArmor(actor, value) {
+export function clampArmor(actor, value, damageCategory = "physical") {
   const numeric = Number(value) || 0;
   const group = actor?.type === "creature" ? "Creature"
     : actor?.type === "vehicle" ? "Vehicle"
     : ["character", "npc"].includes(actor?.type) ? "Character" : null;
-  if (!group) return numeric;
   try {
     if (!game.settings.get("neuroshima", "armorLimitEnabled")) return numeric;
-    const configured = Number(game.settings.get("neuroshima", `armorLimit${group}`));
-    const limit = Number.isFinite(configured) ? Math.max(0, configured) : 6;
-    return Math.min(numeric, limit);
+    const configured = group ? Number(game.settings.get("neuroshima", `armorLimit${group}`)) : Infinity;
+    const limit = group ? (Number.isFinite(configured) ? Math.max(0, configured) : 6) : Infinity;
+    const categories = game.settings.get("neuroshima", "armorCategoryLimits") ?? {};
+    const rawCategoryLimit = damageCategory !== "physical" && Object.hasOwn(categories, damageCategory)
+      ? categories[damageCategory] : null;
+    const categoryLimit = rawCategoryLimit !== null && rawCategoryLimit !== "" && Number.isFinite(Number(rawCategoryLimit))
+      ? Math.max(0, Number(rawCategoryLimit)) : Infinity;
+    return Math.min(numeric, limit, categoryLimit);
   } catch { return numeric; }
 }
 
@@ -25,7 +29,7 @@ export function refreshArmorLimits() {
 /** Capped form previews must not overwrite armor when another field is saved. */
 export function preserveArmorSourceValues(actor, event, submitData) {
   for (const key of Object.keys(submitData)) {
-    if (!/^system\.naturalArmor\.[^.]+\.reduction$/.test(key) || event?.target?.name === key) continue;
+    if ((!/^system\.naturalArmor\.[^.]+\.reduction$/.test(key) && key !== "system.naturalArmorReduction") || event?.target?.name === key) continue;
     const current = foundry.utils.getProperty(actor, key);
     if (clampArmor(actor, current) === Number(current)) continue;
     const source = foundry.utils.getProperty(actor._source, key);

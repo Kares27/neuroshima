@@ -42,7 +42,16 @@ export function flattenBeastItem(source, activity = {}) {
   const data = structuredClone(source);
   data.name = activity.name || source.name;
   data.img = activity.img || source.img;
-  data.system = { ...data.system, ...structuredClone(activity) };
+  const legacy = source.system?.activities?.length || source.system?.legacyActivities?.length;
+  // A hydrated package exposes its first activity at the root. Other activities must
+  // inherit only the original shared fields, not that first activity's tests or attacks.
+  const shared = legacy ? {
+    description: source.system?.description ?? "",
+    resources: structuredClone(source.system?.resources ?? []),
+    tests: structuredClone(source.system?.tests ?? {}),
+    abilityCategory: source.system?.abilityCategory ?? "action"
+  } : data.system;
+  data.system = { ...shared, ...structuredClone(activity) };
   delete data.system.activities;
   delete data.system.legacyActivities;
   delete data.system.name;
@@ -129,4 +138,10 @@ export function createBeastSegmentWeapon(actor, item, act = beastActivities(item
       skipMagazineCheck: true
     }
   };
+}
+
+/** Blast attacks keep the segment's test settings and source identity. */
+export function createBeastSegmentGrenade(actor, item, act = beastActivities(item)[0] ?? {}) {
+  const profile = createBeastSegmentWeapon(actor, item, act);
+  return { ...profile, type: "grenade", system: { ...profile.system, blastZones: act.blastZones ?? [] } };
 }

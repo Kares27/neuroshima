@@ -67,6 +67,10 @@
         {{!-- LEFT: Combined armor — natural values + equipped items per location --}}
         <div class="creature-combat-col">
             <div class="section-header">
+                <input type="number" name="system.naturalArmorReduction" class="creature-armor-all-input"
+                    value="{{naturalArmorReductionAll}}" min="0" step="0.5"
+                    title="{{localize 'NEUROSHIMA.Creature.NaturalArmor.AllReduction'}}"
+                    aria-label="{{localize 'NEUROSHIMA.Creature.NaturalArmor.AllReduction'}}" {{#unless editable}}disabled{{/unless}}/>
                 <i class="fas fa-shield-alt"></i>
                 <span class="header-label">{{localize "NEUROSHIMA.Creature.NaturalArmor.Title"}}</span>
                 <div class="armor-penalty-total">
@@ -79,12 +83,13 @@
                 <div class="armor-location-box armor-{{this.key}} has-items">
 
                     {{!-- Header: location name + AP sum if any equipped armor --}}
-                    <div class="location-header">
+                    <button type="button" class="location-header armor-protection-toggle" data-armor-toggle data-location="{{this.key}}" aria-expanded="{{#if (lookup @root.armorProtectionExpanded this.key)}}true{{else}}false{{/if}}">
+                        <i class="fas fa-chevron-right armor-protection-chevron" aria-hidden="true"></i>
                         <span class="location-name">{{this.label}}</span>
                         {{#if (gt this.totalEffectiveAP 0)}}
                         <span class="location-ap-sum" data-tooltip-html="{{this.tooltip}}">{{this.totalEffectiveAP}}</span>
                         {{/if}}
-                    </div>
+                    </button>
 
                     {{!-- Column labels as sub-header --}}
                     <div class="nat-armor-col-headers">
@@ -122,9 +127,10 @@
                     {{#if this.items.length}}
                     <div class="armor-column-headers">
                         <span class="armor-header-icon"></span>
-                        <span class="armor-header-name">{{localize "Name"}}</span>
+                        <span class="armor-header-name">{{localize "NEUROSHIMA.Armor.Name"}}</span>
                         <span class="armor-header-dur">{{localize "NEUROSHIMA.Items.Fields.DurabilityAbbr"}}</span>
                         <span class="armor-header-ap">AP</span>
+                        <span class="armor-header-explosive" style="--armor-type-color: {{@root.armorExplosiveColor}}" title="{{localize 'NEUROSHIMA.DamageCategory.explosive'}}"><i class="fas fa-explosion"></i></span>
                     </div>
                     <div class="location-armor-list">
                         {{#each this.items as |armor|}}
@@ -144,10 +150,26 @@
                                   title="LPM: {{localize "NEUROSHIMA.Actions.Repair"}} | PPM: {{localize "NEUROSHIMA.Actions.Damage"}}">
                                 {{armor.currentRating}}
                             </span>
+                            <span class="armor-explosive-value clickable {{#if armor.explosiveDamaged}}is-damaged{{/if}}" style="--armor-type-color: {{@root.armorExplosiveColor}}" data-armor-resistance data-item-id="{{armor.id}}" data-category="explosive" data-location="{{../key}}" title="LPM: {{localize 'NEUROSHIMA.Actions.Repair'}} | PPM: {{localize 'NEUROSHIMA.Actions.Damage'}}">{{armor.explosiveProtection}}</span>
                         </div>
                         {{/each}}
                     </div>
                     {{/if}}
+                    <div class="armor-protection-panel {{#if (lookup @root.armorProtectionExpanded this.key)}}is-expanded{{/if}}" aria-hidden="{{#if (lookup @root.armorProtectionExpanded this.key)}}false{{else}}true{{/if}}" {{#unless (lookup @root.armorProtectionExpanded this.key)}}inert{{/unless}}>
+                      <div class="armor-protection-clip">
+                       <div class="armor-protection-list">
+                        {{#each this.protections}}
+                        <div class="armor-protection-type" style="--armor-type-color: {{this.color}}">
+                        <div class="armor-protection-row"><span>{{localize this.label}}</span><strong>{{this.value}}</strong></div>
+                        {{#each this.items}}
+                        <div class="armor-protection-source"><span>{{this.name}}</span><span class="armor-resistance-value clickable {{#if this.damaged}}is-damaged{{/if}}" data-armor-resistance data-item-id="{{this.id}}" data-category="{{this.category}}" data-location="{{this.location}}" title="LPM: {{localize 'NEUROSHIMA.Actions.Repair'}} | PPM: {{localize 'NEUROSHIMA.Actions.Damage'}}">{{this.value}}</span></div>
+                        {{/each}}
+                        </div>
+                        {{/each}}
+                    </div>
+                      </div>
+                    </div>
+
 
                 </div>
                 {{/each}}
@@ -157,17 +179,18 @@
         {{!-- RIGHT: Beast Actions + Beast Maneuvers stacked --}}
         <div class="creature-combat-col">
 
-            {{!-- Beast Actions (success-based) --}}
+            {{!-- Beast abilities grouped by their activation cost --}}
             <div class="section-header">
                 <i class="fas fa-paw"></i>
                 <span class="header-label">{{localize "NEUROSHIMA.BeastAction.Label"}}</span>
-                <div class="header-controls">
-                    <a class="item-control" data-action="createItem" data-type="beast-ability" data-category="action"
-                        title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
-                </div>
             </div>
 
-            <ul class="item-list creature-actions-list">
+            <ul class="item-list creature-actions-list creature-abilities-list">
+                <li class="creature-ability-group-header">
+                    <span>{{localize "NEUROSHIMA.BeastAbility.SuccessActions"}}</span>
+                    {{#if editable}}<a class="item-control" data-action="createItem" data-type="beast-ability" data-category="action"
+                        title="{{localize 'NEUROSHIMA.BeastAbility.NewAction'}}"><i class="fas fa-plus"></i></a>{{/if}}
+                </li>
                 {{!-- Equipped weapons --}}
                 {{#each inventory.beastActions}}
                 <li class="item item-weapon-action" data-item-id="{{this.id}}">
@@ -204,19 +227,12 @@
                 <li class="item-list-empty">{{localize "NEUROSHIMA.BeastAction.None"}}</li>
                 {{/unless}}
                 {{/each}}
-            </ul>
 
-            {{!-- Beast Segments (segment-based) --}}
-            <div class="section-header" style="margin-top: 8px;">
-                <i class="fas fa-hourglass-half"></i>
-                <span class="header-label">{{localize "NEUROSHIMA.BeastSegment.Label"}}</span>
-                <div class="header-controls">
-                    <a class="item-control" data-action="createItem" data-type="beast-ability" data-category="segment"
-                        title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
-                </div>
-            </div>
-
-            <ul class="item-list creature-actions-list">
+                <li class="creature-ability-group-header">
+                    <span>{{localize "NEUROSHIMA.BeastAbility.SegmentActions"}}</span>
+                    {{#if editable}}<a class="item-control" data-action="createItem" data-type="beast-ability" data-category="segment"
+                        title="{{localize 'NEUROSHIMA.BeastAbility.NewSegment'}}"><i class="fas fa-plus"></i></a>{{/if}}
+                </li>
                 {{#each inventory.beastSegmentItems}}
                 <li class="item draggable beast-segment-item" data-item-id="{{this.id}}" draggable="true">
                     <img class="item-img" src="{{this.img}}" title="{{this.name}}" width="16" height="16"/>
@@ -279,7 +295,7 @@
 
         <div class="combat-table wounds-table">
             <div class="table-header">
-                <div class="col-name">{{localize "Name"}}</div>
+                <div class="col-name">{{localize "NEUROSHIMA.Armor.Name"}}</div>
                 <div class="col-location">{{localize "NEUROSHIMA.Items.Fields.Location"}}</div>
                 <div class="col-type">{{localize "NEUROSHIMA.Items.Fields.DamageType"}}</div>
                 <div class="col-penalty">{{localize "NEUROSHIMA.Items.Fields.Penalty"}}</div>

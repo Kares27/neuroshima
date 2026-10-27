@@ -205,18 +205,20 @@
             <div class="armor-anatomical-grid">
                 {{#each combat.anatomicalArmor as |location key|}}
                 <div class="armor-location-box armor-{{key}} {{#if location.items.length}}has-items{{else}}empty{{/if}}">
-                    <div class="location-header">
+                    <button type="button" class="location-header armor-protection-toggle" data-armor-toggle data-location="{{key}}" aria-expanded="{{#if (lookup @root.armorProtectionExpanded key)}}true{{else}}false{{/if}}">
+                        <i class="fas fa-chevron-right armor-protection-chevron" aria-hidden="true"></i>
                         <span class="location-name">{{localize location.label}}</span>
                         {{#if (gt location.totalAP 0)}}
                         <span class="location-ap-sum" data-tooltip-html="{{location.tooltip}}">{{location.totalAP}}</span>
                         {{/if}}
-                    </div>
+                    </button>
                     {{#if location.items.length}}
                     <div class="armor-column-headers">
                         <span class="armor-header-icon"></span>
-                        <span class="armor-header-name">{{localize "Name"}}</span>
+                        <span class="armor-header-name">{{localize "NEUROSHIMA.Armor.Name"}}</span>
                         <span class="armor-header-dur">{{localize "NEUROSHIMA.Items.Fields.DurabilityAbbr"}}</span>
                         <span class="armor-header-ap">AP</span>
+                        <span class="armor-header-explosive" style="--armor-type-color: {{@root.armorExplosiveColor}}" title="{{localize 'NEUROSHIMA.DamageCategory.explosive'}}"><i class="fas fa-explosion"></i></span>
                         <span class="armor-header-rad" title="{{localize 'NEUROSHIMA.RadiationResistance'}}"><i class="fas fa-radiation-alt"></i></span>
                     </div>
                     <div class="location-armor-list">
@@ -237,6 +239,7 @@
                                   title="LPM: {{localize "NEUROSHIMA.Actions.Repair"}} | PPM: {{localize "NEUROSHIMA.Actions.Damage"}}">
                                 {{armor.currentRating}}
                             </span>
+                            <span class="armor-explosive-value clickable {{#if armor.explosiveDamaged}}is-damaged{{/if}}" style="--armor-type-color: {{@root.armorExplosiveColor}}" data-armor-resistance data-item-id="{{armor.id}}" data-category="explosive" data-location="{{key}}" title="LPM: {{localize 'NEUROSHIMA.Actions.Repair'}} | PPM: {{localize 'NEUROSHIMA.Actions.Damage'}}">{{armor.explosiveProtection}}</span>
                             <span class="armor-rad-value {{#if armor.radiationProtection}}has-rad{{/if}}">
                                 {{#if armor.radiationProtection}}{{armor.radiationProtection}}{{else}}-{{/if}}
                             </span>
@@ -246,6 +249,21 @@
                     {{else}}
                     <div class="location-empty">{{localize "NEUROSHIMA.Armor.None"}}</div>
                     {{/if}}
+                    <div class="armor-protection-panel {{#if (lookup @root.armorProtectionExpanded key)}}is-expanded{{/if}}" aria-hidden="{{#if (lookup @root.armorProtectionExpanded key)}}false{{else}}true{{/if}}" {{#unless (lookup @root.armorProtectionExpanded key)}}inert{{/unless}}>
+                      <div class="armor-protection-clip">
+                       <div class="armor-protection-list">
+                        {{#each location.protections}}
+                        <div class="armor-protection-type" style="--armor-type-color: {{this.color}}">
+                        <div class="armor-protection-row"><span>{{localize this.label}}</span><strong>{{this.value}}</strong></div>
+                        {{#each this.items}}
+                        <div class="armor-protection-source"><span>{{this.name}}</span><span class="armor-resistance-value clickable {{#if this.damaged}}is-damaged{{/if}}" data-armor-resistance data-item-id="{{this.id}}" data-category="{{this.category}}" data-location="{{this.location}}" title="LPM: {{localize 'NEUROSHIMA.Actions.Repair'}} | PPM: {{localize 'NEUROSHIMA.Actions.Damage'}}">{{this.value}}</span></div>
+                        {{/each}}
+                        </div>
+                        {{/each}}
+                    </div>
+                      </div>
+                    </div>
+
                 </div>
                 {{/each}}
             </div>
@@ -340,7 +358,7 @@
                 </div>
                 <div class="combat-table wounds-table">
                     <div class="table-header">
-                        <div class="col-name">{{localize "Name"}}</div>
+                        <div class="col-name">{{localize "NEUROSHIMA.Armor.Name"}}</div>
                         <div class="col-location">{{localize "NEUROSHIMA.Items.Fields.Location"}}</div>
                         <div class="col-type">{{localize "NEUROSHIMA.Items.Fields.DamageType"}}</div>
                         <div class="col-penalty">{{localize "NEUROSHIMA.Items.Fields.Penalty"}}</div>

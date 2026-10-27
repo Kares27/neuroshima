@@ -1,0 +1,38 @@
+/* Layout additions use the existing settings colors and controls from base.css. */
+.neuroshima.combat-config .config-section-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+.neuroshima.combat-config .damage-categories-config h4 { color: var(--ns-text-accent); }
+.neuroshima.combat-config .damage-categories-config table {
+    width: 100%;
+    table-layout: fixed;
+}
+.neuroshima.combat-config .damage-categories-config :is(th, td) {
+    padding: 3px;
+    text-align: center;
+}
+.neuroshima.combat-config .damage-categories-config :is(th, td):nth-child(3) { width: 50px; }
+.neuroshima.combat-config .damage-categories-config :is(th, td):nth-child(4) { width: 86px; }
+.neuroshima.combat-config .damage-categories-config :is(th, td):nth-child(5) { width: 80px; }
+.neuroshima.combat-config .damage-categories-config :is(th, td):nth-child(6) { width: 36px; }
+.neuroshima.combat-config .damage-categories-config :is(input:not([type="checkbox"]), select) { width: 100%; min-width: 0; }
+.neuroshima.combat-config .damage-category-swatch {
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+    vertical-align: middle;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 3px;
+}
+.neuroshima.combat-config .damage-categories-config input[type="color"] {
+    width: 28px;
+    height: 28px;
+    padding: 1px;
+}
+.neuroshima.settings-transfer-config .settings-transfer-preview { margin: 10px 0; }
+.neuroshima.settings-transfer-config .settings-transfer-preview summary { cursor: pointer; }
+.neuroshima.settings-transfer-config .settings-transfer-preview ul { max-height: 240px; overflow-y: auto; overflow-wrap: anywhere; }
+.neuroshima.settings-transfer-config .settings-transfer-preview small { color: var(--ns-text-light); }

@@ -348,7 +348,7 @@ class ConditionCheckEditor extends HandlebarsApplicationMixin(ApplicationV2) {
 
   static DEFAULT_OPTIONS = {
     tag: "form",
-    classes: ["neuroshima", "condition-check-editor"],
+    classes: ["neuroshima", "neuroshima-settings", "condition-check-editor"],
     window: {
       resizable: true,
       contentClasses: ["standard-form"]
@@ -396,7 +396,7 @@ export class ConditionConfig extends HandlebarsApplicationMixin(ApplicationV2) {
   static DEFAULT_OPTIONS = {
     id: "condition-config",
     tag: "form",
-    classes: ["neuroshima", "condition-config"],
+    classes: ["neuroshima", "neuroshima-settings", "condition-config"],
     window: {
       title: "NEUROSHIMA.Settings.ConditionConfig.Title",
       resizable: true

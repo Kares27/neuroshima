@@ -1,4 +1,5 @@
-import { migrateBeastItem } from "./beast-actions.js";
+import { migrateCurrentDocument, migrateRequiredTestMessage } from "./document-migrations.js";
+import { getConditions } from "../apps/config/condition-config.js";
 /**
  * Schema migration system for Neuroshima 1.5.
  *
@@ -40,18 +41,24 @@ import { collectTraitSnapshots } from "./trait-snapshot.js";
 import { normalizeEffectPenaltyChanges } from "./effect-penalty.js";
 import { GEAR_TYPE_KEYS, normalizeGearType } from "./gear-types.js";
 
-const CURRENT_SCHEMA_VERSION = "2.4";
+const CURRENT_SCHEMA_VERSION = "2.5";
 
 export function registerMigrationHook() {
     const migrateImported = async item => {
         if (!game.user.isGM || (game.users.activeGM && game.users.activeGM.id !== game.user.id)) return;
-        try { await migrateBeastItem(item); }
-        catch (error) { console.error("Neuroshima | Beast item migration failed", error); }
+        try { await migrateCurrentDocument(item); }
+        catch (error) { console.error("Neuroshima | Document compatibility migration failed", error); }
     };
     Hooks.on("createItem", migrateImported);
     Hooks.on("updateItem", migrateImported);
-    Hooks.on("createActor", async actor => {
-        for (const item of actor.items) await migrateImported(item);
+    Hooks.on("createActor", migrateImported);
+    Hooks.on("createToken", async token => {
+        if (!token.actorLink && token.actor) await migrateImported(token.actor);
+    });
+    Hooks.on("createScene", async scene => {
+        for (const token of scene.tokens ?? []) {
+            if (!token.actorLink && token.actor) await migrateImported(token.actor);
+        }
     });
     Hooks.once("ready", async () => {
         if (!game.user.isGM || (game.users.activeGM && game.users.activeGM.id !== game.user.id)) return;
@@ -64,9 +71,9 @@ export function registerMigrationHook() {
         }
 
         if (_versionGte(stored, CURRENT_SCHEMA_VERSION)) {
-            try { await _migrateBeastItems(); }
+            try { await _normalizeLiveCurrentDocuments(); }
             catch (error) {
-                console.error("Neuroshima | Beast item migration failed", error);
+                console.error("Neuroshima | Document compatibility migration failed", error);
                 ui.notifications.error(game.i18n.localize("NEUROSHIMA.Migration.Failed"));
             }
             // Legacy Item JSON can be imported after the versioned migration
@@ -104,7 +111,7 @@ export function registerMigrationHook() {
             // refactor was being developed cannot retain weapon-type grenades.
             if (!_versionGte(stored, "2.0")) await _migrate_1_9_to_2_0();
             if (!_versionGte(stored, "2.1")) await _migrate_2_0_to_2_1();
-            await _migrateBeastItems();
+            if (!_versionGte(stored, "2.5")) await migrateCurrentWorld();
 
             await game.settings.set("neuroshima", "schemaVersion", CURRENT_SCHEMA_VERSION);
             ui.notifications.info(game.i18n.localize("NEUROSHIMA.Migration.Done"));
@@ -122,16 +129,16 @@ export function registerMigrationHook() {
  * (unlinked) token actors from every scene.
  * @returns {Actor[]}
  */
-function _allActors() {
+export function collectMigrationActors() {
     const seen = new Set();
     const result = [];
-    for (const actor of game.actors) {
+    for (const actor of game.actors ?? []) {
         seen.add(actor.uuid);
         result.push(actor);
     }
-    for (const scene of game.scenes) {
+    for (const scene of game.scenes ?? []) {
         for (const token of scene.tokens) {
-            if (token.isLinked) continue;
+            if (token.isLinked || token.actorLink) continue;
             const a = token.actor;
             if (!a || seen.has(a.uuid)) continue;
             seen.add(a.uuid);
@@ -312,7 +319,7 @@ async function _migrate_1_1_normalizeWorldItemMods(item) {
 async function _migrate_1_0_to_1_1() {
     console.log("Neuroshima | Running migration 1.0 → 1.1 (mod parent synchronisation)");
 
-    for (const actor of _allActors()) {
+    for (const actor of collectMigrationActors()) {
         try {
             await _migrate_1_1_normalizeActorMods(actor);
         } catch (err) {
@@ -367,7 +374,7 @@ async function _migrate_1_1_to_1_2() {
         }
     }
 
-    for (const actor of _allActors()) {
+    for (const actor of collectMigrationActors()) {
         for (const trait of actor.items) {
             if (trait.type !== "trait" || _hasStoredTraitCategory(trait)) continue;
             try {
@@ -406,7 +413,7 @@ async function _materializeBackgroundTraitCopies(item) {
 async function _migrate_1_5_to_1_6() {
     console.log("Neuroshima | Running migration 1.5 -> 1.6 (embedded background trait copies)");
     for (const item of _allWorldItems()) await _materializeBackgroundTraitCopies(item);
-    for (const actor of _allActors()) {
+    for (const actor of collectMigrationActors()) {
         for (const item of actor.items) await _materializeBackgroundTraitCopies(item);
     }
 
@@ -454,7 +461,7 @@ async function _migrateEffectPenaltyDocument(document) {
 async function _migrate_1_6_to_1_7() {
     console.log("Neuroshima | Running migration 1.6 -> 1.7 (effect penalty key)");
 
-    for (const actor of _allActors()) await _migrateEffectPenaltyDocument(actor);
+    for (const actor of collectMigrationActors()) await _migrateEffectPenaltyDocument(actor);
     for (const item of _allWorldItems()) await _migrateEffectPenaltyChanges(item);
 
     // World compendia belong to the current world and may contain reusable
@@ -517,7 +524,7 @@ async function _filterGearCategorySettings() {
 async function _migrate_1_7_to_1_8() {
     console.log("Neuroshima | Running migration 1.7 -> 1.8 (gear categories)");
 
-    for (const actor of _allActors()) await _normalizeGearItems(actor);
+    for (const actor of collectMigrationActors()) await _normalizeGearItems(actor);
     for (const item of _allWorldItems()) await _normalizeGearItem(item);
     await _filterGearCategorySettings();
 
@@ -575,7 +582,7 @@ async function _sweepLiveLegacyGrenades() {
     for (const item of _allWorldItems()) {
         if (await _migrateLegacyGrenade(item)) converted += 1;
     }
-    for (const actor of _allActors()) {
+    for (const actor of collectMigrationActors()) {
         for (const item of actor.items ?? []) {
             if (await _migrateLegacyGrenade(item)) converted += 1;
         }
@@ -660,7 +667,7 @@ async function _migrateGrenadeLauncherDocument(document) {
 async function _migrate_1_8_to_1_9() {
     console.log("Neuroshima | Running migration 1.8 -> 1.9 (grenades and launchers)");
     for (const item of _allWorldItems()) await _migrateGrenadeLauncherDocument(item);
-    for (const actor of _allActors()) await _migrateGrenadeLauncherDocument(actor);
+    for (const actor of collectMigrationActors()) await _migrateGrenadeLauncherDocument(actor);
 
     const packs = game.packs?.contents ?? Array.from(game.packs ?? []);
     for (const pack of packs.filter(pack => {
@@ -739,7 +746,7 @@ async function _normalizeGrenadeRollFields(item) {
 async function _migrate_2_0_to_2_1() {
     console.log("Neuroshima | Running migration 2.0 -> 2.1 (grenade throw configuration)");
     for (const item of _allWorldItems()) await _normalizeGrenadeRollFields(item);
-    for (const actor of _allActors()) {
+    for (const actor of collectMigrationActors()) {
         for (const item of actor.items ?? []) await _normalizeGrenadeRollFields(item);
     }
 
@@ -771,7 +778,7 @@ async function _migrate_2_0_to_2_1() {
 export function auditEffectTriggers() {
     const report = { documents: 0, effects: 0, scripts: 0, triggers: {} };
     const documents = [];
-    for (const actor of _allActors()) documents.push(actor, ...(actor.items ?? []));
+    for (const actor of collectMigrationActors()) documents.push(actor, ...(actor.items ?? []));
     documents.push(..._allWorldItems());
 
     for (const document of documents) {
@@ -813,11 +820,11 @@ export async function normalizeActor(actor) {
     await _migrate_1_1_normalizeActorMods(actor);
     await _migrateGrenadeLauncherDocument(actor);
     await _repairStoredSystemData(actor);
+    await migrateCurrentDocument(actor);
     for (const item of Array.from(actor.items)) {
-        await migrateBeastItem(item);
-        try { await _normalizeGearItem(item); } catch (_) {}
-        try { await _repairStoredSystemData(item); } catch (_) {}
-        try { await _materializeBackgroundTraitCopies(item); } catch (_) {}
+        await _normalizeGearItem(item);
+        await _repairStoredSystemData(item);
+        await _materializeBackgroundTraitCopies(item);
     }
 }
 
@@ -837,40 +844,89 @@ export async function normalizeAll() {
     if (!game.user.isGM) return;
     ui.notifications.info("Neuroshima | Normalizacja dokumentów...");
 
-    for (const actor of _allActors()) {
+    const errors = [];
+    for (const actor of collectMigrationActors()) {
         try {
-            await _migrate_1_1_normalizeActorMods(actor);
-            await _migrateGrenadeLauncherDocument(actor);
-            await _repairStoredSystemData(actor);
-            for (const item of actor.items) {
-                try { await _normalizeGearItem(item); } catch (_) {}
-                try { await _repairStoredSystemData(item); } catch (_) {}
-                try { await _materializeBackgroundTraitCopies(item); } catch (_) {}
-            }
+            await normalizeActor(actor);
         } catch (err) {
+            errors.push({ uuid: actor.uuid, error: err.message });
             console.warn(`Neuroshima | Normalization failed for actor "${actor.name}":`, err);
         }
     }
 
     for (const item of _allWorldItems()) {
         try {
-            await migrateBeastItem(item);
+            await migrateCurrentDocument(item);
             await _migrateGrenadeLauncherDocument(item);
             await _normalizeGearItem(item);
             await _migrate_1_1_normalizeWorldItemMods(item);
             await _repairStoredSystemData(item);
             await _materializeBackgroundTraitCopies(item);
         } catch (err) {
+            errors.push({ uuid: item.uuid, error: err.message });
             console.warn(`Neuroshima | Normalization failed for world item "${item.name}":`, err);
         }
     }
 
-    ui.notifications.info("Neuroshima | Normalizacja zakończona.");
+    if (errors.length) ui.notifications.error(game.i18n.localize("NEUROSHIMA.Migration.Failed"));
+    else ui.notifications.info("Neuroshima | Normalizacja zakończona.");
+    return { errors };
 }
 
-async function _migrateBeastItems() {
-    for (const actor of _allActors()) {
-        for (const item of Array.from(actor.items)) await migrateBeastItem(item);
+async function _normalizeLiveCurrentDocuments() {
+    for (const actor of collectMigrationActors()) {
+        await migrateCurrentDocument(actor);
     }
-    for (const item of _allWorldItems()) await migrateBeastItem(item);
+    for (const item of _allWorldItems()) await migrateCurrentDocument(item);
+}
+
+/** Persist current schema changes in live documents and managed Actor/Item compendia. */
+export async function migrateCurrentWorld({ includeCompendia = true } = {}) {
+    const report = { actors: 0, items: 0, packs: 0, messages: 0 };
+    const migrate = async document => {
+        await migrateCurrentDocument(document, { persist: true });
+        await _repairStoredSystemData(document);
+        if (document.documentName === "Actor") {
+            report.actors++;
+            for (const item of document.items ?? []) {
+                await _repairStoredSystemData(item);
+                report.items++;
+            }
+        } else if (document.documentName === "Item") report.items++;
+    };
+    for (const actor of collectMigrationActors()) await migrate(actor);
+    for (const item of _allWorldItems()) await migrate(item);
+    if (includeCompendia) {
+        const packs = game.packs?.contents ?? Array.from(game.packs ?? []);
+        for (const pack of packs.filter(pack => {
+            const type = pack.metadata?.type ?? pack.documentName;
+            const owned = pack.metadata?.packageType === "world" || pack.collection?.startsWith("neuroshima.");
+            return owned && ["Actor", "Item"].includes(type);
+        })) {
+            const wasLocked = pack.locked;
+            try {
+                if (wasLocked) await pack.configure({ locked: false });
+                for (const document of await pack.getDocuments()) await migrate(document);
+                report.packs++;
+            } finally {
+                if (wasLocked) await pack.configure({ locked: true });
+            }
+        }
+    }
+    for (const message of game.messages ?? []) {
+        if (!message.getFlag?.("neuroshima", "requiredTestData")) continue;
+        await migrateRequiredTestMessage(message);
+        report.messages++;
+    }
+    const raw = game.settings.get("neuroshima", "conditions");
+    const list = Array.isArray(raw) ? raw : raw?.list;
+    if (Array.isArray(list) && list.length) {
+        const canonical = new Map(getConditions().map(condition => [condition.key, condition]));
+        const migrated = list.map(condition => ({ ...condition,
+            conditionCheckCode: canonical.get(condition.key)?.conditionCheckCode ?? condition.conditionCheckCode }));
+        if (JSON.stringify(migrated) !== JSON.stringify(list)) {
+            await game.settings.set("neuroshima", "conditions", Array.isArray(raw) ? migrated : { ...raw, list: migrated });
+        }
+    }
+    return report;
 }

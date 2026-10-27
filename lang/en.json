@@ -40,8 +40,10 @@
     },
     "NEUROSHIMA": {
         "BeastRequired": {"AddEffect": "Add effect", "UnlinkEffect": "Unlink from test requirement","NeedTarget": "Select a target for this ability.", "Success": "Success", "Failure": "Failure", "Always": "Always"},
-        "BeastAbility": {"NewAction": "Beast Action", "NewSegment": "Beast Segment","Use": "Use", "Category": "Category", "Action": "Action", "Segment": "Segment"},
+        "BeastAbility": {"SuccessActions": "Success-based actions", "SegmentActions": "Segment-based actions","NewAction": "Beast Action", "NewSegment": "Beast Segment","Use": "Use", "Category": "Category", "Action": "Action", "Segment": "Segment"},
         "ArmorLimit": {
+            "CategoryMax": "Max. armor",
+            "CategoryHint": "With armor restrictions enabled, category limits cap final protection after effects and modifications. An empty field adds no extra limit; actor-type limits still apply.",
             "Name": "Armor Level Restriction",
             "Hint": "Caps final armor after effects. Disabling restores calculations without a limit.",
             "Character": "Actor & NPC",
@@ -533,6 +535,32 @@
                 "Label": "Configure Encumbrance",
                 "Hint": "Opens the configuration menu for calculating actor encumbrance.",
                 "Saved": "Encumbrance settings have been saved and updated."
+            },
+            "Transfer": {
+                "Title": "Export and import settings",
+                "MenuHint": "Transfer Neuroshima 1.5 configuration between worlds using a JSON file.",
+                "Export": "Export to JSON",
+                "ExportHint": "Exports all system world settings, including additional configuration menus and condition scripts. Excludes combat state and migration markers. Does not include actors, items or module settings.",
+                "Import": "Import from JSON",
+                "ImportHint": "Choose a previously exported file and review the summary. Import replaces settings included in the file; other settings retain their current values. After saving, Foundry will offer to reload the world.",
+                "File": "Settings JSON file",
+                "ImportSave": "Import and save",
+                "SourceVersion": "System version in file",
+                "Changes": "Settings to change",
+                "Skipped": "Skipped settings",
+                "Summary": "Recognized: {count}. To change: {changes}. Skipped: {skipped}.",
+                "Imported": "Settings imported. Changed: {count}.",
+                "Errors": {
+                    "Permission": "Only a GM can export or import world settings.",
+                    "InvalidJSON": "Cannot read the file: invalid JSON.",
+                    "InvalidFile": "This is not a supported Neuroshima settings file.",
+                    "InvalidValue": "Invalid value for setting: {key}. The import was not saved.",
+                    "NoSettings": "The file contains no recognized settings to import.",
+                    "Busy": "A settings import is already in progress.",
+                    "SaveFailed": "Import failed. Previous settings were restored.",
+                    "RollbackFailed": "Import failed. Could not restore settings: {keys}. Check configuration before continuing play.",
+                    "Unexpected": "Could not transfer settings. See the console for details."
+                }
             },
             "CombatConfig": {
                 "Title": "Combat Settings",
@@ -1620,6 +1648,10 @@
             "ChangeStateChanged": "The reputation value changed while the dialog was open. Try again."
         },
         "Armor": {
+            "Name": "Name",
+            "GlobalDamage": "Whole armor",
+            "GlobalDamageHint": "Checked: damaging or repairing this protection type affects all locations on the armor item. Unchecked: affects only the selected location. Durability is unchanged.",
+            "ProtectionDetails": "Protection by damage type",
             "TotalPenalty": "Total Penalty",
             "None": "No armor",
             "SumAP": "Sum AP"
@@ -1786,6 +1818,8 @@
             "Kondycja": "Stamina",
             "KondycjaHint": "General physical endurance of the creature",
             "NaturalArmor": {
+                "AllReduction": "Common armor reduction, added to every body location",
+                "CommonReduction": "Common armor",
             "Title": "Armor",
             "Location": "Location",
             "Reduction": "Damage Reduction",

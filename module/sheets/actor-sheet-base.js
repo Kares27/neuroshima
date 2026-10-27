@@ -1,3 +1,4 @@
+import { modifyArmorResistance, armorProtectionColor } from "../helpers/armor-location.js";
 import { NeuroshimaSkillRollDialog } from "../apps/dialogs/skill-roll-dialog.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { NEUROSHIMA } from "../config.js";
@@ -97,6 +98,8 @@ export class NeuroshimaBaseActorSheet extends HandlebarsApplicationMixin(ActorSh
 
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
+    context.armorProtectionExpanded = Object.fromEntries(Array.from(this._expandedArmorLocations ?? [], key => [key, true]));
+    context.armorExplosiveColor = armorProtectionColor("explosive");
     if (["character", "npc", "creature"].includes(this.document.type)) {
       // Editable fields must use source values, before Active Effects are applied.
       context.movementBase = this.document._source.system.movement;
@@ -131,6 +134,34 @@ export class NeuroshimaBaseActorSheet extends HandlebarsApplicationMixin(ActorSh
 
   async _onRender(context, options) {
     await super._onRender(context, options);
+
+    this._expandedArmorLocations ??= new Set();
+    this.element.querySelectorAll("[data-armor-toggle]").forEach(button => {
+      const box = button.closest(".armor-location-box");
+      const panel = box.querySelector(".armor-protection-panel");
+      const key = button.dataset.location;
+      const refresh = () => {
+        const expanded = this._expandedArmorLocations.has(key);
+        button.setAttribute("aria-expanded", String(expanded));
+        panel.classList.toggle("is-expanded", expanded);
+        panel.setAttribute("aria-hidden", String(!expanded));
+        panel.inert = !expanded;
+      };
+      box.classList.remove("armor-protection-animate");
+      refresh();
+      button.addEventListener("click", () => {
+        box.classList.add("armor-protection-animate");
+        if (this._expandedArmorLocations.has(key)) this._expandedArmorLocations.delete(key);
+        else this._expandedArmorLocations.add(key);
+        refresh();
+      });
+    });
+    this.element.querySelectorAll("[data-armor-resistance]").forEach(value => {
+      for (const type of ["click", "contextmenu"]) value.addEventListener(type, event => {
+        event.preventDefault();
+        void modifyArmorResistance(this, event, value);
+      });
+    });
 
     if (context.isObserverView) {
       this.element.querySelectorAll("input, select, textarea").forEach(el => {

@@ -38,6 +38,7 @@ export const NS_CHANGE_KEYS = [
     { key: "system.armorBonus.leftLeg",  label: "NEUROSHIMA.Effects.Keys.ArmorBonus.LeftLeg" }
   ]},
   { group: "NEUROSHIMA.Effects.Keys.Group.NaturalArmor", actorTypes: ["creature"], keys: [
+    { key: "system.naturalArmorReduction", label: "NEUROSHIMA.Creature.NaturalArmor.CommonReduction" },
     { key: "system.naturalArmor.head.reduction",     label: "NEUROSHIMA.Effects.Keys.NaturalArmor.Head" },
     { key: "system.naturalArmor.torso.reduction",    label: "NEUROSHIMA.Effects.Keys.NaturalArmor.Torso" },
     { key: "system.naturalArmor.rightArm.reduction", label: "NEUROSHIMA.Effects.Keys.NaturalArmor.RightArm" },

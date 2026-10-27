@@ -1626,10 +1626,68 @@
 }
 
 .neuroshima.sheet.actor .armor-header-icon { flex: 0 0 20px; }
-.neuroshima.sheet.actor .armor-header-name { flex: 2; }
-.neuroshima.sheet.actor .armor-header-dur { flex: 1; text-align: center; }
-.neuroshima.sheet.actor .armor-header-ap  { flex: 1; text-align: center; }
-.neuroshima.sheet.actor .armor-header-rad { flex: 0 0 28px; text-align: center; }
+.neuroshima.sheet.actor .armor-header-name { flex: 2; min-width: 0; font-size: 13px; }
+.neuroshima.sheet.actor .armor-header-dur,
+.neuroshima.sheet.actor .armor-header-ap,
+.neuroshima.sheet.actor .armor-header-explosive,
+.neuroshima.sheet.actor .armor-header-rad {
+    flex: 1 1 0;
+    min-width: 0;
+    text-align: center;
+    font-size: 13px;
+}
+
+.neuroshima.sheet.actor .armor-header-explosive,
+.neuroshima.sheet.actor .armor-explosive-value {
+    text-align: center;
+    color: var(--armor-type-color, #ff8800);
+}
+
+.neuroshima.sheet.actor .location-header { gap: 6px; }
+.neuroshima.sheet.actor .location-header .location-name { flex: 1; }
+.neuroshima.sheet.actor .armor-protection-toggle {
+    width: 100%;
+    height: auto;
+    min-height: 26px;
+    margin: 0;
+    padding: 2px 8px;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    line-height: 22px;
+    text-align: left;
+    cursor: pointer;
+}
+.neuroshima.sheet.actor .armor-protection-toggle:is(:hover, :focus, :active) { border: none; outline: none; box-shadow: none; }
+.neuroshima.sheet.actor .armor-protection-toggle:focus-visible { outline: 1px solid var(--ns-text-light, #ddd); outline-offset: -2px; }
+.neuroshima.sheet.actor .armor-protection-chevron { font-size: 14px; flex: 0 0 14px; margin: 0; line-height: inherit; }
+.neuroshima.sheet.actor .armor-protection-toggle[aria-expanded="true"] .armor-protection-chevron { transform: rotate(90deg); }
+.neuroshima.sheet.actor .armor-protection-panel {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+}
+.neuroshima.sheet.actor .armor-protection-panel.is-expanded { grid-template-rows: 1fr; opacity: 1; }
+.neuroshima.sheet.actor .armor-protection-clip { min-height: 0; overflow: hidden; }
+.neuroshima.sheet.actor .armor-protection-animate .armor-protection-panel { transition: grid-template-rows 180ms ease, opacity 180ms ease; }
+.neuroshima.sheet.actor .armor-protection-animate .armor-protection-chevron { transition: transform 180ms ease; }
+@media (prefers-reduced-motion: reduce) {
+    .neuroshima.sheet.actor .armor-protection-animate .armor-protection-panel,
+    .neuroshima.sheet.actor .armor-protection-animate .armor-protection-chevron { transition: none; }
+}
+.neuroshima.sheet.actor .armor-protection-list { padding: 4px 8px; border-top: 1px solid var(--ns-border-main); }
+.neuroshima.sheet.actor .armor-protection-row,
+.neuroshima.sheet.actor .armor-protection-source { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; font-size: 14px; }
+.neuroshima.sheet.actor .armor-protection-source { padding-left: 8px; }
+.neuroshima.sheet.actor .armor-resistance-value { min-width: 28px; text-align: center; font-weight: bold; }
+.neuroshima.sheet.actor .armor-header-explosive i,
+.neuroshima.sheet.actor .armor-header-rad i { font-size: 13px; }
+.neuroshima.sheet.actor .armor-header-rad { color: #7ec87e; }
+.neuroshima.sheet.actor .armor-protection-type .armor-protection-row { border-bottom: 1px solid var(--armor-type-color, #888888); }
+.neuroshima.sheet.actor .armor-protection-type .armor-protection-row strong,
+.neuroshima.sheet.actor .armor-protection-type .armor-resistance-value { color: var(--armor-type-color, #888888); }
+.neuroshima.sheet.actor .armor-explosive-value.is-damaged,
+.neuroshima.sheet.actor .armor-protection-type .armor-resistance-value.is-damaged { color: #ad0000; }
 
 .neuroshima.sheet.actor .location-armor-list {
     display: flex;
@@ -1657,6 +1715,7 @@
 
 .neuroshima.sheet.actor .armor-name-tiny {
     flex: 2;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1664,17 +1723,18 @@
 }
 
 .neuroshima.sheet.actor .armor-durability,
-.neuroshima.sheet.actor .armor-ap-value {
-    flex: 1;
+.neuroshima.sheet.actor .armor-ap-value,
+.neuroshima.sheet.actor .armor-explosive-value,
+.neuroshima.sheet.actor .armor-rad-value {
+    flex: 1 1 0;
+    min-width: 0;
     text-align: center;
     font-size: 16px;
     font-weight: bold;
 }
 
 .neuroshima.sheet.actor .armor-rad-value {
-    flex: 0 0 28px;
     text-align: center;
-    font-size: 14px;
     color: var(--ns-text-muted, #888);
 }
 
@@ -9200,4 +9260,46 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     box-shadow: none;
     background: transparent;
     font-weight: bold;
+}
+
+.neuroshima.sheet.actor-creature .creature-abilities-list {
+    flex: 1 1 340px;
+    height: 340px;
+    min-height: 0;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 3px;
+    background: var(--ns-bg-panel);
+}
+.neuroshima.sheet.actor-creature .creature-abilities-list > li {
+    flex-shrink: 0;
+}
+.neuroshima.sheet.actor-creature .creature-ability-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 6px 7px;
+    background: var(--ns-bg-header);
+    border-bottom: 1px solid var(--ns-border-main);
+    color: var(--ns-text-main);
+    font-size: 0.85em;
+    font-weight: bold;
+}
+.neuroshima.sheet.actor-creature .creature-ability-group-header:not(:first-child) {
+    margin-top: 5px;
+    border-top: 1px solid var(--ns-border-main);
+}
+
+.neuroshima.sheet.actor-creature .section-header .creature-armor-all-input {
+    flex: 0 0 38px;
+    width: 38px;
+    min-width: 0;
+    height: 26px;
+    padding: 2px;
+    text-align: center;
+    font-weight: bold;
+    background: var(--ns-bg-input);
+    color: var(--ns-text-main);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 3px;
 }

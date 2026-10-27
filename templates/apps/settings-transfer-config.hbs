@@ -1,0 +1,33 @@
+<section class="neuroshima-config">
+    <div class="config-section">
+        <h3>{{localize "NEUROSHIMA.Settings.Transfer.Export"}}</h3>
+        <p class="notes">{{localize "NEUROSHIMA.Settings.Transfer.ExportHint"}}</p>
+        <button type="button" data-action="exportSettings" {{#if busy}}disabled{{/if}}><i class="fas fa-file-export"></i> {{localize "NEUROSHIMA.Settings.Transfer.Export"}}</button>
+    </div>
+    <div class="config-section">
+        <h3>{{localize "NEUROSHIMA.Settings.Transfer.Import"}}</h3>
+        <p class="notes">{{localize "NEUROSHIMA.Settings.Transfer.ImportHint"}}</p>
+        <div class="form-group">
+            <label for="neuroshima-settings-file">{{localize "NEUROSHIMA.Settings.Transfer.File"}}</label>
+            <input id="neuroshima-settings-file" type="file" name="settingsFile" accept=".json,application/json" {{#if busy}}disabled{{/if}}>
+        </div>
+        {{#if fileName}}<p class="notes">{{fileName}}</p>{{/if}}
+        {{#if hasPreview}}
+        <p>{{summary}}</p>
+        <p class="notes">{{localize "NEUROSHIMA.Settings.Transfer.SourceVersion"}}: {{sourceVersion}}</p>
+        {{#if changes.length}}
+        <details class="settings-transfer-preview">
+            <summary>{{localize "NEUROSHIMA.Settings.Transfer.Changes"}}</summary>
+            <ul>{{#each changes}}<li>{{label}} <small>({{key}})</small></li>{{/each}}</ul>
+        </details>
+        {{/if}}
+        {{#if skipped.length}}
+        <details class="settings-transfer-preview">
+            <summary>{{localize "NEUROSHIMA.Settings.Transfer.Skipped"}}</summary>
+            <ul>{{#each skipped}}<li>{{this}}</li>{{/each}}</ul>
+        </details>
+        {{/if}}
+        {{/if}}
+        <button type="button" data-action="importSettings" {{#unless canImport}}disabled{{/unless}}><i class="fas fa-file-import"></i> {{localize "NEUROSHIMA.Settings.Transfer.ImportSave"}}</button>
+    </div>
+</section>

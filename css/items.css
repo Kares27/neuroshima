@@ -3214,3 +3214,16 @@ input[type="color"].rep-color-input::-moz-color-swatch {
     background: var(--ns-bg-panel);
     color: var(--ns-text-main);
 }
+.neuroshima.sheet.item .speciality-attr-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.neuroshima.sheet.item .speciality-attr-toggle input[type="checkbox"] {
+    flex: 0 0 auto;
+    margin: 0;
+}

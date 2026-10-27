@@ -426,7 +426,10 @@
             <div class="spec-master-body">
                 {{#each specialitySkillGroups}}
                 <div class="spec-attr-group">
-                    <div class="spec-attr-label">{{localize label}}</div>
+                    <label class="spec-attr-label speciality-attr-toggle">
+                        <input type="checkbox" data-speciality-attribute="{{attribute}}" data-partial="{{partial}}" {{checked allChecked}} {{#unless @root.editable}}disabled{{/unless}}>
+                        {{localize label}}
+                    </label>
                     <div class="spec-attr-checks">
                         {{#each skills}}
                         <label class="spec-check-label">

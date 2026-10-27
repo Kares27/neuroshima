@@ -8,7 +8,7 @@ export class EncumbranceConfig extends HandlebarsApplicationMixin(ApplicationV2)
     static DEFAULT_OPTIONS = {
         id: "encumbrance-config",
         tag: "form",
-        classes: ["neuroshima", "encumbrance-config"],
+        classes: ["neuroshima", "neuroshima-settings", "encumbrance-config"],
         window: {
             title: "NEUROSHIMA.Settings.EncumbranceConfig.Title",
             resizable: true

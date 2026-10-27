@@ -21,7 +21,7 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
     static DEFAULT_OPTIONS = {
         id: "currency-gear-config",
         tag: "form",
-        classes: ["neuroshima", "currency-gear-config"],
+        classes: ["neuroshima", "neuroshima-settings", "currency-gear-config"],
         window: {
             title: "NEUROSHIMA.Settings.CurrencyGearConfig.Title",
             resizable: true

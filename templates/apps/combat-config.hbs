@@ -3,30 +3,6 @@
     <div class="config-section">
         <h3>{{localize "NEUROSHIMA.Settings.CombatConfig.Title"}}</h3>
         <div class="form-group">
-            <label>{{localize "NEUROSHIMA.ArmorLimit.Name"}}</label>
-            <div class="form-fields"><input type="checkbox" name="armorLimitEnabled" {{checked config.armorLimitEnabled}}></div>
-            <p class="notes">{{localize "NEUROSHIMA.ArmorLimit.Hint"}}</p>
-        </div>
-        <div class="armor-limit-config" data-armor-limit-table {{#unless config.armorLimitEnabled}}hidden{{/unless}}>
-            <table>
-                <thead>
-                    <tr>
-                        <th scope="col">{{localize "NEUROSHIMA.ArmorLimit.Character"}}</th>
-                        <th scope="col">{{localize "NEUROSHIMA.ArmorLimit.Creature"}}</th>
-                        <th scope="col">{{localize "NEUROSHIMA.ArmorLimit.Vehicle"}}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><input type="number" name="armorLimitCharacter" value="{{config.armorLimitCharacter}}" min="0" step="0.5" required aria-label="{{localize 'NEUROSHIMA.ArmorLimit.Character'}}"></td>
-                        <td><input type="number" name="armorLimitCreature" value="{{config.armorLimitCreature}}" min="0" step="0.5" required aria-label="{{localize 'NEUROSHIMA.ArmorLimit.Creature'}}"></td>
-                        <td><input type="number" name="armorLimitVehicle" value="{{config.armorLimitVehicle}}" min="0" step="0.5" required aria-label="{{localize 'NEUROSHIMA.ArmorLimit.Vehicle'}}"></td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        
-        <div class="form-group">
             <label>{{localize "NEUROSHIMA.Settings.UsePelletCountLimit.Name"}}</label>
             <div class="form-fields">
                 <input type="checkbox" name="usePelletCountLimit" {{checked config.usePelletCountLimit}}>
@@ -96,6 +72,10 @@
 
         <div class="unarmed-damage-config">
             <h4>{{localize "NEUROSHIMA.Settings.UnarmedDamage.Title"}}</h4>
+            <div class="unarmed-damage-actions">
+                <button type="button" data-action="addUnarmedThreshold"><i class="fas fa-plus"></i> {{localize "NEUROSHIMA.Settings.UnarmedDamage.Add"}}</button>
+                <button type="button" data-action="resetUnarmedThresholds"><i class="fas fa-rotate-left"></i> {{localize "NEUROSHIMA.Settings.UnarmedDamage.Reset"}}</button>
+            </div>
             <table>
                 <thead>
                     <tr>
@@ -118,10 +98,6 @@
                     {{/each}}
                 </tbody>
             </table>
-            <div class="unarmed-damage-actions">
-                <button type="button" data-action="addUnarmedThreshold"><i class="fas fa-plus"></i> {{localize "NEUROSHIMA.Settings.UnarmedDamage.Add"}}</button>
-                <button type="button" data-action="resetUnarmedThresholds"><i class="fas fa-rotate-left"></i> {{localize "NEUROSHIMA.Settings.UnarmedDamage.Reset"}}</button>
-            </div>
         </div>
     </div>
 
@@ -176,6 +152,34 @@
             <p class="notes">{{localize "NEUROSHIMA.Settings.UnjamMinRole.Hint"}}</p>
         </div>
     </div>
+    <div class="config-section">
+        <h3>{{localize "NEUROSHIMA.ArmorLimit.Name"}}</h3>
+        <div class="form-group">
+            <label>{{localize "NEUROSHIMA.ArmorLimit.Name"}}</label>
+            <div class="form-fields"><input type="checkbox" name="armorLimitEnabled" {{checked config.armorLimitEnabled}}></div>
+            <p class="notes">{{localize "NEUROSHIMA.ArmorLimit.Hint"}}</p>
+        </div>
+        <div class="armor-limit-config" data-armor-limit-table {{#unless config.armorLimitEnabled}}hidden{{/unless}}>
+            <table>
+                <thead>
+                    <tr>
+                        <th scope="col">{{localize "NEUROSHIMA.ArmorLimit.Character"}}</th>
+                        <th scope="col">{{localize "NEUROSHIMA.ArmorLimit.Creature"}}</th>
+                        <th scope="col">{{localize "NEUROSHIMA.ArmorLimit.Vehicle"}}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><input type="number" name="armorLimitCharacter" value="{{config.armorLimitCharacter}}" min="0" step="0.5" required aria-label="{{localize 'NEUROSHIMA.ArmorLimit.Character'}}"></td>
+                        <td><input type="number" name="armorLimitCreature" value="{{config.armorLimitCreature}}" min="0" step="0.5" required aria-label="{{localize 'NEUROSHIMA.ArmorLimit.Creature'}}"></td>
+                        <td><input type="number" name="armorLimitVehicle" value="{{config.armorLimitVehicle}}" min="0" step="0.5" required aria-label="{{localize 'NEUROSHIMA.ArmorLimit.Vehicle'}}"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+    {{> "systems/neuroshima/templates/apps/damage-category-config.hbs"}}
     </div>
 
     <footer class="sheet-footer flexrow">

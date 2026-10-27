@@ -1,5 +1,5 @@
 import { getConditions } from "../apps/config/condition-config.js";
-import { NeuroshimaScript, NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
+import { NeuroshimaScript, NeuroshimaScriptRunner, normalizeLegacySuccessScriptData } from "../apps/neuroshima-script-engine.js";
 import {
   LEGACY_EFFECT_PENALTY_KEY,
   EFFECT_PENALTY_KEY,
@@ -129,6 +129,15 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
   /** @override — auto-correct transfer before creation */
   async _preCreate(data, options, user) {
     await super._preCreate(data, options, user);
+    const source = this._source ?? data;
+    const legacyScripts = source.flags?.neuroshima?.scripts;
+    const scripts = source.system?.scriptData?.length ? source.system.scriptData : legacyScripts;
+    if (Array.isArray(scripts) && scripts.length) {
+      const update = { "system.scriptData": normalizeLegacySuccessScriptData(scripts) };
+      if (Array.isArray(legacyScripts)) update["flags.neuroshima.-=scripts"] = null;
+      this.updateSource(update);
+    }
+
     const normalizedChanges = normalizeEffectPenaltyChanges(this.changes ?? []);
     if (normalizedChanges.changed) {
       this.updateSource({ changes: normalizedChanges.changes });

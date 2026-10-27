@@ -4,7 +4,7 @@ export class GearTypeConfig extends HandlebarsApplicationMixin(ApplicationV2) {
     static DEFAULT_OPTIONS = {
         id: "gear-type-config",
         tag: "form",
-        classes: ["neuroshima", "gear-type-config"],
+        classes: ["neuroshima", "neuroshima-settings", "gear-type-config"],
         window: {
             title: "NEUROSHIMA.Settings.CustomGearTypes.Title",
             resizable: true

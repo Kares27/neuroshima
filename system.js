@@ -25,8 +25,7 @@ import {
 import { NeuroshimaItemSheet } from "./module/sheets/item-sheet.js";
 import { NeuroshimaEffectSheet } from "./module/sheets/neuroshima-effect-sheet.js";
 import {
-    NeuroshimaScriptRunner,
-    normalizeLegacySuccessScriptData
+    NeuroshimaScriptRunner
 } from "./module/apps/neuroshima-script-engine.js";
 import { NeuroshimaDice } from "./module/helpers/dice.js";
 import {
@@ -56,13 +55,14 @@ import {
 } from "./module/helpers/tooltip-renderer.js";
 import { EncumbranceConfig } from "./module/apps/config/encumbrance-config.js";
 import { CombatConfig } from "./module/apps/config/combat-config.js";
+import { SettingsTransferConfig } from "./module/apps/config/settings-transfer-config.js";
 import { DEFAULT_UNARMED_DAMAGE_TABLE } from "./module/combat/unarmed.js";
 import { DistanceConfig, DEFAULT_DISTANCE_PENALTIES } from "./module/apps/config/distance-config.js";
 import { HealingConfig } from "./module/apps/config/healing-config.js";
 import { ConditionConfig, applyConditionsToStatusEffects, getConditions } from "./module/apps/config/condition-config.js";
 import { ReputationSettingsApp } from "./module/apps/config/reputation-settings.js";
 import { CurrencyGearConfig, DEFAULT_CURRENCY } from "./module/apps/config/currency-gear-config.js";
-import { DamageCategoryConfig, _applyCustomDamageCategories } from "./module/apps/config/damage-category-config.js";
+import { _applyCustomDamageCategories } from "./module/apps/config/damage-category-config.js";
 import { GrenadeConfig } from "./module/apps/config/grenade-config.js";
 import { DebugRollDialog } from "./module/apps/dialogs/debug-roll-dialog.js";
 import { EditRollDialog } from "./module/apps/dialogs/minor-dialogs.js";
@@ -668,6 +668,12 @@ Hooks.once('init', async function() {
         requiresReload: true
     });
 
+    game.settings.register("neuroshima", "armorCategoryGlobalDamage", {
+        scope: "world", config: false, type: Object, default: {}, onChange: refreshArmorLimits
+    });
+    game.settings.register("neuroshima", "armorCategoryLimits", {
+        scope: "world", config: false, type: Object, default: {}, onChange: refreshArmorLimits
+    });
     game.settings.register("neuroshima", "armorLimitEnabled", {
         scope: "world", config: false, type: Boolean, default: false, onChange: refreshArmorLimits
     });
@@ -852,6 +858,14 @@ Hooks.once('init', async function() {
     });
 
     // Register settings menus
+    game.settings.registerMenu("neuroshima", "settingsTransfer", {
+        name: "NEUROSHIMA.Settings.Transfer.Title",
+        label: "NEUROSHIMA.Settings.Transfer.Title",
+        hint: "NEUROSHIMA.Settings.Transfer.MenuHint",
+        icon: "fas fa-file-arrow-up",
+        type: SettingsTransferConfig,
+        restricted: true
+    });
     game.settings.registerMenu("neuroshima", "combatConfig", {
         name: "NEUROSHIMA.Settings.CombatConfig.Label",
         label: "NEUROSHIMA.Settings.CombatConfig.Title",
@@ -932,20 +946,16 @@ Hooks.once('init', async function() {
         restricted: true
     });
 
-    game.settings.registerMenu("neuroshima", "damageCategoryConfig", {
-        name: "NEUROSHIMA.Settings.DamageCategoryConfig.Label",
-        label: "NEUROSHIMA.Settings.DamageCategoryConfig.Title",
-        hint: "NEUROSHIMA.Settings.DamageCategoryConfig.MenuHint",
-        icon: "fas fa-burst",
-        type: DamageCategoryConfig,
-        restricted: true
-    });
-
     game.settings.register("neuroshima", "customDamageCategories", {
         scope: "world",
         config: false,
         type: String,
-        default: "[]"
+        default: "[]",
+        onChange: value => {
+            try { _applyCustomDamageCategories(JSON.parse(value || "[]")); }
+            catch (error) { console.error("Neuroshima | Invalid damage categories", error); }
+            refreshArmorLimits();
+        }
     });
 
     game.settings.register("neuroshima", "grenadeConstitutionBonuses", {
@@ -1243,6 +1253,7 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/apps/edit-roll-dialog.hbs",
         "systems/neuroshima/templates/apps/debug-roll-dialog.hbs",
         "systems/neuroshima/templates/apps/combat-config.hbs",
+        "systems/neuroshima/templates/apps/settings-transfer-config.hbs",
         "systems/neuroshima/templates/apps/vehicle-crew-select-dialog.hbs",
         "systems/neuroshima/templates/apps/melee/melee-app.hbs",
         "systems/neuroshima/templates/apps/melee/parts/melee-top-bar.hbs",
@@ -1281,6 +1292,7 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/apps/script-editor.hbs",
         "systems/neuroshima/templates/apps/action-def-editor.hbs",
         "systems/neuroshima/templates/apps/condition-check-editor.hbs",
+        "systems/neuroshima/templates/apps/damage-category-config.hbs",
         "systems/neuroshima/templates/prosemirror/text-colour.hbs",
         "systems/neuroshima/templates/chat/melee-duel-card.hbs",
         "systems/neuroshima/templates/apps/beast-activity-sheet.hbs"
@@ -1290,7 +1302,7 @@ Hooks.once('init', async function() {
     
     // Register partials manually
     for (const path of templates) {
-        if (path.includes("/parts/")) {
+        if (path.includes("/parts/") || path.endsWith("/damage-category-config.hbs")) {
             const template = await foundry.applications.handlebars.getTemplate(path);
             Handlebars.registerPartial(path, template);
             
@@ -1392,38 +1404,6 @@ Hooks.once("ready", async () => {
 });
 
 Hooks.once("ready", async function () {
-    if (game.user.isGM) {
-        const migrateEffect = async (effect) => {
-            const oldScripts = effect.getFlag("neuroshima", "scripts");
-            const currentScripts = effect.system?.scriptData?.length
-                ? foundry.utils.deepClone(effect.system.scriptData)
-                : Array.isArray(oldScripts) ? foundry.utils.deepClone(oldScripts) : [];
-            if (!currentScripts.length) return;
-            const normalizedScripts = normalizeLegacySuccessScriptData(currentScripts);
-            const updateData = {};
-            if (JSON.stringify(normalizedScripts) !== JSON.stringify(currentScripts)
-                || (!effect.system?.scriptData?.length && currentScripts.length)) {
-                updateData["system.scriptData"] = normalizedScripts;
-            }
-            if (Array.isArray(oldScripts) && oldScripts.length) {
-                updateData["flags.neuroshima.-=scripts"] = null;
-            }
-            if (Object.keys(updateData).length) {
-                await effect.update(updateData, {
-                    neuroshimaSuccessPointsMigration: true
-                });
-            }
-        };
-        for (const actor of game.actors) {
-            for (const effect of actor.effects) await migrateEffect(effect);
-            for (const item of actor.items) {
-                for (const effect of item.effects) await migrateEffect(effect);
-            }
-        }
-        for (const item of game.items) {
-            for (const effect of item.effects) await migrateEffect(effect);
-        }
-    }
 
     game.neuroshima.log("Tryb debugowania jest WŁĄCZONY");
     console.log("Neuroshima 1.5 | System gotowy");

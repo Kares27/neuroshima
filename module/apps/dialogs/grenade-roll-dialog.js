@@ -65,6 +65,20 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
     return `${game.i18n.localize("NEUROSHIMA.Grenade.RollTitle")}: ${this.grenade?.name ?? ""}`;
   }
 
+  _getRollStats(scriptFields = {}) {
+    const data = this.grenade?.system ?? {};
+    const attributeKey = scriptFields.attributeKey || data.attribute || "dexterity";
+    const requestedSkill = scriptFields.skillKey || (data.skill === undefined ? "throwing" : data.skill);
+    const skillKey = requestedSkill && requestedSkill !== "none" ? requestedSkill : null;
+    return {
+      attribute: { name: attributeKey, key: attributeKey,
+        value: Number(this.actor?.system?.attributeTotals?.[attributeKey] ?? this.actor?.system?.attributes?.[attributeKey] ?? 0) },
+      skill: skillKey ? { name: skillKey, key: skillKey,
+        value: Number(skillKey === "experience" && this.actor?.type === "creature"
+          ? this.actor.system.experience ?? 0 : this.actor?.system?.skills?.[skillKey]?.value ?? 0) } : null
+    };
+  }
+
   async _prepareContext(options) {
     const ctx = await super._prepareContext(options);
     const actor  = this.actor;
@@ -99,10 +113,7 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
     const distancePenalty = this.userEntry.distancePenalty
       ?? grenadePenalty(distance, build);
 
-    const weaponAttrKey  = gData.attribute || "dexterity";
-    const weaponSkillKey = gData.skill || "throwing";
-    const weaponAttrObj  = { name: weaponAttrKey, value: actor?.system?.attributeTotals?.[weaponAttrKey] ?? 0, key: weaponAttrKey };
-    const weaponSkillObj = { name: weaponSkillKey, value: actor?.system?.skills?.[weaponSkillKey]?.value ?? 0, key: weaponSkillKey };
+    const { attribute: weaponAttrObj, skill: weaponSkillObj } = this._getRollStats();
 
     const targetActors = Array.from(game.user.targets || []).map(t => t.actor).filter(Boolean);
     const { dialogModifiers, scriptFields, effectPenaltyBreakdown } = await NeuroshimaScriptRunner.computeDialogFields(
@@ -231,11 +242,9 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
     const finalDiffEl = html.querySelector('.final-difficulty');
     if (finalDiffEl) finalDiffEl.textContent = diffLabel;
 
-    const weaponAttrKey = this.grenade?.system?.attribute || "dexterity";
-    const attrTotal = (Number(this.actor?.system?.attributeTotals?.[weaponAttrKey]) || 0)
+    const { attribute } = this._getRollStats(this._scriptFields);
+    const attrTotal = attribute.value
       + (parseInt(html.querySelector('[name="attributeBonus"]')?.value) || 0);
-    const skillKey  = this.grenade?.system?.skill || "throwing";
-    const skillVal  = Number(this.actor?.system?.skills?.[skillKey]?.value) || 0;
     const finalTarget = attrTotal + (baseDiff?.mod ?? 0);
     const targetEl = html.querySelector('.final-target');
     if (targetEl) targetEl.textContent = finalTarget;
@@ -292,22 +301,13 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
       autoSuccess:        sf.autoSuccess === true,
       annotations:        sf.annotations || []
     };
-    const attributeKey = this.grenade?.system?.attribute || "dexterity";
-    const skillKey = this.grenade?.system?.skill || "throwing";
+    const { attribute, skill } = this._getRollStats(sf);
     const submissionOptions = await this._runSubmissionScripts(this.grenade, {});
     const test = new GrenadeTest({
       actor: this.actor,
       item: this.grenade,
-      attribute: {
-        key: attributeKey,
-        value: Number(this.actor.system.attributeTotals?.[attributeKey]
-          ?? this.actor.system.attributes?.[attributeKey]
-          ?? 0)
-      },
-      skill: {
-        key: skillKey,
-        value: Number(this.actor.system.skills?.[skillKey]?.value ?? 0)
-      },
+      attribute,
+      skill,
       preData: {
         label: this.grenade.name,
         attributeBonus: Number(params.attributeBonus ?? 0),

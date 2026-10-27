@@ -1,3 +1,4 @@
+import { CONFIGURABLE_DAMAGE_CATEGORIES, loadCustomDamageCategories, normalizeDamageCategorySettings, _applyCustomDamageCategories } from "./damage-category-config.js";
 import {
     DEFAULT_UNARMED_DAMAGE_TABLE,
     UNARMED_DAMAGE_TYPES,
@@ -14,7 +15,7 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
     static DEFAULT_OPTIONS = {
         id: "combat-config",
         tag: "form",
-        classes: ["neuroshima", "combat-config"],
+        classes: ["neuroshima", "neuroshima-settings", "combat-config"],
         window: {
             title: "NEUROSHIMA.Settings.CombatConfig.Title",
             resizable: true
@@ -31,6 +32,8 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
             closeOnSubmit: true
         },
         actions: {
+            addCategoryRow: CombatConfig.prototype._onAddCategoryRow,
+            deleteCategoryRow: CombatConfig.prototype._onDeleteCategoryRow,
             addUnarmedThreshold: CombatConfig.prototype._onAddUnarmedThreshold,
             removeUnarmedThreshold: CombatConfig.prototype._onRemoveUnarmedThreshold,
             resetUnarmedThresholds: CombatConfig.prototype._onResetUnarmedThresholds
@@ -40,7 +43,8 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
     /** @inheritdoc */
     static PARTS = {
         form: {
-            template: "systems/neuroshima/templates/apps/combat-config.hbs"
+            template: "systems/neuroshima/templates/apps/combat-config.hbs",
+            scrollable: [".config-body"]
         }
     };
 
@@ -87,7 +91,21 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
                 fireCorrection: game.settings.get("neuroshima", "fireCorrection")
             };
 
+        const limits = game.settings.get("neuroshima", "armorCategoryLimits") ?? {};
+        const globalDamage = game.settings.get("neuroshima", "armorCategoryGlobalDamage") ?? {};
+        const draft = this._damageDraft;
+        const customRows = (draft?.custom ?? loadCustomDamageCategories()).map((row, idx) => ({
+            ...row, idx, maxArmor: row.maxArmor ?? limits[row.key] ?? "",
+            globalDamage: row.globalDamage ?? globalDamage[row.key] ?? true
+        }));
+        const builtinRows = CONFIGURABLE_DAMAGE_CATEGORIES.map(key => ({ key,
+            label: game.i18n.localize(game.neuroshima.config.damageCategories[key].label),
+            color: game.neuroshima.config.damageCategories[key].color,
+            globalDamage: draft ? (draft.builtinGlobalDamage?.[key] ?? true) : (globalDamage[key] ?? true),
+            maxArmor: draft ? (draft.builtinLimits[key] ?? "") : (limits[key] ?? "")
+        }));
         return {
+            builtinRows, customRows,
             config: { ...config, ...(this._configDraft ?? {}) },
             roleOptions: roleOptions,
             unarmedDamageTable
@@ -135,8 +153,41 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
         };
     }
 
-    _onAddUnarmedThreshold() {
+    _readDamageCategories() {
+        const custom = Array.from(this.element?.querySelectorAll?.("[data-damage-custom-row]") ?? []).map(row => ({
+            key: row.querySelector('[data-category-key]')?.value ?? "",
+            label: row.querySelector('[data-category-label]')?.value ?? "",
+            color: row.querySelector('[data-category-color]')?.value ?? "#888888",
+            globalDamage: row.querySelector('[data-category-global-damage]')?.checked ?? true,
+            maxArmor: row.querySelector('[data-category-limit]')?.value ?? ""
+        }));
+        const builtinLimits = Object.fromEntries(Array.from(this.element?.querySelectorAll?.("[data-damage-builtin-row]") ?? [])
+            .map(row => [row.dataset.damageBuiltinRow, row.querySelector('[data-category-limit]')?.value ?? ""]));
+        const builtinGlobalDamage = Object.fromEntries(Array.from(this.element?.querySelectorAll?.("[data-damage-builtin-row]") ?? [])
+            .map(row => [row.dataset.damageBuiltinRow, row.querySelector('[data-category-global-damage]')?.checked ?? true]));
+        return { custom, builtinLimits, builtinGlobalDamage };
+    }
+
+    _captureDraft() {
         this._configDraft = this._readConfigDraft();
+        this._unarmedDamageTable = this._readUnarmedDamageTable();
+        this._damageDraft = this._readDamageCategories();
+    }
+
+    _onAddCategoryRow() {
+        this._captureDraft();
+        this._damageDraft.custom.push({ key: "", label: "", color: "#888888", maxArmor: "" });
+        this.render({ force: true });
+    }
+
+    _onDeleteCategoryRow(_event, target) {
+        this._captureDraft();
+        this._damageDraft.custom.splice(Number(target.dataset.idx), 1);
+        this.render({ force: true });
+    }
+
+    _onAddUnarmedThreshold() {
+        this._captureDraft();
         const rows = this._readUnarmedDamageTable();
         const finite = rows.filter(row => row.maxBuild !== null);
         const nextMax = (finite.at(-1)?.maxBuild ?? 8) + 2;
@@ -146,7 +197,7 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     _onRemoveUnarmedThreshold(_event, target) {
-        this._configDraft = this._readConfigDraft();
+        this._captureDraft();
         const rows = this._readUnarmedDamageTable();
         rows.splice(Number(target.closest("[data-unarmed-row]")?.dataset.unarmedRow), 1);
         this._unarmedDamageTable = normalizeUnarmedDamageTable(rows);
@@ -154,7 +205,7 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     _onResetUnarmedThresholds() {
-        this._configDraft = this._readConfigDraft();
+        this._captureDraft();
         this._unarmedDamageTable = DEFAULT_UNARMED_DAMAGE_TABLE.map(row => ({ ...row }));
         this.render({ force: true });
     }
@@ -172,12 +223,18 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
             const prevPellet = game.settings.get("neuroshima", "usePelletCountLimit");
             const prevMeleeType = game.settings.get("neuroshima", "meleeCombatType");
 
+            const categoryDraft = this._readDamageCategories();
+            const { custom, limits, globalDamage } = normalizeDamageCategorySettings(categoryDraft.custom, categoryDraft.builtinLimits, categoryDraft.builtinGlobalDamage);
+            const previousCategories = game.settings.get("neuroshima", "customDamageCategories") || "[]";
             const armorLimits = ["Character", "Creature", "Vehicle"].map(group => {
                 const value = Number(data[`armorLimit${group}`]);
                 if (!Number.isFinite(value) || value < 0) throw new Error("Invalid armor limit");
                 return { group, value };
             });
             const updates = [
+                game.settings.set("neuroshima", "customDamageCategories", JSON.stringify(custom)),
+                game.settings.set("neuroshima", "armorCategoryLimits", limits),
+                game.settings.set("neuroshima", "armorCategoryGlobalDamage", globalDamage),
                 game.settings.set("neuroshima", "armorLimitEnabled", !!data.armorLimitEnabled),
                 ...armorLimits.map(({ group, value }) => game.settings.set("neuroshima", `armorLimit${group}`, value)),
                 game.settings.set("neuroshima", "usePelletCountLimit", !!data.usePelletCountLimit),
@@ -195,10 +252,12 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
             ];
             
             await Promise.all(updates);
+            _applyCustomDamageCategories(custom);
             
             ui.notifications.info(game.i18n.localize("NEUROSHIMA.Settings.CombatConfig.Saved"));
             
-            const needsReload = prevPellet !== !!data.usePelletCountLimit
+            const needsReload = previousCategories !== JSON.stringify(custom)
+                || prevPellet !== !!data.usePelletCountLimit
                 || prevMeleeType !== data.meleeCombatType;
 
             if (needsReload) {

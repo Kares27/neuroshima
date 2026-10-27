@@ -23,7 +23,7 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
 
     this.rollOptions = {
       attribute: options.attribute || "dexterity",
-      skill: options.skill || "",
+      skill: options.skill ?? (this.actor?.type === "creature" ? "experience" : ""),
       useSkill: options.useSkill ?? true,
       modifier: options.modifier || 0,
       difficulty: options.difficulty || "average",

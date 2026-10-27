@@ -10,7 +10,7 @@ export class GrenadeConfig extends HandlebarsApplicationMixin(ApplicationV2) {
     static DEFAULT_OPTIONS = {
         id: "grenade-config",
         tag: "form",
-        classes: ["neuroshima", "grenade-config"],
+        classes: ["neuroshima", "neuroshima-settings", "grenade-config"],
         window: {
             title: "NEUROSHIMA.Settings.GrenadeConfig.Title",
             resizable: true

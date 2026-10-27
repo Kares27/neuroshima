@@ -204,6 +204,7 @@ function serializeSyntheticItem(item) {
     img: item.img ?? "",
     type: item.type ?? "weapon",
     beastItemId: item.beastItemId ?? null,
+    beastActivityId: item.beastActivityId ?? null,
     isBeastCombat: item.isBeastCombat === true,
     system: clone(item.system ?? {})
   };
@@ -216,6 +217,7 @@ function restoreSyntheticItem(snapshot, actor, result = {}) {
     img: actor?.img ?? "",
     type: "weapon",
     beastItemId: result.beastItemId ?? null,
+    beastActivityId: result.beastActivityId ?? null,
     system: {
       weaponType: result.isMelee ? "melee" : result.weaponType,
       attribute: result.attributeKey ?? "dexterity",
@@ -1602,6 +1604,15 @@ export class AttackTest extends NeuroshimaTest {
     this.preData.type = data.preData?.type ?? "attack";
   }
 
+  async prepare() {
+    await super.prepare();
+    Object.assign(this.result, {
+      beastItemId: this.item?.beastItemId ?? this.preData.beastItemId ?? null,
+      beastActivityId: this.item?.beastActivityId ?? this.preData.beastActivityId ?? null
+    });
+    return this;
+  }
+
   static shiftDamageType(type, steps = 0) {
     const track = String(type ?? "").startsWith("s")
       ? ["sD", "sL", "sC", "sK"]
@@ -1688,7 +1699,6 @@ export class WeaponTest extends AttackTest {
       isWeapon: true,
       label: this.preData.label ?? this.item?.name ?? "",
       weaponId: this.item?.id ?? null,
-      beastItemId: this.item?.beastItemId ?? this.preData.beastItemId ?? null,
       weaponType: this.item?.system?.weaponType ?? null,
       isMelee: this.preData.isMelee === true || this.context.isMelee === true,
       meleeAction: this.preData.meleeAction ?? this.context.meleeAction ?? null,
@@ -2265,7 +2275,7 @@ export class GrenadeTest extends AttackTest {
   }
 
   async postTest() {
-    if (this.context.edited || this.context.reroll || !this.item?.actor) return;
+    if (this.context.edited || this.context.reroll || this.item?.isSynthetic || !this.item?.actor) return;
     const quantity = Math.max(0, Number(this.item.system.quantity ?? 1) - 1);
     await this.item.update({ "system.quantity": quantity });
     this.result.remainingQuantity = quantity;

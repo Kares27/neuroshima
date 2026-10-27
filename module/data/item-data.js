@@ -1,4 +1,3 @@
-import { normalizeRequiredEffects } from "../helpers/required-test.js";
 /**
  * Base schema for all Neuroshima items.
  */
@@ -157,6 +156,7 @@ function armorSchema() {
     }),
     penalty: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
     resistances: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+    resistanceDamage: new fields.ObjectField({ initial: {} }),
 
     // Radiation protection level of this armor piece (0 = no protection, 1–20 scale).
     // This is NOT a damage-reduction resistance — it does not go through the resistance system.
@@ -359,10 +359,6 @@ export class BeastAbilityData extends foundry.abstract.TypeDataModel {
       source.description = source.activities[0].description || description || "";
       delete source.activities;
     }
-    if (source.testEffectIds === undefined) {
-      source.testEffectIds = [...new Set([...(source.effectIds ?? []), ...(source.onFailureEffectIds ?? []), ...(source.alwaysEffectIds ?? [])])];
-    }
-    Object.assign(source, normalizeRequiredEffects(source));
     return source;
   }
 

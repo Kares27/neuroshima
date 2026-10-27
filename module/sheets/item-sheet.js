@@ -1,3 +1,4 @@
+import { clampArmor } from "../helpers/armor-limit.js";
 import { NEUROSHIMA } from "../config.js";
 import { TraitBrowserApp } from "../apps/trait-browser.js";
 import { normalizeGearType } from "../helpers/gear-types.js";
@@ -273,6 +274,17 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
   /** @override */
   async _onChangeForm(formConfig, event) {
     const input = event.target;
+    if (this.document.type === "speciality" && input?.dataset?.specialityAttribute) {
+      if (!this.isEditable || !this.document.isOwner) return;
+      const groups = NEUROSHIMA.skillConfiguration[input.dataset.specialityAttribute];
+      if (!groups) return;
+      const selected = new Set(this.document.system.skills ?? []);
+      for (const key of Object.values(groups).flat()) {
+        if (input.checked) selected.add(key);
+        else selected.delete(key);
+      }
+      return this.document.update({ "system.skills": [...selected] });
+    }
     const name = input?.getAttribute?.("name") ?? input?.name;
     if (
       name === "launcherAmmoSelection"
@@ -462,11 +474,15 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
     // Common options
     context.attributes = NEUROSHIMA.attributes;
-    context.specialitySkillGroups = Object.entries(NEUROSHIMA.skillConfiguration).map(([attribute, groups]) => ({
-      label: NEUROSHIMA.attributes[attribute].label,
-      skills: Object.values(groups).flat().map(key => ({ key, label: `NEUROSHIMA.Skills.${key}`,
-        checked: (item.system.skills ?? []).includes(key) }))
-    }));
+    context.specialitySkillGroups = Object.entries(NEUROSHIMA.skillConfiguration).map(([attribute, groups]) => {
+      const skills = Object.values(groups).flat().map(key => ({ key, label: `NEUROSHIMA.Skills.${key}`,
+        checked: (item.system.skills ?? []).includes(key) }));
+      const allChecked = skills.length > 0 && skills.every(skill => skill.checked);
+      return {
+        attribute, label: NEUROSHIMA.attributes[attribute].label, skills, allChecked,
+        partial: !allChecked && skills.some(skill => skill.checked)
+      };
+    });
     context.damageTypes = NEUROSHIMA.damageTypes;
     context.damageCategories = NEUROSHIMA.damageCategories;
     context.blastDamageTypes = NEUROSHIMA.blastDamageTypes;
@@ -721,12 +737,12 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
         context.effectiveArmorResistanceRows = Object.entries(effRes).map(([category, locs]) => ({
           category,
           categoryLabel: game.i18n.localize(NEUROSHIMA.damageCategories[category]?.label ?? category),
-          head:     locs.head     ?? 0,
-          torso:    locs.torso    ?? 0,
-          leftArm:  locs.leftArm  ?? 0,
-          rightArm: locs.rightArm ?? 0,
-          leftLeg:  locs.leftLeg  ?? 0,
-          rightLeg: locs.rightLeg ?? 0
+          head:     clampArmor(item.actor, locs.head ?? 0, category),
+          torso:    clampArmor(item.actor, locs.torso ?? 0, category),
+          leftArm:  clampArmor(item.actor, locs.leftArm ?? 0, category),
+          rightArm: clampArmor(item.actor, locs.rightArm ?? 0, category),
+          leftLeg:  clampArmor(item.actor, locs.leftLeg ?? 0, category),
+          rightLeg: clampArmor(item.actor, locs.rightLeg ?? 0, category)
         }));
       }
       if (item.type === "armor" || item.type === "armor-mod") {
@@ -946,6 +962,10 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
   async _onRender(context, options) {
     await super._onRender(context, options);
+
+    this.element.querySelectorAll("[data-speciality-attribute]").forEach(input => {
+      input.indeterminate = input.dataset.partial === "true";
+    });
 
     const item = this.document;
 
