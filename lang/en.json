@@ -178,6 +178,7 @@
             }
         },
         "Tooltip": {
+            "ArmorDurabilityWear": "Armor durability loss",
             "Test": "Test",
             "Penalties": "Modifiers",
             "Dice": "Dice",
@@ -246,6 +247,7 @@
             "No": "No"
         },
         "Roll": {
+            "SuccessBonus": "Bonus success points",
             "Edited": "Edited by GM",
             "PenaltyLabel": "Test Penalty",
             "Target": "Threshold",
@@ -454,6 +456,7 @@
             "Button": "Rest"
         },
         "PainResistance": {
+            "ArmorWear": "Armor durability",
             "Rerolled": "Rerolled",
             "ReportTitle": "Pain Resistance Tests",
             "Passed": "Passed",
@@ -561,6 +564,17 @@
                     "RollbackFailed": "Import failed. Could not restore settings: {keys}. Check configuration before continuing play.",
                     "Unexpected": "Could not transfer settings. See the console for details."
                 }
+            },
+            "ArmorDurability": {
+                "Bruises": "Include Bruises in Calculations",
+                "BruisesHint": "Include sC (loss of 1) and sK (loss of 3) in melee durability wear only.",
+                "Title": "Durability Reduction",
+                "Hint": "A Heavy hit removes 1 durability from the struck armor location; a Critical hit removes 3. At 0 that location no longer protects. Melee uses incoming damage before reduction; pain resistance does not affect wear.",
+                "Melee": "In Melee Combat",
+                "Ranged": "From Firearms",
+                "Timing": "Check firearm damage",
+                "Before": "Before armor reduction",
+                "After": "After armor reduction"
             },
             "CombatConfig": {
                 "Title": "Combat Settings",
@@ -926,6 +940,9 @@
             "Attacker": "Attacker",
             "Defender": "Defender",
             "StartDuel": "Start Duel",
+            "EditAttackerRoll": "Edit attacker roll",
+            "EditDefenderRoll": "Edit defender roll",
+            "RollNotAvailable": "This side has no saved roll yet.",
             "StartDuelFromTarget": "Start Fight with Target",
             "NoTargetForDuel": "No token targeted. Select a target on the canvas before using this option.",
             "RollPool": "Roll Pool",
@@ -2536,6 +2553,27 @@
                 "FactionHeader": "Faction Reputations"
             },
             "ApplyDamage": {
+                "DamageTable": "Damage",
+                "Severity": "Wound severity",
+                "Category": "Damage category",
+                "Random": "Random",
+                "RandomEach": "Roll for each wound",
+                "AddRow": "Add damage",
+                "RemoveRow": "Remove row",
+                "Search": "Search actors…",
+                "AllTypes": "All types",
+                "ActorType": "Actor type",
+                "ActorSource": "Actor source",
+                "NoResults": "No matching actors.",
+                "SelectVisible": "Select visible actors",
+                "DeselectAll": "Deselect all actors",
+                "InvalidRow": "Check damage rows: quantity must be an integer (1–1000), and types and locations must exist in the configuration.",
+                "Failed": "Some damage could not be applied. Saved wounds are listed in chat; review them before applying again.",
+                "Source": {
+                    "scene": "Current scene",
+                    "world": "World actors",
+                    "all": "Scene and world"
+                },
                 "Title": "Apply Damage",
                 "NoActor": "Select a target actor.",
                 "ActorNotFound": "Actor not found.",

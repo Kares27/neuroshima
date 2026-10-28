@@ -1,3 +1,4 @@
+import { armorLocationProtects, applyArmorDurabilityWear, reverseArmorDurabilityWear, collectArmorDurabilityWear, ArmorDurabilityBatch } from "./armor-durability.js";
 import { postBeastRequiredTest, applyBeastEffectIds } from "./beast-required-test.js";
 import { isBeastAbility, isBeastSegment, beastActivities } from "../helpers/beast-actions.js";
 import { clampArmor } from "./armor-limit.js";
@@ -190,6 +191,17 @@ export class CombatHelper {
     const sourceInfo = `<p><em>Source: ${attackData.label || "Weapon"} ${options.attackerMessageId ? `(${options.attackerMessageId})` : ""}</em></p>`;
     
     const rawWounds = [];
+    const armorWear = [];
+    const durabilityBatch = options.armorDurabilityBatch ?? new ArmorDurabilityBatch(actor);
+    const wear = async (incoming, reduction) => {
+      const covered = actor.items.filter(item => item.type === "armor" && item.system.equipped
+        && durabilityBatch.remaining(item, location) !== 0
+        && (Number(item.system.armor?.ratings?.[location]) > 0
+          || Object.values(getEffectiveArmorResistances(item, { includeDamage: false }))
+            .some(protection => Number(protection[location]) > 0)));
+      armorWear.push(...await applyArmorDurabilityWear(actor, location, incoming, reduction.reducedDamageType,
+        { ...attackData, weaponType: attackData.weaponType ?? attackerWeapon?.system?.weaponType }, covered, durabilityBatch));
+    };
     const reducedDetails = [];
     let totalProjectiles = 0;
     let reducedProjectiles = 0;
@@ -223,7 +235,8 @@ export class CombatHelper {
         totalProjectiles = 1;
         
         // Apply armor reduction
-        const reductionData = this.reduceArmorDamageWithDetails(actor, location, damageType, piercing, attackContext, damageCategory);
+        const reductionData = this.reduceArmorDamageWithDetails(actor, location, damageType, piercing, attackContext, damageCategory, durabilityBatch);
+        await wear(damageType, reductionData);
         if (reductionData.pendingResourceUpdates?.length) allPendingResourceUpdates.push(...reductionData.pendingResourceUpdates);
         if (reductionData.pendingChatRolls?.length) allPendingChatRolls.push(...reductionData.pendingChatRolls);
         
@@ -254,7 +267,8 @@ export class CombatHelper {
                 const bulletDamage = location === "head" && attackData.headDamageApplied !== true
                     ? this.shiftDamageType(bullet.damage || initialDamageType, 1)
                     : (bullet.damage || damageType);
-                const reductionData = this.reduceArmorDamageWithDetails(actor, location, bulletDamage, bullet.piercing ?? piercing, attackContext, damageCategory);
+                const reductionData = this.reduceArmorDamageWithDetails(actor, location, bulletDamage, bullet.piercing ?? piercing, attackContext, damageCategory, durabilityBatch);
+                await wear(bulletDamage, reductionData);
                 if (reductionData.pendingResourceUpdates?.length) allPendingResourceUpdates.push(...reductionData.pendingResourceUpdates);
                 if (reductionData.pendingChatRolls?.length) allPendingChatRolls.push(...reductionData.pendingChatRolls);
                 if (reductionData.reducedDamageType) {
@@ -271,6 +285,8 @@ export class CombatHelper {
             }
         }
     }
+
+    if (!options.armorDurabilityBatch) await durabilityBatch.commit();
 
     if (allPendingResourceUpdates.length > 0) {
         const updatesByItemId = new Map();
@@ -386,6 +402,10 @@ export class CombatHelper {
             }
         }
 
+        if (armorWear.length) {
+          if (results.length) results[0].armorWear = armorWear;
+          else if (reducedDetails.length) reducedDetails[0].armorWear = armorWear;
+        }
         if (suppressChat) {
             game.neuroshima.groupEnd();
             return { results, woundIds, reducedProjectiles, reducedDetails };
@@ -998,7 +1018,7 @@ export class CombatHelper {
           annotation: result.annotation, painTestData: result.testData, painPenalties: result.painPenalties,
           painReroll: true
         }], result.location ?? wound.system.location, wound.system.description);
-        results[index] = { ...rerolled.results[0], woundId: wound.id, rerollCount: (result.rerollCount ?? 0) + 1 };
+        results[index] = { ...rerolled.results[0], armorWear: result.armorWear, woundId: wound.id, rerollCount: (result.rerollCount ?? 0) + 1 };
         updates.push({ _id: wound.id, "system.penalty": results[index].penalty });
         rollback.push({ _id: wound.id, "system.penalty": wound.system.penalty });
       }
@@ -1008,6 +1028,14 @@ export class CombatHelper {
       catch (error) { await actor.updateEmbeddedDocuments("Item", rollback); throw error; }
       return { updated: updates.length };
     });
+  }
+
+  static canReverseDamage(message) {
+    if (!message || message.getFlag("neuroshima", "messageType") !== "painResistanceReport"
+      || message.getFlag("neuroshima", "isReversed") || !this.canPerformCombatAction()) return false;
+    return (message.getFlag("neuroshima", "woundIds") ?? []).length > 0
+      || collectArmorDurabilityWear(message.getFlag("neuroshima", "results") ?? [],
+        message.getFlag("neuroshima", "reducedDetails") ?? []).length > 0;
   }
 
   static async reverseDamage(message) {
@@ -1035,6 +1063,9 @@ export class CombatHelper {
       }
       for (const { report, actor } of batch) {
         const ids = report.getFlag("neuroshima", "woundIds") ?? [];
+        const wear = collectArmorDurabilityWear(report.getFlag("neuroshima", "results") ?? [],
+          report.getFlag("neuroshima", "reducedDetails") ?? []);
+        await reverseArmorDurabilityWear(actor, wear);
         const existing = ids.filter(id => actor.items.has(id));
         if (existing.length) await actor.deleteEmbeddedDocuments("Item", existing);
         const effects = actor.effects.filter(effect => {
@@ -1264,7 +1295,7 @@ export class CombatHelper {
    * @param {string} [damageCategory="physical"] - Damage category key
    * @returns {{ totalSP: number, details: Array<{name,ratings,damage,effective}>, weakPoint: boolean }}
    */
-  static getArmorRating(actor, location, damageCategory = "physical") {
+  static getArmorRating(actor, location, damageCategory = "physical", durabilityBatch = null) {
     let totalSP = 0;
     const details = [];
     let weakPoint = false;
@@ -1309,11 +1340,12 @@ export class CombatHelper {
 
     const equippedArmor = actor.items.filter(item =>
       item.type === "armor" && item.system.equipped === true
+      && (!durabilityBatch || durabilityBatch.remaining(item, location) !== 0)
     );
 
     if (damageCategory === "physical") {
       for (const armor of equippedArmor) {
-        const effectiveValue = armor.system.effectiveArmor?.[location] || 0;
+        const effectiveValue = armorLocationProtects(armor.system.armor, location) ? (armor.system.effectiveArmor?.[location] || 0) : 0;
         const ratings = armor.system.armor?.ratings?.[location] ?? armor.system.currentRating ?? armor.system.rating ?? 0;
         const damage  = armor.system.armor?.damage?.[location]  || 0;
         if (effectiveValue > 0 || ratings > 0) {
@@ -1356,7 +1388,7 @@ export class CombatHelper {
    * @param {string} [damageCategory="physical"] - Damage category key
    * @private
    */
-  static reduceArmorDamageWithDetails(actor, location, damageType, piercing, context = {}, damageCategory = "physical") {
+  static reduceArmorDamageWithDetails(actor, location, damageType, piercing, context = {}, damageCategory = "physical", durabilityBatch = null) {
     const preArmorArgs = {
       actor,
       location,
@@ -1384,7 +1416,7 @@ export class CombatHelper {
       reducedDamageType: null
     };
 
-    const { uncappedSP, details, weakPoint } = this.getArmorRating(actor, location, damageCategory);
+    const { uncappedSP, details, weakPoint } = this.getArmorRating(actor, location, damageCategory, durabilityBatch);
     let totalArmorRating = uncappedSP;
     reductionData.armorDetails = details;
 

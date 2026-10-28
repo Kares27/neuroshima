@@ -1,3 +1,4 @@
+import { armorLocationProtects } from "../helpers/armor-durability.js";
 /**
  * Base schema for all Neuroshima items.
  */
@@ -145,6 +146,7 @@ function armorSchema() {
     }),
     durability: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
     durabilityDamage: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+    locationDurabilityDamage: new fields.ObjectField({ initial: {} }),
     requiredBuild: new fields.NumberField({ integer: true, initial: 0, min: -100, max: 100 }),
     damage: new fields.SchemaField({
       head: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
@@ -191,7 +193,7 @@ export class ArmorData extends foundry.abstract.TypeDataModel {
     for (const loc of locations) {
       const rating = this.armor.ratings?.[loc] || 0;
       const damageVal = this.armor.damage?.[loc] || 0;
-      effective[loc] = Math.max(0, rating - damageVal);
+      effective[loc] = armorLocationProtects(this.armor, loc) ? Math.max(0, rating - damageVal) : 0;
     }
 
     return effective;

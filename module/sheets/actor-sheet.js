@@ -1,3 +1,4 @@
+import { remainingArmorDurability, armorLocationProtects, modifyArmorDurability } from "../helpers/armor-durability.js";
 import { armorLocationProtections } from "../helpers/armor-location.js";
 import { advanceSpeciality } from "../helpers/speciality.js";
 import { clampArmor } from "../helpers/armor-limit.js";
@@ -2413,8 +2414,8 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       for (const [loc, rating] of Object.entries(ratings)) {
         if (locations[loc] && (rating > 0 || Object.entries(resistanceRatings).some(([category, row]) => category !== "physical" && Number(row[loc]) > 0))) {
           const locDamage = damages[loc] || 0;
-          const currentAP = Math.max(0, rating - locDamage);
-          const currentDur = Math.max(0, durability - durDamage);
+          const currentAP = armorLocationProtects(armor, loc) ? Math.max(0, rating - locDamage) : 0;
+          const currentDur = remainingArmorDurability(armor, loc) ?? 0;
           
           locations[loc].totalAP += currentAP;
           locations[loc].items.push({
@@ -2428,7 +2429,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
             rating: rating,
             damage: locDamage,
             currentRating: clampArmor(actor, currentAP),
-            explosiveDamaged: Number(armor.resistanceDamage?.explosive?.[loc]) > 0,
+            explosiveDamaged: Number(armor.resistanceDamage?.explosive?.[loc]) > 0 || !armorLocationProtects(armor, loc),
             explosiveProtection: clampArmor(actor, resistances.explosive?.[loc] ?? 0, "explosive"),
             radiationProtection: armor.radiationProtection ?? 0
           });
@@ -2473,20 +2474,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
    * Handle modifying armor durability damage via click.
    */
   async _onModifyDurability(event, target) {
-    const itemId = target.dataset.itemId;
-    const item = this.document.items.get(itemId);
-    if (!item || item.type !== "armor") return;
-
-    const isRightClick = event.type === "contextmenu";
-    const currentDamage = item.system.armor?.durabilityDamage || 0;
-    const maxDurability = item.system.armor?.durability || 0;
-
-    let newDamage = isRightClick ? currentDamage + 1 : currentDamage - 1;
-    newDamage = Math.clamp(newDamage, 0, maxDurability);
-
-    if (newDamage !== currentDamage) {
-      return item.update({ "system.armor.durabilityDamage": newDamage });
-    }
+    return modifyArmorDurability(this, event, target);
   }
 
   /**

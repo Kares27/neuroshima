@@ -91,6 +91,10 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
                 fireCorrection: game.settings.get("neuroshima", "fireCorrection")
             };
 
+        config.armorDurabilityMelee = game.settings.get("neuroshima", "armorDurabilityMelee") !== false;
+        config.armorDurabilityRanged = game.settings.get("neuroshima", "armorDurabilityRanged") === true;
+        config.armorDurabilityMeleeBruises = game.settings.get("neuroshima", "armorDurabilityMeleeBruises") === true;
+        config.armorDurabilityRangedTiming = game.settings.get("neuroshima", "armorDurabilityRangedTiming") ?? "beforeArmor";
         const limits = game.settings.get("neuroshima", "armorCategoryLimits") ?? {};
         const globalDamage = game.settings.get("neuroshima", "armorCategoryGlobalDamage") ?? {};
         const draft = this._damageDraft;
@@ -113,6 +117,16 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     async _onChangeForm(formConfig, event) {
+        if (event.target?.name === "armorDurabilityMelee") {
+            const bruises = this.element?.querySelector('[name="armorDurabilityMeleeBruises"]');
+            if (bruises) bruises.disabled = !event.target.checked;
+            return;
+        }
+        if (event.target?.name === "armorDurabilityRanged") {
+            const timing = this.element?.querySelector('[name="armorDurabilityRangedTiming"]');
+            if (timing) timing.disabled = !event.target.checked;
+            return;
+        }
         if (event.target?.name === "armorLimitEnabled") {
             const table = this.element?.querySelector("[data-armor-limit-table]");
             if (table) table.hidden = !event.target.checked;
@@ -135,6 +149,10 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
     _readConfigDraft() {
         const value = name => this.element?.querySelector?.(`[name="${name}"]`);
         return {
+            armorDurabilityMelee: value("armorDurabilityMelee")?.checked ?? true,
+            armorDurabilityRanged: value("armorDurabilityRanged")?.checked === true,
+            armorDurabilityMeleeBruises: value("armorDurabilityMeleeBruises")?.checked === true,
+            armorDurabilityRangedTiming: value("armorDurabilityRangedTiming")?.value ?? "beforeArmor",
             armorLimitEnabled: value("armorLimitEnabled")?.checked === true,
             armorLimitCharacter: Number(value("armorLimitCharacter")?.value ?? 6),
             armorLimitCreature: Number(value("armorLimitCreature")?.value ?? 6),
@@ -231,7 +249,18 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
                 if (!Number.isFinite(value) || value < 0) throw new Error("Invalid armor limit");
                 return { group, value };
             });
+            const timing = data.armorDurabilityRangedTiming
+                ?? this.element?.querySelector?.('[name="armorDurabilityRangedTiming"]')?.value
+                ?? game.settings.get("neuroshima", "armorDurabilityRangedTiming") ?? "beforeArmor";
+            if (!["beforeArmor", "afterArmor"].includes(timing)) throw new Error("Invalid armor wear timing");
+            const meleeBruises = data.armorDurabilityMeleeBruises
+                ?? this.element?.querySelector?.('[name="armorDurabilityMeleeBruises"]')?.checked
+                ?? game.settings.get("neuroshima", "armorDurabilityMeleeBruises") ?? false;
             const updates = [
+                game.settings.set("neuroshima", "armorDurabilityMeleeBruises", meleeBruises === true),
+                game.settings.set("neuroshima", "armorDurabilityMelee", data.armorDurabilityMelee ?? true),
+                game.settings.set("neuroshima", "armorDurabilityRanged", !!data.armorDurabilityRanged),
+                game.settings.set("neuroshima", "armorDurabilityRangedTiming", timing),
                 game.settings.set("neuroshima", "customDamageCategories", JSON.stringify(custom)),
                 game.settings.set("neuroshima", "armorCategoryLimits", limits),
                 game.settings.set("neuroshima", "armorCategoryGlobalDamage", globalDamage),

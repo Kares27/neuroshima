@@ -181,6 +181,7 @@
             }
         },
         "Tooltip": {
+            "ArmorDurabilityWear": "Zużycie wytrzymałości pancerza",
             "Test": "Test",
             "Penalties": "Modyfikatory",
             "Dice": "Kości",
@@ -249,6 +250,7 @@
             "No": "Nie"
         },
         "Roll": {
+            "SuccessBonus": "Bonus sukcesów",
             "Edited": "Edytowany przez MG",
             "PenaltyLabel": "Kara do testu",
             "Target": "Próg",
@@ -457,6 +459,7 @@
             "Button": "Odpocznij"
         },
         "PainResistance": {
+            "ArmorWear": "Wytrz. pancerza",
             "Rerolled": "Przerzucono",
             "ReportTitle": "Testy Odporności na Ból",
             "Passed": "Zdane",
@@ -564,6 +567,17 @@
                     "RollbackFailed": "Import nie powiódł się. Nie udało się przywrócić ustawień: {keys}. Sprawdź konfigurację przed dalszą grą.",
                     "Unexpected": "Nie udało się przenieść ustawień. Szczegóły znajdują się w konsoli."
                 }
+            },
+            "ArmorDurability": {
+                "Bruises": "Wliczaj Siniaki do obliczeń",
+                "BruisesHint": "Uwzględniaj sC (utrata 1) oraz sK (utrata 3) wyłącznie przy redukcji wytrzymałości w walce wręcz.",
+                "Title": "Redukcja Wytrzymałości",
+                "Hint": "Ciężka rana zmniejsza Wytrzymałość trafionej części pancerza o 1, Krytyczna o 3. Przy 0 ta część przestaje chronić. W walce wręcz liczy się obrażenie przed redukcją; Odporność na ból nie wpływa na zużycie.",
+                "Melee": "W Walce Wręcz",
+                "Ranged": "Od Broni Palnej",
+                "Timing": "Obrażenia broni palnej sprawdzaj",
+                "Before": "Przed redukcją pancerza",
+                "After": "Po redukcji pancerza"
             },
             "CombatConfig": {
                 "Title": "Ustawienia Walki",
@@ -940,6 +954,9 @@
             "Attacker": "Atakujący",
             "Defender": "Obrońca",
             "StartDuel": "Rozpocznij starcie",
+            "EditAttackerRoll": "Edytuj rzut atakującego",
+            "EditDefenderRoll": "Edytuj rzut broniącego",
+            "RollNotAvailable": "Ta strona nie ma jeszcze zapisanego rzutu.",
             "StartDuelFromTarget": "Rozpocznij Walkę z Celem",
             "NoTargetForDuel": "Brak stargetowanego tokena. Zaznacz cel na planszy przed użyciem tej opcji.",
             "RollPool": "Rzuć Pulę",
@@ -2582,6 +2599,27 @@
                 "FactionHeader": "Reputacje Frakcji"
             },
             "ApplyDamage": {
+                "DamageTable": "Obrażenia",
+                "Severity": "Stopień rany",
+                "Category": "Typ obrażeń",
+                "Random": "Losuj",
+                "RandomEach": "Osobno dla każdej rany",
+                "AddRow": "Dodaj obrażenia",
+                "RemoveRow": "Usuń wiersz",
+                "Search": "Szukaj aktora…",
+                "AllTypes": "Wszystkie typy",
+                "ActorType": "Typ aktora",
+                "ActorSource": "Źródło aktorów",
+                "NoResults": "Brak pasujących aktorów.",
+                "SelectVisible": "Zaznacz widocznych",
+                "DeselectAll": "Odznacz wszystkich",
+                "InvalidRow": "Sprawdź wiersze obrażeń: ilość musi być całkowita (1–1000), a typy i lokacje dostępne w konfiguracji.",
+                "Failed": "Nie udało się zastosować wszystkich obrażeń. Zapisane rany są w raporcie na czacie; sprawdź je przed ponownym użyciem.",
+                "Source": {
+                    "scene": "Aktualna scena",
+                    "world": "Aktorzy świata",
+                    "all": "Scena i świat"
+                },
                 "Title": "Zastosuj Obrażenia",
                 "NoActor": "Wybierz postać docelową.",
                 "ActorNotFound": "Nie znaleziono postaci.",

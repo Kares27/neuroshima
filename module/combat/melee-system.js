@@ -309,7 +309,7 @@ export class MeleeExchangeContext {
       hits: clone(exchange.hits),
       counterHits: clone(exchange.counterHits),
       fullDefenseStreak: clone(exchange.fullDefenseStreak ?? {}),
-      applied: session.result?.applied === true,
+      applied: session.result?.applied === true || session.operationLedger?.[`${session.id}:damage:duel`]?.status === "applied",
       segmentHistory: exchange.history.map((_snapshot, index) => ({ canonicalSnapshot: index })),
       segmentFuture: exchange.future.map((_snapshot, index) => ({ canonicalSnapshot: index })),
       declaredAction: declaration?.duelAction ?? null,
@@ -1677,6 +1677,10 @@ export class MeleeCommandService {
       }
       throw new MeleeValidationError("User does not control either participant", "UNAUTHORIZED");
     }
+    if (command.type === "replaceRoll" && (session.status !== "active"
+      || Object.values(session.operationLedger ?? {}).some(entry => entry?.status === "applied"))) {
+      throw new MeleeValidationError("Only a GM may correct a completed exchange", "UNAUTHORIZED");
+    }
     const side = command.side;
     const participant = session.participants?.[side];
     if (!participant || !await userControlsMeleeParticipant(participant, user)) {
@@ -1783,10 +1787,8 @@ export class MeleeCommandService {
   static _replaceRoll(session, command) {
     const side = command.side;
     if (!MELEE_SIDES.includes(side)) throw new MeleeValidationError("Invalid roll side", "WRONG_SIDE");
-    if (session.result?.applied || session.hailResult?.applied ||
-        session.pendingOutcomes.some(outcome => outcome.status === "applied") ||
-        Object.values(session.operationLedger ?? {}).some(entry => ["running", "applied"].includes(entry?.status))) {
-      throw new MeleeValidationError("Nie można edytować rzutu, ponieważ wynik tej walki został już zastosowany.", "RESULT_ALREADY_APPLIED");
+    if (Object.values(session.operationLedger ?? {}).some(entry => entry?.status === "running")) {
+      throw new MeleeValidationError("Wait for pending damage application", "RESULT_APPLYING");
     }
     const dice = setMeleePool(session, side, command.payload?.dice);
     if (dice.length < 1 || dice.length > 3) {
@@ -1803,6 +1805,7 @@ export class MeleeCommandService {
       session.hailResult = resolveMeleeHail(attackDice, defenseDice, {
         1: session.metadata.damage1, 2: session.metadata.damage2, 3: session.metadata.damage3
       });
+      session.hailResult.applied = session.operationLedger?.[`${session.id}:damage:hail`]?.status === "applied";
       session.status = "complete";
       session.phase = "complete";
       return { side, reset: true, variant: "gradCiosow" };
@@ -1825,7 +1828,7 @@ export class MeleeCommandService {
     session.pendingOutcomes = [];
     session.actionInstances = {};
     session.actions = { declared: [], resolved: [] };
-    session.operationLedger = {};
+    // Applied damage remains authoritative until its report is explicitly reversed.
     return { side, reset: true, variant: "standard" };
   }
 
@@ -2748,6 +2751,18 @@ export function registerMeleeSystem() {
     dispatch: command => game.user.isGM
       ? MeleeCommandService.dispatch({ ...command, userId: command.userId || game.user.id })
       : game.neuroshima.socket.executeAsGM(MELEE_SOCKET_COMMAND, { ...command, userId: game.user.id }),
+    validateTestMutation: async test => {
+      const link = test?.context?.opposedLink;
+      if (!isMeleeSessionLink(link) || !MELEE_SIDES.includes(link.role)) return { ok: false, reason: "invalid-link" };
+      const session = await MeleeSessionStore.get(link.sessionId, { messageId: link.messageId });
+      if (!session) return { ok: false, reason: "session-missing" };
+      const participant = session.participants[link.role];
+      if (!game.user.isGM && !await userControlsMeleeParticipant(participant, game.user)) return { ok: false, reason: "not-owner" };
+      const messageId = session.messages?.[`${link.role}RollMessageId`];
+      if (messageId && test.message?.id && test.message.id !== messageId) return { ok: false, reason: "stale-roll-message" };
+      if (!game.user.isGM && (session.status !== "active" || Object.values(session.operationLedger ?? {}).some(entry => entry?.status === "applied"))) return { ok: false, reason: "session-complete" };
+      return { ok: true };
+    },
     syncTest: async test => {
       const link = test?.context?.opposedLink;
       if (!isMeleeSessionLink(link) || !MELEE_SIDES.includes(link.role)) return null;
@@ -2761,7 +2776,7 @@ export function registerMeleeSystem() {
         target: result.target,
         isSuccess: die.isSuccess === true,
         successPoints: die.isSuccess === true ? 1 : 0,
-        changes: array(result.diceChanges).filter(change => change.index === index)
+        changes: array(result.diceChanges).filter(change => (change.targetIndex ?? change.index) === index)
       }));
       return api.dispatch({
         type: "replaceRoll", side: link.role, payload: { dice, target: result.target },

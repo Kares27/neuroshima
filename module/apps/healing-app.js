@@ -212,7 +212,8 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
             template: "systems/neuroshima/templates/apps/healing-app-header.hbs"
         },
         main: {
-            template: "systems/neuroshima/templates/apps/healing-app-main.hbs"
+            template: "systems/neuroshima/templates/apps/healing-app-main.hbs",
+            scrollable: [".wounds-list-container"]
         }
     };
 
@@ -233,12 +234,52 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
         
         // UI state
         this.selectedLocation = null;
+        this._selectedWoundIds = new Set();
+        this._documentHooks = [];
+        this._observedActorUuids = new Set();
         
         game.neuroshima?.log("HealingApp constructor", {
             sessionId: this.sessionId,
             patientRef: this.patientRef,
             medicRef: this.medicRef
         });
+    }
+
+    _observeDocuments() {
+        if (this._documentHooks.length) return;
+        const changed = document => {
+            let current = document;
+            while (current) {
+                if (this._observedActorUuids.has(current.uuid)) {
+                    this._queueRefresh();
+                    return;
+                }
+                current = current.parent;
+            }
+        };
+        for (const type of ["Actor", "Item", "ActiveEffect"]) {
+            for (const action of ["create", "update", "delete"]) {
+                const name = `${action}${type}`;
+                this._documentHooks.push([name, Hooks.on(name, changed)]);
+            }
+        }
+        this._documentHooks.push(["updateWorldTime", Hooks.on("updateWorldTime", () => this._queueRefresh())]);
+    }
+
+    _queueRefresh() {
+        if (!this.rendered) return;
+        clearTimeout(this._refreshTimer);
+        this._refreshTimer = setTimeout(() => {
+            this._refreshTimer = null;
+            if (this.rendered) this.render({ parts: ["header", "main"] });
+        }, 100);
+    }
+
+    async close(options = {}) {
+        clearTimeout(this._refreshTimer);
+        for (const [name, id] of this._documentHooks) Hooks.off(name, id);
+        this._documentHooks = [];
+        return super.close(options);
     }
 
     /** @inheritdoc */
@@ -256,6 +297,11 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 error: true,
                 errorMessage: `Patient actor not found (UUID: ${this.patientRef?.uuid || 'None'})`
             };
+        }
+
+        this._observedActorUuids = new Set([patientActor.uuid, medicActor?.uuid].filter(Boolean));
+        for (const id of this._selectedWoundIds) {
+            if (!patientActor.items.get(id)) this._selectedWoundIds.delete(id);
         }
 
         // Permissions: Medic (owner of medic actor or GM)
@@ -333,6 +379,8 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
             htmlElement.querySelectorAll(".wound-checkbox").forEach(checkbox => {
                 checkbox.addEventListener("change", (event) => {
                     event.stopPropagation(); // Prevent triggering the row click event
+                    if (checkbox.checked) this._selectedWoundIds.add(checkbox.dataset.woundId);
+                    else this._selectedWoundIds.delete(checkbox.dataset.woundId);
                     this._updateHealButton(htmlElement);
                 });
             });
@@ -372,6 +420,8 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     const isChecked = event.target.checked;
                     htmlElement.querySelectorAll(".wound-checkbox").forEach(cb => {
                         cb.checked = isChecked;
+                        if (isChecked) this._selectedWoundIds.add(cb.dataset.woundId);
+                        else this._selectedWoundIds.delete(cb.dataset.woundId);
                     });
                     this._updateHealButton(htmlElement);
                 });
@@ -400,6 +450,11 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
         
         // Initialize paper doll
         this._initializeWoundLocationPanel(this.element);
+        this._observeDocuments();
+        this.element.querySelectorAll(".wound-checkbox").forEach(checkbox => {
+            checkbox.checked = this._selectedWoundIds.has(checkbox.dataset.woundId);
+        });
+        this._updateHealButton(this.element);
     }
 
     /**

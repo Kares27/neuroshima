@@ -1,3 +1,4 @@
+import { ArmorDurabilityBatch } from "../helpers/armor-durability.js";
 import { exchangeDamageHits, summarizeExchangeDamage } from "./melee-damage-summary.js";
 import { beastActivities, isBeastAbility, isBeastAction } from "../helpers/beast-actions.js";
 /**
@@ -4436,36 +4437,40 @@ export class MeleeOpposedChat {
       let   counterReduced        = 0;
       const counterReducedDetails = [];
 
-      for (const counterHit of rd.counterHits) {
-        const tier = counterHit.tier ?? 1;
-        const dmgForTier = counterHit.damageType
-          ?? defWeapon?.system?.[`damageMelee${tier}`]
-          ?? ["D", "L", "K"][tier - 1] ?? "D";
-        const counterAttackData = {
-          isMelee:     true,
-          actorId:     defenderActor?.id,
-          weaponId:    defWeapon?.id ?? null,
-          label:       defWeapon?.name ?? game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
-          damageMelee1: dmgForTier,
-          damageMelee2: dmgForTier,
-          damageMelee3: dmgForTier,
-          finalLocation: rd.location,
-          headDamageApplied: rd.headDamageApplied === true,
-          successPoints: tier
-        };
-        const batch = await CombatHelper.applyDamageToActor(attackerActor, counterAttackData, {
-          isOpposed:    true,
-          spDifference: tier,
-          location:     rd.location,
-          suppressChat: true
-        });
-        if (batch) {
-          counterResults.push(...(batch.results ?? []));
-          counterWoundIds.push(...(batch.woundIds ?? []));
-          counterReduced += batch.reducedProjectiles ?? 0;
-          counterReducedDetails.push(...(batch.reducedDetails ?? []));
+      const counterDurabilityBatch = new ArmorDurabilityBatch(attackerActor);
+      try {
+        for (const counterHit of rd.counterHits) {
+          const tier = counterHit.tier ?? 1;
+          const dmgForTier = counterHit.damageType
+            ?? defWeapon?.system?.[`damageMelee${tier}`]
+            ?? ["D", "L", "K"][tier - 1] ?? "D";
+          const counterAttackData = {
+            isMelee:     true,
+            actorId:     defenderActor?.id,
+            weaponId:    defWeapon?.id ?? null,
+            label:       defWeapon?.name ?? game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
+            damageMelee1: dmgForTier,
+            damageMelee2: dmgForTier,
+            damageMelee3: dmgForTier,
+            finalLocation: rd.location,
+            headDamageApplied: rd.headDamageApplied === true,
+            successPoints: tier
+          };
+          const batch = await CombatHelper.applyDamageToActor(attackerActor, counterAttackData, {
+            armorDurabilityBatch: counterDurabilityBatch,
+            isOpposed:    true,
+            spDifference: tier,
+            location:     rd.location,
+            suppressChat: true
+          });
+          if (batch) {
+            counterResults.push(...(batch.results ?? []));
+            counterWoundIds.push(...(batch.woundIds ?? []));
+            counterReduced += batch.reducedProjectiles ?? 0;
+            counterReducedDetails.push(...(batch.reducedDetails ?? []));
+          }
         }
-      }
+      } finally { await counterDurabilityBatch.commit(); }
 
       if (counterWoundIds.length > 0) {
         ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.DamageApplied", {
@@ -5810,47 +5815,51 @@ export class MeleeResolution {
     const _s2 = _globalShift + (attacker.damageShift2 || 0);
     const _s3 = _globalShift + (attacker.damageShift3 || 0);
 
-    for (const hit of hits) {
-      const hasSnapshotDamage = attacker.damageMelee1 || attacker.damageMelee2 || attacker.damageMelee3;
-      if (isBeastActionWeapon && !beastActionDamage && !hasSnapshotDamage) continue;
-      let dmg1, dmg2, dmg3;
-      if (attacker.damageMelee1 || attacker.damageMelee2 || attacker.damageMelee3) {
-        dmg1 = attacker.damageMelee1;
-        dmg2 = attacker.damageMelee2 ?? attacker.damageMelee1;
-        dmg3 = attacker.damageMelee3 ?? attacker.damageMelee2 ?? attacker.damageMelee1;
-      } else if (isBeastActionWeapon) {
-        dmg1 = this._shiftDamageType(beastActionDamage, _s1);
-        dmg2 = this._shiftDamageType(beastActionDamage, _s2);
-        dmg3 = this._shiftDamageType(beastActionDamage, _s3);
-      } else {
-        dmg1 = this._shiftDamageType(weapon?.system.damageMelee1, _s1);
-        dmg2 = this._shiftDamageType(weapon?.system.damageMelee2, _s2);
-        dmg3 = this._shiftDamageType(weapon?.system.damageMelee3, _s3);
-      }
+    const durabilityBatch = new ArmorDurabilityBatch(defenderActor);
+    try {
+      for (const hit of hits) {
+        const hasSnapshotDamage = attacker.damageMelee1 || attacker.damageMelee2 || attacker.damageMelee3;
+        if (isBeastActionWeapon && !beastActionDamage && !hasSnapshotDamage) continue;
+        let dmg1, dmg2, dmg3;
+        if (attacker.damageMelee1 || attacker.damageMelee2 || attacker.damageMelee3) {
+          dmg1 = attacker.damageMelee1;
+          dmg2 = attacker.damageMelee2 ?? attacker.damageMelee1;
+          dmg3 = attacker.damageMelee3 ?? attacker.damageMelee2 ?? attacker.damageMelee1;
+        } else if (isBeastActionWeapon) {
+          dmg1 = this._shiftDamageType(beastActionDamage, _s1);
+          dmg2 = this._shiftDamageType(beastActionDamage, _s2);
+          dmg3 = this._shiftDamageType(beastActionDamage, _s3);
+        } else {
+          dmg1 = this._shiftDamageType(weapon?.system.damageMelee1, _s1);
+          dmg2 = this._shiftDamageType(weapon?.system.damageMelee2, _s2);
+          dmg3 = this._shiftDamageType(weapon?.system.damageMelee3, _s3);
+        }
 
-      const attackData = {
-        isMelee: true,
-        actorId: attackerActor.id,
-        weaponId: attacker.weaponId,
-        label: weapon?.name || game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
-        successPoints: hit.cost,
-        finalLocation: location,
-        headDamageApplied: _headShift > 0,
-        damageMelee1: dmg1,
-        damageMelee2: dmg2,
-        damageMelee3: dmg3
-      };
+        const attackData = {
+          isMelee: true,
+          actorId: attackerActor.id,
+          weaponId: attacker.weaponId,
+          label: weapon?.name || game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
+          successPoints: hit.cost,
+          finalLocation: location,
+          headDamageApplied: _headShift > 0,
+          damageMelee1: dmg1,
+          damageMelee2: dmg2,
+          damageMelee3: dmg3
+        };
 
-      const batchResult = await CombatHelper.applyDamageToActor(defenderActor, attackData, {
-        isOpposed: true, spDifference: hit.cost, location, suppressChat: true
-      });
-      if (batchResult) {
-        allResults.push(...batchResult.results);
-        allWoundIds.push(...batchResult.woundIds);
-        totalReducedProjectiles += batchResult.reducedProjectiles;
-        allReducedDetails.push(...batchResult.reducedDetails);
+        const batchResult = await CombatHelper.applyDamageToActor(defenderActor, attackData, {
+          armorDurabilityBatch: durabilityBatch,
+          isOpposed: true, spDifference: hit.cost, location, suppressChat: true
+        });
+        if (batchResult) {
+          allResults.push(...batchResult.results);
+          allWoundIds.push(...batchResult.woundIds);
+          totalReducedProjectiles += batchResult.reducedProjectiles;
+          allReducedDetails.push(...batchResult.reducedDetails);
+        }
       }
-    }
+    } finally { await durabilityBatch.commit(); }
 
     // Single consolidated notification + chat message for all hits.
     if (allWoundIds.length > 0) {

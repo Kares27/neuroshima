@@ -138,7 +138,7 @@
                             <img src="{{armor.img}}" class="armor-icon-tiny" alt="{{armor.name}}">
                             <span class="armor-name-tiny clickable" data-action="editItem">{{armor.name}}</span>
                             <span class="armor-durability clickable {{#if (lt armor.currentDurability armor.durability)}}is-damaged{{/if}}"
-                                  data-action="modifyDurability"
+                                  data-action="modifyDurability" data-location="{{../key}}"
                                   data-item-id="{{armor.id}}"
                                   title="LPM: {{localize "NEUROSHIMA.Actions.Repair"}} | PPM: {{localize "NEUROSHIMA.Actions.Damage"}}">
                                 {{armor.currentDurability}}

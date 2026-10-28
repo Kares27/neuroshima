@@ -1,3 +1,4 @@
+import { collectArmorDurabilityWear } from "../helpers/armor-durability.js";
 import { requiredTestSuccesses, requiredTestPassed } from "../helpers/required-test.js";
 import { clampArmor } from "../helpers/armor-limit.js";
 import { beastActivities, isBeastAction } from "../helpers/beast-actions.js";
@@ -1779,7 +1780,38 @@ export class NeuroshimaChatMessage extends ChatMessage {
         }
       ])
     }));
+    for (const row of [...preparedResults, ...preparedReducedDetails]) {
+      const wear = this._armorDurabilityReportData([row]);
+      if (!wear.armorWearTotal) continue;
+      const base = row.armorWearBaseTooltip ?? row.tooltipHtml;
+      row.armorWearBaseTooltip = base;
+      row.tooltipHtml = base + wear.armorWearTooltip;
+    }
     return { results: preparedResults, reducedDetails: preparedReducedDetails };
+  }
+
+  static _armorDurabilityReportData(results = [], reducedDetails = []) {
+    const records = collectArmorDurabilityWear(results, reducedDetails);
+    const groups = new Map();
+    for (const record of records) {
+      const key = `${record.itemId}:${record.location}`;
+      const group = groups.get(key) ?? { ...record, amount: 0 };
+      group.amount += Number(record.amount);
+      group.after = record.after;
+      groups.set(key, group);
+    }
+    return {
+      armorWearTotal: records.reduce((total, record) => total + Number(record.amount), 0),
+      armorWearTooltip: records.length ? renderTooltipSections([{
+        title: "NEUROSHIMA.Tooltip.ArmorDurabilityWear",
+        rows: [...groups.values()].map(record => ({
+          label: `${record.itemName || record.itemId} — ${game.i18n.localize(NEUROSHIMA.bodyLocations?.[record.location]?.label ?? record.location)}`,
+          value: -record.amount,
+          suffix: record.before != null && record.after != null ? ` (${record.before} → ${record.after})` : "",
+          state: "penalty"
+        }))
+      }]) : ""
+    };
   }
 
   static async _resolveRequiredTestContinuation(message, data, isSuccess) {
@@ -1827,6 +1859,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       criticalCount,
       reducedCount,
       reducedDetails,
+      ...this._armorDurabilityReportData(results, reducedDetails),
       sourceInfo: options.sourceInfo || "",
       armorReductionOnly: options.armorReductionOnly || false,
       config: NEUROSHIMA
@@ -1862,6 +1895,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
     const normal = prepared.results.filter(result => !result.isCritical);
     const context = {
       ...data, ...prepared, actorName: actor.name, config: NEUROSHIMA,
+      ...this._armorDurabilityReportData(prepared.results, prepared.reducedDetails),
       passedCount: normal.filter(result => result.isPassed).length,
       failedCount: normal.filter(result => !result.isPassed).length,
       criticalCount: prepared.results.filter(result => result.isCritical).length

@@ -346,6 +346,7 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
     test.preData.specialityBonus = Number(this._scriptFields?.specialityBonus ?? 0);
     test.preData.specialitySources = foundry.utils.deepClone(this._scriptFields?.specialitySources ?? []);
     test.preData.dieReductionBonus = Number(this._scriptFields?.dieReductionBonus ?? 0);
+    this._applyManualSuccessBonus(test);
     await test.roll();
     const result = { ...test.result, message: test.message };
 

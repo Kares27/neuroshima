@@ -1,3 +1,4 @@
+import { armorLocationProtects } from "./armor-durability.js";
 import { NEUROSHIMA } from "../config.js";
 import { getEffectiveArmorResistances } from "./mod-helpers.js";
 import { clampArmor } from "./armor-limit.js";
@@ -21,7 +22,7 @@ export function armorLocationProtections(actor, location) {
         && getEffectiveArmorResistances(item, { includeDamage: false })[key]?.[location] > 0)
         .map(item => ({ id: item.id, name: item.name, location, category: key,
           value: clampArmor(actor, getEffectiveArmorResistances(item)[key]?.[location] ?? 0, key),
-          damaged: Number(item.system.armor?.resistanceDamage?.[key]?.[location]) > 0 }))
+          damaged: Number(item.system.armor?.resistanceDamage?.[key]?.[location]) > 0 || !armorLocationProtects(item.system.armor, location) }))
     }))
     .filter(category => category.items.length > 0);
 }

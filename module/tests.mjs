@@ -518,7 +518,9 @@ export class NeuroshimaTestBase {
 
   applyResultModifiers() {
     const modifiers = this.preData.resultModifiers ?? {};
-    const successPointModifier = Number(modifiers.successPoints ?? 0);
+    const manual = Number(this.preData.manualSuccessPoints ?? 0);
+    this.result.manualSuccessPoints = Number.isFinite(manual) ? Math.trunc(manual) : 0;
+    const successPointModifier = Number(modifiers.successPoints ?? 0) + this.result.manualSuccessPoints;
     if (this.result.isOpen === true && this.result.openMargin != null) {
       this.result.openMargin = Number(this.result.openMargin) + successPointModifier;
       this.result.successPoints = Math.max(0, this.result.openMargin);
@@ -711,6 +713,7 @@ export class NeuroshimaTestBase {
   }
 
   async edit({ preData = {}, rawResults = null } = {}, { message = null } = {}) {
+    this.message = message ?? this.message;
     const validation = await this.validateLinkedMutation();
     if (!validation.ok) return this.rejectLinkedMutation(validation);
     const linkedCheckpoint = this.context?.opposedLink ? this.toData() : null;
@@ -756,6 +759,7 @@ export class NeuroshimaTestBase {
   }
 
   async reroll({ previousMessage = null, replaceMessage = false } = {}) {
+    this.message = previousMessage ?? this.message;
     const validation = await this.validateLinkedMutation();
     if (!validation.ok) return this.rejectLinkedMutation(validation);
     const linkedCheckpoint = this.context?.opposedLink ? this.toData() : null;
@@ -791,6 +795,7 @@ export class NeuroshimaTestBase {
   }
 
   async rerollDice(indices, { previousMessage = null, replaceMessage = false } = {}) {
+    this.message = previousMessage ?? this.message;
     const validation = await this.validateLinkedMutation();
     if (!validation.ok) return this.rejectLinkedMutation(validation);
     const linkedCheckpoint = this.context?.opposedLink ? this.toData() : null;
@@ -882,6 +887,9 @@ export class NeuroshimaTestBase {
 
   async validateOpposedMutation() {
     const link = this.context.opposedLink;
+    if (["meleeSession", "meleeSessionV2"].includes(link?.type)) {
+      return game.neuroshima.melee.validateTestMutation(this);
+    }
     const message = game.messages.get(link.duelMessageId);
     if (!message) return { ok: false, reason: "duel-message-missing" };
     const opposed = message.getFlag("neuroshima", "opposedChat");
@@ -1048,6 +1056,8 @@ export class NeuroshimaTestBase {
               ? "bonus"
               : Number(result.skillBonus ?? 0) < 0 ? "penalty" : null
           },
+          ...(result.manualSuccessPoints ? [{ label: "NEUROSHIMA.Roll.SuccessBonus", value: result.manualSuccessPoints, signed: true,
+            state: result.manualSuccessPoints > 0 ? "bonus" : "penalty" }] : []),
           { label: "NEUROSHIMA.Tooltip.BaseDifficulty", value: game.i18n.localize(result.baseDifficultyLabel ?? "") }
         ]
       },
@@ -1550,7 +1560,8 @@ export class PercentileTest extends NeuroshimaTestBase {
     // Keep the signed comparison for presentation. successPoints remains the
     // non-negative mechanical aggregate required by the shared test contract.
     this.result.thresholdMargin = thresholdMargin
-      + Number(this.preData.resultModifiers?.successPoints ?? 0);
+      + Number(this.preData.resultModifiers?.successPoints ?? 0)
+      + Number(this.result.manualSuccessPoints ?? 0);
     return this;
   }
 

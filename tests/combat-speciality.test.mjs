@@ -54,6 +54,15 @@ function speciality(owner, value = 4, discounted = false) {
   owner.items.push(item); return item;
 }
 
+function trackEmbeddedUpdates(actor) {
+  actor.embeddedUpdates = [];
+  actor.updateEmbeddedDocuments = async (type, updates) => {
+    assert.equal(type, "Item");
+    actor.embeddedUpdates.push(structuredClone(updates));
+    for (const { _id, ...data } of updates) await actor.items.get(_id).update(data);
+  };
+}
+
 test("applied Damage effects retain status identifiers without becoming configured conditions", () => {
   const name = { slugify: () => "grab" };
   const source = { _id: "template", name: "Grab", statuses: [], duration: {}, flags: {}, system: {} };
@@ -643,7 +652,7 @@ test("shared tempo affects a normal defense roll and maneuver bonuses always mod
  let captured;
  owner._setupTest=(_class,data)=>{captured=data;return {preData:{},result:{},async roll(){}};};
  const weapon={id:"unarmed",name:"Unarmed",system:{weaponType:"melee",attribute:"dexterity",skill:"brawl",attackBonus:0,defenseBonus:0}};
- const dialog={actor:owner,weapon,rollType:"melee",_scriptFields:{}};
+ const dialog=Object.assign(Object.create(NeuroshimaWeaponRollDialog.prototype),{actor:owner,weapon,rollType:"melee",_scriptFields:{},userEntry:{}});
  const execute=params=>NeuroshimaWeaponRollDialog.prototype._executeWeaponTest.call(dialog,{weapon,actor:owner,
    difficulty:"average",meleeAction:"defense",maneuver:"none",...params});
  await execute({tempoLevel:2});
@@ -718,7 +727,7 @@ test("charge is restricted to Dexterity melee initiative and its bonus is clampe
  const previous=InitiativeTest.prototype.roll;let captured;
  InitiativeTest.prototype.roll=async function(){captured=this.attribute.value;return this;};
  const owner=actor();owner.system.attributeTotals={dexterity:10,perception:11};
- const dialog={actor:owner,isMelee:true,_scriptFields:{}};
+ const dialog=Object.assign(Object.create(NeuroshimaInitiativeRollDialog.prototype),{actor:owner,isMelee:true,_scriptFields:{},userEntry:{}});
  try{
    await NeuroshimaInitiativeRollDialog.prototype._performRoll.call(dialog,{attribute:"dexterity",maneuver:"charge",chargeLevel:99});
    assert.equal(captured,13);
@@ -1516,7 +1525,7 @@ test("combat settings save custom types and their caps together and reject inval
  const previous={settings:game.settings,config:game.neuroshima.config,ui:globalThis.ui,SettingsConfig:globalThis.SettingsConfig,error:console.error};
  const writes=new Map();let errors=0;
  try{
-   game.settings={get:(_scope,key)=>key==="customDamageCategories"?"[]":key==="meleeCombatType"?"default":false,async set(_scope,key,value){writes.set(key,value);}};
+   game.settings={get:(_scope,key)=>key==="customDamageCategories"?"[]":key==="meleeCombatType"?"default":key==="armorDurabilityRangedTiming"?"beforeArmor":false,async set(_scope,key,value){writes.set(key,value);}};
    game.neuroshima.config={damageCategories:{physical:{},explosive:{},obsolete:{}}};
    globalThis.ui={notifications:{info(){},error(){errors++;}}};globalThis.SettingsConfig={reloadConfirm(){}};console.error=()=>{};
    const app=new CombatConfig();app._readDamageCategories=()=>({custom:[{key:"acid",label:"Acid",color:"#123456",maxArmor:"2.5"}],builtinLimits:{explosive:"3"}});
@@ -1823,4 +1832,517 @@ test("beast blast profiles preserve attribute, skill mode and source keys throug
     await GrenadeTest.prototype.postTest.call({context:{},result:{},item:{actor:owner,system:{quantity:2},async update(data){saved=data;}}});
     assert.equal(saved["system.quantity"],1);
   } finally {game.neuroshima.tests=previous.tests;globalThis.fromUuid=previous.resolver;}
+});
+
+
+test("armor durability wear is local, honors firearm timing, stops protection at zero and reverses only its own wear", async () => {
+  const {applyArmorDurabilityWear,remainingArmorDurability,reverseArmorDurabilityWear}=await import("../module/helpers/armor-durability.js");
+  const {getEffectiveArmorResistances}=await import("../module/helpers/mod-helpers.js");
+  const old={melee:settings.armorDurabilityMelee,ranged:settings.armorDurabilityRanged,timing:settings.armorDurabilityRangedTiming};
+  const owner=actor();
+  const armor={id:"vest",type:"armor",system:{equipped:true,armor:{durability:6,durabilityDamage:1,ratings:{torso:2,head:2},resistances:[{category:"explosive",torso:3,head:3}]}},
+    async update(data){for(const [key,value]of Object.entries(data))setProperty(this,key,value);}};
+  owner.items.push(armor);
+  try {
+    settings.armorDurabilityMelee=true;settings.armorDurabilityRanged=false;
+    let records=await applyArmorDurabilityWear(owner,"torso","C","L",{isMelee:true},[armor]);
+    assert.equal(remainingArmorDurability(armor.system.armor,"torso"),4);
+    assert.equal(remainingArmorDurability(armor.system.armor,"head"),5);
+    assert.equal(armor.system.armor.ratings.torso,2);
+    assert.equal((await applyArmorDurabilityWear(owner,"torso","K","C",{weaponType:"ranged"},[armor])).length,0);
+    settings.armorDurabilityRanged=true;settings.armorDurabilityRangedTiming="afterArmor";
+    assert.equal((await applyArmorDurabilityWear(owner,"torso","C","L",{weaponType:"ranged"},[armor])).length,0);
+    records.push(...await applyArmorDurabilityWear(owner,"torso","K","C",{weaponType:"ranged"},[armor]));
+    assert.equal(remainingArmorDurability(armor.system.armor,"torso"),3);
+    settings.armorDurabilityRangedTiming="beforeArmor";
+    records.push(...await applyArmorDurabilityWear(owner,"torso","K","D",{weaponType:"ranged"},[armor]));
+    assert.equal(remainingArmorDurability(armor.system.armor,"torso"),0);
+    assert.equal(getEffectiveArmorResistances(armor).explosive.torso,0);
+    assert.equal(getEffectiveArmorResistances(armor).explosive.head,3);
+    await reverseArmorDurabilityWear(owner,[...records,...records]);
+    assert.equal(remainingArmorDurability(armor.system.armor,"torso"),5);
+    settings.armorDurabilityMelee=false;
+    assert.equal((await applyArmorDurabilityWear(owner,"torso","K","C",{isMelee:true},[armor])).length,0);
+    assert.equal((await applyArmorDurabilityWear(owner,"torso","K","C",{isGrenade:true},[armor])).length,0);
+    assert.equal((await applyArmorDurabilityWear(owner,"torso","K","C",{weaponType:"thrown"},[armor])).length,0);
+  }finally{settings.armorDurabilityMelee=old.melee;settings.armorDurabilityRanged=old.ranged;settings.armorDurabilityRangedTiming=old.timing;}
+});
+
+test("damage pipeline wears armor per bullet and later bullets stop receiving protection from a destroyed location", async () => {
+  const old={ranged:settings.armorDurabilityRanged,timing:settings.armorDurabilityRangedTiming,group:game.neuroshima.group,end:game.neuroshima.groupEnd,actors:game.actors};
+  const owner=actor();trackEmbeddedUpdates(owner);owner.system.attributes={constitution:10};
+  const armor={id:"vest",name:"Vest",type:"armor",system:{equipped:true,armor:{durability:2,ratings:{torso:1},damage:{},resistances:[]}},
+    async update(data){for(const [key,value]of Object.entries(data))setProperty(this,key,value);}};
+  Object.defineProperty(armor.system,"effectiveArmor",{get:()=>({torso:1})});owner.items.push(armor);
+  class Helper extends CombatHelper {
+    static async applyDamage(_actor,{wounds}){return {results:wounds.map(w=>({damageType:w.damageType})),woundIds:[]};}
+    static async _applyDamageTypeEffects(){}
+  }
+  try{
+    settings.armorDurabilityRanged=true;settings.armorDurabilityRangedTiming="beforeArmor";
+    game.neuroshima.group=()=>{};game.neuroshima.groupEnd=()=>{};game.actors=new Map();
+    const data={weaponType:"ranged",finalLocation:"torso",damage:"C",hitBulletsData:[{damage:"C"},{damage:"C"},{damage:"C"}]};
+    const result=await Helper.applyDamageToActor(owner,data,{suppressChat:true,withPainResistance:false});
+    assert.deepEqual(result.results.map(r=>r.damageType),["L","L","C"]);
+    assert.equal(armor.system.armor.locationDurabilityDamage.torso,2);
+    assert.equal(owner.embeddedUpdates.length,1);
+    assert.deepEqual(owner.embeddedUpdates[0],[{_id:"vest","system.armor.locationDurabilityDamage.torso":2}]);
+    assert.equal(result.results[0].armorWear.reduce((n,r)=>n+r.amount,0),2);
+    assert.equal(CombatHelper.getArmorRating(owner,"torso").totalSP,0);
+  }finally{settings.armorDurabilityRanged=old.ranged;settings.armorDurabilityRangedTiming=old.timing;game.neuroshima.group=old.group;game.neuroshima.groupEnd=old.end;game.actors=old.actors;}
+});
+
+test("canonical melee links validate owners, reject stale source cards and allow GM corrections after damage without discarding the damage ledger", async () => {
+  const {registerMeleeSystem,MeleeSessionStore,MeleeCommandService,createMeleeSession,meleePoolDice,meleeSessionDuelState}=await import("../module/combat/melee-system.js");
+  const previous={melee:game.neuroshima.melee,user:game.user,resolver:globalThis.fromUuid,get:MeleeSessionStore.get};
+  const owner={id:"owner",active:true,isGM:false};
+  const source={uuid:"Actor.a",testUserPermission:user=>user.id==="owner"};
+  const session=createMeleeSession({attacker:{actorUuid:"Actor.a"},defender:{actorUuid:"Actor.b"}});
+  session.messages.attackerRollMessageId="source";
+  session.pools.attacker={diceCount:1,dice:[{id:"a1",raw:8,modified:8,isSuccess:true,state:"available"}]};
+  session.pools.defender={diceCount:1,dice:[{id:"b1",raw:18,modified:18,isSuccess:false,state:"available"}]};
+  try{
+    globalThis.fromUuid=async uuid=>uuid==="Actor.a"?source:{uuid:"Actor.b",testUserPermission:()=>false};
+    game.user=owner;MeleeSessionStore.get=async()=>session;
+    const api=registerMeleeSystem();
+    const test=new SkillTest({actor:actor(),context:{opposedLink:{type:"meleeSession",sessionId:session.id,role:"attacker",messageId:"duel"}}});
+    test.message={id:"source"};
+    assert.equal((await test.validateLinkedMutation()).ok,true);
+    test.message={id:"stale"};assert.equal((await test.validateLinkedMutation()).ok,false);test.message={id:"source"};
+    game.user={id:"intruder",active:true,isGM:false};assert.equal((await test.validateLinkedMutation()).ok,false);
+    game.user=owner;session.status="complete";assert.equal((await test.validateLinkedMutation()).ok,false);
+    await assert.rejects(MeleeCommandService._authorize(session,{type:"replaceRoll",side:"attacker"},owner),{code:"UNAUTHORIZED"});
+    game.user={id:"gm",active:true,isGM:true};assert.equal((await test.validateLinkedMutation()).ok,true);
+    session.operationLedger[`${session.id}:damage:duel`]={status:"applied"};session.result={applied:true};
+    MeleeCommandService._replaceRoll(session,{side:"attacker",payload:{dice:[{id:"a1",raw:4,modified:4,isSuccess:true}],target:12}});
+    assert.equal(meleePoolDice(session,"attacker")[0].raw,4);
+    assert.equal(meleePoolDice(session,"defender")[0].raw,18);
+    assert.equal(session.operationLedger[`${session.id}:damage:duel`].status,"applied");
+    assert.equal(meleeSessionDuelState(session).applied,true);
+    assert.throws(()=>MeleeCommandService._claimDamage(session,{payload:{kind:"duel"}}),{code:"ALREADY_APPLIED"});
+    let command;api.dispatch=async input=>{command=input;return {session};};
+    test.result.modifiedResults=[{original:4,modified:4,isSuccess:true}];test.result.target=12;
+    await api.syncTest(test);assert.equal(command.type,"replaceRoll");assert.equal(command.payload.dice[0].id,"a1");
+  }finally{game.neuroshima.melee=previous.melee;game.user=previous.user;globalThis.fromUuid=previous.resolver;MeleeSessionStore.get=previous.get;}
+});
+
+test("starting melee from an existing untargeted attack reuses its dice and binds its source message", async () => {
+  const {MeleeSessionPresenter}=await import("../module/apps/melee-system-ui.js");
+  const previous={melee:game.neuroshima.melee,resolver:globalThis.fromUuid,create:ChatMessage.create,handlebars:foundry.applications.handlebars,users:game.users,user:game.user};
+  const attacker=actor(),defender={...actor(),uuid:"Actor.b",name:"Defender"};
+  const weapon={id:"sword",uuid:"Actor.a.Item.sword",name:"Sword",system:{weaponType:"melee",damageMelee1:"C"}};
+  const result={modifiedResults:[{original:7,modified:6,isSuccess:true},{original:18,modified:17,isSuccess:false}],target:12,damageMelee1:"C"};
+  let payload,linked;
+  const source={id:"source"};
+  const test={message:source,result,context:{},async updateMessage(message){assert.equal(message,source);linked=structuredClone(this.context.opposedLink);}};
+  try{
+    game.user={isGM:true};game.users=[];
+    globalThis.fromUuid=async uuid=>uuid===defender.uuid?defender:attacker;
+    foundry.applications.handlebars={renderTemplate:async()=>"pending"};
+    ChatMessage.create=async()=>({id:"pending",async update(){}});
+    game.neuroshima.melee={requestStart:async input=>{payload=input;return {id:input.id};}};
+    await MeleeSessionPresenter.attachAttackFromTest(attacker,weapon,defender.uuid,"default",test);
+    assert.equal(payload.mode,"opposedPips");
+    assert.equal(payload.metadata.attackerTestMessageId,"source");
+    assert.deepEqual(payload.attackerRoll.dice.map(d=>d.raw),[7,18]);
+    assert.deepEqual(payload.attackerRoll.dice.map(d=>d.modified),[6,17]);
+    assert.equal(linked.type,"meleeSession");assert.equal(linked.messageId,"pending");
+    await assert.rejects(MeleeSessionPresenter.attachAttackFromTest(attacker,weapon,defender.uuid,"default",test));
+  }finally{game.neuroshima.melee=previous.melee;game.user=previous.user;game.users=previous.users;globalThis.fromUuid=previous.resolver;ChatMessage.create=previous.create;foundry.applications.handlebars=previous.handlebars;}
+});
+
+
+test("manual durability changes remain local on character and creature sheets, including legacy shared wear", async () => {
+  const {NeuroshimaActorSheet}=await import("../module/sheets/actor-sheet.js");
+  const {NeuroshimaCreatureSheet}=await import("../module/sheets/creature-sheet.js");
+  const {remainingArmorDurability}=await import("../module/helpers/armor-durability.js");
+  for(const handler of [NeuroshimaActorSheet.prototype._onModifyDurability,NeuroshimaCreatureSheet.DEFAULT_OPTIONS.actions.modifyDurability]){
+    const owner=actor();
+    const item={id:"vest",type:"armor",system:{armor:{durability:6,durabilityDamage:1,locationDurabilityDamage:{torso:2},ratings:{torso:3}}},async update(data){for(const [key,value]of Object.entries(data))setProperty(this,key,value);}};
+    owner.items.push(item);
+    const sheet={document:owner,isEditable:true};
+    await handler.call(sheet,{type:"click"},{dataset:{itemId:"vest",location:"torso"}});
+    assert.equal(remainingArmorDurability(item.system.armor,"torso"),4);
+    assert.equal(remainingArmorDurability(item.system.armor,"head"),5);
+    assert.equal(item.system.armor.durabilityDamage,0);
+    assert.equal(item.system.armor.ratings.torso,3);
+    await handler.call(sheet,{type:"contextmenu"},{dataset:{itemId:"vest",location:"torso"}});
+    assert.equal(remainingArmorDurability(item.system.armor,"torso"),3);
+    assert.equal(remainingArmorDurability(item.system.armor,"head"),5);
+    item.system.armor.locationDurabilityDamage={};
+    await handler.call(sheet,{type:"contextmenu"},{dataset:{itemId:"vest",location:"head"}});
+    assert.equal(remainingArmorDurability(item.system.armor,"head"),5);
+    assert.equal(remainingArmorDurability(item.system.armor,"torso"),6);
+    sheet.isEditable=false;
+    await handler.call(sheet,{type:"contextmenu"},{dataset:{itemId:"vest",location:"head"}});
+    assert.equal(remainingArmorDurability(item.system.armor,"head"),5);
+  }
+});
+
+
+test("start-fight context action reads the message test and forwards the saved attack rather than rerolling it", async () => {
+  const {readFile}=await import("node:fs/promises");
+  const source=(await readFile(new URL("../system.js",import.meta.url),"utf8")).replaceAll("\r\n","\n");
+  const start=source.indexOf('    options.push({\n        name: game.i18n.localize("NEUROSHIMA.MeleeDuel.StartDuelFromTarget")');
+  const end=source.indexOf('\n});\n\n// Chat card interactions',start);
+  assert.ok(start>=0&&end>start);
+  const data={result:{isMelee:true,meleeAction:"attack"},context:{},preData:{rollClass:"MeleeWeaponTest"}};
+  const message={id:"attack",getFlag:()=>data};
+  const attacker=actor();const weapon={id:"weapon"};const test={actor:attacker,item:weapon};
+  let forwarded;
+  const localGame={user:{isGM:true,targets:new Set([{document:{uuid:"Token.defender"}}])},
+    messages:new Map([["attack",message]]),settings:{get:()=>"default"},i18n:{localize:key=>key},
+    neuroshima:{melee:{async attachAttackFromTest(...args){forwarded=args;}}}};
+  const options=[];
+  new Function("options","game","NeuroshimaTestBase","ui","createBeastCombatWeapon",source.slice(start,end))(
+    options,localGame,{async recreate(input){assert.equal(input,data);return test;}},
+    {notifications:{error(text){throw new Error(text);},warn(text){throw new Error(text);}}},()=>null);
+  const row={dataset:{messageId:"attack"}};
+  assert.equal(options[0].condition(row),true);
+  await options[0].callback(row);
+  assert.equal(test.message,message);
+  assert.deepEqual(forwarded,[attacker,weapon,"Token.defender","default",test]);
+  data.context.opposedLink={type:"meleeSession",sessionId:"existing"};
+  assert.equal(options[0].condition(row),false);
+});
+
+
+test("fully absorbed hits expose a reversible armor-only report and undo is idempotent", async () => {
+  const {remainingArmorDurability}=await import("../module/helpers/armor-durability.js");
+  const {NeuroshimaChatMessage}=await import("../module/documents/chat-message.js");
+  const previous={user:game.user,resolver:globalThis.fromUuid,ui:globalThis.ui,melee:settings.armorDurabilityMelee,group:game.neuroshima.group,end:game.neuroshima.groupEnd,actors:game.actors};
+  const target=actor();trackEmbeddedUpdates(target);
+  const armor={id:"vest",name:"Vest",type:"armor",system:{equipped:true,armor:{durability:6,ratings:{torso:3},damage:{},resistances:[]}},
+    async update(data){for(const [key,value]of Object.entries(data))setProperty(this,key,value);}};
+  Object.defineProperty(armor.system,"effectiveArmor",{get:()=>({torso:3})});target.items.push(armor);
+  try{
+    game.user={isGM:true,role:4};globalThis.fromUuid=async()=>target;globalThis.ui={notifications:{info(){}}};
+    game.neuroshima.group=()=>{};game.neuroshima.groupEnd=()=>{};game.actors=new Map();settings.armorDurabilityMelee=true;
+    const batch=await CombatHelper.applyDamageToActor(target,{isMelee:true,damageMelee1:"C",finalLocation:"torso",successPoints:1},{suppressChat:true});
+    assert.deepEqual(batch.results,[]);assert.deepEqual(batch.woundIds,[]);assert.equal(batch.reducedProjectiles,1);
+    assert.equal(remainingArmorDurability(armor.system.armor,"torso"),5);
+    const record=batch.reducedDetails[0].armorWear[0];
+    assert.equal(record.itemName,"Vest");assert.equal(record.before,6);assert.equal(record.after,5);
+    const prepared=NeuroshimaChatMessage._preparePainTooltipData([],batch.reducedDetails);
+    assert.ok(prepared.reducedDetails[0].tooltipHtml.includes("Vest"));
+    assert.ok(prepared.reducedDetails[0].tooltipHtml.includes("-1"));
+    const flags={messageType:"painResistanceReport",actorUuid:target.uuid,woundIds:[],results:[],reducedDetails:batch.reducedDetails,isReversed:false};
+    const report={id:"absorbed",content:"report",getFlag:(_scope,key)=>flags[key],async update(data){for(const [key,value]of Object.entries(data)){if(key.startsWith("flags.neuroshima."))flags[key.slice("flags.neuroshima.".length)]=value;else this[key]=value;}}};
+    assert.equal(CombatHelper.canReverseDamage(report),true);
+    await CombatHelper.reverseDamage(report);
+    assert.equal(remainingArmorDurability(armor.system.armor,"torso"),6);
+    assert.equal(flags.isReversed,true);assert.equal(CombatHelper.canReverseDamage(report),false);
+    armor.system.armor.locationDurabilityDamage.torso=1;
+    assert.equal((await CombatHelper.reverseDamage(report)).alreadyReversed,true);
+    assert.equal(remainingArmorDurability(armor.system.armor,"torso"),5);
+  }finally{game.user=previous.user;globalThis.fromUuid=previous.resolver;globalThis.ui=previous.ui;settings.armorDurabilityMelee=previous.melee;game.neuroshima.group=previous.group;game.neuroshima.groupEnd=previous.end;game.actors=previous.actors;}
+});
+
+test("armor wear tooltips total each armor and location, preserve before/after values and do not duplicate on refresh", async () => {
+  const {NeuroshimaChatMessage}=await import("../module/documents/chat-message.js");
+  const records=[
+    {id:"wear-a",itemId:"vest",itemName:"Vest",location:"torso",amount:1,before:6,after:5},
+    {id:"wear-b",itemId:"vest",itemName:"Vest",location:"torso",amount:3,before:5,after:2},
+    {id:"wear-c",itemId:"helmet",itemName:"Helmet",location:"head",amount:1,before:3,after:2}
+  ];
+  const summary=NeuroshimaChatMessage._armorDurabilityReportData([{armorWear:records}],[{armorWear:[records[0]]}]);
+  assert.equal(summary.armorWearTotal,5);
+  assert.ok(summary.armorWearTooltip.includes("Vest"));assert.ok(summary.armorWearTooltip.includes("Helmet"));
+  assert.ok(summary.armorWearTooltip.includes("-4"));
+  assert.ok(summary.armorWearTooltip.includes("6 \u2192 2"));
+  const first=NeuroshimaChatMessage._preparePainTooltipData([{name:"Wound",tooltipHtml:"Original details",armorWear:records}],[]);
+  const second=NeuroshimaChatMessage._preparePainTooltipData(first.results,first.reducedDetails);
+  assert.equal(second.results[0].tooltipHtml,first.results[0].tooltipHtml);
+  assert.ok(second.results[0].tooltipHtml.startsWith("Original details"));
+  assert.equal(second.results[0].tooltipHtml.split("NEUROSHIMA.Tooltip.ArmorDurabilityWear").length-1,1);
+});
+
+
+test("melee exchanges calculate destruction between hits but persist all armor pieces in one final update", async () => {
+  const {DuelDamageEngine,DuelLifecycle}=await import("../module/combat/combat-api.js");
+  const previous={group:game.neuroshima.group,end:game.neuroshima.groupEnd,actors:game.actors,melee:settings.armorDurabilityMelee,before:DuelLifecycle.beforeDamage,after:DuelLifecycle.afterDamage};
+  const target=actor();trackEmbeddedUpdates(target);
+  const makeArmor=(id)=>({id,name:id,type:"armor",system:{equipped:true,armor:{durability:2,ratings:{torso:0.5},damage:{},resistances:[]}},async update(data){for(const [key,value]of Object.entries(data))setProperty(this,key,value);}});
+  const first=makeArmor("outer"),second=makeArmor("inner");
+  for(const armor of [first,second])Object.defineProperty(armor.system,"effectiveArmor",{get:()=>({torso:0.5})});
+  target.items.push(first,second);
+  const source={...actor(),id:"source",uuid:"Actor.source"};
+  let evaluated=0;
+  class Helper extends CombatHelper {
+    static async applyDamage(_actor,{wounds}){
+      evaluated++;
+      assert.equal(target.embeddedUpdates.length,0);
+      assert.equal(first.system.armor.locationDurabilityDamage,undefined);
+      return {results:wounds.map(w=>({damageType:w.damageType})),woundIds:[]};
+    }
+    static async _applyDamageTypeEffects(){}
+  }
+  try{
+    game.neuroshima.group=()=>{};game.neuroshima.groupEnd=()=>{};game.actors=new Map();settings.armorDurabilityMelee=true;
+    DuelLifecycle.beforeDamage=async()=>{};DuelLifecycle.afterDamage=async()=>{};
+    const result=await DuelDamageEngine.processAll({location:"torso",damage1:"C",damage2:"C",damage3:"C",hits:[{tier:1},{tier:1},{tier:1}]},{attackerActor:source,defenderActor:target,weaponItem:null,CombatHelper:Helper});
+    assert.equal(evaluated,3);
+    assert.deepEqual(result.allResults.map(r=>r.damageType),["L","L","C"]);
+    assert.equal(target.embeddedUpdates.length,1);
+    assert.deepEqual(target.embeddedUpdates[0],[{_id:"outer","system.armor.locationDurabilityDamage.torso":2},{_id:"inner","system.armor.locationDurabilityDamage.torso":2}]);
+    const wear=result.allResults.flatMap(r=>r.armorWear??[]);
+    assert.equal(wear.reduce((sum,record)=>sum+record.amount,0),4);
+    assert.deepEqual(wear.map(record=>[record.before,record.after]),[[2,1],[2,1],[1,0],[1,0]]);
+  }finally{game.neuroshima.group=previous.group;game.neuroshima.groupEnd=previous.end;game.actors=previous.actors;settings.armorDurabilityMelee=previous.melee;DuelLifecycle.beforeDamage=previous.before;DuelLifecycle.afterDamage=previous.after;}
+});
+
+
+test("zero AP does not prevent critical firearm hits wearing armor that covers the struck location", async () => {
+  const {remainingArmorDurability}=await import("../module/helpers/armor-durability.js");
+  const previous={ranged:settings.armorDurabilityRanged,timing:settings.armorDurabilityRangedTiming,group:game.neuroshima.group,end:game.neuroshima.groupEnd,actors:game.actors};
+  class Helper extends CombatHelper {
+    static async applyDamage(_actor,{wounds}){return {results:wounds.map(w=>({damageType:w.damageType})),woundIds:[]};}
+    static async _applyDamageTypeEffects(){}
+  }
+  try{
+    settings.armorDurabilityRanged=true;
+    game.neuroshima.group=()=>{};game.neuroshima.groupEnd=()=>{};game.actors=new Map();
+    for(const timing of ["beforeArmor","afterArmor"]){
+      settings.armorDurabilityRangedTiming=timing;
+      const target=actor();trackEmbeddedUpdates(target);
+      const vest={id:"vest",name:"Vest",type:"armor",system:{equipped:true,armor:{durability:6,ratings:{torso:0},resistances:[{category:"explosive",torso:2}],resistanceDamage:{explosive:{torso:2}}}},async update(data){for(const [key,value]of Object.entries(data))setProperty(this,key,value);}};
+      const helmet={id:"helmet",type:"armor",system:{equipped:true,armor:{durability:6,ratings:{head:2},resistances:[]}},async update(){throw new Error("Unhit location was changed");}};
+      const stored={id:"stored",type:"armor",system:{equipped:false,armor:{durability:6,ratings:{torso:2},resistances:[]}},async update(){throw new Error("Unequipped armor was changed");}};
+      target.items.push(vest,helmet,stored);
+      assert.equal(CombatHelper.getArmorRating(target,"torso","physical").totalSP,0);
+      const result=await Helper.applyDamageToActor(target,{weaponType:"ranged",finalLocation:"torso",damageCategory:"physical",damage:"K",hitBulletsData:[{damage:"K"}]},{suppressChat:true,withPainResistance:false});
+      assert.equal(result.results[0].damageType,"K");
+      assert.equal(remainingArmorDurability(vest.system.armor,"torso"),3);
+      assert.equal(remainingArmorDurability(vest.system.armor,"head"),6);
+      assert.equal(result.results[0].armorWear[0].amount,3);
+      assert.deepEqual(target.embeddedUpdates,[[{_id:"vest","system.armor.locationDurabilityDamage.torso":3}]]);
+    }
+  }finally{settings.armorDurabilityRanged=previous.ranged;settings.armorDurabilityRangedTiming=previous.timing;game.neuroshima.group=previous.group;game.neuroshima.groupEnd=previous.end;game.actors=previous.actors;}
+});
+
+
+test("the melee bruise switch never enables firearm bruise wear, including obsolete saved preferences", async () => {
+  const {applyArmorDurabilityWear}=await import("../module/helpers/armor-durability.js");
+  const keys=["armorDurabilityMelee","armorDurabilityRanged","armorDurabilityRangedTiming","armorDurabilityMeleeBruises","armorDurabilityRangedBruises"];
+  const previous=Object.fromEntries(keys.map(key=>[key,settings[key]]));
+  const owner=actor();
+  const item={id:"vest",name:"Vest",system:{armor:{durability:6}},async update(data){for(const [key,value]of Object.entries(data))setProperty(this,key,value);}};
+  const hit=async(incoming,reduced,attack)=>{
+    item.system.armor.locationDurabilityDamage={};
+    const records=await applyArmorDurabilityWear(owner,"torso",incoming,reduced,attack,[item]);
+    return records.reduce((sum,record)=>sum+record.amount,0);
+  };
+  try{
+    Object.assign(settings,{armorDurabilityMelee:true,armorDurabilityRanged:true,armorDurabilityRangedTiming:"beforeArmor",armorDurabilityMeleeBruises:false,armorDurabilityRangedBruises:false});
+    assert.equal(await hit("sC","sD",{isMelee:true}),0);
+    assert.equal(await hit("sK","sD",{weaponType:"ranged"}),0);
+    settings.armorDurabilityMeleeBruises=true;
+    assert.equal(await hit("sC","sD",{isMelee:true}),1);
+    assert.equal(await hit("sK","sD",{isMelee:true}),3);
+    assert.equal(await hit("sK","sD",{weaponType:"ranged"}),0);
+    settings.armorDurabilityMeleeBruises=false;settings.armorDurabilityRangedBruises=true;
+    assert.equal(await hit("sC","sD",{isMelee:true}),0);
+    assert.equal(await hit("sK","sD",{weaponType:"ranged"}),0);
+    settings.armorDurabilityRangedTiming="afterArmor";
+    assert.equal(await hit("sK","sC",{weaponType:"ranged"}),0);
+    assert.equal(await hit("sK","sL",{weaponType:"ranged"}),0);
+    settings.armorDurabilityRangedBruises=false;
+    assert.equal(await hit("K","sC",{weaponType:"ranged"}),0);
+    assert.equal(await hit("C","L",{isMelee:true}),1);
+    assert.equal(await hit("K","C",{weaponType:"ranged"}),1);
+    settings.armorDurabilityMelee=false;settings.armorDurabilityMeleeBruises=true;
+    assert.equal(await hit("sK","sC",{isMelee:true}),0);
+    settings.armorDurabilityRanged=false;settings.armorDurabilityRangedBruises=true;
+    assert.equal(await hit("sK","sC",{weaponType:"ranged"}),0);
+  }finally{Object.assign(settings,previous);}
+});
+
+test("durability settings enable their dependent controls and retain disabled bruise preferences in drafts and saves", async () => {
+  const {CombatConfig}=await import("../module/apps/config/combat-config.js");
+  const fields={armorDurabilityMelee:{checked:false},armorDurabilityRanged:{checked:false},armorDurabilityMeleeBruises:{checked:true,disabled:false},armorDurabilityRangedTiming:{value:"afterArmor",disabled:false}};
+  const app=new CombatConfig();
+  app.element={querySelector:selector=>fields[selector.match(/name="([^"]+)"/)?.[1]]};
+  await app._onChangeForm({}, {target:{name:"armorDurabilityMelee",checked:false}});
+  assert.equal(fields.armorDurabilityMeleeBruises.disabled,true);
+  assert.equal(fields.armorDurabilityMeleeBruises.checked,true);
+  await app._onChangeForm({}, {target:{name:"armorDurabilityRanged",checked:false}});
+  assert.equal(fields.armorDurabilityRangedTiming.disabled,true);
+  assert.equal(app._readConfigDraft().armorDurabilityMeleeBruises,true);
+  assert.equal(Object.hasOwn(app._readConfigDraft(),"armorDurabilityRangedBruises"),false);
+  await app._onChangeForm({}, {target:{name:"armorDurabilityRanged",checked:true}});
+  assert.equal(fields.armorDurabilityRangedTiming.disabled,false);
+  const previous={settings:game.settings,config:game.neuroshima.config,ui:globalThis.ui,SettingsConfig:globalThis.SettingsConfig};
+  const writes=new Map();
+  try{
+    game.settings={get:(_scope,key)=>key==="customDamageCategories"?"[]":key==="meleeCombatType"?"default":false,async set(_scope,key,value){writes.set(key,value);}};
+    game.neuroshima.config={damageCategories:{physical:{},explosive:{}}};
+    globalThis.ui={notifications:{info(){},error(){throw new Error("Settings save failed");}}};globalThis.SettingsConfig={reloadConfirm(){}};
+    app._readDamageCategories=()=>({custom:[],builtinLimits:{}});app._readUnarmedDamageTable=()=>[];
+    const data={armorLimitCharacter:6,armorLimitCreature:6,armorLimitVehicle:6,meleeCombatType:"default"};
+    await app._onSubmit(null,null,{object:data});
+    assert.equal(writes.get("armorDurabilityMeleeBruises"),true);
+    assert.equal(writes.has("armorDurabilityRangedBruises"),false);
+    assert.equal(writes.get("armorDurabilityRangedTiming"),"afterArmor");
+    await app._onSubmit(null,null,{object:{...data,armorDurabilityMeleeBruises:false,armorDurabilityRangedBruises:false}});
+    assert.equal(writes.get("armorDurabilityMeleeBruises"),false);
+    assert.equal(writes.has("armorDurabilityRangedBruises"),false);
+  }finally{game.settings=previous.settings;game.neuroshima.config=previous.config;globalThis.ui=previous.ui;globalThis.SettingsConfig=previous.SettingsConfig;}
+});
+
+
+test("manual success points combine with effect bonuses without accumulating on reevaluation", async () => {
+  for (const isOpen of [false, true]) {
+    const make = bonus => new SkillTest({ actor: actor(), attribute: { value: 10 }, skill: { value: 0 },
+      preData: { manualSuccessPoints: bonus, resultModifiers: { successPoints: 1 }, penalties: {} }, context: { isOpen } });
+    const base = make(0), boosted = make(2);
+    for (const test of [base, boosted]) {
+      await test.prepare();
+      test.result.rawResults = [8, 15, 19]; test.result.rolledResults = [8, 15, 19];
+      await test.computeResult();
+    }
+    if (isOpen) assert.equal(boosted.result.openMargin, base.result.openMargin + 2);
+    else assert.equal(boosted.result.successPoints, base.result.successPoints + 2);
+    assert.equal(boosted.result.manualSuccessPoints, 2);
+    assert.equal(boosted.result.skill, base.result.skill);
+    assert.equal(boosted.result.ptMod, base.result.ptMod);
+    const count = boosted.result.successPoints;
+    await boosted.computeResult();
+    assert.equal(boosted.result.successPoints, count);
+    boosted.preData.manualSuccessPoints = 4;
+    await boosted.computeResult();
+    const margin = isOpen ? boosted.result.openMargin : boosted.result.successPoints;
+    assert.equal(margin, (isOpen ? base.result.openMargin : base.result.successPoints) + 4);
+    assert.ok(boosted.getTooltipSections().flatMap(section => section.rows ?? []).some(row => row.label === "NEUROSHIMA.Roll.SuccessBonus" && row.value === 4));
+    const restored = new SkillTest(boosted.toData(), boosted.actor);
+    assert.equal(restored.preData.manualSuccessPoints, 4);
+  }
+});
+
+test("roll dialog keeps the manual success bonus when it closes before executing the roll", async () => {
+  const { NeuroshimaRollDialogBase } = await import("../module/apps/dialogs/roll-dialog-base.js");
+  const dialog = Object.assign(Object.create(NeuroshimaRollDialogBase.prototype), { userEntry: { manualSuccessPoints: 3 } });
+  const test = { preData: { resultModifiers: { successPoints: 2 } } };
+  dialog._applyManualSuccessBonus(test);
+  assert.equal(test.preData.manualSuccessPoints, 3);
+  assert.equal(test.preData.resultModifiers.successPoints, 2);
+  dialog.userEntry.manualSuccessPoints = "invalid";
+  dialog._applyManualSuccessBonus(test);
+  assert.equal(test.preData.manualSuccessPoints, 0);
+});
+
+test("GM damage grouping rolls once per row or individually, preserving categories and quantities", async () => {
+  const { GMApplyDamageApp } = await import("../module/apps/gm/gm-damage-app.js");
+  const app = new GMApplyDamageApp();
+  let rolls = 0;
+  app._randomLocation = async () => ++rolls % 2 ? "head" : "torso";
+  const previous = game.neuroshima.config;
+  game.neuroshima.config = { damageTypes: { L: "Light", C: "Heavy" } };
+  try {
+    let groups = await app._damageGroups([{ damageType: "L", damageCategory: "acid", quantity: 10, location: "random", randomEach: false }], "");
+    assert.equal(rolls, 1); assert.equal(groups.size, 1); assert.equal(groups.get("head").length, 10);
+    assert.equal(groups.get("head")[0].damageCategory, "acid");
+    rolls = 0;
+    groups = await app._damageGroups([{ damageType: "L", damageCategory: "acid", quantity: 10, location: "random", randomEach: true },
+      { damageType: "C", damageCategory: "physical", quantity: 2, location: "torso", randomEach: true }], "Custom wound");
+    assert.equal(rolls, 10); assert.equal(groups.get("head").length, 5); assert.equal(groups.get("torso").length, 7);
+    assert.equal(groups.get("torso").at(-1).damageType, "C");
+    assert.equal(groups.get("head")[0].name, "Custom wound");
+  } finally { game.neuroshima.config = previous; }
+});
+
+test("GM actor filters distinguish unlinked tokens and never reselect after deselecting all", async () => {
+  const { GMApplyDamageApp } = await import("../module/apps/gm/gm-damage-app.js");
+  const previous = { canvas: globalThis.canvas, actors: game.actors };
+  const base = { id: "same", uuid: "Actor.same", name: "Base", type: "npc" };
+  const tokens = [1, 2].map(index => ({ actor: { ...base, uuid: `Scene.s.Token.${index}.Actor.same` }, document: { name: `Enemy ${index}` } }));
+  globalThis.canvas = { tokens: { placeables: tokens, controlled: tokens } }; game.actors = [base, { uuid: "Actor.pc", name: "Hero", type: "character" }];
+  try {
+    const app = new GMApplyDamageApp();
+    app._autoSelectFromCanvas(); assert.equal(app._selectedActors.size, 2);
+    assert.equal(app._buildActorList().length, 2);
+    app._selectedActors.clear(); app._autoSelectFromCanvas(); assert.equal(app._selectedActors.size, 0);
+    app._search = "enemy 2"; assert.equal(app._buildActorList()[0].id, tokens[1].actor.uuid);
+    app._search = ""; app._actorSource = "all"; assert.equal(app._buildActorList().length, 4);
+    app._actorType = "character"; assert.deepEqual(app._buildActorList().map(row => row.name), ["Hero"]);
+    app._actorSource = "scene"; assert.equal(app._buildActorList().length, 0);
+  } finally { globalThis.canvas = previous.canvas; game.actors = previous.actors; }
+});
+
+test("GM damage applies all rows to synthetic actors with a single combined pain report and rejects non-GMs", async () => {
+  const { GMApplyDamageApp } = await import("../module/apps/gm/gm-damage-app.js");
+  const previous = { apply: CombatHelper.applyDamage, report: CombatHelper.renderPainResistanceReport, resolver: globalThis.fromUuid,
+    config: game.neuroshima.config, user: game.user, ui: globalThis.ui };
+  const target = actor("npc"); target.uuid = "Scene.s.Token.t.Actor.a";
+  const calls = [], reports = [];
+  globalThis.fromUuid = async uuid => { assert.equal(uuid, target.uuid); return target; };
+  globalThis.ui = { notifications: { info() {}, warn() {}, error() {} } };
+  game.user = { isGM: true };
+  game.neuroshima.config = { damageTypes: { L: "Light", K: "Critical" }, damageCategories: { physical: {}, acid: {} }, bodyLocations: { torso: {}, head: {} } };
+  CombatHelper.applyDamage = async (actor, data) => {
+    assert.equal(actor, target); calls.push(data);
+    return { results: data.wounds.map(wound => ({ ...wound, location: data.location })), woundIds: data.wounds.map((_, index) => `${data.location}${index}`) };
+  };
+  CombatHelper.renderPainResistanceReport = async (...args) => reports.push(args);
+  try {
+    const app = new GMApplyDamageApp(); app.render = () => {};
+    app._selectedActors.add(target.uuid);
+    app._rows = [{ damageType: "L", damageCategory: "acid", quantity: 2, location: "torso" }, { damageType: "K", damageCategory: "physical", quantity: 1, location: "head" }];
+    await GMApplyDamageApp._onApplyDamage.call(app);
+    assert.equal(calls.length, 2); assert.ok(calls.every(call => call.suppressChat && call.withPainResistance));
+    assert.equal(calls[0].wounds[0].damageCategory, "acid");
+    assert.equal(reports.length, 1); assert.equal(reports[0][1].length, 3); assert.equal(reports[0][2].length, 3);
+    assert.equal(app._selectedActors.size, 0);
+    app._selectedActors.add(target.uuid); game.user.isGM = false;
+    await GMApplyDamageApp._onApplyDamage.call(app); assert.equal(calls.length, 2);
+    game.user.isGM = true; app._rows[0].quantity = -1;
+    await GMApplyDamageApp._onApplyDamage.call(app); assert.equal(calls.length, 2);
+  } finally { CombatHelper.applyDamage = previous.apply; CombatHelper.renderPainResistanceReport = previous.report;
+    globalThis.fromUuid = previous.resolver; globalThis.ui = previous.ui; game.neuroshima.config = previous.config; game.user = previous.user; }
+});
+
+test("healing panel observes related documents, batches refreshes and releases subscriptions on close", async () => {
+  const { HealingApp } = await import("../module/apps/healing-app.js");
+  const hooks = new Map(); let id = 0;
+  const previous = globalThis.Hooks;
+  globalThis.Hooks = { on(name, callback) { hooks.set(++id, { name, callback }); return id; }, off(name, id) { assert.equal(hooks.get(id).name, name); hooks.delete(id); } };
+  // The production superclass provides close; the lightweight test Application does not.
+  const previousClose = Application.prototype.close;
+  Application.prototype.close = async () => {};
+  try {
+    const app = new HealingApp(); app.rendered = true;
+    app._observedActorUuids = new Set(["Actor.patient", "Scene.s.Token.t.Actor.medic"]);
+    let renders = 0; app.render = () => renders++;
+    app._observeDocuments(); app._observeDocuments(); assert.equal(hooks.size, 10);
+    const change = [...hooks.values()].find(hook => hook.name === "updateItem").callback;
+    change({ parent: { uuid: "Actor.other" } });
+    await new Promise(resolve => setTimeout(resolve, 120)); assert.equal(renders, 0);
+    change({ parent: { uuid: "Actor.patient" } });
+    change({ parent: { uuid: "Scene.s.Token.t.Actor.medic" } });
+    await new Promise(resolve => setTimeout(resolve, 120)); assert.equal(renders, 1);
+    change({ parent: { uuid: "Actor.patient" } });
+    await app.close(); assert.equal(hooks.size, 0);
+    await new Promise(resolve => setTimeout(resolve, 120)); assert.equal(renders, 1);
+  } finally { globalThis.Hooks = previous; Application.prototype.close = previousClose; }
+});
+
+
+test("manual success points survive reroll and can be replaced by editing without duplicating effect points", async () => {
+  const previousMerge = foundry.utils.mergeObject;
+  foundry.utils.mergeObject = (base, changes) => Object.assign(base, changes);
+  try {
+  const test = new SkillTest({ actor: actor(), attribute: { value: 10 }, skill: { value: 0 },
+    preData: { manualSuccessPoints: 2, resultModifiers: { successPoints: 1 }, penalties: {} }, context: { isOpen: false } });
+  for (const method of ["runPreEffects", "runDiceEffects", "runPostEffects", "postTest"]) test[method] = async () => {};
+  test.rollDice = async () => { test.result.rawResults = [8, 15, 19]; test.result.rolledResults = [8, 15, 19]; };
+  test.sendToChat = async () => null;
+  await test.roll({ sendToChat: false });
+  const original = test.result.successPoints;
+  await test.reroll(); assert.equal(test.result.successPoints, original);
+  await test.edit({ preData: { manualSuccessPoints: 4 }, rawResults: [8, 15, 19] });
+  assert.equal(test.result.successPoints, original + 2);
+  assert.equal(test.preData.resultModifiers.successPoints, 1);
+  await test.reroll(); assert.equal(test.result.successPoints, original + 2);
+  await test.edit({ preData: { manualSuccessPoints: 0 }, rawResults: [8, 15, 19] });
+  assert.equal(test.result.successPoints, original - 2);
+  } finally { foundry.utils.mergeObject = previousMerge; }
 });

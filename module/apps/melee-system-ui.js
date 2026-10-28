@@ -22,7 +22,7 @@ export class MeleeSessionPresenter {
       target: result.target,
       isSuccess: die.isSuccess === true,
       successPoints: die.isSuccess === true ? 1 : 0,
-      changes: result.diceChanges?.filter(change => change.index === index) ?? []
+      changes: result.diceChanges?.filter(change => (change.targetIndex ?? change.index) === index) ?? []
     }));
   }
 
@@ -64,75 +64,85 @@ export class MeleeSessionPresenter {
       targets: [targetUuid],
       lastRoll: actor.system.lastWeaponRoll ?? {},
       isPoolRoll: true,
-      onRoll: async (rawResult, attackerTest) => {
-        if (!rawResult) return;
-        const sessionId = foundry.utils.randomID(16);
-        const startCommandId = foundry.utils.randomID(16);
-        const sourceWeapon = weapon?.beastItemId ? actor.items?.get?.(weapon.beastItemId) ?? weapon : weapon;
-        const attackerParticipant = meleeParticipantFromActor(actor, { weapon: sourceWeapon });
-        const defenderParticipant = meleeParticipantFromActor(defender);
-        const preview = {
-          id: sessionId,
-          mode,
-          participants: { attacker: attackerParticipant, defender: defenderParticipant }
-        };
-        const content = await foundry.applications.handlebars.renderTemplate(
-          "systems/neuroshima/templates/chat/melee-opposed-pending.hbs",
-          await this._pendingContext(preview)
-        );
-        const message = await ChatMessage.create({
-          speaker: { alias: "⚔" },
-          content,
-          rollMode: rawResult.rollMode ?? game.settings.get("core", "rollMode"),
-          flags: { neuroshima: { melee: {
-            sessionId, cardType: "pending", renderedRevision: -1
-          } } }
-        });
-        const variant = rawResult.isGradCios === true ? "gradCiosow" : "standard";
-        try {
-          const started = await game.neuroshima.melee.requestStart({
-            id: sessionId,
-            startCommandId,
-            messageId: message.id,
-            attacker: attackerParticipant,
-            defender: defenderParticipant,
-            initiativeOwnerId: attackerParticipant.actorUuid,
-            variant,
-            mode,
-            attackerRoll: {
-              dice: this._diceFromResult(rawResult),
-              target: rawResult.target
-            },
-            metadata: {
-              attackerTestMessageId: attackerTest?.message?.id ?? null,
-              weaponId: sourceWeapon?.id ?? null,
-              beastItemId: weapon?.beastItemId ?? null,
-              beastActivityId: weapon?.beastActivityId ?? null,
-              damage1: rawResult.damageMelee1 ?? weapon?.system?.damageMelee1 ?? "D",
-              damage2: rawResult.damageMelee2 ?? weapon?.system?.damageMelee2 ?? "L",
-              damage3: rawResult.damageMelee3 ?? weapon?.system?.damageMelee3 ?? "K",
-              location: rawResult.finalLocation ?? null,
-              headDamageApplied: rawResult.headDamageApplied === true,
-              attackerManeuver: rawResult.maneuver ?? null,
-              attackerTempoLevel: rawResult.selectedTempoLevel ?? rawResult.tempoLevel ?? 0,
-              activatedMeleePreRollMods: rawResult.activatedMeleePreRollMods ?? []
-            }
-          });
-          if (attackerTest?.message) {
-            attackerTest.context.opposedLink = {
-              type: "meleeSession", sessionId, role: "attacker", messageId: message.id
-            };
-            await attackerTest.updateMessage(attackerTest.message);
-          }
-          return started;
-        } catch (error) {
-          await message.update({ content: `<div class="neuroshima melee-opposed-card"><p>${error.message}</p></div>` });
-          throw error;
-        }
-      }
+      onRoll: async (_rawResult, attackerTest) => this.attachAttackFromTest(actor, weapon, targetUuid, mode, attackerTest)
     });
     dialog.render(true);
     return dialog;
+  }
+
+  static async attachAttackFromTest(actor, weapon, targetUuid, mode, attackerTest) {
+    if (!game.user.isGM && actor?.isOwner !== true) throw new Error("Only the actor owner may start this attack");
+    if (attackerTest?.context?.opposedLink) throw new Error("This roll is already linked to a melee session");
+    const targetDocument = await fromUuid(targetUuid);
+    const defender = targetDocument?.actor ?? targetDocument;
+    if (!defender || defender.uuid === actor.uuid) throw new Error("Invalid melee target");
+    mode = mode === "default" ? "opposedPips" : mode;
+    const rawResult = attackerTest?.result;
+
+    if (!rawResult) return;
+    const sessionId = foundry.utils.randomID(16);
+    const startCommandId = foundry.utils.randomID(16);
+    const sourceWeapon = weapon?.beastItemId ? actor.items?.get?.(weapon.beastItemId) ?? weapon : weapon;
+    const attackerParticipant = meleeParticipantFromActor(actor, { weapon: sourceWeapon });
+    const defenderParticipant = meleeParticipantFromActor(defender);
+    const preview = {
+      id: sessionId,
+      mode,
+      participants: { attacker: attackerParticipant, defender: defenderParticipant }
+    };
+    const content = await foundry.applications.handlebars.renderTemplate(
+      "systems/neuroshima/templates/chat/melee-opposed-pending.hbs",
+      await this._pendingContext(preview)
+    );
+    const message = await ChatMessage.create({
+      speaker: { alias: "⚔" },
+      content,
+      rollMode: rawResult.rollMode ?? game.settings.get("core", "rollMode"),
+      flags: { neuroshima: { melee: {
+        sessionId, cardType: "pending", renderedRevision: -1
+      } } }
+    });
+    const variant = rawResult.isGradCios === true ? "gradCiosow" : "standard";
+    try {
+      const started = await game.neuroshima.melee.requestStart({
+        id: sessionId,
+        startCommandId,
+        messageId: message.id,
+        attacker: attackerParticipant,
+        defender: defenderParticipant,
+        initiativeOwnerId: attackerParticipant.actorUuid,
+        variant,
+        mode,
+        attackerRoll: {
+          dice: this._diceFromResult(rawResult),
+          target: rawResult.target
+        },
+        metadata: {
+          attackerTestMessageId: attackerTest?.message?.id ?? null,
+          weaponId: sourceWeapon?.id ?? null,
+          beastItemId: weapon?.beastItemId ?? null,
+          beastActivityId: weapon?.beastActivityId ?? null,
+          damage1: rawResult.damageMelee1 ?? weapon?.system?.damageMelee1 ?? "D",
+          damage2: rawResult.damageMelee2 ?? weapon?.system?.damageMelee2 ?? "L",
+          damage3: rawResult.damageMelee3 ?? weapon?.system?.damageMelee3 ?? "K",
+          location: rawResult.finalLocation ?? null,
+          headDamageApplied: rawResult.headDamageApplied === true,
+          attackerManeuver: rawResult.maneuver ?? null,
+          attackerTempoLevel: rawResult.selectedTempoLevel ?? rawResult.tempoLevel ?? 0,
+          activatedMeleePreRollMods: rawResult.activatedMeleePreRollMods ?? []
+        }
+      });
+      if (attackerTest?.message) {
+        attackerTest.context.opposedLink = {
+          type: "meleeSession", sessionId, role: "attacker", messageId: message.id
+        };
+        await attackerTest.updateMessage(attackerTest.message);
+      }
+      return started;
+    } catch (error) {
+      await message.update({ content: `<div class="neuroshima melee-opposed-card"><p>${error.message}</p></div>` });
+      throw error;
+    }
   }
 
   static async context(session) {
@@ -624,6 +634,7 @@ export function registerMeleeSystemUI() {
     }
     refreshMeleeProjections(session);
   });
+  game.neuroshima.melee.attachAttackFromTest = (...args) => MeleeSessionPresenter.attachAttackFromTest(...args);
   game.neuroshima.melee.beginAttack = (...args) => MeleeSessionPresenter.beginAttack(...args);
   game.neuroshima.melee.openRoll = (session, side) => MeleeSessionPresenter.openRoll(session, side);
   game.neuroshima.melee.openMessage = session => openMeleeMessage(session);

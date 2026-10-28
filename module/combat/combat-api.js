@@ -1,3 +1,4 @@
+import { ArmorDurabilityBatchGroup } from "../helpers/armor-durability.js";
 import { postBeastRequiredTest, applyBeastEffectIds } from "../helpers/beast-required-test.js";
 import { beastActivities, resolveBeastActionItem, isBeastAction } from "../helpers/beast-actions.js";
 import { resolveDefensiveManeuver } from "./melee-maneuvers.js";
@@ -1119,144 +1120,152 @@ export class DuelDamageEngine {
    * @returns {Promise<{allResults: object[], allWoundIds: string[], totalReduced: number, allReducedDetails: object[]}>}
    */
   static async processAll(rd, { attackerActor, defenderActor, weaponItem, CombatHelper }) {
-    const allResults        = [];
-    const allWoundIds       = [];
-    let   totalReduced      = 0;
-    const allReducedDetails = [];
-    const resolvedTrickIds  = new Set();
+    const durabilityBatches = new ArmorDurabilityBatchGroup();
+    const applyDamage = (actor, data, options) => CombatHelper.applyDamageToActor(actor, data, {
+      ...options, armorDurabilityBatch: durabilityBatches.forActor(actor)
+    });
+    const batchedCombatHelper = Object.create(CombatHelper);
+    batchedCombatHelper.applyDamageToActor = applyDamage;
+    try {
+      const allResults        = [];
+      const allWoundIds       = [];
+      let   totalReduced      = 0;
+      const allReducedDetails = [];
+      const resolvedTrickIds  = new Set();
 
-    const { MeleeActionRunner } = await import("./melee-action-runner.js");
+      const { MeleeActionRunner } = await import("./melee-action-runner.js");
 
-    for (const hit of (rd.hits ?? [])) {
-      let targetActor = defenderActor;
-      if (hit.isBackHit && rd.escapeeUuid) {
-        const escapeeDoc   = await fromUuid(rd.escapeeUuid);
-        const escapeeActor = escapeeDoc?.actor ?? escapeeDoc;
-        if (escapeeActor) targetActor = escapeeActor;
-      }
-      const isTrickHit = !!hit.trickId;
-
-      await DuelLifecycle.beforeDamage(rd, hit, attackerActor, defenderActor, targetActor);
-
-      if (hit.cancelled) {
-        await DuelLifecycle.afterDamage(rd, hit, attackerActor, defenderActor, targetActor, null);
-        continue;
-      }
-
-      if (isTrickHit && rd.trickOnHitScripts?.[hit.trickId]) {
-        await MeleeActionRunner.fireOnHitScript(hit, rd, attackerActor, targetActor);
-        await DuelLifecycle.afterDamage(rd, hit, attackerActor, defenderActor, targetActor, null);
-      } else if (isTrickHit) {
-        const trickResult = await MeleeActionRunner.applyTrickHitDamage(hit, {
-          attackerActor, targetActor, weaponItem, rd, CombatHelper
-        });
-        if (trickResult.woundIds.length > 0 || trickResult.results.length > 0) {
-          allResults.push(...trickResult.results);
-          allWoundIds.push(...trickResult.woundIds);
-          totalReduced += trickResult.reduced;
-          allReducedDetails.push(...trickResult.reducedDetails);
+      for (const hit of (rd.hits ?? [])) {
+        let targetActor = defenderActor;
+        if (hit.isBackHit && rd.escapeeUuid) {
+          const escapeeDoc   = await fromUuid(rd.escapeeUuid);
+          const escapeeActor = escapeeDoc?.actor ?? escapeeDoc;
+          if (escapeeActor) targetActor = escapeeActor;
         }
-        await DuelLifecycle.afterDamage(rd, hit, attackerActor, defenderActor, targetActor, trickResult);
-      } else if (hit.isBlockDamage) {
-        const attackData = {
-          isMelee:       true,
-          actorId:       attackerActor?.id,
-          actorUuid:     attackerActor?.uuid,
-          weaponId:      rd.weaponId,
-          weaponUuid:    weaponItem?.uuid,
-          label:         weaponItem?.name ?? game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
-          damageMelee1:  hit.damageType,
-          damageMelee2:  hit.damageType,
-          damageMelee3:  hit.damageType,
-          finalLocation: rd.location,
-          headDamageApplied: rd.headDamageApplied === true,
-          successPoints: hit.tier
-        };
-        const batch = await CombatHelper.applyDamageToActor(targetActor, attackData, {
-          isOpposed:    true,
-          spDifference: hit.tier,
-          location:     rd.location,
-          suppressChat: true
-        });
-        if (batch) {
-          allResults.push(...(batch.results ?? []));
-          allWoundIds.push(...(batch.woundIds ?? []));
-          totalReduced += batch.reducedProjectiles ?? 0;
-          allReducedDetails.push(...(batch.reducedDetails ?? []));
+        const isTrickHit = !!hit.trickId;
+
+        await DuelLifecycle.beforeDamage(rd, hit, attackerActor, defenderActor, targetActor);
+
+        if (hit.cancelled) {
+          await DuelLifecycle.afterDamage(rd, hit, attackerActor, defenderActor, targetActor, null);
+          continue;
         }
-        await DuelLifecycle.afterDamage(rd, hit, attackerActor, defenderActor, targetActor, batch ?? null);
-      } else {
-        const attackData = {
-          isMelee:       true,
-          actorId:       attackerActor?.id,
-          actorUuid:     attackerActor?.uuid,
-          weaponId:      rd.weaponId,
-          weaponUuid:    weaponItem?.uuid,
-          label:         weaponItem?.name ?? game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
-          damageMelee1:  rd.damage1,
-          damageMelee2:  rd.damage2,
-          damageMelee3:  rd.damage3,
-          finalLocation: rd.location,
-          headDamageApplied: rd.headDamageApplied === true,
-          successPoints: hit.tier
-        };
-        const batch = await CombatHelper.applyDamageToActor(targetActor, attackData, {
-          isOpposed:    true,
-          spDifference: hit.tier,
-          location:     rd.location,
-          suppressChat: true
-        });
-        if (batch) {
-          allResults.push(...(batch.results ?? []));
-          allWoundIds.push(...(batch.woundIds ?? []));
-          totalReduced += batch.reducedProjectiles ?? 0;
-          allReducedDetails.push(...(batch.reducedDetails ?? []));
+
+        if (isTrickHit && rd.trickOnHitScripts?.[hit.trickId]) {
+          await MeleeActionRunner.fireOnHitScript(hit, rd, attackerActor, targetActor);
+          await DuelLifecycle.afterDamage(rd, hit, attackerActor, defenderActor, targetActor, null);
+        } else if (isTrickHit) {
+          const trickResult = await MeleeActionRunner.applyTrickHitDamage(hit, {
+            attackerActor, targetActor, weaponItem, rd, CombatHelper: batchedCombatHelper
+          });
+          if (trickResult.woundIds.length > 0 || trickResult.results.length > 0) {
+            allResults.push(...trickResult.results);
+            allWoundIds.push(...trickResult.woundIds);
+            totalReduced += trickResult.reduced;
+            allReducedDetails.push(...trickResult.reducedDetails);
+          }
+          await DuelLifecycle.afterDamage(rd, hit, attackerActor, defenderActor, targetActor, trickResult);
+        } else if (hit.isBlockDamage) {
+          const attackData = {
+            isMelee:       true,
+            actorId:       attackerActor?.id,
+            actorUuid:     attackerActor?.uuid,
+            weaponId:      rd.weaponId,
+            weaponUuid:    weaponItem?.uuid,
+            label:         weaponItem?.name ?? game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
+            damageMelee1:  hit.damageType,
+            damageMelee2:  hit.damageType,
+            damageMelee3:  hit.damageType,
+            finalLocation: rd.location,
+            headDamageApplied: rd.headDamageApplied === true,
+            successPoints: hit.tier
+          };
+          const batch = await applyDamage(targetActor, attackData, {
+            isOpposed:    true,
+            spDifference: hit.tier,
+            location:     rd.location,
+            suppressChat: true
+          });
+          if (batch) {
+            allResults.push(...(batch.results ?? []));
+            allWoundIds.push(...(batch.woundIds ?? []));
+            totalReduced += batch.reducedProjectiles ?? 0;
+            allReducedDetails.push(...(batch.reducedDetails ?? []));
+          }
+          await DuelLifecycle.afterDamage(rd, hit, attackerActor, defenderActor, targetActor, batch ?? null);
+        } else {
+          const attackData = {
+            isMelee:       true,
+            actorId:       attackerActor?.id,
+            actorUuid:     attackerActor?.uuid,
+            weaponId:      rd.weaponId,
+            weaponUuid:    weaponItem?.uuid,
+            label:         weaponItem?.name ?? game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
+            damageMelee1:  rd.damage1,
+            damageMelee2:  rd.damage2,
+            damageMelee3:  rd.damage3,
+            finalLocation: rd.location,
+            headDamageApplied: rd.headDamageApplied === true,
+            successPoints: hit.tier
+          };
+          const batch = await applyDamage(targetActor, attackData, {
+            isOpposed:    true,
+            spDifference: hit.tier,
+            location:     rd.location,
+            suppressChat: true
+          });
+          if (batch) {
+            allResults.push(...(batch.results ?? []));
+            allWoundIds.push(...(batch.woundIds ?? []));
+            totalReduced += batch.reducedProjectiles ?? 0;
+            allReducedDetails.push(...(batch.reducedDetails ?? []));
+          }
+          await DuelLifecycle.afterDamage(rd, hit, attackerActor, defenderActor, targetActor, batch ?? null);
         }
-        await DuelLifecycle.afterDamage(rd, hit, attackerActor, defenderActor, targetActor, batch ?? null);
+
+        if (isTrickHit && hit.trickId) resolvedTrickIds.add(hit.trickId);
       }
 
-      if (isTrickHit && hit.trickId) resolvedTrickIds.add(hit.trickId);
-    }
+      await DuelDamageEngine._fireResolvedTriggers(rd, resolvedTrickIds, attackerActor);
 
-    await DuelDamageEngine._fireResolvedTriggers(rd, resolvedTrickIds, attackerActor);
-
-    if (rd.pendingTrickQueue?.length > 0) {
-      for (const trickEntry of rd.pendingTrickQueue) {
-        if (trickEntry?.startsWith("trick:")) {
-          const _qfc     = trickEntry.indexOf(":");
-          const _qsc     = trickEntry.indexOf(":", _qfc + 1);
-          const _qTrickId = _qsc > _qfc + 1
-            ? trickEntry.slice(_qfc + 1, _qsc)
-            : trickEntry.slice(_qfc + 1);
-          const _qDesc = _qTrickId ? rd.trickOnHitScripts?.[_qTrickId] : null;
-          if (_qDesc && typeof _qDesc !== "string" && _qDesc.effectUuid) {
-            const _qDuel   = DuelContext.fromFlag(rd);
-            const _qAction = MeleeAction.fromDescriptor({
-              id:               _qTrickId,
-              sourceEffectUuid: _qDesc.effectUuid,
-              name:             _qDesc.name ?? _qTrickId
-            }, _qDuel);
-            _qAction.status = "queued";
-            await _qAction.executeTrigger("onMeleeActionQueued", {
-              actor:   attackerActor,
-              duel:    _qDuel,
-              trickId: _qTrickId
-            });
+      if (rd.pendingTrickQueue?.length > 0) {
+        for (const trickEntry of rd.pendingTrickQueue) {
+          if (trickEntry?.startsWith("trick:")) {
+            const _qfc     = trickEntry.indexOf(":");
+            const _qsc     = trickEntry.indexOf(":", _qfc + 1);
+            const _qTrickId = _qsc > _qfc + 1
+              ? trickEntry.slice(_qfc + 1, _qsc)
+              : trickEntry.slice(_qfc + 1);
+            const _qDesc = _qTrickId ? rd.trickOnHitScripts?.[_qTrickId] : null;
+            if (_qDesc && typeof _qDesc !== "string" && _qDesc.effectUuid) {
+              const _qDuel   = DuelContext.fromFlag(rd);
+              const _qAction = MeleeAction.fromDescriptor({
+                id:               _qTrickId,
+                sourceEffectUuid: _qDesc.effectUuid,
+                name:             _qDesc.name ?? _qTrickId
+              }, _qDuel);
+              _qAction.status = "queued";
+              await _qAction.executeTrigger("onMeleeActionQueued", {
+                actor:   attackerActor,
+                duel:    _qDuel,
+                trickId: _qTrickId
+              });
+            }
+          }
+          const queueResult = await MeleeActionRunner.applyQueueTrickEntry(trickEntry, {
+            attackerActor, defenderActor, weaponItem, rd, CombatHelper: batchedCombatHelper
+          });
+          if (queueResult) {
+            allResults.push(...queueResult.results);
+            allWoundIds.push(...queueResult.woundIds);
+            totalReduced += queueResult.reduced;
+            allReducedDetails.push(...queueResult.reducedDetails);
           }
         }
-        const queueResult = await MeleeActionRunner.applyQueueTrickEntry(trickEntry, {
-          attackerActor, defenderActor, weaponItem, rd, CombatHelper
-        });
-        if (queueResult) {
-          allResults.push(...queueResult.results);
-          allWoundIds.push(...queueResult.woundIds);
-          totalReduced += queueResult.reduced;
-          allReducedDetails.push(...queueResult.reducedDetails);
-        }
       }
-    }
 
-    return { allResults, allWoundIds, totalReduced, allReducedDetails };
+      return { allResults, allWoundIds, totalReduced, allReducedDetails };
+    } finally { await durabilityBatches.commit(); }
   }
 
   /**
@@ -2208,162 +2217,168 @@ export class DuelBeastActionEngine {
    * @returns {Promise<{allResults: object[], allWoundIds: string[], totalReduced: number, allReducedDetails: object[], appliedNames: string[]}>}
    */
   static async processSelected(rd, selectedActionIds, { attackerActor, defenderActor, CombatHelper, NeuroshimaScriptRunner }) {
-    const location     = rd.location ?? "torso";
+    const durabilityBatches = new ArmorDurabilityBatchGroup();
+    const applyDamage = (actor, data, options) => CombatHelper.applyDamageToActor(actor, data, {
+      ...options, armorDurabilityBatch: durabilityBatches.forActor(actor)
+    });
+    try {
+      const location     = rd.location ?? "torso";
 
 
-    if (!Array.isArray(selectedActionIds)) {
-      throw new TypeError("selectedActionIds must be an array");
-    }
+      if (!Array.isArray(selectedActionIds)) {
+        throw new TypeError("selectedActionIds must be an array");
+      }
 
-    const selectedActivities = this.validateSelected(rd, selectedActionIds, attackerActor);
+      const selectedActivities = this.validateSelected(rd, selectedActionIds, attackerActor);
 
-    const _applyLinkedEffects = (item, activity, targetActor) => applyBeastEffectIds(
-      item, [...(activity.effectIds ?? []), ...(activity.alwaysEffectIds ?? [])], targetActor,
-      { sourceActivityId: activity.id, sourceItemId: item.id, sourceMeleeMessageId: rd.messageId ?? null }
-    );
+      const _applyLinkedEffects = (item, activity, targetActor) => applyBeastEffectIds(
+        item, [...(activity.effectIds ?? []), ...(activity.alwaysEffectIds ?? [])], targetActor,
+        { sourceActivityId: activity.id, sourceItemId: item.id, sourceMeleeMessageId: rd.messageId ?? null }
+      );
 
-    for (const { item: beastItem, activity } of selectedActivities) {
-        if (activity.testRequired) continue;
-        if (activity.applyEffectsAutomatically === false) continue;
-        const timing = activity.effectTiming ?? "onUse";
-        if (timing === "onHit" || timing === "afterDamage") continue;
-        const effectTarget = activity.effectTarget ?? "target";
-        if (effectTarget === "manual" || effectTarget === "selected") continue;
-        const onUseTargetActor = effectTarget === "self" ? attackerActor : defenderActor;
-        await _applyLinkedEffects(beastItem, activity, onUseTargetActor);
-    }
+      for (const { item: beastItem, activity } of selectedActivities) {
+          if (activity.testRequired) continue;
+          if (activity.applyEffectsAutomatically === false) continue;
+          const timing = activity.effectTiming ?? "onUse";
+          if (timing === "onHit" || timing === "afterDamage") continue;
+          const effectTarget = activity.effectTarget ?? "target";
+          if (effectTarget === "manual" || effectTarget === "selected") continue;
+          const onUseTargetActor = effectTarget === "self" ? attackerActor : defenderActor;
+          await _applyLinkedEffects(beastItem, activity, onUseTargetActor);
+      }
 
-    const spentPerAction = {};
-    for (const actionId of selectedActionIds) {
-      spentPerAction[actionId] = (spentPerAction[actionId] ?? 0) + 1;
-    }
+      const spentPerAction = {};
+      for (const actionId of selectedActionIds) {
+        spentPerAction[actionId] = (spentPerAction[actionId] ?? 0) + 1;
+      }
 
-    const allWoundIds       = [];
-    const allResults        = [];
-    let   totalReduced      = 0;
-    const allReducedDetails = [];
-    const appliedNames      = [];
-    let   totalSpent        = 0;
+      const allWoundIds       = [];
+      const allResults        = [];
+      let   totalReduced      = 0;
+      const allReducedDetails = [];
+      const appliedNames      = [];
+      let   totalSpent        = 0;
 
-    for (const [compositeId, count] of Object.entries(spentPerAction)) {
-      const [itemId, activityId] = compositeId.split("::");
-      const actionItem = resolveBeastActionItem(attackerActor, itemId, activityId);
-      if (!actionItem) continue;
-      const activity = beastActivities(actionItem).find(a => a.id === activityId);
-      if (!activity) continue;
-      const cost   = activity.successCost ?? 1;
-      const damage = activity.damage || null;
-      const label  = activity.name || actionItem.name;
+      for (const [compositeId, count] of Object.entries(spentPerAction)) {
+        const [itemId, activityId] = compositeId.split("::");
+        const actionItem = resolveBeastActionItem(attackerActor, itemId, activityId);
+        if (!actionItem) continue;
+        const activity = beastActivities(actionItem).find(a => a.id === activityId);
+        if (!activity) continue;
+        const cost   = activity.successCost ?? 1;
+        const damage = activity.damage || null;
+        const label  = activity.name || actionItem.name;
 
-      totalSpent += cost * count;
-      appliedNames.push(...Array(count).fill(label));
+        totalSpent += cost * count;
+        appliedNames.push(...Array(count).fill(label));
 
-      for (let n = 0; n < count; n++) {
-        if (damage) {
-          const freshDefDoc    = await fromUuid(rd.defenderUuid);
-          const freshDefender  = freshDefDoc?.actor ?? freshDefDoc;
-          if (!freshDefender) continue;
-          const attackData = {
-            isMelee:     true,
-            actorId:     attackerActor.id,
-            actorUuid:   attackerActor.uuid,
-            weaponId:    actionItem.id,
-            weaponUuid:  actionItem.uuid,
-            label,
-            damageMelee1: damage,
-            damageMelee2: damage,
-            damageMelee3: damage,
-            finalLocation: location,
-            successPoints: 1
-          };
-          const batch = await CombatHelper.applyDamageToActor(freshDefender, attackData, {
-            isOpposed: true, spDifference: 1, location, suppressChat: true
-          });
-          if (batch) {
-            allResults.push(...(batch.results ?? []));
-            allWoundIds.push(...(batch.woundIds ?? []));
-            totalReduced += batch.reducedProjectiles ?? 0;
-            allReducedDetails.push(...(batch.reducedDetails ?? []));
+        for (let n = 0; n < count; n++) {
+          if (damage) {
+            const freshDefDoc    = await fromUuid(rd.defenderUuid);
+            const freshDefender  = freshDefDoc?.actor ?? freshDefDoc;
+            if (!freshDefender) continue;
+            const attackData = {
+              isMelee:     true,
+              actorId:     attackerActor.id,
+              actorUuid:   attackerActor.uuid,
+              weaponId:    actionItem.id,
+              weaponUuid:  actionItem.uuid,
+              label,
+              damageMelee1: damage,
+              damageMelee2: damage,
+              damageMelee3: damage,
+              finalLocation: location,
+              successPoints: 1
+            };
+            const batch = await applyDamage(freshDefender, attackData, {
+              isOpposed: true, spDifference: 1, location, suppressChat: true
+            });
+            if (batch) {
+              allResults.push(...(batch.results ?? []));
+              allWoundIds.push(...(batch.woundIds ?? []));
+              totalReduced += batch.reducedProjectiles ?? 0;
+              allReducedDetails.push(...(batch.reducedDetails ?? []));
+            }
           }
-        }
 
-        if (!damage && activity.testRequired) {
-          await postBeastRequiredTest(actionItem, activity, defenderActor, NeuroshimaScriptRunner);
-        }
-        const hitTiming = activity.effectTiming ?? "onUse";
-        if (!activity.testRequired && (hitTiming === "onHit" || hitTiming === "afterDamage") &&
-            activity.applyEffectsAutomatically !== false) {
-          const effectTarget    = activity.effectTarget ?? "target";
-          let hitEffectTarget = null;
-          if (effectTarget === "self")   hitEffectTarget = attackerActor;
-          else if (effectTarget === "target") hitEffectTarget = defenderActor;
-          if (hitEffectTarget) {
-            await _applyLinkedEffects(actionItem, activity, hitEffectTarget);
+          if (!damage && activity.testRequired) {
+            await postBeastRequiredTest(actionItem, activity, defenderActor, NeuroshimaScriptRunner);
+          }
+          const hitTiming = activity.effectTiming ?? "onUse";
+          if (!activity.testRequired && (hitTiming === "onHit" || hitTiming === "afterDamage") &&
+              activity.applyEffectsAutomatically !== false) {
+            const effectTarget    = activity.effectTarget ?? "target";
+            let hitEffectTarget = null;
+            if (effectTarget === "self")   hitEffectTarget = attackerActor;
+            else if (effectTarget === "target") hitEffectTarget = defenderActor;
+            if (hitEffectTarget) {
+              await _applyLinkedEffects(actionItem, activity, hitEffectTarget);
+            }
           }
         }
       }
-    }
 
-    const remaining = rd.netSuccesses - totalSpent;
-    if (remaining > 0 && !rd.isBeastAttack) {
-      if (rd.mode === "opposedPips") {
-        const sortedHits     = [...(rd.hits ?? [])].sort((a, b) => a.tier - b.tier);
-        const remainingHits  = sortedHits.slice(totalSpent);
-        for (const hit of remainingHits) {
-          if (!hit.damageType) continue;
-          const attackData = {
-            isMelee:      true,
-            actorId:      attackerActor.id,
-            actorUuid:    attackerActor.uuid,
-            weaponId:     rd.weaponId,
-            weaponUuid:   attackerActor.items.get(rd.weaponId)?.uuid,
-            label:        attackerActor.items.get(rd.weaponId)?.name ?? "—",
-            damageMelee1: hit.damageType,
-            damageMelee2: hit.damageType,
-            damageMelee3: hit.damageType,
-            finalLocation: location,
-            successPoints: 1
-          };
-          const batch = await CombatHelper.applyDamageToActor(defenderActor, attackData, {
-            isOpposed: true, spDifference: 1, location, suppressChat: true
-          });
-          if (batch) {
-            allResults.push(...(batch.results ?? []));
-            allWoundIds.push(...(batch.woundIds ?? []));
-            totalReduced += batch.reducedProjectiles ?? 0;
-            allReducedDetails.push(...(batch.reducedDetails ?? []));
+      const remaining = rd.netSuccesses - totalSpent;
+      if (remaining > 0 && !rd.isBeastAttack) {
+        if (rd.mode === "opposedPips") {
+          const sortedHits     = [...(rd.hits ?? [])].sort((a, b) => a.tier - b.tier);
+          const remainingHits  = sortedHits.slice(totalSpent);
+          for (const hit of remainingHits) {
+            if (!hit.damageType) continue;
+            const attackData = {
+              isMelee:      true,
+              actorId:      attackerActor.id,
+              actorUuid:    attackerActor.uuid,
+              weaponId:     rd.weaponId,
+              weaponUuid:   attackerActor.items.get(rd.weaponId)?.uuid,
+              label:        attackerActor.items.get(rd.weaponId)?.name ?? "—",
+              damageMelee1: hit.damageType,
+              damageMelee2: hit.damageType,
+              damageMelee3: hit.damageType,
+              finalLocation: location,
+              successPoints: 1
+            };
+            const batch = await applyDamage(defenderActor, attackData, {
+              isOpposed: true, spDifference: 1, location, suppressChat: true
+            });
+            if (batch) {
+              allResults.push(...(batch.results ?? []));
+              allWoundIds.push(...(batch.woundIds ?? []));
+              totalReduced += batch.reducedProjectiles ?? 0;
+              allReducedDetails.push(...(batch.reducedDetails ?? []));
+            }
           }
-        }
-      } else {
-        const remainingTier = Math.min(3, remaining);
-        const damageType    = rd[`damage${remainingTier}`];
-        if (damageType) {
-          const attackData = {
-            isMelee:      true,
-            actorId:      attackerActor.id,
-            actorUuid:    attackerActor.uuid,
-            weaponId:     rd.weaponId,
-            weaponUuid:   attackerActor.items.get(rd.weaponId)?.uuid,
-            label:        attackerActor.items.get(rd.weaponId)?.name ?? "—",
-            damageMelee1: rd.damage1,
-            damageMelee2: rd.damage2,
-            damageMelee3: rd.damage3,
-            finalLocation: location,
-            successPoints: remainingTier
-          };
-          const batch = await CombatHelper.applyDamageToActor(defenderActor, attackData, {
-            isOpposed: true, spDifference: remainingTier, location, suppressChat: true
-          });
-          if (batch) {
-            allResults.push(...(batch.results ?? []));
-            allWoundIds.push(...(batch.woundIds ?? []));
-            totalReduced += batch.reducedProjectiles ?? 0;
-            allReducedDetails.push(...(batch.reducedDetails ?? []));
+        } else {
+          const remainingTier = Math.min(3, remaining);
+          const damageType    = rd[`damage${remainingTier}`];
+          if (damageType) {
+            const attackData = {
+              isMelee:      true,
+              actorId:      attackerActor.id,
+              actorUuid:    attackerActor.uuid,
+              weaponId:     rd.weaponId,
+              weaponUuid:   attackerActor.items.get(rd.weaponId)?.uuid,
+              label:        attackerActor.items.get(rd.weaponId)?.name ?? "—",
+              damageMelee1: rd.damage1,
+              damageMelee2: rd.damage2,
+              damageMelee3: rd.damage3,
+              finalLocation: location,
+              successPoints: remainingTier
+            };
+            const batch = await applyDamage(defenderActor, attackData, {
+              isOpposed: true, spDifference: remainingTier, location, suppressChat: true
+            });
+            if (batch) {
+              allResults.push(...(batch.results ?? []));
+              allWoundIds.push(...(batch.woundIds ?? []));
+              totalReduced += batch.reducedProjectiles ?? 0;
+              allReducedDetails.push(...(batch.reducedDetails ?? []));
+            }
           }
         }
       }
-    }
 
-    return { allResults, allWoundIds, totalReduced, allReducedDetails, appliedNames };
+      return { allResults, allWoundIds, totalReduced, allReducedDetails, appliedNames };
+    } finally { await durabilityBatches.commit(); }
   }
 }

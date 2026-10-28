@@ -1162,6 +1162,7 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
     }
     test.preData.specialityBonus = Number(this._scriptFields?.specialityBonus ?? 0);
     test.preData.specialitySources = foundry.utils.deepClone(this._scriptFields?.specialitySources ?? []);
+    this._applyManualSuccessBonus(test);
     await test.roll();
 
     const successPoints = Number(test.result.successPoints ?? 0);

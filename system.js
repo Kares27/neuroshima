@@ -1,5 +1,5 @@
 import { NeuroshimaItemDirectory } from "./module/apps/item-directory.js";
-import { isBeastAction } from "./module/helpers/beast-actions.js";
+import { isBeastAction, createBeastCombatWeapon } from "./module/helpers/beast-actions.js";
 import { refreshArmorLimits } from "./module/helpers/armor-limit.js";
 import { BeastActivitySheet } from "./module/apps/beast-activity-sheet.js";
 import { NEUROSHIMA } from "./module/config.js";
@@ -668,6 +668,14 @@ Hooks.once('init', async function() {
         requiresReload: true
     });
 
+    for (const [key, defaultValue] of [["armorDurabilityMelee", true], ["armorDurabilityRanged", false],
+        ["armorDurabilityMeleeBruises", false]]) {
+        game.settings.register("neuroshima", key, { scope: "world", config: false, type: Boolean, default: defaultValue });
+    }
+    game.settings.register("neuroshima", "armorDurabilityRangedTiming", {
+        scope: "world", config: false, type: String, default: "beforeArmor",
+        choices: { beforeArmor: "NEUROSHIMA.Settings.ArmorDurability.Before", afterArmor: "NEUROSHIMA.Settings.ArmorDurability.After" }
+    });
     game.settings.register("neuroshima", "armorCategoryGlobalDamage", {
         scope: "world", config: false, type: Object, default: {}, onChange: refreshArmorLimits
     });
@@ -1742,6 +1750,22 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
             catch (error) { ui.notifications.error(error.message); }
         }
     });
+    for (const [side, label] of [["attacker", "NEUROSHIMA.MeleeDuel.EditAttackerRoll"], ["defender", "NEUROSHIMA.MeleeDuel.EditDefenderRoll"]]) {
+        options.push({
+            name: game.i18n.localize(label), icon: '<i class="fas fa-pen"></i>',
+            condition: li => game.user.isGM && !!game.messages.get(li.dataset.messageId)?.getFlag("neuroshima", "melee")?.sessionId,
+            callback: async li => {
+                const message = game.messages.get(li.dataset.messageId);
+                const marker = message?.getFlag("neuroshima", "melee");
+                const session = await game.neuroshima.melee.get(marker.sessionId, { messageId: message.id });
+                const roll = game.messages.get(session?.messages?.[`${side}RollMessageId`]);
+                if (!roll) return ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeDuel.RollNotAvailable"));
+                const test = await NeuroshimaTestBase.recreate(roll.getFlag("neuroshima", "test"));
+                test.message = roll;
+                new EditRollDialog(roll, test).render(true);
+            }
+        });
+    }
     options.push({
         name: "Edytuj rzut",
         icon: '<i class="fas fa-pen"></i>',
@@ -1753,6 +1777,7 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
         callback: async li => {
             const { message, testData } = getMessageTestContext(li);
             const test = await NeuroshimaTestBase.recreate(testData);
+            test.message = message;
             const validation = await test.validateLinkedMutation();
             if (!validation.ok) {
                 test.rejectLinkedMutation(validation);
@@ -1833,13 +1858,7 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
         icon: '<i class="fas fa-heart-broken"></i>',
         condition: li => {
             const message = game.messages.get(li.dataset.messageId);
-            const messageType = message?.getFlag("neuroshima", "messageType");
-            const woundIds = message?.getFlag("neuroshima", "woundIds") ?? [];
-            const alreadyReversed = message?.getFlag("neuroshima", "isReversed");
-
-            if (!CombatHelper.canPerformCombatAction()) return false;
-
-            return messageType === "painResistanceReport" && woundIds.length > 0 && !alreadyReversed;
+            return CombatHelper.canReverseDamage(message);
         },
         callback: async li => {
             const message = game.messages.get(li.dataset.messageId);
@@ -1946,20 +1965,21 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
             if (isRerolled && !game.user.isGM) return false;
             
             const actor = game.actors.get(rollData.actorId);
-            return game.user.isGM || actor?.isOwner;
+            return game.user.isGM || actor?.isOwner || message.isAuthor;
         },
         callback: async li => {
             const message = game.messages.get(li.dataset.messageId);
             const testData = message?.getFlag("neuroshima", "test");
             const rollData = testData?.result;
             const messageType = message?.getFlag("neuroshima", "messageType");
-            const actor = game.actors.get(rollData?.actorId);
+            const test = testData ? await NeuroshimaTestBase.recreate(testData) : null;
+            const actor = test?.actor;
             
             if (!actor || !rollData) {
                 ui.notifications.error("Nie można znaleźć wymaganych danych do przerzutu");
                 return;
             }
-            const test = await NeuroshimaTestBase.recreate(message.getFlag("neuroshima", "test"));
+            test.message = message;
             const validation = await test.validateLinkedMutation();
             if (!validation.ok) {
                 test.rejectLinkedMutation(validation);
@@ -2034,122 +2054,26 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
         name: game.i18n.localize("NEUROSHIMA.MeleeDuel.StartDuelFromTarget"),
         icon: '<i class="fas fa-swords"></i>',
         condition: li => {
-            if (!game.user.isGM) return false;
             const message = game.messages.get(li.dataset.messageId);
-            const rollData = message?.getFlag("neuroshima", "test")?.result;
-            return !!(rollData?.isMelee && rollData?.meleeAction === "attack");
+            const data = message?.getFlag("neuroshima", "test");
+            return !!(data?.result?.isMelee && (data.result.meleeAction ?? "attack") === "attack"
+                && !data.context?.opposedLink && (game.user.isGM || message.isAuthor));
         },
         callback: async li => {
             const message = game.messages.get(li.dataset.messageId);
-            const rollData = message?.getFlag("neuroshima", "test")?.result;
-            if (!rollData?.isMelee) return;
-
-            let defenderUuid = null;
-            const gmTargeted = [...game.user.targets];
-            if (gmTargeted.length > 0) {
-                defenderUuid = gmTargeted[0].document?.uuid ?? gmTargeted[0].actor?.uuid ?? null;
-            }
-            if (!defenderUuid && rollData.targets?.length > 0) {
-                defenderUuid = rollData.targets[0];
-            }
-            if (!defenderUuid) {
-                ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeDuel.NoTargetForDuel"));
-                return;
-            }
-
-            const attackerActor = (() => {
-                if (message.speaker?.token) {
-                    const scene = game.scenes.get(message.speaker.scene);
-                    const tok = scene?.tokens.get(message.speaker.token);
-                    if (tok?.actor) return tok.actor;
-                }
-                return game.actors.get(rollData.actorId);
-            })();
-            if (!attackerActor) return;
-
-            let weapon = rollData.weaponId ? attackerActor.items.get(rollData.weaponId) : null;
-
-            if (!weapon && rollData.beastItemId) {
-                const beastItem = attackerActor.items.get(rollData.beastItemId);
-                if (beastItem) {
-                    const byTier = {};
-                    for (const act of (beastItem.system.activities ?? [])) {
-                        const t = Math.min(3, Math.max(1, act.successCost ?? 1));
-                        if (!byTier[t]) byTier[t] = act.damage || "D";
-                    }
-                    weapon = {
-                        id: null,
-                        beastItemId: beastItem.id,
-                        name: beastItem.name,
-                        img: beastItem.img,
-                        type: "weapon",
-                        system: {
-                            weaponType: "melee",
-                            attribute: beastItem.system?.attribute || "dexterity",
-                            skill: "experience",
-                            attackBonus: 0,
-                            defenseBonus: 0,
-                            damageMelee1: byTier[1] ?? byTier[2] ?? byTier[3] ?? "D",
-                            damageMelee2: byTier[2] ?? byTier[1] ?? byTier[3] ?? "D",
-                            damageMelee3: byTier[3] ?? byTier[2] ?? byTier[1] ?? "D",
-                            requiredBuild: 0,
-                            piercing: 0,
-                            magazine: null,
-                            jamming: 20
-                        }
-                    };
-                }
-            }
-
-            if (!weapon && attackerActor.type === "creature") {
-                const sourceItems = attackerActor.items.filter(i => isBeastAction(i));
-                if (sourceItems.length) {
-                    const sourceItem = sourceItems[0];
-                    const byTier = {};
-                    for (const item of sourceItems) {
-                        for (const act of (item.system.activities ?? [])) {
-                            const t = Math.min(3, Math.max(1, act.successCost ?? 1));
-                            if (!byTier[t]) byTier[t] = act.damage || "D";
-                        }
-                    }
-                    weapon = {
-                        id: null,
-                        beastItemId: sourceItem.id,
-                        name: sourceItem.name,
-                        img: sourceItem.img,
-                        type: "weapon",
-                        system: {
-                            weaponType: "melee",
-                            attribute: sourceItem.system?.attribute || "dexterity",
-                            skill: "experience",
-                            attackBonus: 0,
-                            defenseBonus: 0,
-                            damageMelee1: byTier[1] ?? byTier[2] ?? byTier[3] ?? "D",
-                            damageMelee2: byTier[2] ?? byTier[1] ?? byTier[3] ?? "D",
-                            damageMelee3: byTier[3] ?? byTier[2] ?? byTier[1] ?? "D",
-                            requiredBuild: 0,
-                            piercing: 0,
-                            magazine: null,
-                            jamming: 20
-                        }
-                    };
-                }
-            }
-
-            if (!weapon) return;
-
-            const mode = game.settings.get("neuroshima", "meleeCombatType") || "opposedPips";
-
-            const { MeleeOpposedChat } = await import("./module/combat/combat.js");
-            const attackerTest = await NeuroshimaTestBase.recreate(testData);
-            attackerTest.message = message;
-            await MeleeOpposedChat.createOpposedHandler({
-                attacker: attackerActor,
-                weapon,
-                targetUuid: defenderUuid,
-                mode,
-                attackerTest
-            });
+            const data = message?.getFlag("neuroshima", "test");
+            if (!data?.result?.isMelee) return;
+            const target = Array.from(game.user.targets ?? [])[0];
+            const targetUuid = target?.document?.uuid ?? target?.actor?.uuid ?? data.result.targets?.[0];
+            if (!targetUuid) return ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeDuel.NoTargetForDuel"));
+            try {
+                const test = await NeuroshimaTestBase.recreate(data);
+                test.message = message;
+                const weapon = test.item ?? (test.actor?.type === "creature" ? createBeastCombatWeapon(test.actor) : null);
+                if (!weapon) throw new Error("Cannot resolve the attack weapon");
+                await game.neuroshima.melee.attachAttackFromTest(test.actor, weapon, targetUuid,
+                    game.settings.get("neuroshima", "meleeCombatType") || "default", test);
+            } catch (error) { ui.notifications.error(error.message); }
         }
     });
 });

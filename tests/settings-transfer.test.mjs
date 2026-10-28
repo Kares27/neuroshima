@@ -163,3 +163,28 @@ test("settings menu reads and previews a file before saving and clears stale dat
   assert.equal(writes.length, 1);
   assert.deepEqual(reload, { world: true });
 });
+
+
+test("armor durability toggles and timing roundtrip, while the retired ranged bruise setting is skipped", async () => {
+  const { register, values, writes } = setup();
+  register("armorDurabilityMelee", Boolean, true, { config: false });
+  register("armorDurabilityMeleeBruises", Boolean, true, { config: false });
+  register("armorDurabilityRanged", Boolean, true, { config: false });
+  register("armorDurabilityRangedTiming", String, "afterArmor", { config: false, choices: { beforeArmor: "Before", afterArmor: "After" } });
+  const exported = JSON.parse(JSON.stringify(exportSystemSettings()));
+  for (const key of ["armorDurabilityMelee", "armorDurabilityMeleeBruises", "armorDurabilityRanged"]) {
+    assert.equal(exported.settings[key], true);
+    values.set(key, false);
+  }
+  values.set("armorDurabilityRangedTiming", "beforeArmor");
+  assert.equal(Object.hasOwn(exported.settings, "armorDurabilityRangedBruises"), false);
+  exported.settings.armorDurabilityRangedBruises = true;
+  const imported = await importSystemSettings(exported);
+  assert.deepEqual(imported.skipped, ["armorDurabilityRangedBruises"]);
+  assert.equal(writes.length, 4);
+  for (const key of ["armorDurabilityMelee", "armorDurabilityMeleeBruises", "armorDurabilityRanged"]) assert.equal(values.get(key), true);
+  assert.equal(values.get("armorDurabilityRangedTiming"), "afterArmor");
+  exported.settings.armorDurabilityRangedTiming = "invalid";
+  await assert.rejects(importSystemSettings(exported));
+  assert.equal(writes.length, 4);
+});

@@ -179,6 +179,32 @@
         </div>
 
     </div>
+    <div class="config-section armor-durability-config">
+        <h3>{{localize "NEUROSHIMA.Settings.ArmorDurability.Title"}}</h3>
+        <div class="armor-durability-options">
+            <div class="armor-durability-column">
+                <label class="armor-durability-toggle">
+                    <span>{{localize "NEUROSHIMA.Settings.ArmorDurability.Melee"}}</span>
+                    <input type="checkbox" name="armorDurabilityMelee" {{checked config.armorDurabilityMelee}}>
+                </label>
+                <label class="armor-durability-toggle" title="{{localize 'NEUROSHIMA.Settings.ArmorDurability.BruisesHint'}}">
+                    <span>{{localize "NEUROSHIMA.Settings.ArmorDurability.Bruises"}}</span>
+                    <input type="checkbox" name="armorDurabilityMeleeBruises" {{checked config.armorDurabilityMeleeBruises}} {{#unless config.armorDurabilityMelee}}disabled{{/unless}}>
+                </label>
+            </div>
+            <div class="armor-durability-column">
+                <label class="armor-durability-toggle">
+                    <span>{{localize "NEUROSHIMA.Settings.ArmorDurability.Ranged"}}</span>
+                    <input type="checkbox" name="armorDurabilityRanged" {{checked config.armorDurabilityRanged}}>
+                </label>
+                <select name="armorDurabilityRangedTiming" aria-label="{{localize 'NEUROSHIMA.Settings.ArmorDurability.Timing'}}" title="{{localize 'NEUROSHIMA.Settings.ArmorDurability.Timing'}}" {{#unless config.armorDurabilityRanged}}disabled{{/unless}}>
+                    <option value="beforeArmor" {{#if (eq config.armorDurabilityRangedTiming "beforeArmor")}}selected{{/if}}>{{localize "NEUROSHIMA.Settings.ArmorDurability.Before"}}</option>
+                    <option value="afterArmor" {{#if (eq config.armorDurabilityRangedTiming "afterArmor")}}selected{{/if}}>{{localize "NEUROSHIMA.Settings.ArmorDurability.After"}}</option>
+                </select>
+            </div>
+        </div>
+        <p class="notes">{{localize "NEUROSHIMA.Settings.ArmorDurability.Hint"}}</p>
+    </div>
     {{> "systems/neuroshima/templates/apps/damage-category-config.hbs"}}
     </div>
 

@@ -41,6 +41,13 @@
             <span class="value"><strong>{{reducedCount}}</strong></span>
         </div>
         {{/if}}
+        {{#if armorWearTotal}}
+        <div class="summary-divider">|</div>
+        <div class="summary-item armor-wear" data-tooltip-html="{{armorWearTooltip}}" data-tooltip-direction="LEFT">
+            <span class="label">{{localize "NEUROSHIMA.PainResistance.ArmorWear"}}:</span>
+            <span class="value"><strong>-{{armorWearTotal}}</strong></span>
+        </div>
+        {{/if}}
     </div>
 
     {{#if results.length}}

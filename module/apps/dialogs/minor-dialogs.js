@@ -165,6 +165,7 @@ export class EditRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
         flags.baseSkill ??= flags.skill ?? 0;
         flags.attributeBonus ??= 0;
         flags.skillBonus ??= 0;
+        flags.manualSuccessPoints = this.test.preData.manualSuccessPoints ?? 0;
         flags.penalties ??= {};
         for (const key of ["mod", "wounds", "armor", "disease", "effects"]) flags.penalties[key] ??= 0;
         if (messageType === "healing") {
@@ -195,6 +196,7 @@ export class EditRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
             skill: Number(data.baseSkill ?? 0),
             attributeBonus: Number(data.attributeBonus ?? 0),
             skillBonus: Number(data.skillBonus ?? 0),
+            manualSuccessPoints: Math.trunc(Number(data.manualSuccessPoints) || 0),
             isOpen: data.isOpen === "true",
             penalties: {
               base: Number(NEUROSHIMA.difficulties[data.difficultyKey]?.min ?? 0),

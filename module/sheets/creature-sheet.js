@@ -1,3 +1,4 @@
+import { remainingArmorDurability, armorLocationProtects, modifyArmorDurability } from "../helpers/armor-durability.js";
 import { armorLocationProtections } from "../helpers/armor-location.js";
 import { postBeastRequiredTest, applyBeastEffectIds } from "../helpers/beast-required-test.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
@@ -613,14 +614,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       },
 
       modifyDurability: async function(event, target) {
-        const itemId = target.dataset.itemId;
-        const item   = this.document.items.get(itemId);
-        if (!item || item.type !== "armor") return;
-        const isRight    = event.type === "contextmenu";
-        const current    = item.system.armor?.durabilityDamage || 0;
-        const max        = item.system.armor?.durability || 0;
-        const newDamage  = Math.clamp(isRight ? current + 1 : current - 1, 0, max);
-        if (newDamage !== current) await item.update({ "system.armor.durabilityDamage": newDamage });
+        return modifyArmorDurability(this, event, target);
       },
 
       modifyAP: async function(event, target) {
@@ -1412,8 +1406,8 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       for (const [loc, rating] of Object.entries(ratings)) {
         if (locations[loc] && (rating > 0 || Object.entries(resistanceRatings).some(([category, row]) => category !== "physical" && Number(row[loc]) > 0))) {
           const locDamage   = damages[loc] || 0;
-          const currentAP   = Math.max(0, rating - locDamage);
-          const currentDur  = Math.max(0, durability - durDamage);
+          const currentAP   = armorLocationProtects(armor, loc) ? Math.max(0, rating - locDamage) : 0;
+          const currentDur  = remainingArmorDurability(armor, loc) ?? 0;
           locations[loc].totalAP += currentAP;
           locations[loc].items.push({
             id:               item.id,
@@ -1424,7 +1418,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
             currentDurability: currentDur,
             rating,
             damage:           locDamage,
-            explosiveDamaged: Number(armor.resistanceDamage?.explosive?.[loc]) > 0,
+            explosiveDamaged: Number(armor.resistanceDamage?.explosive?.[loc]) > 0 || !armorLocationProtects(armor, loc),
             explosiveProtection: clampArmor(this.document, resistances.explosive?.[loc] ?? 0, "explosive"),
             currentRating:    clampArmor(this.document, currentAP)
           });
@@ -1453,15 +1447,9 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
     const html = this.element;
 
     html.querySelectorAll('[data-action="modifyDurability"]').forEach(el => {
-      el.addEventListener('contextmenu', async (event) => {
+      el.addEventListener('contextmenu', async event => {
         event.preventDefault();
-        const itemId  = event.currentTarget.dataset.itemId;
-        const item    = this.document.items.get(itemId);
-        if (!item || item.type !== "armor") return;
-        const current   = item.system.armor?.durabilityDamage || 0;
-        const max       = item.system.armor?.durability       || 0;
-        const newDamage = Math.clamp(current + 1, 0, max);
-        if (newDamage !== current) await item.update({ "system.armor.durabilityDamage": newDamage });
+        await modifyArmorDurability(this, event, event.currentTarget);
       });
     });
 

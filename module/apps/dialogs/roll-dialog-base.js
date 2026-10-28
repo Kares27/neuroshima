@@ -52,6 +52,8 @@ export class NeuroshimaRollDialogBase extends HandlebarsApplicationMixin(Applica
 
   /** @override */
   async close(options = {}) {
+    const successInput = this.element?.querySelector('[name="manualSuccessPoints"]');
+    if (successInput) this.userEntry.manualSuccessPoints = Number(successInput.value) || 0;
     if (!this._rollSubmitted && !this._closeNotified && this._onCloseCallback) {
       this._closeNotified = true;
       this._onCloseCallback();
@@ -131,12 +133,17 @@ export class NeuroshimaRollDialogBase extends HandlebarsApplicationMixin(Applica
     });
   }
 
-  /**
-   * Apply data-tooltip attributes to the three main penalty fields.
-   * Subclasses may call super._applyTooltips(html) and then extend.
-   * @param {HTMLElement} html
-   */
+  /** Keep manual points separate from bonuses recalculated by effect scripts. */
+  _applyManualSuccessBonus(test) {
+    const input = this.element?.querySelector('[name="manualSuccessPoints"]');
+    const value = Number(input?.value ?? this.userEntry?.manualSuccessPoints ?? 0);
+    test.preData.manualSuccessPoints = Number.isFinite(value) ? Math.trunc(value) : 0;
+  }
+
+  /** Apply field values and effect breakdown tooltips after rendering. */
   _applyTooltips(html) {
+    const successInput = html.querySelector('[name="manualSuccessPoints"]');
+    if (successInput) successInput.value = this.userEntry.manualSuccessPoints ?? 0;
     const sf = this._scriptFields;
     const uv = this._userValues;
     if (!sf || !uv) return;

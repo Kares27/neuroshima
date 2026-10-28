@@ -1,3 +1,4 @@
+import { armorLocationProtects } from "./armor-durability.js";
 const WEAPON_LOCS = ["head", "torso", "leftArm", "rightArm", "leftLeg", "rightLeg"];
 
 /**
@@ -304,7 +305,8 @@ export function getEffectiveArmorResistances(armorItem, { includeDamage = true }
   if (includeDamage) {
     const damage = armorItem.system?.armor?.resistanceDamage ?? {};
     for (const [category, row] of Object.entries(merged)) {
-      for (const loc of locs) row[loc] = Math.max(0, row[loc] - Math.max(0, Number(damage[category]?.[loc]) || 0));
+      for (const loc of locs) row[loc] = armorLocationProtects(armorItem.system?.armor, loc)
+        ? Math.max(0, row[loc] - Math.max(0, Number(damage[category]?.[loc]) || 0)) : 0;
     }
   }
   return merged;

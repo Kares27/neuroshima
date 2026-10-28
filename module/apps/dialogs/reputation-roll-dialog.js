@@ -360,6 +360,7 @@ export class ReputationRollDialog extends NeuroshimaRollDialogBase {
     if (values.fields.autoSuccess === true) {
       test.forceSuccess({ mode: "keepRoll" });
     }
+    this._applyManualSuccessBonus(test);
     await test.roll();
     return test.result;
   }
@@ -401,6 +402,7 @@ export class ReputationRollDialog extends NeuroshimaRollDialogBase {
     if (values.fields.autoSuccess === true) {
       test.forceSuccess({ mode: "keepRoll" });
     }
+    this._applyManualSuccessBonus(test);
     await test.roll({ sendToChat: false });
     Object.assign(test.result, {
       isReputationRoll: true,

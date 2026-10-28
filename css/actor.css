@@ -8837,6 +8837,26 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     padding: 8px 6px 4px;
 }
 
+/* Damage batch controls share the toolkit palette. */
+.gm-damage-app { min-width: 800px; }
+.gm-damage-app .damage-settings-col { flex: 2; min-width: 480px; }
+.gm-damage-app .damage-actors-col { flex: 1; min-width: 240px; border-left: 1px solid var(--ns-border-main); padding-left: 12px; }
+.gm-damage-app .damage-table-heading { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; font-family: 'SpecialElite', serif; }
+.gm-damage-app .damage-table-scroll { max-height: 440px; overflow: auto; }
+.gm-damage-app .damage-entries-table { width: 100%; table-layout: fixed; }
+.gm-damage-app .damage-entries-table th { font-size: 12px; padding: 6px 3px; }
+.gm-damage-app .damage-entries-table td { padding: 6px 3px; vertical-align: top; }
+.gm-damage-app .damage-entries-table th:nth-child(3) { width: 62px; }
+.gm-damage-app .damage-entries-table th:last-child { width: 30px; }
+.gm-damage-app .damage-entries-table input[type="number"],
+.gm-damage-app .damage-entries-table select { width: 100%; min-width: 0; height: 30px; }
+.gm-damage-app .damage-random-each { display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 1.3; margin-top: 5px; }
+.gm-damage-app .damage-random-each input { flex: 0 0 16px; width: 16px; height: 16px; margin: 0; }
+.gm-damage-app .damage-actor-filters { display: flex; gap: 6px; }
+.gm-damage-app .damage-actor-filters select { flex: 1; min-width: 0; }
+.gm-damage-app .damage-actor-list { max-height: 400px; }
+.gm-damage-app .damage-search { width: 100%; }
+
 /* Session bar */
 
 .gm-toolkit-session-bar {
