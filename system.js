@@ -1,3 +1,4 @@
+import { isElement, NeuroshimaAreas, applicationInstances } from "./module/helpers/foundry-compat.js";
 import { NeuroshimaItemDirectory } from "./module/apps/item-directory.js";
 import { isBeastAction, createBeastCombatWeapon } from "./module/helpers/beast-actions.js";
 import { refreshArmorLimits } from "./module/helpers/armor-limit.js";
@@ -27,7 +28,7 @@ import { NeuroshimaEffectSheet } from "./module/sheets/neuroshima-effect-sheet.j
 import {
     NeuroshimaScriptRunner
 } from "./module/apps/neuroshima-script-engine.js";
-import { NeuroshimaDice } from "./module/helpers/dice.js";
+import { NeuroshimaDice, NeuroshimaRollTestRouter } from "./module/helpers/rolls.js";
 import {
     NEUROSHIMA_TESTS,
     NeuroshimaTestBase,
@@ -45,16 +46,15 @@ import {
 } from "./module/tests.mjs";
 import { TriggerRegistry } from "./module/effects/trigger-registry.js";
 import { CombatHelper } from "./module/helpers/combat-helper.js";
-import { NeuroshimaMeleeCombat } from "./module/combat/combat.js";
+import { NeuroshimaMeleeCombat, NeuroshimaCombatTracker, NeuroshimaTokenRuler, MeleeVanillaChat, MeleeOpposedChat, MeleeStore } from "./module/combat/combat.js";
 import { buildRef, resolveRef } from "./module/helpers/mod-helpers.js";
-import { buildItemPreviewTooltip } from "./module/helpers/item-tooltip.js";
-import { InteractiveItemTooltip } from "./module/helpers/interactive-item-tooltip.js";
+import { buildItemPreviewTooltip, InteractiveItemTooltip } from "./module/helpers/item-tooltip.js";
 import {
     buildBreakdownTooltip,
     canViewRollTooltip
 } from "./module/helpers/tooltip-renderer.js";
 import { EncumbranceConfig } from "./module/apps/config/encumbrance-config.js";
-import { CombatConfig } from "./module/apps/config/combat-config.js";
+import { CombatConfig, _applyCustomDamageCategories } from "./module/apps/config/combat-config.js";
 import { SettingsTransferConfig } from "./module/apps/config/settings-transfer-config.js";
 import { DEFAULT_UNARMED_DAMAGE_TABLE } from "./module/combat/unarmed.js";
 import { DistanceConfig, DEFAULT_DISTANCE_PENALTIES } from "./module/apps/config/distance-config.js";
@@ -62,14 +62,12 @@ import { HealingConfig } from "./module/apps/config/healing-config.js";
 import { ConditionConfig, applyConditionsToStatusEffects, getConditions } from "./module/apps/config/condition-config.js";
 import { ReputationSettingsApp } from "./module/apps/config/reputation-settings.js";
 import { CurrencyGearConfig, DEFAULT_CURRENCY } from "./module/apps/config/currency-gear-config.js";
-import { _applyCustomDamageCategories } from "./module/apps/config/damage-category-config.js";
 import { GrenadeConfig } from "./module/apps/config/grenade-config.js";
 import { DebugRollDialog } from "./module/apps/dialogs/debug-roll-dialog.js";
 import { EditRollDialog } from "./module/apps/dialogs/minor-dialogs.js";
 import { PointAllocationDialog } from "./module/apps/dialogs/point-allocation-dialog.js";
 import { ListChoiceDialog } from "./module/apps/dialogs/list-choice-dialog.js";
 import { NeuroshimaChoiceRouter } from "./module/helpers/choice-router.js";
-import { NeuroshimaRollTestRouter } from "./module/helpers/roll-test-router.js";
 import { resolveCrewActor } from "./module/helpers/vehicle-crew.js";
 import { NeuroshimaInitiativeRollDialog } from "./module/apps/dialogs/initiative-roll-dialog.js";
 import { HealingApp } from "./module/apps/healing-app.js";
@@ -85,7 +83,6 @@ import { GMGroupCheckApp, registerGroupCheckChatListeners } from "./module/apps/
 import { GMPayoutApp } from "./module/apps/gm/gm-payout-app.js";
 import { GMReputationApp } from "./module/apps/gm/gm-reputation-app.js";
 
-import { NeuroshimaCombatTracker, NeuroshimaTokenRuler, MeleeVanillaChat, MeleeOpposedChat, MeleeStore } from "./module/combat/combat.js";
 import { MeleeCombatApp } from "./module/apps/melee-combat-app.js";
 import {
     registerMeleeSystemSettings,
@@ -125,7 +122,7 @@ Hooks.once('init', async function() {
 
     // Hook to re-render actor sheets when combat updates (for melee pendings)
     Hooks.on("updateCombat", async (combat, updates, options, userId) => {
-        const appInstances = Object.values(foundry.applications?.instances ?? ui.windows ?? {});
+        const appInstances = applicationInstances();
         appInstances.forEach(app => {
             if (_isActorSheet(app)) app.render(false);
         });
@@ -136,7 +133,7 @@ Hooks.once('init', async function() {
 
     // Hide GM-only elements in chat messages for non-GM users
     Hooks.on("renderChatMessageHTML", (message, html) => {
-        const root = html instanceof HTMLElement ? html : html?.[0];
+        const root = isElement(html) ? html : html?.[0];
         if (!root) return;
 
         // Skill allocation card visibility — runs for all users
@@ -184,7 +181,7 @@ Hooks.once('init', async function() {
         if (!opposedData) return;
 
         if (opposedData.status !== "resolved" && opposedData.status !== "cancelled") return;
-        const appInstances = Object.values(foundry.applications?.instances ?? ui.windows ?? {});
+        const appInstances = applicationInstances();
         appInstances.forEach(app => {
             if (_isActorSheet(app)) app.render(false);
         });
@@ -349,7 +346,7 @@ Hooks.once('init', async function() {
             if (penaltyOverride !== undefined && penaltyOverride !== null) {
                 const penalty = Number(penaltyOverride);
                 game.neuroshima?.log(`applyDamage | direct wound (${damage}, -${penalty}%) → ${actor.name} @ ${location}`);
-                await NeuroshimaDice.applyDamage(actor, {
+                await CombatHelper.applyDamage(actor, {
                     damageType: damage,
                     location,
                     penaltyOverride: penalty,
@@ -1233,6 +1230,7 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/actors/actor/parts/wounds-list.hbs",
         "systems/neuroshima/templates/item/item-sheet.hbs",
         "systems/neuroshima/templates/item/item-header.hbs",
+        "systems/neuroshima/templates/item/item-description.hbs",
         "systems/neuroshima/templates/item/item-details.hbs",
         "systems/neuroshima/templates/item/item-effects.hbs",
         "systems/neuroshima/templates/item/parts/item-effects-list.hbs",
@@ -1433,55 +1431,26 @@ Hooks.once("ready", async function () {
     if (savedGrenadeMultiplier != null) NEUROSHIMA.grenadeDistanceMultiplier = savedGrenadeMultiplier;
 
     // ── Token PIXI counter for numbered conditions ────────────────────────────
-    // Override _drawEffects and _drawEffect
-    // so that int-type conditions show their stack count on the token icon.
-
-    foundry.canvas.placeables.Token.prototype._drawEffects = async function () {
-        this.effects.renderable = false;
-        this.effects.removeChildren().forEach(c => c.destroy());
-        this.effects.bg = this.effects.addChild(new PIXI.Graphics());
-        this.effects.bg.zIndex = -1;
-        this.effects.overlay = null;
-
-        const activeEffects = this.actor?.temporaryEffects ?? [];
-        const overlayEffect = activeEffects.findLast(e => e.img && e.getFlag("core", "overlay"));
-
-        const promises = [];
-        for (const [i, effect] of activeEffects.entries()) {
-            if (!effect.img) continue;
-            const condValue = effect.getFlag("neuroshima", "conditionNumbered")
-                ? (effect.getFlag("neuroshima", "conditionValue") ?? null)
-                : null;
-            const promise = effect === overlayEffect
-                ? this._drawOverlay(effect.img, effect.tint)
-                : this._drawEffect(effect.img, effect.tint, condValue);
-            promises.push(promise.then(e => { if (e) e.zIndex = i; }));
-        }
-        await Promise.allSettled(promises);
-
-        this.effects.sortChildren();
-        this.effects.renderable = true;
-        this.renderFlags.set({ refreshEffects: true });
-    };
-
-    foundry.canvas.placeables.Token.prototype._drawEffect = async function (src, tint, value) {
-        if (!src) return;
-        const tex = await foundry.canvas.loadTexture(src, { fallback: "icons/svg/hazard.svg" });
-        const icon = new PIXI.Sprite(tex);
-        icon.tint = tint ?? 0xFFFFFF;
-        icon.scale.set(1.25);
+    // Extend native drawing so visibility and icon selection stay owned by Foundry.
+    const tokenPrototype = foundry.canvas.placeables.Token.prototype;
+    const drawEffect = tokenPrototype._drawEffect;
+    tokenPrototype._drawEffect = async function(src, tint) {
+        const icon = await drawEffect.call(this, src, tint);
+        if (!icon) return icon;
+        const effect = Array.from(this.actor?.appliedEffects ?? []).find(effect =>
+            effect.img === src && effect.getFlag("neuroshima", "conditionNumbered"));
+        const value = effect?.getFlag("neuroshima", "conditionValue");
         if (value) {
             const style = CONFIG.canvasTextStyle.clone();
-            style.fontSize = 16;
-            style.strokeThickness = 2;
+            const size = icon.texture?.width ?? 512;
+            style.fontSize = Math.max(16, Math.round(size * 0.4));
+            style.strokeThickness = Math.max(2, Math.round(size * 0.025));
             const text = new foundry.canvas.containers.PreciseText(String(value), style);
             text.anchor.set(1, 1);
-            text.scale.set(12);
-            text.x = tex.width;
-            text.y = tex.height;
+            text.position.set(size, icon.texture?.height ?? size);
             icon.addChild(text);
         }
-        return this.effects.addChild(icon);
+        return icon;
     };
 
 });
@@ -1658,7 +1627,7 @@ Hooks.on("renderTokenHUD", (hud, html) => {
     );
     if (intConditions.size === 0) return;
 
-    const root = html instanceof HTMLElement ? html : html?.[0];
+    const root = isElement(html) ? html : html?.[0];
     if (!root) return;
 
     root.querySelectorAll(".effect-control[data-status-id]").forEach(el => {
@@ -1685,7 +1654,7 @@ Hooks.on("renderTokenHUD", (hud, html) => {
     if (meleeCombatType !== "default") return;
     if (!game.user.isGM) return;
 
-    const root = html instanceof HTMLElement ? html : html?.[0];
+    const root = isElement(html) ? html : html?.[0];
     if (!root) return;
 
     const combatBtn = root.querySelector('.control-icon[data-action="combat"]');
@@ -1944,7 +1913,7 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
         },
         callback: async li => {
             const message = game.messages.get(li.dataset.messageId);
-            const { NeuroshimaDice } = await import("./module/helpers/dice.js");
+            const { NeuroshimaDice } = await import("./module/helpers/rolls.js");
             await NeuroshimaDice.resetTrickDieBonus(message);
             if (window._nsTrickState) delete window._nsTrickState[message.id];
         }
@@ -3005,8 +2974,9 @@ function initializeSocketlib() {
     });
 
     game.neuroshima.socket.register("computeGrenadeBlast", async (data) => {
-        const { templateId, messageId } = data;
-        const templateDoc = canvas?.scene?.getEmbeddedDocument("MeasuredTemplate", templateId);
+        const { templateId, messageId, sceneUuid } = data;
+        const scene = sceneUuid ? await fromUuid(sceneUuid) : canvas.scene;
+        const templateDoc = NeuroshimaAreas.get(templateId, scene);
         if (!templateDoc) {
             console.warn("Neuroshima | computeGrenadeBlast: brak szablonu", templateId);
             return;
@@ -3014,23 +2984,26 @@ function initializeSocketlib() {
         const blastZones = templateDoc.getFlag("neuroshima", "grenadeBlastZones") ?? [];
         const message    = game.messages.get(messageId);
         const actorId    = message?.getFlag("neuroshima", "test")?.result?.actorId;
-        const actor      = actorId ? game.actors.get(actorId) : null;
+        const actorUuid  = message?.getFlag("neuroshima", "test")?.preData?.actorUuid;
+        const actor      = actorUuid ? await fromUuid(actorUuid) : actorId ? game.actors.get(actorId) : null;
         game.neuroshima.log("computeGrenadeBlast (via socket)", { templateId, messageId, blastZonesCount: blastZones.length, hasActor: !!actor, hasMessage: !!message });
         const { NeuroshimaChatMessage } = await import("./module/documents/chat-message.js");
         await NeuroshimaChatMessage._computeGrenadeBlast(templateDoc, blastZones, actor, message);
     });
 
-    game.neuroshima.socket.register("deleteGrenadeTemplates", async (messageId) => {
-        if (!canvas?.scene || !messageId) return;
-        const existing = canvas.scene.templates.filter(t => t.getFlag("neuroshima", "grenadeMessageId") === messageId);
+    game.neuroshima.socket.register("deleteGrenadeTemplates", async (messageId, sceneUuid = null) => {
+        const scene = sceneUuid ? await fromUuid(sceneUuid) : canvas?.scene;
+        if (!scene || !messageId) return;
+        const existing = NeuroshimaAreas.documents(scene).filter(t => t.getFlag("neuroshima", "grenadeMessageId") === messageId);
         if (existing.length > 0) {
-            await canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", existing.map(t => t.id));
+            await scene.deleteEmbeddedDocuments(NeuroshimaAreas.documentName, existing.map(t => t.id));
         }
     });
 
-    game.neuroshima.socket.register("createGrenadeTemplate", async (templateData) => {
-        if (!canvas?.scene) return null;
-        const created = await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [templateData]);
+    game.neuroshima.socket.register("createGrenadeTemplate", async (templateData, sceneUuid = null) => {
+        const scene = sceneUuid ? await fromUuid(sceneUuid) : canvas?.scene;
+        if (!scene) return null;
+        const created = await NeuroshimaAreas.create([templateData], {}, scene);
         return created?.[0]?.id ?? null;
     });
 
@@ -3059,14 +3032,14 @@ function initializeSocketlib() {
 
     // Trick die bonus — applied as GM so the message can always be updated
     game.neuroshima.socket.register("applyTrickDieBonus", async (messageId, reductions) => {
-        const { NeuroshimaDice } = await import("./module/helpers/dice.js");
+        const { NeuroshimaDice } = await import("./module/helpers/rolls.js");
         const message = game.messages.get(messageId);
         if (!message) return;
         await NeuroshimaDice.applyTrickDieBonus(message, reductions);
     });
 
     game.neuroshima.socket.register("resetTrickDieBonus", async (messageId) => {
-        const { NeuroshimaDice } = await import("./module/helpers/dice.js");
+        const { NeuroshimaDice } = await import("./module/helpers/rolls.js");
         const message = game.messages.get(messageId);
         if (!message) return;
         await NeuroshimaDice.resetTrickDieBonus(message);
@@ -3599,7 +3572,7 @@ Hooks.on("simple-calendar-date-time-change", async (data) => {
     await NeuroshimaScriptRunner.runWorldTimeUpdate(currentWorldTime, dt);
 });
 
-Hooks.on("createMeasuredTemplate", async (templateDoc, options, userId) => {
+Hooks.on(`create${NeuroshimaAreas.documentName}`, async (templateDoc, options, userId) => {
     if (templateDoc.getFlag("neuroshima", "fromAreaEffect")) {
         if (!game.user.isGM) return;
         const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
@@ -3614,25 +3587,26 @@ Hooks.on("createMeasuredTemplate", async (templateDoc, options, userId) => {
         const messageId  = templateDoc.getFlag("neuroshima", "grenadeMessageId");
         const message    = game.messages.get(messageId);
         const actorId    = message?.getFlag("neuroshima", "test")?.result?.actorId;
-        const actor      = actorId ? game.actors.get(actorId) : null;
+        const actorUuid  = message?.getFlag("neuroshima", "test")?.preData?.actorUuid;
+        const actor      = actorUuid ? await fromUuid(actorUuid) : actorId ? game.actors.get(actorId) : null;
         game.neuroshima.log("createMeasuredTemplate | granat", { templateId: templateDoc.id, isGM: game.user.isGM, blastZonesCount: blastZones.length, messageId, hasActor: !!actor });
         const { NeuroshimaChatMessage } = await import("./module/documents/chat-message.js");
         await NeuroshimaChatMessage._computeGrenadeBlast(templateDoc, blastZones, actor, message);
     }
 });
 
-Hooks.on("updateMeasuredTemplate", async (templateDoc, changes, options, userId) => {
+Hooks.on(`update${NeuroshimaAreas.documentName}`, async (templateDoc, changes, options, userId) => {
     if (!game.user.isGM) return;
     if (!templateDoc.getFlag("neuroshima", "fromAreaEffect")) return;
     const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
     await NeuroshimaAuraManager.applyAreaEffect(templateDoc);
 });
 
-Hooks.on("deleteMeasuredTemplate", async (templateDoc, options, userId) => {
+Hooks.on(`delete${NeuroshimaAreas.documentName}`, async (templateDoc, options, userId) => {
     if (!game.user.isGM) return;
     if (!templateDoc.getFlag("neuroshima", "fromAreaEffect")) return;
     const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
-    await NeuroshimaAuraManager.removeAreaCopies(templateDoc.id);
+    await NeuroshimaAuraManager.removeAreaCopies(templateDoc.id, { scene: templateDoc.parent });
 });
 
 Hooks.on("createActor", async (actor, options, userId) => {
@@ -3948,3 +3922,6 @@ Hooks.once("item-piles-ready", () => {
         }
     });
 });
+
+// Application windows may use a separate DOM document in newer Foundry versions.
+Hooks.on("renderApplicationV2", app => InteractiveItemTooltip.initialize(app.element?.ownerDocument));

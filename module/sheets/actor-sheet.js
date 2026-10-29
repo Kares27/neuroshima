@@ -1,3 +1,5 @@
+import { isElement, effectDurationLabel, isTemporaryEffect, effectChanges, effectChangeType, additiveEffectValue, EFFECT_PENALTY_KEY, LEGACY_EFFECT_PENALTY_KEY } from "../helpers/foundry-compat.js";
+import { collectArmorEffectSources, buildBreakdownTooltip, buildRichTextTooltip, collectAttributeEffectSources, collectDocumentEffectSources, collectSkillEffectSources, renderTooltipSections } from "../helpers/tooltip-renderer.js";
 import { remainingArmorDurability, armorLocationProtects, modifyArmorDurability } from "../helpers/armor-durability.js";
 import { armorLocationProtections } from "../helpers/armor-location.js";
 import { advanceSpeciality } from "../helpers/speciality.js";
@@ -5,7 +7,7 @@ import { clampArmor } from "../helpers/armor-limit.js";
 import { beastActivities } from "../helpers/beast-actions.js";
 import { NEUROSHIMA } from "../config.js";
 import { createLoadedMagazineFromWeapon } from "../helpers/ammunition.js";
-import { NeuroshimaDice } from "../helpers/dice.js";
+import { NeuroshimaDice } from "../helpers/rolls.js";
 import { NeuroshimaItem } from "../documents/item.js";
 import { NeuroshimaWeaponRollDialog } from "../apps/dialogs/weapon-roll-dialog.js";
 import { AmmunitionLoadingDialog, RestDialog } from "../apps/dialogs/minor-dialogs.js";
@@ -18,22 +20,10 @@ import { getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveRad
 import { buildItemPreviewTooltip } from "../helpers/item-tooltip.js";
 import { NeuroshimaChoiceRouter } from "../helpers/choice-router.js";
 import {
-  EFFECT_PENALTY_KEY,
-  LEGACY_EFFECT_PENALTY_KEY
-} from "../helpers/effect-penalty.js";
-import {
   collectTraitSnapshots,
   itemDataFromTraitSnapshot,
   traitSnapshotPreview
 } from "../helpers/trait-snapshot.js";
-import {
-  buildBreakdownTooltip,
-  buildRichTextTooltip,
-  collectAttributeEffectSources,
-  collectDocumentEffectSources,
-  collectSkillEffectSources,
-  renderTooltipSections
-} from "../helpers/tooltip-renderer.js";
 import { createUnarmedWeapon, getUnarmedDamageProfile } from "../combat/unarmed.js";
 import {
   AmmunitionResolver,
@@ -42,24 +32,6 @@ import {
   getMagazineAmmoCategory
 } from "../combat/ammunition-resolver.js";
 
-function _collectArmorBonusByEffect(actor) {
-  const byLoc = {};
-  if (!actor) return byLoc;
-  const seen = new Set();
-  for (const effect of actor.appliedEffects ?? []) {
-    const key = effect.origin ?? effect.uuid;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    for (const change of effect.changes ?? []) {
-      const m = change.key.match(/^system\.armorBonus\.(\w+)$/);
-      if (!m) continue;
-      const loc = m[1];
-      if (!byLoc[loc]) byLoc[loc] = [];
-      byLoc[loc].push({ name: effect.name, value: Number(change.value) || 0 });
-    }
-  }
-  return byLoc;
-}
 
 /**
  * Actor sheet for Neuroshima 1.5 using ApplicationV2.
@@ -824,8 +796,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     const condDefs = getConditions();
     const condTypeMap = Object.fromEntries(condDefs.map(c => [c.key, c.type ?? "boolean"]));
 
-    const effectDurationLabel = (e) => e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—");
-    const isTemporary = (e) => e.isTemporary;
+    const isTemporary = isTemporaryEffect;
     const isConditionEffect = (e) => e.isCondition;
 
     const temporary    = [];
@@ -1061,7 +1032,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       if (!bgTypes.includes(item.type)) continue;
       const slot = item.type;
       const enriched = item.system.bonusText
-        ? await TextEditor.enrichHTML(item.system.bonusText, { relativeTo: item, rollData: item.getRollData?.() ?? {} })
+        ? await foundry.applications.ux.TextEditor.enrichHTML(item.system.bonusText, { relativeTo: item, rollData: item.getRollData?.() ?? {} })
         : "";
       const activeSpecializations = slot === "specialization" && item.system.skillSpecializations
         ? Object.entries(item.system.skillSpecializations).filter(([, v]) => v).map(([k]) => k)
@@ -1104,9 +1075,9 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       if (submitted === undefined) continue;
       let aeBonus = 0;
       for (const effect of (this.document.appliedEffects ?? [])) {
-        for (const change of (effect.changes ?? [])) {
-          if (change.key === path && Number(change.mode) === CONST.ACTIVE_EFFECT_MODES.ADD) {
-            aeBonus += Number(change.value) || 0;
+        for (const change of effectChanges(effect)) {
+          if (change.key === path && ["add", "subtract"].includes(effectChangeType(change))) {
+            aeBonus += additiveEffectValue(change, this.document);
           }
         }
       }
@@ -1120,9 +1091,9 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       if (submitted === undefined) continue;
       let aeBonus = 0;
       for (const effect of (this.document.appliedEffects ?? [])) {
-        for (const change of (effect.changes ?? [])) {
-          if (change.key === path && Number(change.mode) === CONST.ACTIVE_EFFECT_MODES.ADD) {
-            aeBonus += Number(change.value) || 0;
+        for (const change of effectChanges(effect)) {
+          if (change.key === path && ["add", "subtract"].includes(effectChangeType(change))) {
+            aeBonus += additiveEffectValue(change, this.document);
           }
         }
       }
@@ -1192,8 +1163,8 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         const attrPath = `system.attributes.${key}`;
         let attrAeBonus = 0;
         for (const effect of (this.document.appliedEffects ?? [])) {
-          for (const change of (effect.changes ?? [])) {
-            if (change.key === attrPath && Number(change.mode) === CONST.ACTIVE_EFFECT_MODES.ADD) {
+          for (const change of effectChanges(effect)) {
+            if (change.key === attrPath && ["add", "subtract"].includes(effectChangeType(change))) {
               attrAeBonus += Number(change.value) || 0;
             }
           }
@@ -1215,8 +1186,8 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         const attrPath = `system.attributes.${key}`;
         let attrAeBonus = 0;
         for (const effect of (this.document.appliedEffects ?? [])) {
-          for (const change of (effect.changes ?? [])) {
-            if (change.key === attrPath && Number(change.mode) === CONST.ACTIVE_EFFECT_MODES.ADD) {
+          for (const change of effectChanges(effect)) {
+            if (change.key === attrPath && ["add", "subtract"].includes(effectChangeType(change))) {
               attrAeBonus += Number(change.value) || 0;
             }
           }
@@ -1247,8 +1218,8 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         const skillPath = `system.skills.${key}.value`;
         let valueAeBonus = 0;
         for (const effect of (this.document.appliedEffects ?? [])) {
-          for (const change of (effect.changes ?? [])) {
-            if (change.key === skillPath && Number(change.mode) === CONST.ACTIVE_EFFECT_MODES.ADD) {
+          for (const change of effectChanges(effect)) {
+            if (change.key === skillPath && ["add", "subtract"].includes(effectChangeType(change))) {
               valueAeBonus += Number(change.value) || 0;
             }
           }
@@ -1270,8 +1241,8 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         const skillPath = `system.skills.${key}.value`;
         let valueAeBonus = 0;
         for (const effect of (this.document.appliedEffects ?? [])) {
-          for (const change of (effect.changes ?? [])) {
-            if (change.key === skillPath && Number(change.mode) === CONST.ACTIVE_EFFECT_MODES.ADD) {
+          for (const change of effectChanges(effect)) {
+            if (change.key === skillPath && ["add", "subtract"].includes(effectChangeType(change))) {
               valueAeBonus += Number(change.value) || 0;
             }
           }
@@ -2182,7 +2153,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       if (tokenizerMod.api?.launch) return tokenizerMod.api.launch(actor);
       if (tokenizerMod.api?.tokenizeActor) return tokenizerMod.api.tokenizeActor(actor);
     }
-    return new FilePicker({
+    return new foundry.applications.apps.FilePicker.implementation({
       type: "image",
       current: actor.img,
       callback: async path => {
@@ -2453,7 +2424,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       loc.totalAP = clampArmor(actor, loc.totalAP);
       loc.protections = actor ? armorLocationProtections(actor, key) : [];
     }
-    const effectBonus = _collectArmorBonusByEffect(actor);
+    const effectBonus = collectArmorEffectSources(actor);
     for (const [key, loc] of Object.entries(locations)) {
       const sources = [
         ...loc.items.map(item => ({ label: item.name, value: item.currentRating })),
@@ -3597,11 +3568,11 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         let setupDone = false;
 
         const _resolveRoot = (ev, h) => {
-          if (h instanceof HTMLElement) return h;
-          if (h?.[0] instanceof HTMLElement) return h[0];
-          if (h?.element instanceof HTMLElement) return h.element;
-          if (ev?.element instanceof HTMLElement) return ev.element;
-          if (ev?.currentTarget instanceof HTMLElement) return ev.currentTarget;
+          if (isElement(h)) return h;
+          if (isElement(h?.[0])) return h[0];
+          if (isElement(h?.element)) return h.element;
+          if (isElement(ev?.element)) return ev.element;
+          if (isElement(ev?.currentTarget)) return ev.currentTarget;
           return document.querySelector(".healing-request-dialog") ?? null;
         };
 
@@ -3989,6 +3960,8 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
   }
 
   _showItemContextMenu(event, itemId) {
+    const document = this.element?.ownerDocument ?? globalThis.document;
+    const window = document.defaultView ?? globalThis.window;
     event.preventDefault();
     const item = this.document.items.get(itemId);
     if (!item) return;
@@ -4016,7 +3989,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     }
     menuItems.push({ action: 'delete', icon: 'fas fa-trash', label: game.i18n.localize('Delete') });
 
-    const menu = document.createElement('nav');
+    const menu = (this.element?.ownerDocument ?? document).createElement('nav');
     menu.className = 'ns-item-ctx-menu context-menu themed theme-dark';
     menu.style.cssText = 'position:fixed;z-index:99999;';
     menu.innerHTML = `<menu class="context-items">${

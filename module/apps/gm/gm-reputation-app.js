@@ -1,3 +1,4 @@
+import { applicationInstances } from "../../helpers/foundry-compat.js";
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
 export class GMReputationApp extends HandlebarsApplicationMixin(ApplicationV2) {
@@ -41,8 +42,8 @@ export class GMReputationApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     static open() {
         if (!game.user.isGM) return;
-        const existing = Object.values(ui.windows).find(w => w instanceof GMReputationApp);
-        if (existing) { existing.bringToTop(); return existing; }
+        const existing = applicationInstances().find(w => w instanceof GMReputationApp);
+        if (existing) { existing.bringToFront(); return existing; }
         return new GMReputationApp().render(true);
     }
 

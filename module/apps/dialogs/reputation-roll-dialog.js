@@ -1,3 +1,4 @@
+import { rollModeChoices, legacyMessageMode } from "../../helpers/foundry-compat.js";
 import { NEUROSHIMA } from "../../config.js";
 import { ReputationTest, SkillTest, TestRules } from "../../tests.mjs";
 import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
@@ -25,7 +26,7 @@ export class ReputationRollDialog extends NeuroshimaRollDialogBase {
       repBonus: 0,
       fame,
       repValue: baseRepValue + reputationBonus,
-      rollMode: game.settings.get("core", "rollMode")
+      rollMode: legacyMessageMode()
     };
   }
 
@@ -188,7 +189,7 @@ export class ReputationRollDialog extends NeuroshimaRollDialogBase {
       fame: fame + Number(scriptFields.fame ?? 0),
       repValue: repValue + Number(scriptFields.repValue ?? 0),
       rollMode,
-      rollModes: CONFIG.Dice.rollModes,
+      rollModes: rollModeChoices(),
       dialogModifiers
     });
     return context;

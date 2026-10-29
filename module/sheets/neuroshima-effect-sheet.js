@@ -1,5 +1,5 @@
+import { applicationInstances, EFFECT_PENALTY_KEY } from "../helpers/foundry-compat.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
-import { EFFECT_PENALTY_KEY } from "../helpers/effect-penalty.js";
 
 const BaseEffectSheet = foundry.applications.sheets.ActiveEffectConfig;
 
@@ -290,7 +290,7 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
       const statusesField = this.element.querySelector("multi-select[name='statuses']");
       if (statusesField) {
         statusesField.setAttribute("disabled", "");
-        const hint = document.createElement("p");
+        const hint = (this.element?.ownerDocument ?? document).createElement("p");
         hint.className = "hint";
         hint.textContent = game.i18n.localize("NEUROSHIMA.Conditions.StatusLocked");
         statusesField.closest(".form-group")?.appendChild(hint);
@@ -301,7 +301,7 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
     if (changesSection) {
       const isManual = this.document.getFlag("neuroshima", "manualChangeKeys") ?? false;
 
-      const toggle = document.createElement("div");
+      const toggle = (this.element?.ownerDocument ?? document).createElement("div");
       toggle.classList.add("form-group", "ns-change-key-toggle");
       toggle.innerHTML = `<label>${game.i18n.localize("NEUROSHIMA.Effects.ManualKeys")}</label>
         <div class="form-fields"><input type="checkbox" data-action="toggleChangeMode"${isManual ? " checked" : ""}></div>`;
@@ -330,9 +330,9 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
   }
 
   _buildKeySelect(name, currentValue, actorType = null, itemType = null) {
-    const select = document.createElement("select");
+    const select = (this.element?.ownerDocument ?? document).createElement("select");
     select.name = name;
-    const blank = document.createElement("option");
+    const blank = (this.element?.ownerDocument ?? document).createElement("option");
     blank.value = "";
     blank.textContent = `— ${game.i18n.localize("NEUROSHIMA.Effects.Change.SelectKey")} —`;
     if (!currentValue) blank.selected = true;
@@ -343,10 +343,10 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
       if (!allowed) {
         if (!currentValue || !group.keys.some(k => k.key === currentValue)) continue;
       }
-      const optgroup = document.createElement("optgroup");
+      const optgroup = (this.element?.ownerDocument ?? document).createElement("optgroup");
       optgroup.label = game.i18n.localize(group.group);
       for (const keyDef of group.keys) {
-        const option = document.createElement("option");
+        const option = (this.element?.ownerDocument ?? document).createElement("option");
         option.value = keyDef.key;
         option.textContent = (keyDef.prefix ? keyDef.prefix + " " : "") + game.i18n.localize(keyDef.label);
         if (keyDef.key === currentValue) option.selected = true;
@@ -381,7 +381,7 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
     const documentType  = this.document.getFlag("neuroshima", "documentType")  ?? "actor";
     const equipTransfer = this.document.getFlag("neuroshima", "equipTransfer") ?? false;
 
-    const wrap = document.createElement("div");
+    const wrap = (this.element?.ownerDocument ?? document).createElement("div");
     wrap.classList.add("ns-transfer-type");
     wrap.innerHTML = `
       <hr>
@@ -431,7 +431,7 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
       }
 
       const { NeuroshimaAdvancedEffectConfig } = await import("../apps/neuroshima-advanced-effect-config.js");
-      const existing = Object.values(foundry.applications.instances ?? {}).find(
+      const existing = applicationInstances().find(
         a => a instanceof NeuroshimaAdvancedEffectConfig && a.effect?.uuid === this.document.uuid
       );
       if (existing) {

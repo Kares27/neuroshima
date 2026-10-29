@@ -1,3 +1,4 @@
+import { isElement, NeuroshimaAreas, isV14, legacyMessageMode, applyMessageMode } from "../helpers/foundry-compat.js";
 import { collectArmorDurabilityWear } from "../helpers/armor-durability.js";
 import { requiredTestSuccesses, requiredTestPassed } from "../helpers/required-test.js";
 import { clampArmor } from "../helpers/armor-limit.js";
@@ -54,9 +55,9 @@ export class NeuroshimaChatMessage extends ChatMessage {
       }
     };
     if (test.diceRoll) chatData.rolls = [test.diceRoll];
-    ChatMessage.applyRollMode(
+    applyMessageMode(
       chatData,
-      test.context.rollMode ?? game.settings.get("core", "rollMode")
+      test.context.rollMode ?? legacyMessageMode()
     );
     return this.create(chatData);
   }
@@ -67,7 +68,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
    */
   static onChatAction(html, message = null) {
     // Foundry v13 compatibility: html can be an HTMLElement or a jQuery object.
-    const root = (html instanceof HTMLElement) ? html : html[0];
+    const root = (isElement(html)) ? html : html[0];
     if (!root) return;
 
     // Resolve the chat message linked to this HTML element
@@ -907,7 +908,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
   static async _deleteExistingGrenadeTemplates(messageId) {
     if (!canvas?.scene || !messageId) return;
     const { NeuroshimaSocket } = await import("../helpers/socket-helper.js");
-    await NeuroshimaSocket.gmExecute("deleteGrenadeTemplates", messageId);
+    await NeuroshimaSocket.gmExecute("deleteGrenadeTemplates", messageId, canvas.scene?.uuid);
   }
 
   /**
@@ -958,7 +959,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
     };
 
     const { NeuroshimaSocket } = await import("../helpers/socket-helper.js");
-    await NeuroshimaSocket.gmExecute("createGrenadeTemplate", templateData);
+    await NeuroshimaSocket.gmExecute("createGrenadeTemplate", templateData, canvas.scene?.uuid);
   }
 
   /**
@@ -1004,6 +1005,19 @@ export class NeuroshimaChatMessage extends ChatMessage {
         }
       }
     };
+
+    if (isV14()) {
+      const placed = await NeuroshimaAreas.place(templateData, document => {
+        const gs = canvas.grid.size;
+        this._setTokenTargets(canvas.tokens.placeables.filter(token => NeuroshimaAreas.contains(document,
+          token.document.x + token.document.width * gs / 2,
+          token.document.y + token.document.height * gs / 2, token.document.elevation ?? 0)).map(token => token.id));
+      });
+      if (!placed) { this._clearTokenTargets(); return; }
+      const { NeuroshimaSocket } = await import("../helpers/socket-helper.js");
+      await NeuroshimaSocket.gmExecute("createGrenadeTemplate", placed.toObject(), placed.parent?.uuid ?? canvas.scene?.uuid);
+      return;
+    }
 
     canvas.templates.activate();
 
@@ -1078,7 +1092,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
         cleanup(false);
         const data = { ...templateData, ...snapped };
         const { NeuroshimaSocket } = await import("../helpers/socket-helper.js");
-        await NeuroshimaSocket.gmExecute("createGrenadeTemplate", data);
+        await NeuroshimaSocket.gmExecute("createGrenadeTemplate", data, canvas.scene?.uuid);
       } catch (e) {
         console.error("Neuroshima | Template placement failed:", e);
         cleanup();
@@ -1104,27 +1118,10 @@ export class NeuroshimaChatMessage extends ChatMessage {
   static async _computeGrenadeBlast(templateDoc, blastZones, sourceActor, sourceMessage) {
     game.neuroshima.group("_computeGrenadeBlast");
 
-    let templateObj = canvas.templates.get(templateDoc.id);
-    if (!templateObj?.shape) {
-      await new Promise(r => setTimeout(r, 150));
-      templateObj = canvas.templates.get(templateDoc.id);
-    }
-
-    game.neuroshima.log("Stan szablonu", {
-      templateId: templateDoc.id, found: !!templateObj, hasShape: !!templateObj?.shape,
-      blastZonesCount: blastZones.length, tokenCount: canvas.scene.tokens.size
-    });
-
-    if (!templateObj?.shape) {
-      game.neuroshima.log("ERROR: missing PIXI template object after delay");
-      game.neuroshima.groupEnd();
-      return;
-    }
-
-    const originX     = templateDoc.x;
-    const originY     = templateDoc.y;
-    const gs          = canvas.grid.size;
-    const gridDist    = canvas.scene.grid.distance || 1;
+    const scene = templateDoc.parent ?? canvas.scene;
+    const { x: originX, y: originY } = NeuroshimaAreas.center(templateDoc);
+    const gs = scene.grid?.size ?? canvas.grid.size;
+    const gridDist    = scene.grid.distance || 1;
     const NS          = game.neuroshima?.config ?? {};
     const bodyLocs    = NS.bodyLocations ?? {};
 
@@ -1139,12 +1136,12 @@ export class NeuroshimaChatMessage extends ChatMessage {
     const rawResults = [];
     const targetIds = [];
 
-    for (const tokenDoc of canvas.scene.tokens) {
+    for (const tokenDoc of scene.tokens) {
       const centerX = tokenDoc.x + (tokenDoc.width  * gs) / 2;
       const centerY = tokenDoc.y + (tokenDoc.height * gs) / 2;
       const relX    = centerX - originX;
       const relY    = centerY - originY;
-      if (!templateObj.shape.contains(relX, relY)) continue;
+      if (!NeuroshimaAreas.contains(templateDoc, centerX, centerY, tokenDoc.elevation ?? 0)) continue;
 
       targetIds.push(tokenDoc.id);
 
@@ -1175,7 +1172,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       });
     }
 
-    NeuroshimaChatMessage._setTokenTargets(targetIds);
+    if (scene.id === canvas.scene?.id) NeuroshimaChatMessage._setTokenTargets(targetIds);
     game.neuroshima.log("Wyniki wybuchu", { rawResultsCount: rawResults.length });
 
     if (!rawResults.length) {
@@ -2340,7 +2337,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
     if (!limit || limit === "cancel") return;
 
     const description = item.system.description || "";
-    const enriched = description ? await TextEditor.enrichHTML(description, { async: true }) : "";
+    const enriched = description ? await foundry.applications.ux.TextEditor.enrichHTML(description, { async: true }) : "";
 
     const typeKey = item.type.charAt(0).toUpperCase() + item.type.slice(1).replace(/-(\w)/g, (_, c) => c.toUpperCase());
     const typeLabel = game.i18n.localize(`NEUROSHIMA.Items.Type.${typeKey}`) || item.type;
@@ -2363,13 +2360,13 @@ export class NeuroshimaChatMessage extends ChatMessage {
       }
     );
 
-    const rollMode = game.settings.get("core", "rollMode");
+    const rollMode = legacyMessageMode();
     const msgData = {
       speaker: actor ? ChatMessage.getSpeaker({ actor }) : ChatMessage.getSpeaker({}),
       content,
       flags: { neuroshima: { itemCard: { limit: remaining, remaining, sourceActorId: actor?.id ?? null } } }
     };
-    ChatMessage.applyRollMode(msgData, rollMode);
+    applyMessageMode(msgData, rollMode);
     await ChatMessage.create(msgData);
   }
 

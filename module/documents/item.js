@@ -1,3 +1,4 @@
+import { normalizeEmbeddedEffects, isV14, effectHasExpired } from "../helpers/foundry-compat.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { isGearTypeEquippable, normalizeGearType } from "../helpers/gear-types.js";
 
@@ -17,13 +18,14 @@ import { isGearTypeEquippable, normalizeGearType } from "../helpers/gear-types.j
  *   `containerId` flag (DnD5e-style container pattern).
  */
 export class NeuroshimaItem extends Item {
-  static migrateData(source) {
+  static migrateData(source, options) {
+    normalizeEmbeddedEffects(source);
     if (["beast-trait", "beast-action", "beast-segment"].includes(source.type)) {
       source.system ??= {};
       source.system.abilityCategory = source.type === "beast-segment" ? "segment" : "action";
       source.type = "beast-ability";
     }
-    return super.migrateData(source);
+    return super.migrateData(source, options);
   }
 
   /** Whether this Item is allowed to expose and use its equipped state. */

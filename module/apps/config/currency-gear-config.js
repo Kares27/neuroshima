@@ -135,7 +135,7 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
     }
 
     _captureState() {
-        const fd   = new FormDataExtended(this.element);
+        const fd   = new foundry.applications.ux.FormDataExtended(this.element);
         const data = fd.object;
         const checked = value => value === true || value === "true" || value === "on";
 
@@ -232,7 +232,7 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
         const idx = parseInt(target.dataset.index ?? "-1");
         if (idx < 0) return;
         const current = this.element.querySelector(`input[name="curr.${idx}.img"]`)?.value ?? "";
-        new FilePicker({
+        new foundry.applications.apps.FilePicker.implementation({
             type: "imagevideo",
             current,
             callback: (path) => {

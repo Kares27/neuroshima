@@ -1,3 +1,4 @@
+import { effectChanges, normalizeEffectData, stampEffectStart, isV14 } from "../../helpers/foundry-compat.js";
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
 const LEGACY_OVERWEIGHT_CHECK_CODE = `const enc = this.encumbrance;
@@ -219,6 +220,36 @@ export function getConditions() {
   }
 }
 
+/** Shared condition create-data for the editor, status palette and real actors. */
+export function conditionEffectData(condDef, extraFlags = {}, { applied = false } = {}) {
+  const data = {
+    name:        condDef.name         ?? "",
+    img:         condDef.img          ?? "icons/svg/aura.svg",
+    tint:        condDef._tint        ?? null,
+    description: condDef._description ?? "",
+    disabled:    condDef._disabled    ?? false,
+    changes:     foundry.utils.deepClone(condDef.changes   ?? []),
+    statuses:    [condDef.key],
+    duration:    foundry.utils.deepClone(condDef._duration ?? {}),
+    ...(condDef._start ? { start: foundry.utils.deepClone(condDef._start) } : {}),
+    system: {
+      scriptData: foundry.utils.deepClone(condDef.scripts ?? []),
+    },
+    flags: {
+      neuroshima: {
+        transferType:     condDef._transferType    ?? "owningDocument",
+        documentType:     condDef._documentType    ?? "actor",
+        equipTransfer:    condDef._equipTransfer   ?? false,
+        manualChangeKeys: condDef._manualChangeKeys ?? false,
+        ...extraFlags
+      }
+    }
+  };
+  normalizeEffectData(data);
+  if (applied && isV14()) stampEffectStart(data);
+  return data;
+}
+
 /**
  * Build an in-memory (synthetic) ActiveEffect document from a condition definition.
  * The returned document mimics a real AE: getFlag/setFlag/update all work,
@@ -236,28 +267,7 @@ function createSyntheticConditionEffect(condDef, saveCallback) {
   // Both need explicit _id so Foundry treats them as existing documents (not creation).
   const tempActor = new Actor({ _id: foundry.utils.randomID(), name: "_ns_temp", type: "npc" });
 
-  const effectData = {
-    _id:         foundry.utils.randomID(),
-    name:        condDef.name         ?? "",
-    img:         condDef.img          ?? "icons/svg/aura.svg",
-    tint:        condDef._tint        ?? null,
-    description: condDef._description ?? "",
-    disabled:    condDef._disabled    ?? false,
-    changes:     foundry.utils.deepClone(condDef.changes   ?? []),
-    statuses:    [condDef.key],
-    duration:    foundry.utils.deepClone(condDef._duration ?? {}),
-    system: {
-      scriptData: foundry.utils.deepClone(condDef.scripts ?? []),
-    },
-    flags: {
-      neuroshima: {
-        transferType:     condDef._transferType    ?? "owningDocument",
-        documentType:     condDef._documentType    ?? "actor",
-        equipTransfer:    condDef._equipTransfer   ?? false,
-        manualChangeKeys: condDef._manualChangeKeys ?? false
-      }
-    }
-  };
+  const effectData = { ...conditionEffectData(condDef), _id: foundry.utils.randomID() };
 
   const tempEffect = new CONFIG.ActiveEffect.documentClass(effectData, { parent: tempActor });
 
@@ -270,7 +280,7 @@ function createSyntheticConditionEffect(condDef, saveCallback) {
    * reflect the new values, calls the save callback, then re-renders the sheet.
    */
   async function applyAndPersist(changes) {
-    const expanded = foundry.utils.expandObject(changes);
+    const expanded = normalizeEffectData(foundry.utils.expandObject(changes));
     // updateSource validates against schema AND updates _source + re-initializes model
     if (typeof tempEffect.updateSource === "function") {
       try { tempEffect.updateSource(expanded); } catch { foundry.utils.mergeObject(tempEffect._source, expanded, { inplace: true, recursive: true }); }
@@ -286,9 +296,10 @@ function createSyntheticConditionEffect(condDef, saveCallback) {
       tint:              src.tint              ?? null,
       description:       src.description       ?? "",
       disabled:          src.disabled          ?? false,
-      changes:           src.changes           ?? [],
+      changes:           foundry.utils.deepClone(effectChanges(src)),
       scripts:           src.system?.scriptData                 ?? [],
       _duration:         foundry.utils.deepClone(src.duration   ?? {}),
+      _start:            foundry.utils.deepClone(src.start ?? null),
       _transferType:     src.flags?.neuroshima?.transferType    ?? "owningDocument",
       _documentType:     src.flags?.neuroshima?.documentType    ?? "actor",
       _equipTransfer:    src.flags?.neuroshima?.equipTransfer   ?? false,
@@ -319,7 +330,7 @@ function createSyntheticConditionEffect(condDef, saveCallback) {
  */
 export function applyConditionsToStatusEffects() {
   const conditions = getConditions();
-  CONFIG.statusEffects = conditions.map(c => ({
+  CONFIG.statusEffects = conditions.map(c => normalizeEffectData({
     id:       c.key,
     name:     c.name,
     img:      c.img,
@@ -450,7 +461,7 @@ export class ConditionConfig extends HandlebarsApplicationMixin(ApplicationV2) {
    * @param {HTMLFormElement} form
    */
   _collectFormState(form) {
-    const fd = new FormDataExtended(form);
+    const fd = new foundry.applications.ux.FormDataExtended(form);
     const raw = fd.object;
 
     const updated = [];
@@ -518,7 +529,7 @@ export class ConditionConfig extends HandlebarsApplicationMixin(ApplicationV2) {
     if (idx < 0) return;
 
     const currentImg = this._conditions[idx]?.img ?? "icons/svg/aura.svg";
-    const fp = new foundry.applications.apps.FilePicker({
+    const fp = new foundry.applications.apps.FilePicker.implementation({
       type: "image",
       current: currentImg,
       callback: (path) => {
@@ -552,7 +563,7 @@ export class ConditionConfig extends HandlebarsApplicationMixin(ApplicationV2) {
 
     // Save callback: writes effect data back into this._conditions[idx]
     const self = this;
-    const saveCallback = async ({ name, img, tint, description, disabled, changes, scripts, _duration, _transferType, _documentType, _equipTransfer, _manualChangeKeys }) => {
+    const saveCallback = async ({ name, img, tint, description, disabled, changes, scripts, _duration, _start, _transferType, _documentType, _equipTransfer, _manualChangeKeys }) => {
       const cond = self._conditions[idx];
       if (!cond) return;
       cond.name              = name              ?? cond.name;
@@ -563,6 +574,7 @@ export class ConditionConfig extends HandlebarsApplicationMixin(ApplicationV2) {
       cond.changes           = changes           ?? cond.changes      ?? [];
       cond.scripts           = scripts           ?? cond.scripts      ?? [];
       cond._duration         = _duration         ?? cond._duration    ?? {};
+      cond._start            = _start ?? null;
       cond._transferType     = _transferType     ?? cond._transferType ?? "owningDocument";
       cond._documentType     = _documentType     ?? cond._documentType ?? "actor";
       cond._equipTransfer    = _equipTransfer    ?? cond._equipTransfer ?? false;
@@ -637,6 +649,7 @@ export class ConditionConfig extends HandlebarsApplicationMixin(ApplicationV2) {
         _tint:              c._tint              ?? null,
         _description:  c._description  ?? "",
         _disabled:     c._disabled     ?? false,
+        _start: c._start ?? null,
         _duration:     c._duration     ?? {},
         _transferType: c._transferType ?? "owningDocument",
         _documentType: c._documentType ?? "actor",

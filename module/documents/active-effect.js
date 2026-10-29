@@ -1,12 +1,13 @@
+import { isV14, effectChanges, effectChangesUpdate, normalizeEffectData, stampEffectStart, effectStartTime, nativeEffectChanges, LEGACY_EFFECT_PENALTY_KEY, EFFECT_PENALTY_KEY, normalizeEffectPenaltyChanges } from "../helpers/foundry-compat.js";
 import { getConditions } from "../apps/config/condition-config.js";
 import { NeuroshimaScript, NeuroshimaScriptRunner, normalizeLegacySuccessScriptData } from "../apps/neuroshima-script-engine.js";
-import {
-  LEGACY_EFFECT_PENALTY_KEY,
-  EFFECT_PENALTY_KEY,
-  normalizeEffectPenaltyChanges
-} from "../helpers/effect-penalty.js";
 
 export class NeuroshimaActiveEffect extends ActiveEffect {
+  static migrateData(source, options) {
+    normalizeEffectData(source);
+    return super.migrateData(source, options);
+  }
+
   /** Distinguish configured conditions from identifiers on applied effects. */
   get isCondition() {
     const key = Array.from(this.statuses)[0] || this.getFlag("core", "statusId");
@@ -138,9 +139,9 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
       this.updateSource(update);
     }
 
-    const normalizedChanges = normalizeEffectPenaltyChanges(this.changes ?? []);
+    const normalizedChanges = normalizeEffectPenaltyChanges(effectChanges(this));
     if (normalizedChanges.changed) {
-      this.updateSource({ changes: normalizedChanges.changes });
+      this.updateSource(effectChangesUpdate(normalizedChanges.changes));
     }
     if (this.parent?.documentName === "Item") {
       this.updateSource({ transfer: this.determineTransfer() });
@@ -149,7 +150,7 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
     // duration.combat  — links the effect to the active combat so modules can track expiry
     // duration.startRound / startTurn — record when the effect was created
     // Only applied when the effect has a rounds/turns duration and is on an Actor.
-    if (this.parent?.documentName === "Actor") {
+    if (!isV14() && this.parent?.documentName === "Actor") {
       const combat = game.combat;
       const hasCombatDuration = (this.duration?.rounds > 0) || (this.duration?.turns > 0);
       if (hasCombatDuration && combat) {
@@ -166,6 +167,7 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
 
   /** @override — auto-correct transfer when flags change */
   async _preUpdate(changes, options, user) {
+    normalizeEffectData(changes);
     if (Array.isArray(changes.changes)) {
       const normalizedChanges = normalizeEffectPenaltyChanges(changes.changes);
       if (normalizedChanges.changed) changes.changes = normalizedChanges.changes;
@@ -211,6 +213,9 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
     const normalizedChange = change?.key === LEGACY_EFFECT_PENALTY_KEY
       ? { ...change, key: EFFECT_PENALTY_KEY }
       : change;
+    if (isV14()) return this.constructor.applyChange(actor, nativeEffectChanges([normalizedChange])[0], {
+      replacementData: this.getReplacementData?.(actor.getRollData?.() ?? {}) ?? actor.getRollData?.() ?? {}
+    });
     return super.apply(actor, normalizedChange);
   }
 
@@ -615,20 +620,27 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
     // world clock. Item effects are templates and commonly keep startTime null;
     // without stamping the applied copy, duration.remaining cannot be tracked
     // reliably and calendar integrations have no stable point to advance.
-    const durationSeconds = Number(foundry.utils.getProperty(data, "duration.seconds"));
-    const durationStart = foundry.utils.getProperty(data, "duration.startTime");
-    if (Number.isFinite(durationSeconds) && durationSeconds > 0
-      && (durationStart === null || durationStart === undefined || !Number.isFinite(Number(durationStart)))) {
-      foundry.utils.setProperty(data, "duration.startTime", Number(game.time?.worldTime ?? 0));
+    if (!isV14()) {
+      const durationSeconds = Number(foundry.utils.getProperty(data, "duration.seconds"));
+      const durationStart = foundry.utils.getProperty(data, "duration.startTime");
+      if (Number.isFinite(durationSeconds) && durationSeconds > 0
+        && (durationStart === null || durationStart === undefined || !Number.isFinite(Number(durationStart)))) {
+        foundry.utils.setProperty(data, "duration.startTime", Number(game.time?.worldTime ?? 0));
+      }
     }
 
     game.neuroshima?.log("[NeuroshimaActiveEffect.convertToApplied]", {
       effectName:           this.name,
       originalTransferType,
       appliedTransferType:  foundry.utils.getProperty(data, "flags.neuroshima.transferType"),
-      durationStartTime:     foundry.utils.getProperty(data, "duration.startTime"),
+      durationStartTime:     effectStartTime(data),
     });
 
+    normalizeEffectData(data);
+    if (isV14()) {
+      stampEffectStart(data);
+      if (data.showIcon !== 0 && !Object.hasOwn(overrides, "showIcon")) data.showIcon = 2;
+    }
     return data;
   }
 
@@ -721,10 +733,16 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
   }
 }
 
-export class NeuroshimaActiveEffectData extends foundry.abstract.TypeDataModel {
+const NativeActiveEffectData = foundry.data?.ActiveEffectTypeDataModel;
+const ActiveEffectDataBase = NativeActiveEffectData ?? foundry.abstract.TypeDataModel;
+
+export class NeuroshimaActiveEffectData extends ActiveEffectDataBase {
   static defineSchema() {
     const fields = foundry.data.fields;
     return {
+      // V13's TypeDataModel inherits an abstract defineSchema which throws.
+      // Only the native V14 effect model provides fields to extend.
+      ...(NativeActiveEffectData ? super.defineSchema() : {}),
       scriptData: new fields.ArrayField(
         new fields.SchemaField({
           id:                new fields.StringField({ initial: "",       blank: true }),

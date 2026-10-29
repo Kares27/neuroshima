@@ -1,4 +1,5 @@
-﻿import { isBeastAbility } from "../helpers/beast-actions.js";
+﻿import { mergeWithDeletions } from "../helpers/foundry-compat.js";
+import { isBeastAbility } from "../helpers/beast-actions.js";
 
 /** Keep actor-owned ability copies separate from same-ID world items during directory sorting. */
 export class NeuroshimaItemDirectory extends foundry.applications.sidebar.tabs.ItemDirectory {
@@ -13,7 +14,7 @@ export class NeuroshimaItemDirectory extends foundry.applications.sidebar.tabs.I
 
   async _createDroppedEntry(entry, updates = {}) {
     if (!isBeastAbility(entry)) return super._createDroppedEntry(entry, updates);
-    const data = foundry.utils.mergeObject(entry.toObject(), updates, { performDeletions: true });
+    const data = mergeWithDeletions(entry.toObject(), updates);
     return this.documentClass.create(data, {
       fromCompendium: entry.inCompendium,
       keepEmbeddedIds: true

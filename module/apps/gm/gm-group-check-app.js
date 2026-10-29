@@ -1,3 +1,4 @@
+import { applicationInstances } from "../../helpers/foundry-compat.js";
 import { NEUROSHIMA } from "../../config.js";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
@@ -44,8 +45,8 @@ export class GMGroupCheckApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     static open() {
         if (!game.user.isGM) return;
-        const existing = Object.values(ui.windows).find(w => w instanceof GMGroupCheckApp);
-        if (existing) { existing.bringToTop(); return existing; }
+        const existing = applicationInstances().find(w => w instanceof GMGroupCheckApp);
+        if (existing) { existing.bringToFront(); return existing; }
         return new GMGroupCheckApp().render(true);
     }
 

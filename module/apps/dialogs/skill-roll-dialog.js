@@ -1,3 +1,4 @@
+import { rollModeChoices, legacyMessageMode } from "../../helpers/foundry-compat.js";
 import { expandDialogModifiers } from "../../helpers/dialog-script-groups.js";
 import { NEUROSHIMA } from "../../config.js";
 import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
@@ -59,7 +60,7 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
 
       rollMode:
         lastRoll.rollMode
-        || game.settings.get("core", "rollMode"),
+        || legacyMessageMode(),
 
       currentAttribute:
         options.currentAttribute
@@ -512,7 +513,7 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
       rollMode;
 
     context.rollModes =
-      CONFIG.Dice.rollModes;
+      rollModeChoices();
 
     context.dialogModifiers =
       dialogModifiers;

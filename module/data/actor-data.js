@@ -1,3 +1,4 @@
+import { applyDerivedEffectValue } from "../helpers/foundry-compat.js";
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { getBaseReputationCost } from "../helpers/xp.js";
@@ -280,62 +281,7 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
   }
 
   _applyPostDerivedActiveEffectValue(key, baseValue) {
-    const actor = this.parent;
-    if (!actor) return baseValue;
-
-    let value = Number(baseValue) || 0;
-    const effects = actor.appliedEffects ?? Array.from(actor.allApplicableEffects?.() ?? []);
-
-    const modes = CONST.ACTIVE_EFFECT_MODES;
-
-    for (const effect of effects) {
-      if (!effect?.active || effect.isSuppressed) continue;
-
-      for (const change of effect.changes ?? []) {
-        if (change.key !== key) continue;
-
-        const raw = change.value;
-        const delta = Number(raw);
-
-        switch (change.mode) {
-          case modes.ADD:
-            value += Number.isFinite(delta) ? delta : 0;
-            break;
-
-          case modes.MULTIPLY:
-            value *= Number.isFinite(delta) ? delta : 1;
-            break;
-
-          case modes.OVERRIDE:
-            value = Number.isFinite(delta) ? delta : value;
-            break;
-
-          case modes.UPGRADE:
-            if (Number.isFinite(delta)) value = Math.max(value, delta);
-            break;
-
-          case modes.DOWNGRADE:
-            if (Number.isFinite(delta)) value = Math.min(value, delta);
-            break;
-
-          case modes.CUSTOM: {
-            const changes = {};
-            Hooks.callAll("applyActiveEffect", actor, change, value, raw, changes);
-
-            if (Object.hasOwn(changes, key)) {
-              const customValue = Number(changes[key]);
-              if (Number.isFinite(customValue)) value = customValue;
-            }
-            break;
-          }
-
-          default:
-            break;
-        }
-      }
-    }
-
-    return value;
+    return applyDerivedEffectValue(this.parent, key, baseValue);
   }
 
   /** @override */

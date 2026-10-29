@@ -1,3 +1,4 @@
+import { effectChanges, effectChangeType, additiveEffectValue } from "./foundry-compat.js";
 
 import { NEUROSHIMA } from "../config.js";
 
@@ -551,9 +552,9 @@ export async function revertXpEntry(actor, entryId) {
     if (isSkillPath || isAttrPath) {
       let aeBonus = 0;
       for (const effect of (actor.appliedEffects ?? [])) {
-        for (const change of (effect.changes ?? [])) {
-          if (change.key === entry.fieldPath && Number(change.mode) === CONST.ACTIVE_EFFECT_MODES.ADD) {
-            aeBonus += Number(change.value) || 0;
+        for (const change of effectChanges(effect)) {
+          if (change.key === entry.fieldPath && ["add", "subtract"].includes(effectChangeType(change))) {
+            aeBonus += additiveEffectValue(change, actor);
           }
         }
       }

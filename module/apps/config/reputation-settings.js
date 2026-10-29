@@ -173,7 +173,7 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
     }
 
     _captureFormState() {
-        const fd = new FormDataExtended(this.element);
+        const fd = new foundry.applications.ux.FormDataExtended(this.element);
         const data = fd.object;
         return {
             testMode: data.testMode ?? "skill",
@@ -228,7 +228,7 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
         const idx = parseInt(target.dataset.index ?? "-1");
         if (idx < 0) return;
         const current = this.element.querySelector(`input[name="defaultRepItems.${idx}.img"]`)?.value ?? DEFAULT_REP_IMG;
-        new FilePicker({
+        new foundry.applications.apps.FilePicker.implementation({
             type: "imagevideo",
             current,
             callback: (path) => {

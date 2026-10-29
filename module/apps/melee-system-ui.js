@@ -1,3 +1,4 @@
+import { isElement, applicationInstances, legacyMessageMode } from "../helpers/foundry-compat.js";
 import { createBeastCombatWeapon, isBeastAbility } from "../helpers/beast-actions.js";
 import {
   MeleeActionCatalog,
@@ -97,7 +98,7 @@ export class MeleeSessionPresenter {
     const message = await ChatMessage.create({
       speaker: { alias: "⚔" },
       content,
-      rollMode: rawResult.rollMode ?? game.settings.get("core", "rollMode"),
+      rollMode: rawResult.rollMode ?? legacyMessageMode(),
       flags: { neuroshima: { melee: {
         sessionId, cardType: "pending", renderedRevision: -1
       } } }
@@ -198,7 +199,7 @@ export class MeleeSessionPresenter {
     if (!isMeleeSessionMarker(marker)) return;
     const session = await game.neuroshima.melee.get(marker.sessionId, { messageId: message.id });
     if (!session) return;
-    const element = root instanceof HTMLElement ? root : root?.[0];
+    const element = isElement(root) ? root : root?.[0];
     if (!element) return;
     await this.activate(element, session, message);
   }
@@ -546,10 +547,7 @@ function refreshMeleeProjections(session = null) {
   // ApplicationV2 actor sheets live in `applications.instances`; `ui.windows`
   // only covers the legacy application registry. Read both so ending a melee
   // session immediately removes its projection from every open Combat tab.
-  const applications = new Set([
-    ...Object.values(ui.windows ?? {}),
-    ...Array.from(foundry.applications?.instances?.values?.() ?? [])
-  ]);
+  const applications = applicationInstances();
   for (const app of applications) {
     const actor = app.document?.documentName === "Actor" ? app.document : null;
     if (!actor) continue;
@@ -566,7 +564,7 @@ function refreshMeleeProjections(session = null) {
 
 async function projectTracker(html) {
   if (!isMeleeEnabled()) return;
-  const root = html instanceof HTMLElement ? html : html?.[0];
+  const root = isElement(html) ? html : html?.[0];
   root?.querySelectorAll(".melee-session-tracker-badge").forEach(element => element.remove());
   for (const session of game.neuroshima.melee.list()) {
     if (session.status !== "active") continue;
@@ -577,7 +575,7 @@ async function projectTracker(html) {
         entry.actor?.uuid === participant.actorUuid || entry.token?.uuid === participant.tokenUuid);
       const row = root?.querySelector(`[data-combatant-id="${combatant?.id}"]`);
       if (!row) continue;
-      const badge = document.createElement("span");
+      const badge = (root.ownerDocument ?? document).createElement("span");
       badge.className = "melee-session-tracker-badge";
       badge.dataset.tooltip = `${session.participants.attacker.name} → ${session.participants.defender.name}\nSegment ${session.exchange.currentSegment + 1}/3\n${requiredAction.waitingText}`;
       badge.dataset.sessionId = session.id;
@@ -593,7 +591,7 @@ async function projectTracker(html) {
       if (requiredAction.canAct && requiredAction.side === side) {
         badge.classList.add("can-act");
         badge.dataset.tooltip += "\nKliknij nazwę, aby otworzyć kartę oczekującej akcji.";
-        const actionButton = document.createElement("button");
+        const actionButton = (root.ownerDocument ?? document).createElement("button");
         actionButton.type = "button";
         actionButton.className = "melee-session-tracker-action";
         actionButton.dataset.tooltip = requiredAction.label;

@@ -1,3 +1,5 @@
+import { collectArmorEffectSources, buildBreakdownTooltip, buildRichTextTooltip, collectAttributeEffectSources, collectDocumentEffectSources, renderTooltipSections } from "../helpers/tooltip-renderer.js";
+import { legacyMessageMode, effectDurationLabel, isTemporaryEffect, effectChanges, EFFECT_PENALTY_KEY, LEGACY_EFFECT_PENALTY_KEY } from "../helpers/foundry-compat.js";
 import { remainingArmorDurability, armorLocationProtects, modifyArmorDurability } from "../helpers/armor-durability.js";
 import { armorLocationProtections } from "../helpers/armor-location.js";
 import { postBeastRequiredTest, applyBeastEffectIds } from "../helpers/beast-required-test.js";
@@ -7,41 +9,12 @@ import { clampArmor, preserveArmorSourceValues } from "../helpers/armor-limit.js
 import { beastActivities, resolveBeastActionItem, createBeastSegmentWeapon, createBeastSegmentGrenade, createBeastCombatWeapon, isBeastAbility, isBeastAction, isBeastSegment } from "../helpers/beast-actions.js";
 import { NEUROSHIMA } from "../config.js";
 import { createLoadedMagazineFromWeapon } from "../helpers/ammunition.js";
-import { NeuroshimaDice } from "../helpers/dice.js";
+import { NeuroshimaDice } from "../helpers/rolls.js";
 import { RestDialog } from "../apps/dialogs/minor-dialogs.js";
 import { getConditions } from "../apps/config/condition-config.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
 import { getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveRadiationResistance } from "../helpers/mod-helpers.js";
-import {
-  EFFECT_PENALTY_KEY,
-  LEGACY_EFFECT_PENALTY_KEY
-} from "../helpers/effect-penalty.js";
-import {
-  buildBreakdownTooltip,
-  buildRichTextTooltip,
-  collectAttributeEffectSources,
-  collectDocumentEffectSources,
-  renderTooltipSections
-} from "../helpers/tooltip-renderer.js";
 
-function _collectCreatureArmorBonusByEffect(actor) {
-  const byLoc = {};
-  if (!actor) return byLoc;
-  const seen = new Set();
-  for (const effect of actor.appliedEffects ?? []) {
-    const key = effect.origin ?? effect.uuid;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    for (const change of effect.changes ?? []) {
-      const m = change.key.match(/^system\.armorBonus\.(\w+)$/);
-      if (!m) continue;
-      const loc = m[1];
-      if (!byLoc[loc]) byLoc[loc] = [];
-      byLoc[loc].push({ name: effect.name, value: Number(change.value) || 0 });
-    }
-  }
-  return byLoc;
-}
 
 /**
  * Actor sheet for Creature actors (animals, mutants, monsters).
@@ -122,7 +95,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         }
       },
       editImage: async function(event, target) {
-        const fp = new FilePicker({ type: "image", callback: src => this.document.update({ img: src }) });
+        const fp = new foundry.applications.apps.FilePicker.implementation({ type: "image", callback: src => this.document.update({ img: src }) });
         fp.browse(this.document.img);
       },
 
@@ -465,7 +438,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
               effects
             }
           );
-          const rollMode = game.settings.get("core", "rollMode");
+          const rollMode = legacyMessageMode();
           await ChatMessage.create({
             content,
             speaker: ChatMessage.getSpeaker({ actor }),
@@ -1006,7 +979,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
     const commonReduction = Math.max(0, Number(system.naturalArmorReduction) || 0);
     const bonusAll      = Number(system.armorBonus?.all) || 0;
     const natArmorLabel = game.i18n.localize("NEUROSHIMA.Creature.NaturalArmor");
-    const effectBonus   = _collectCreatureArmorBonusByEffect(actor);
+    const effectBonus   = collectArmorEffectSources(actor);
     context.armorLocations = Object.entries(NEUROSHIMA.bodyLocations).filter(([key, data]) => !data.paperDollOnly).map(([key, data]) => {
       const reduction  = system.naturalArmor?.[key]?.reduction ?? 0;
       const locItems   = anatomicalArmor[key]?.items ?? [];
@@ -1190,7 +1163,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
     };
 
     context.notes = {
-      enriched: await foundry.applications.ux.TextEditor.implementation.enrichHTML(system.notes || "", {
+      enriched: await foundry.applications.ux.TextEditor.enrichHTML(system.notes || "", {
         secrets: actor.isOwner,
         async: true,
         relativeTo: actor
@@ -1199,8 +1172,8 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
 
     const condDefs = getConditions();
     const condTypeMap = Object.fromEntries(condDefs.map(c => [c.key, c.type ?? "boolean"]));
-    const effectDurationLabel = (e) => e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—");
-    const isTemporary = (e) => e.isTemporary;
+
+    const isTemporary = isTemporaryEffect;
     const isConditionEffect = (e) => e.isCondition;
 
     const temporary     = [];
@@ -1553,6 +1526,8 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
   }
 
   _showItemContextMenu(event, itemId) {
+    const document = this.element?.ownerDocument ?? globalThis.document;
+    const window = document.defaultView ?? globalThis.window;
     event.preventDefault();
     const item = this.document.items.get(itemId);
     if (!item) return;
@@ -1576,7 +1551,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
     }
     menuItems.push({ action: 'delete', icon: 'fas fa-trash', label: game.i18n.localize('Delete') });
 
-    const menu = document.createElement('nav');
+    const menu = (this.element?.ownerDocument ?? document).createElement('nav');
     menu.className = 'ns-item-ctx-menu context-menu themed theme-dark';
     menu.style.cssText = 'position:fixed;z-index:99999;';
     menu.innerHTML = `<menu class="context-items">${

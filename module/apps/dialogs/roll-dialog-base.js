@@ -6,7 +6,7 @@ import {
 import {
   EFFECT_PENALTY_KEY,
   LEGACY_EFFECT_PENALTY_KEY
-} from "../../helpers/effect-penalty.js";
+} from "../../helpers/foundry-compat.js";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 

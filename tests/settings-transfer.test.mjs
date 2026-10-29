@@ -54,6 +54,28 @@ test("export includes hidden system configuration and scripts without copying co
   assert.equal(transferableSettings().size, registry.size - 4);
 });
 
+test("settings move between Foundry generations with nested effects and preflight rejects unsupported V14 effects", async () => {
+  const { values, writes, register } = setup();
+  register("effectPresets", Array, [{ effects: [{ origin: "Actor.source", changes: [{ key: "system.movement", mode: 1, value: "2" }], duration: { seconds: 60 } }] }]);
+  values.set("conditions", [{ key: "timed", changes: [{ key: "system.movement", mode: 2, value: "1" }], _duration: { rounds: 2 } }]);
+  game.release = { generation: 13 };
+  const bundle = exportSystemSettings();
+  game.release.generation = 14;
+  await importSystemSettings(bundle);
+  assert.equal(values.get("effectPresets")[0].effects[0].system.changes[0].type, "multiply");
+  assert.equal(values.get("effectPresets")[0].effects[0].origin, "Actor.source");
+  assert.equal(values.get("conditions")[0]._duration.units, "rounds");
+  const native = exportSystemSettings();
+  game.release.generation = 13;
+  await importSystemSettings(native);
+  assert.equal(values.get("effectPresets")[0].effects[0].changes[0].mode, 1);
+  assert.deepEqual(values.get("conditions")[0]._duration, { rounds: 2 });
+  native.settings.effectPresets[0].effects[0].system.changes[0].phase = "final";
+  const before = writes.length;
+  await assert.rejects(() => importSystemSettings(native), /InvalidValue/);
+  assert.equal(writes.length, before);
+});
+
 test("JSON roundtrip restores tables, category colors and caps, global toggles, conditions and nested scripts", async () => {
   const { values, writes } = setup();
   const source = exportSystemSettings();

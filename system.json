@@ -2,10 +2,10 @@
     "id": "neuroshima",
     "title": "Neuroshima 1.5",
     "description": "System do gry fabularnej Neuroshima 1.5.",
-    "version": "1.0.1.3",
+    "version": "1.0.2",
     "compatibility": {
         "minimum": "13",
-        "verified": "13"
+        "verified": "14"
     },
     "authors": [
         {
@@ -76,6 +76,41 @@
     "documentTypes": {
         "RegionBehavior": {
             "radiationZone": {}
+        },
+        "Actor": {
+            "character": {},
+            "npc": {},
+            "creature": {},
+            "vehicle": {},
+            "homeBase": {}
+        },
+        "Item": {
+            "weapon": {},
+            "grenade": {},
+            "armor": {},
+            "gear": {},
+            "trick": {},
+            "trait": {},
+            "beast-ability": {},
+            "ammo": {},
+            "magazine": {},
+            "wound": {},
+            "specialization": {},
+            "origin": {},
+            "profession": {},
+            "vehicle-damage": {},
+            "vehicle-mod": {},
+            "money": {},
+            "reputation": {},
+            "disease": {},
+            "weapon-mod": {},
+            "armor-mod": {},
+            "facilities": {},
+            "container": {},
+            "speciality": {}
+        },
+        "ActiveEffect": {
+            "base": {}
         }
     },
     "flags": {

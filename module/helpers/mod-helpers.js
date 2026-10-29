@@ -1,3 +1,4 @@
+import { effectChanges } from "./foundry-compat.js";
 import { armorLocationProtects } from "./armor-durability.js";
 const WEAPON_LOCS = ["head", "torso", "leftArm", "rightArm", "leftLeg", "rightLeg"];
 
@@ -861,7 +862,7 @@ export function getRadiationResistanceSources(actor) {
 
   for (const effect of (actor.effects ?? [])) {
     if (effect.disabled) continue;
-    for (const change of (effect.changes ?? [])) {
+    for (const change of effectChanges(effect)) {
       if (change.key === "system.radiationResistance") {
         const v = Number(change.value) || 0;
         if (v !== 0) sources.push({ name: effect.name, value: v });

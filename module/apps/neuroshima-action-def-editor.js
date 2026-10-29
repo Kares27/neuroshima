@@ -214,7 +214,7 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
 
     const header = this.element.querySelector(".window-header");
     if (header && !header.querySelector(".ns-copy-id-header-btn")) {
-      const copyBtn = document.createElement("button");
+      const copyBtn = (this.element?.ownerDocument ?? document).createElement("button");
       copyBtn.type = "button";
       copyBtn.className = "ns-copy-id-header-btn";
       copyBtn.title = "Kopiuj ID akcji";

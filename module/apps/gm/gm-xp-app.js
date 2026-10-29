@@ -1,3 +1,4 @@
+import { applicationInstances } from "../../helpers/foundry-compat.js";
 import { applyXpGrantEntry } from "../../helpers/xp.js";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
@@ -43,8 +44,8 @@ export class GMAddXPApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     static open() {
         if (!game.user.isGM) return;
-        const existing = Object.values(ui.windows).find(w => w instanceof GMAddXPApp);
-        if (existing) { existing.bringToTop(); return existing; }
+        const existing = applicationInstances().find(w => w instanceof GMAddXPApp);
+        if (existing) { existing.bringToFront(); return existing; }
         return new GMAddXPApp().render(true);
     }
 

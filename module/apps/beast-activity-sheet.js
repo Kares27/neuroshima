@@ -1,3 +1,4 @@
+import { effectDurationLabel, isTemporaryEffect } from "../helpers/foundry-compat.js";
 import { normalizeRequiredEffects } from "../helpers/required-test.js";
 import { beastActivities, isBeastAbility, isBeastSegment } from "../helpers/beast-actions.js";
 import { NEUROSHIMA } from "../config.js";
@@ -216,9 +217,7 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
       name: e.name,
       icon: e.img || "icons/svg/aura.svg",
       disabled: e.disabled,
-      durationLabel: e.duration?.rounds
-        ? `${e.duration.rounds}r`
-        : (e.duration?.seconds ? `${e.duration.seconds}s` : "—")
+      durationLabel: effectDurationLabel(e)
     });
 
     const linkedEffects        = this.item.effects.filter(e => effectIds.has(e.id)).map(toEffectRow);
@@ -265,8 +264,8 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
       return { attrKey, attrLabel: game.i18n.localize(`NEUROSHIMA.Attributes.${cap}`), skills };
     });
 
-    const enrichedDescription = await TextEditor.enrichHTML(activity.description ?? "", { relativeTo: this.item });
-    const enrichedGmNote = await TextEditor.enrichHTML(activity.gmNote ?? "", { relativeTo: this.item });
+    const enrichedDescription = await foundry.applications.ux.TextEditor.enrichHTML(activity.description ?? "", { relativeTo: this.item });
+    const enrichedGmNote = await foundry.applications.ux.TextEditor.enrichHTML(activity.gmNote ?? "", { relativeTo: this.item });
 
     const effectTimingOptions = {
       onUse:       "NEUROSHIMA.BeastAction.EffectTiming.OnUse",
@@ -516,7 +515,7 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     if (!this.item.isOwner) return;
     const activity = this.activity;
     if (!activity) return;
-    new FilePicker({
+    new foundry.applications.apps.FilePicker.implementation({
       type: "image",
       current: activity.img || "icons/svg/combat.svg",
       callback: async path => {

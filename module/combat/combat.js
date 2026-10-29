@@ -1,3 +1,4 @@
+import { isElement, applicationInstances, legacyMessageMode } from "../helpers/foundry-compat.js";
 import { ArmorDurabilityBatch } from "../helpers/armor-durability.js";
 import { exchangeDamageHits, summarizeExchangeDamage } from "./melee-damage-summary.js";
 import { beastActivities, isBeastAbility, isBeastAction } from "../helpers/beast-actions.js";
@@ -748,7 +749,7 @@ export class NeuroshimaMeleeCombat {
     game.neuroshima?.log("dismissMeleeDuel", { id });
     
     // Close the app if open
-    for (const app of foundry.applications.instances.values()) {
+    for (const app of applicationInstances()) {
       if (app.constructor?.name === "MeleeCombatApp" && app.encounterId === id) {
         app.close();
       }
@@ -1563,7 +1564,7 @@ export class MeleeOpposedChat {
       content,
       flags: { neuroshima: { opposedChat: data } },
       speaker: { alias: "⚔" },
-      rollMode: result.rollMode ?? game.settings.get("core", "rollMode")
+      rollMode: result.rollMode ?? legacyMessageMode()
     });
     if (!handlerMessage) return null;
 
@@ -1603,7 +1604,7 @@ export class MeleeOpposedChat {
       }</p></div>`,
       flags: { neuroshima: { opposedChat: duelData } },
       speaker: { alias: "⚔" },
-      rollMode: defenderTest.result.rollMode ?? game.settings.get("core", "rollMode")
+      rollMode: defenderTest.result.rollMode ?? legacyMessageMode()
     });
     if (!duelMessage) return { ok: false, reason: "duel-message-create-failed" };
 
@@ -2268,7 +2269,7 @@ export class MeleeOpposedChat {
     const locationRoll = data.attackRaw?.[0] ?? 10;
     const location = data.location || MeleeOpposedChat._getLocationFromRoll(locationRoll);
 
-    const rollMode = game.settings.get("core", "rollMode");
+    const rollMode = legacyMessageMode();
     await ChatMessage.create({
       content: resContent,
       flags: {
@@ -2417,7 +2418,7 @@ export class MeleeOpposedChat {
     if (data.isGradCios) {
       const atkSuccessPoints = attackDice.filter(d => d.isSuccess).length;
       const defSuccessPoints = defenseDice.filter(d => d.isSuccess).length;
-      const rollMode = data.rollMode ?? game.settings.get("core", "rollMode");
+      const rollMode = data.rollMode ?? legacyMessageMode();
       const toChip = d => ({ value: d.modified ?? d.original ?? d.value, isSuccess: d.isSuccess, isNat20: d.isNat20 ?? false });
       const netSuccesses = atkSuccessPoints - defSuccessPoints;
 
@@ -2976,7 +2977,7 @@ export class MeleeOpposedChat {
   }
 
   static onRenderDuelCard(root, message) {
-    root = root instanceof HTMLElement ? root : root[0];
+    root = isElement(root) ? root : root[0];
     if (!root) return;
     if (root.dataset.neuroshimaMeleeActionsBound === "true") return;
 
@@ -4088,7 +4089,7 @@ export class MeleeOpposedChat {
     const attackerSuccesses = opposedOpenScore(rawResult);
 
     if (rawResult.isGradCios && rawResult.success !== true) {
-      const rollMode = rawResult.rollMode ?? game.settings.get("core", "rollMode");
+      const rollMode = rawResult.rollMode ?? legacyMessageMode();
       const missContent = await foundry.applications.handlebars.renderTemplate(
         "systems/neuroshima/templates/chat/melee-hail-card.hbs",
         { isMiss: true, attackerName: attacker.name }
@@ -4125,7 +4126,7 @@ export class MeleeOpposedChat {
       templateData
     );
 
-    const rollMode = rawResult.rollMode ?? game.settings.get("core", "rollMode");
+    const rollMode = rawResult.rollMode ?? legacyMessageMode();
     const chatMsg = await ChatMessage.create({
       content,
       flags: {
@@ -4564,7 +4565,7 @@ export class MeleeOpposedChat {
 
   static async _createPendingHailCard(rawResult, attacker, weapon, targetActor, targetDoc, attackDice, attackerSuccesses) {
     const toChip = d => ({ value: d.modified ?? d.value, isSuccess: d.isSuccess, isNat20: d.isNat20 ?? false });
-    const rollMode = rawResult.rollMode ?? game.settings.get("core", "rollMode");
+    const rollMode = rawResult.rollMode ?? legacyMessageMode();
 
     const content = await foundry.applications.handlebars.renderTemplate(
       "systems/neuroshima/templates/chat/melee-hail-card.hbs",

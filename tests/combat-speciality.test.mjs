@@ -1500,7 +1500,7 @@ test("armor category limits cap aggregate protection after scripts for builtin a
 });
 
 test("custom category settings retain optional limits and reject collisions or invalid caps before saving", async () => {
- const {normalizeDamageCategorySettings}=await import("../module/apps/config/damage-category-config.js");
+ const {normalizeDamageCategorySettings}=await import("../module/apps/config/combat-config.js");
  const result=normalizeDamageCategorySettings([{key:"acid",label:"Acid",color:"#123456",maxArmor:"2.5"}],{physical:"",explosive:"3"});
  assert.deepEqual(result.custom,[{key:"acid",label:"Acid",color:"#123456"}]);assert.deepEqual(result.limits,{explosive:3,acid:2.5});
  assert.throws(()=>normalizeDamageCategorySettings([{key:"explosive",label:"Duplicate"}]),/duplicate/);
@@ -1541,7 +1541,7 @@ test("combat settings save custom types and their caps together and reject inval
 
 test("physical armor uses only actor-type restrictions while category settings show explosive and custom types", async () => {
  const {CombatConfig}=await import("../module/apps/config/combat-config.js");
- const {normalizeDamageCategorySettings,_applyCustomDamageCategories}=await import("../module/apps/config/damage-category-config.js");
+ const {normalizeDamageCategorySettings,_applyCustomDamageCategories}=await import("../module/apps/config/combat-config.js");
  const previous={limits:settings.armorCategoryLimits,config:game.neuroshima.config};
  settings.armorCategoryLimits={physical:1,explosive:3};
  game.neuroshima.config={damageCategories:{physical:{label:"Physical"},explosive:{label:"Explosive"}}};
@@ -1686,7 +1686,7 @@ test("category damage defaults to the whole armor and can be restricted to one l
 
 test("combat category checkboxes retain false values through draft capture and normalization", async () => {
   const { CombatConfig } = await import("../module/apps/config/combat-config.js");
-  const { normalizeDamageCategorySettings } = await import("../module/apps/config/damage-category-config.js");
+  const { normalizeDamageCategorySettings } = await import("../module/apps/config/combat-config.js");
   const customRow = { querySelector: selector => ({
     "[data-category-key]": { value: "acid" }, "[data-category-label]": { value: "Acid" },
     "[data-category-color]": { value: "#123456" }, "[data-category-limit]": { value: "3" },

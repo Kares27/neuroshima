@@ -1,3 +1,4 @@
+import { isV14, effectDurationUnit, effectDurationValue, effectStartTime, effectStartTimeUpdate, legacyMessageMode, applyMessageMode } from "../helpers/foundry-compat.js";
 import { requiredTestSuccesses } from "../helpers/required-test.js";
 import { specialityChoices } from "../helpers/speciality.js";
 import { dialogScriptSignature, dialogScriptGroupId, groupDialogModifiers } from "../helpers/dialog-script-groups.js";
@@ -1555,11 +1556,12 @@ export class NeuroshimaScript {
   async roll(formula, data = {}, options = {}) {
     const r = await new Roll(formula, data).evaluate();
     if (options.toMessage || options.flavor !== undefined) {
-      await r.toMessage({
+      const messageData = {
         speaker: options.speaker ?? ChatMessage.getSpeaker({ actor: this.actor }),
-        flavor:   options.flavor   ?? this.effect?.name ?? "",
-        rollMode: options.rollMode ?? game.settings.get("core", "rollMode")
-      });
+        flavor: options.flavor ?? this.effect?.name ?? ""
+      };
+      applyMessageMode(messageData, options.rollMode ?? legacyMessageMode());
+      await r.toMessage(messageData);
     }
     return r;
   }
@@ -2003,12 +2005,12 @@ export class NeuroshimaScript {
       useDiseasePenalty: options.useDiseasePenalty ?? true,
       useEffectPenalty: options.useEffectPenalty ?? true,
       isOpen: options.isOpen ?? true,
-      rollMode: options.rollMode ?? game.settings.get("core", "rollMode"),
+      rollMode: options.rollMode ?? legacyMessageMode(),
       testType: options.testType ?? type,
       testSubtype: options.testSubtype ?? null
     };
 
-    const { NeuroshimaRollTestRouter } = await import("../helpers/roll-test-router.js");
+    const { NeuroshimaRollTestRouter } = await import("../helpers/rolls.js");
     return NeuroshimaRollTestRouter.roll(actor, request, {
       recipient: options.recipient ?? "actorOwner"
     });
@@ -5677,8 +5679,8 @@ export class NeuroshimaScriptRunner {
     const actors = [];
     const seen = new Set();
     const collect = actor => {
-      if (!actor || seen.has(actor.id)) return;
-      seen.add(actor.id);
+      if (!actor || seen.has(actor.uuid ?? actor.id)) return;
+      seen.add(actor.uuid ?? actor.id);
       actors.push(actor);
     };
 
@@ -5703,6 +5705,8 @@ export class NeuroshimaScriptRunner {
    * @returns {Promise<number>} Number of expired effects removed.
    */
   static async expireWorldTimeEffects(actors = this._worldTimeActors()) {
+    if (isV14()) return 0; // Actor.onUpdateEffectDurations owns V14 expiry.
+
     let expired = 0;
     for (const actor of actors) {
       const ids = (actor.effects ?? [])
@@ -5745,17 +5749,18 @@ export class NeuroshimaScriptRunner {
     for (const actor of this._worldTimeActors()) {
       const updates = (actor.effects ?? [])
         .filter(effect => {
-          const seconds = Number(effect.duration?.seconds);
-          return Number.isFinite(seconds) && seconds > 0;
+          const unit = effectDurationUnit(effect);
+          const value = Number(effectDurationValue(effect));
+          return unit && !["rounds", "turns"].includes(unit) && Number.isFinite(value) && value > 0;
         })
         .map(effect => {
-          const rawStart = effect.duration?.startTime;
+          const rawStart = effectStartTime(effect);
           const startTime = rawStart === null || rawStart === undefined || !Number.isFinite(Number(rawStart))
             ? worldTime
             : Number(rawStart);
           return {
             _id: effect.id,
-            "duration.startTime": startTime - delta
+            ...effectStartTimeUpdate(startTime - delta)
           };
         });
 
@@ -5872,7 +5877,7 @@ export class NeuroshimaScriptRunner {
       { title, description, testType, testKey, testLabel, requiredSuccesses, isOpen }
     );
 
-    const effectiveRollMode = rollMode ?? game.settings.get("core", "rollMode");
+    const effectiveRollMode = rollMode ?? legacyMessageMode();
 
     const baseMsg = {
       user: game.user.id,
@@ -5912,7 +5917,7 @@ export class NeuroshimaScriptRunner {
       msgData = { ...baseMsg, whisper: whisperIds };
       game.neuroshima?.log("postRequiredTest | whisper to defender owners+GMs", { defenderActorUuid, defActorName: defActor?.name, whisperIds });
     } else {
-      msgData = ChatMessage.applyRollMode(baseMsg, effectiveRollMode);
+      msgData = applyMessageMode(baseMsg, effectiveRollMode);
     }
 
     const message = await ChatMessage.create(msgData);
@@ -5983,6 +5988,8 @@ export class NeuroshimaScriptRunner {
    * @returns {Promise<void>}
    */
   static async expireEffects(combat) {
+    if (isV14()) return; // V14 expiry events must not be shortened to a round comparison.
+
     if (!game.user.isGM) return;
     // If a duration-handling module (e.g. "Times Up") is active, let it manage expiry.
     if (game.modules.get("times-up")?.active) return;

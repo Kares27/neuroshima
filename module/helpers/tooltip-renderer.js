@@ -1,3 +1,4 @@
+import { effectChanges, effectChangeType, numericEffectValue } from "./foundry-compat.js";
 /**
  * Shared renderer for rich Neuroshima tooltips.
  *
@@ -220,7 +221,7 @@ function collectEffectSources(document, targetKeys, matchChange) {
   const result = Object.fromEntries(targetKeys.map(key => [key, []]));
   const candidates = getDocumentEffectCandidates(document);
   const seen = new Set();
-  const addMode = globalThis.CONST?.ACTIVE_EFFECT_MODES?.ADD ?? 2;
+
 
   for (const candidate of candidates) {
     const effect = Array.isArray(candidate) && candidate.length === 2
@@ -232,16 +233,16 @@ function collectEffectSources(document, targetKeys, matchChange) {
     if (seen.has(identity)) continue;
     seen.add(identity);
 
-    for (const change of effect.changes ?? []) {
+    for (const change of effectChanges(effect)) {
       const key = matchChange(String(change.key ?? ""));
       if (!key || !keys.has(key)) continue;
-      const value = Number(change.value);
+      const value = numericEffectValue(change, document);
       if (!Number.isFinite(value)) continue;
-      const mode = Number(change.mode);
+      const mode = effectChangeType(change);
       result[key].push({
         label: effect.name ?? effect.label ?? effect.parent?.name ?? "?",
-        value,
-        signed: !Number.isFinite(mode) || mode === addMode,
+        value: mode === "subtract" ? -value : value,
+        signed: ["add", "subtract"].includes(mode),
         mode
       });
     }
@@ -274,4 +275,20 @@ export function collectDocumentEffectSources(document, fieldPaths = []) {
     fieldPaths,
     path => fieldPaths.includes(path) ? path : null
   );
+}
+
+/** Source rows shared by character, creature and vehicle armor displays. */
+export function collectArmorEffectSources(actor) {
+  const sources = {}, seen = new Set();
+  for (const effect of actor?.appliedEffects ?? []) {
+    const id = effect.uuid ?? effect.id ?? effect;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    for (const change of effectChanges(effect)) {
+      const location = String(change.key ?? "").match(/^system\.armorBonus\.(\w+)$/)?.[1];
+      if (!location) continue;
+      (sources[location] ??= []).push({ name: effect.name, value: numericEffectValue(change, actor) || 0 });
+    }
+  }
+  return sources;
 }

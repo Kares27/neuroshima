@@ -1,3 +1,4 @@
+import { applicationInstances } from "../../helpers/foundry-compat.js";
 import { GMAddXPApp } from "./gm-xp-app.js";
 import { GMApplyDamageApp } from "./gm-damage-app.js";
 import { GMGroupCheckApp } from "./gm-group-check-app.js";
@@ -44,9 +45,9 @@ export class GMToolkitApp extends HandlebarsApplicationMixin(ApplicationV2) {
             ui.notifications.warn(game.i18n.localize("NEUROSHIMA.GMToolkit.GMOnly"));
             return;
         }
-        const existing = Object.values(ui.windows).find(w => w instanceof GMToolkitApp);
+        const existing = applicationInstances().find(w => w instanceof GMToolkitApp);
         if (existing) {
-            existing.bringToTop();
+            existing.bringToFront();
             return existing;
         }
         return new GMToolkitApp().render(true);

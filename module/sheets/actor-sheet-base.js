@@ -1,3 +1,4 @@
+import { NeuroshimaAreas } from "../helpers/foundry-compat.js";
 import { modifyArmorResistance, armorProtectionColor } from "../helpers/armor-location.js";
 import { NeuroshimaSkillRollDialog } from "../apps/dialogs/skill-roll-dialog.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
@@ -363,18 +364,17 @@ export class NeuroshimaBaseActorSheet extends HandlebarsApplicationMixin(ActorSh
 
     let previewObj = null;
     let previewDoc = null;
+    let areaPreview = null;
 
-    if (templateRadius > 0 && canvas?.templates?.preview) {
+    if (templateRadius > 0 && NeuroshimaAreas.layer()?.preview) {
       try {
         const tplData = {
           t: "circle", user: game.user.id, x: 0, y: 0,
           distance: templateRadius, fillColor: game.user.color ?? "#FF0000"
         };
-        previewDoc = new CONFIG.MeasuredTemplate.documentClass(tplData, { parent: canvas.scene });
-        previewObj = new CONFIG.MeasuredTemplate.objectClass(previewDoc);
-        canvas.templates.preview.addChild(previewObj);
-        await previewObj.draw();
-        canvas.templates.activate();
+        areaPreview = await NeuroshimaAreas.preview(tplData);
+        previewDoc = areaPreview.document;
+        previewObj = areaPreview.object;
       } catch (e) {
         console.warn("Neuroshima | Template preview (waitForTarget) failed:", e);
         previewObj = null;
@@ -383,7 +383,7 @@ export class NeuroshimaBaseActorSheet extends HandlebarsApplicationMixin(ActorSh
 
     const destroyPreview = () => {
       if (previewObj) {
-        try { canvas.templates.preview.removeChild(previewObj); previewObj.destroy({ children: true }); } catch (e) {}
+        try { areaPreview.destroy(); } catch (e) {}
         previewObj = null;
       }
       for (const t of Array.from(game.user.targets)) {
@@ -412,17 +412,17 @@ export class NeuroshimaBaseActorSheet extends HandlebarsApplicationMixin(ActorSh
       const onMouseMove = () => {
         if (!previewObj || !canvas?.mousePosition) return;
         const pos = snapPos(canvas.mousePosition.x, canvas.mousePosition.y);
-        try { previewDoc.updateSource(pos); previewObj.refresh?.(); } catch (e) {}
+        try { areaPreview.move(pos.x, pos.y); } catch (e) {}
         // A point-only blast still previews its affected tokens dynamically.
         // Clicking resolves to the template point, never to an individual token.
-        if (previewObj?.shape && canvas?.tokens?.placeables) {
+        if (previewObj && canvas?.tokens?.placeables) {
           const gs = canvas.grid?.size ?? 100;
           const inIds = canvas.tokens.placeables
             .filter(t => {
               const td = t.document;
               const cx = td.x + (td.width  * gs) / 2;
               const cy = td.y + (td.height * gs) / 2;
-              return previewObj.shape.contains(cx - pos.x, cy - pos.y);
+              return NeuroshimaAreas.contains(previewDoc, cx, cy, td.elevation ?? 0);
             })
             .map(t => t.id);
           const currentIds = new Set(Array.from(game.user.targets).map(t => t.id));

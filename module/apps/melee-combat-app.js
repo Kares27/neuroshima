@@ -1,3 +1,4 @@
+import { applicationInstances } from "../helpers/foundry-compat.js";
 import { MeleeStore, MeleeEncounter, MeleeTurnService } from "../combat/combat.js";
 /**
  * @file melee-combat-app.js
@@ -55,7 +56,7 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
  */
 export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
   constructor(encounterId, options = {}) {
-    super(options);
+    super({ ...options, id: `melee-encounter-${encounterId}` });
     this.encounterId = encounterId;
     /** @type {Map<string, import("./dialogs/weapon-roll-dialog.js").NeuroshimaWeaponRollDialog>} */
     this._openPoolDialogs = new Map();
@@ -144,11 +145,6 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       template: "systems/neuroshima/templates/apps/melee/melee-app.hbs"
     }
   };
-
-  /** @override */
-  get id() {
-    return `melee-encounter-${this.encounterId}`;
-  }
 
   /** @override */
   async _prepareContext(options) {
@@ -609,7 +605,7 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   static registerHooks() {
     Hooks.on("updateCombat", (combat, updates, options, userId) => {
-      for (const app of foundry.applications.instances.values()) {
+      for (const app of applicationInstances()) {
         if (app instanceof MeleeCombatApp) {
           const encounter = MeleeStore.getEncounter(app.encounterId);
           if (!encounter) {

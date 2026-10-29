@@ -136,7 +136,7 @@ export class NeuroshimaAdvancedEffectConfig extends HandlebarsApplicationMixin(f
   }
 
   async _saveFromCodeMirror(form) {
-    const fd = new FormDataExtended(form);
+    const fd = new foundry.applications.ux.FormDataExtended(form);
     const update = foundry.utils.expandObject(fd.object);
     form.querySelectorAll("code-mirror[name]").forEach(cm => {
       foundry.utils.setProperty(update, cm.getAttribute("name"), cm.value ?? "");

@@ -1,6 +1,6 @@
-﻿import { migrateBeastItem, isBeastAbility } from "./beast-actions.js";
+import { normalizeEmbeddedEffects, effectChanges, effectChangesUpdate, normalizeEffectData, normalizeEffectPenaltyChanges, isV14 } from "./foundry-compat.js";
+import { migrateBeastItem, isBeastAbility } from "./beast-actions.js";
 import { normalizeRequiredEffects, requiredTestSuccesses } from "./required-test.js";
-import { normalizeEffectPenaltyChanges } from "./effect-penalty.js";
 import { normalizeLegacySuccessScriptData } from "../apps/neuroshima-script-engine.js";
 
 const migrating = new WeakSet();
@@ -24,7 +24,18 @@ export async function migrateCurrentDocument(document, { persist = false } = {})
         }
       }
     }
-    for (const effect of document.effects ?? []) await migrateCurrentEffect(effect);
+    const source = document.toObject?.();
+    if (source) {
+      const patch = {};
+      for (const key of ["system", "flags"]) {
+        if (!source[key]) continue;
+        const original = JSON.stringify(source[key]);
+        normalizeEmbeddedEffects(source[key]);
+        if (original !== JSON.stringify(source[key])) patch[key] = source[key];
+      }
+      if (Object.keys(patch).length) await document.update(patch, { neuroshimaDocumentMigration: true });
+    }
+    for (const effect of document.effects ?? []) await migrateCurrentEffect(effect, { persist });
     // Splitting a legacy package may have added Items: iterate the live collection afterwards.
     for (const item of Array.from(document.items ?? [])) await migrateCurrentDocument(item, { persist });
   } finally {
@@ -32,18 +43,27 @@ export async function migrateCurrentDocument(document, { persist = false } = {})
   }
 }
 
-export async function migrateCurrentEffect(effect) {
+export async function migrateCurrentEffect(effect, { persist = false } = {}) {
   const source = effect.toObject?.() ?? effect._source ?? {};
   const legacy = source.flags?.neuroshima?.scripts;
   const current = source.system?.scriptData?.length ? source.system.scriptData : Array.isArray(legacy) ? legacy : [];
   const scripts = normalizeLegacySuccessScriptData(current);
   const update = {};
+  if (persist) {
+    normalizeEffectData(source);
+    Object.assign(update, effectChangesUpdate(effectChanges(source)));
+    if (source.duration) update.duration = source.duration;
+    if (isV14()) {
+      if (source.start) update.start = source.start;
+      if (source.showIcon != null) update.showIcon = source.showIcon;
+    }
+  }
   if (current.length && (!same(scripts, source.system?.scriptData) || !source.system?.scriptData?.length)) {
     update["system.scriptData"] = scripts;
   }
   if (Array.isArray(legacy) && legacy.length) update["flags.neuroshima.-=scripts"] = null;
-  const changes = normalizeEffectPenaltyChanges(source.changes ?? []);
-  if (changes.changed) update.changes = changes.changes;
+  const changes = normalizeEffectPenaltyChanges(effectChanges(source));
+  if (changes.changed) Object.assign(update, effectChangesUpdate(changes.changes));
   if (Object.keys(update).length) await effect.update(update, { neuroshimaDocumentMigration: true });
 }
 

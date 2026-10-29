@@ -1,3 +1,4 @@
+import { normalizeTransferredSetting } from "./foundry-compat.js";
 const FORMAT = "neuroshima-settings";
 const FORMAT_VERSION = 1;
 const EXCLUDED_SETTINGS = new Set(["schemaVersion", "meleeSessionsV2World"]);
@@ -69,6 +70,7 @@ export function exportSystemSettings() {
     formatVersion: FORMAT_VERSION,
     systemId: "neuroshima",
     systemVersion: game.system.version,
+    foundryGeneration: Number(game.release?.generation ?? 13),
     exportedAt: new Date().toISOString(),
     settings: Object.fromEntries([...transferableSettings()].map(([key]) =>
       [key, structuredClone(game.settings.get("neuroshima", key))]))
@@ -90,10 +92,13 @@ export function planSettingsImport(input) {
   for (const [key, value] of Object.entries(bundle.settings)) {
     const definition = definitions.get(key);
     if (!definition) { skipped.push(key); continue; }
-    validateValue(key, value, definition);
+    let prepared;
+    try { prepared = normalizeTransferredSetting(key, value); }
+    catch (cause) { throw new SettingsTransferError("InvalidValue", { key }, cause); }
+    validateValue(key, prepared, definition);
     const previous = game.settings.get("neuroshima", key);
-    entries.push({ key, value: structuredClone(value), label: definition.name || key,
-      changed: JSON.stringify(previous) !== JSON.stringify(value) });
+    entries.push({ key, value: prepared, label: definition.name || key,
+      changed: JSON.stringify(previous) !== JSON.stringify(prepared) });
   }
   if (!entries.length) throw new SettingsTransferError("NoSettings");
   return { entries, skipped, systemVersion: bundle.systemVersion ?? "", changes: entries.filter(entry => entry.changed) };

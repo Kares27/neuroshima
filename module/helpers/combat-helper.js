@@ -1,3 +1,4 @@
+import { applyMessageMode } from "./foundry-compat.js";
 import { armorLocationProtects, applyArmorDurabilityWear, reverseArmorDurabilityWear, collectArmorDurabilityWear, ArmorDurabilityBatch } from "./armor-durability.js";
 import { postBeastRequiredTest, applyBeastEffectIds } from "./beast-required-test.js";
 import { isBeastAbility, isBeastSegment, beastActivities } from "../helpers/beast-actions.js";
@@ -332,11 +333,12 @@ export class CombatHelper {
                 const roll = Roll.fromTerms([die]);
                 roll._total = rollData.results.reduce((s, v) => s + v, 0);
                 roll._evaluated = true;
-                await roll.toMessage({
+                const messageData = {
                     flavor: rollData.flavor ?? "",
-                    rollMode: rollData.rollMode ?? "publicroll",
                     speaker: rollData.speaker ?? ChatMessage.getSpeaker()
-                });
+                };
+                applyMessageMode(messageData, rollData.rollMode ?? "publicroll");
+                await roll.toMessage(messageData);
             } catch (e) {
                 console.warn("Neuroshima | pendingChatRoll failed:", e);
             }

@@ -1,6 +1,6 @@
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 import { NEUROSHIMA } from "../config.js";
-import { NeuroshimaDice } from "../helpers/dice.js";
+import { NeuroshimaDice } from "../helpers/rolls.js";
 import { HealingTest } from "../tests.mjs";
 
 /**

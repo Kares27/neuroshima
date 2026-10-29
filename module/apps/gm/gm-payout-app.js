@@ -1,3 +1,4 @@
+import { applicationInstances } from "../../helpers/foundry-compat.js";
 import { DEFAULT_CURRENCY } from "../config/currency-gear-config.js";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
@@ -51,8 +52,8 @@ export class GMPayoutApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     static open() {
         if (!game.user.isGM) return;
-        const existing = Object.values(ui.windows).find(w => w instanceof GMPayoutApp);
-        if (existing) { existing.bringToTop(); return existing; }
+        const existing = applicationInstances().find(w => w instanceof GMPayoutApp);
+        if (existing) { existing.bringToFront(); return existing; }
         return new GMPayoutApp().render(true);
     }
 

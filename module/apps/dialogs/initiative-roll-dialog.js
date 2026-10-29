@@ -1,3 +1,4 @@
+import { rollModeChoices, legacyMessageMode } from "../../helpers/foundry-compat.js";
 import { expandDialogModifiers } from "../../helpers/dialog-script-groups.js";
 import { NEUROSHIMA } from "../../config.js";
 import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
@@ -31,7 +32,7 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
       useWoundPenalty: options.useWoundPenalty ?? true,
       useDiseasePenalty: options.useDiseasePenalty ?? true,
       useEffectPenalty: options.useEffectPenalty ?? true,
-      rollMode: options.rollMode || game.settings.get("core", "rollMode")
+      rollMode: options.rollMode || legacyMessageMode()
     };
 
     this._onRollCallback = options.onRoll;
@@ -179,7 +180,7 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
     context.dieManualBonus     = this.userEntry.dieManualBonus ?? 0;
     context.dieReductionBonus = this.userEntry.dieReductionBonus ?? 0;
     context.rollMode = rollMode;
-    context.rollModes = CONFIG.Dice.rollModes;
+    context.rollModes = rollModeChoices();
     context.dialogModifiers = dialogModifiers;
 
     return context;

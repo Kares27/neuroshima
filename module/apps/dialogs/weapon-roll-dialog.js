@@ -1,8 +1,9 @@
+import { rollModeChoices, legacyMessageMode } from "../../helpers/foundry-compat.js";
 import { expandDialogModifiers } from "../../helpers/dialog-script-groups.js";
 import { maxMeleeTempo, clampMeleeTempo } from "../../combat/melee-maneuvers.js";
 
 import { NEUROSHIMA } from "../../config.js";
-import { NeuroshimaDice } from "../../helpers/dice.js";
+import { NeuroshimaDice } from "../../helpers/rolls.js";
 import { getDistancePenalty } from "../config/distance-config.js";
 import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
 import { NeuroshimaRollDialogBase } from "./roll-dialog-base.js";
@@ -99,7 +100,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       useWeaponModifier: lastRoll.useWeaponModifier ?? true,
       distance: lastRoll.distance || 0,
       distancePenalty: lastRoll.distancePenalty || 0,
-      rollMode: lastRoll.rollMode || game.settings.get("core", "rollMode")
+      rollMode: lastRoll.rollMode || legacyMessageMode()
     };
 
     this.isPoolRoll = options.isPoolRoll || false;
@@ -387,7 +388,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     context.applyArmorPenalty = useArmorPenalty;
     context.applyWoundPenalty = useWoundPenalty;
     context.rollMode        = rollMode;
-    context.rollModes       = CONFIG.Dice.rollModes;
+    context.rollModes       = rollModeChoices();
     context.distance        = distance;
     context.distancePenalty = distancePenalty;
     context.dialogModifiers = dialogModifiers;

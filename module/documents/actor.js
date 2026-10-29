@@ -1,3 +1,4 @@
+import { normalizeEmbeddedEffects, isV14, effectHasExpired } from "../helpers/foundry-compat.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import {
   AttributeTest,
@@ -8,6 +9,7 @@ import {
 
 import {
   getConditions,
+  conditionEffectData,
   checkAutomaticDeath,
   isDefeatedByDamage,
   isOverweightEncumbrance
@@ -17,38 +19,6 @@ import {
   getBaseReputationCost,
   normalizeReputationCost
 } from "../helpers/xp.js";
-
-/**
- * Build ActiveEffect create-data from a condition definition.
- * Centralises all template fields so every code path copies the same data.
- * @param {object} condDef
- * @param {object} [extraFlags]  – additional flags.neuroshima fields (e.g. conditionNumbered)
- * @returns {object}
- */
-function _condDefToEffectData(condDef, extraFlags = {}) {
-  return {
-    name:        condDef.name,
-    img:         condDef.img          ?? "icons/svg/aura.svg",
-    tint:        condDef._tint        ?? null,
-    description: condDef._description ?? "",
-    disabled:    condDef._disabled    ?? false,
-    statuses:    [condDef.key],
-    changes:     foundry.utils.deepClone(condDef.changes   ?? []),
-    duration:    foundry.utils.deepClone(condDef._duration ?? {}),
-    system: {
-      scriptData: foundry.utils.deepClone(condDef.scripts ?? []),
-    },
-    flags: {
-      neuroshima: {
-        transferType: condDef._transferType  ?? "owningDocument",
-        documentType: condDef._documentType  ?? "actor",
-        equipTransfer:condDef._equipTransfer ?? false,
-        manualChangeKeys: condDef._manualChangeKeys ?? false,
-        ...extraFlags
-      }
-    }
-  };
-}
 
 /**
  * Execution context for condition auto-check scripts.
@@ -176,6 +146,19 @@ export class NeuroshimaConditionCheckContext {
  * - `applyEffect` / `applyEffectByUuid` — unified API for applying effects by UUID or raw data.
  */
 export class NeuroshimaActor extends Actor {
+  static migrateData(source, options) {
+    normalizeEmbeddedEffects(source);
+    return super.migrateData(source, options);
+  }
+
+  async onUpdateEffectDurations(effects, event, context) {
+    await super.onUpdateEffectDurations?.(effects, event, context);
+    if (!isV14() || !game.user.isGM || (game.users?.activeGM && game.users.activeGM.id !== game.user.id)) return;
+    if (game.modules?.get("times-up")?.active) return;
+    const ids = effects.filter(effect => effectHasExpired(effect) && this.effects.has(effect.id)).map(effect => effect.id);
+    if (ids.length) await this.deleteEmbeddedDocuments("ActiveEffect", ids, { neuroshimaDurationExpired: true });
+  }
+
   _setupTest(TestClass, data = {}) {
     return new TestClass(data, this);
   }
@@ -802,11 +785,11 @@ export class NeuroshimaActor extends Actor {
         const initial = condDef.allowNegative ? value : Math.max(0, value);
         if (initial === 0) return;
         result = await this.createEmbeddedDocuments("ActiveEffect", [
-          _condDefToEffectData(condDef, {
+          conditionEffectData(condDef, {
             conditionNumbered: true,
             conditionValue: initial,
             ...(automatic ? { autoCondition: true } : {})
-          })
+          }, { applied: true })
         ]);
         this._refreshTokenHUD();
       }
@@ -916,7 +899,7 @@ export class NeuroshimaActor extends Actor {
       }
       if (active === false) return;
       return this.createEmbeddedDocuments("ActiveEffect", [
-        _condDefToEffectData(condDef, automatic ? { autoCondition: true } : {})
+        conditionEffectData(condDef, automatic ? { autoCondition: true } : {}, { applied: true })
       ]);
     }
 

@@ -1,3 +1,4 @@
+import { stampEffectStart, NeuroshimaAreas } from "../helpers/foundry-compat.js";
 /**
  * Manages Aura (anchored to actor token) and Area (static template) effect transfer types.
  *
@@ -154,7 +155,7 @@ export class NeuroshimaAuraManager {
       e.getFlag("neuroshima", "auraRender")
     );
 
-    const allTemplates = canvas.scene.templates.contents;
+    const allTemplates = NeuroshimaAreas.documents();
 
     for (const effect of auraEffects) {
       const radiusUnits = Number(effect.getFlag("neuroshima", "auraRadius") ?? 0);
@@ -179,7 +180,7 @@ export class NeuroshimaAuraManager {
         // Update ALL visual properties — not just position — so that a radius or
         // colour change applied via Advanced Config is immediately reflected on the
         // canvas without the user needing to move the token or toggle the effect.
-        await existing.update({
+        await NeuroshimaAreas.update(existing, {
           x: cx,
           y: cy,
           distance: radiusUnits,
@@ -188,7 +189,7 @@ export class NeuroshimaAuraManager {
           fillAlpha: fillOpacity
         }, { skipAreaCheck: true, ns_skipAuraCheck: true });
       } else {
-        await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [{
+        await NeuroshimaAreas.create( [{
           t: "circle",
           x: cx,
           y: cy,
@@ -223,7 +224,7 @@ export class NeuroshimaAuraManager {
    */
   static async _removeRenderTemplates(sourceActorId, effectId = null) {
     if (!canvas?.scene) return;
-    const toDelete = canvas.scene.templates.contents.filter(t => {
+    const toDelete = NeuroshimaAreas.documents().filter(t => {
       const av = t.getFlag("neuroshima", "auraVisual");
       if (!av) return false;
       if (av.actorId !== sourceActorId) return false;
@@ -518,7 +519,7 @@ export class NeuroshimaAuraManager {
   static async _applyAuraCopy(effect, sourceActor, targetActor, sourceTokenId = null, sourceActorUuid = null) {
     const data = effect.convertToApplied();
     data.origin = sourceActor.uuid;
-    data.duration = foundry.utils.mergeObject(data.duration ?? {}, { startTime: game.time.worldTime });
+    stampEffectStart(data);
     foundry.utils.setProperty(data, "flags.neuroshima.fromAura", {
       sourceEffectId: effect.id,
       sourceActorId:  sourceActor.id,
@@ -647,15 +648,17 @@ export class NeuroshimaAuraManager {
         neuroshima: {
           fromAreaEffect: {
             effectId: effect.id,
+            effectUuid: effect.uuid,
+            actorUuid: actor?.uuid ?? null,
             actorId: actor?.id ?? null
           }
         }
       }
     };
 
-    const docs = await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [templateData]);
+    const docs = await NeuroshimaAreas.create( [templateData]);
     if (docs?.length) {
-      canvas.templates.get(docs[0].id)?.control({ releaseOthers: true });
+      NeuroshimaAreas.layer().get(docs[0].id)?.control({ releaseOthers: true });
       ui.notifications.info("NS | Area template placed. You can drag it to reposition.");
       await this.applyAreaEffect(docs[0]);
     }
@@ -672,32 +675,27 @@ export class NeuroshimaAuraManager {
     if (!fromArea) return;
     const { effectId, actorId } = fromArea;
 
-    const sourceActor = game.actors.get(actorId);
-    const effect = sourceActor?.effects?.get(effectId);
+    const sourceActor = fromArea.actorUuid ? await fromUuid(fromArea.actorUuid) : game.actors.get(actorId);
+    const effect = fromArea.effectUuid ? await fromUuid(fromArea.effectUuid) : sourceActor?.effects?.get(effectId);
     if (!effect) return;
 
     const keep = effect.getFlag("neuroshima", "auraKeep") ?? false;
     const duration = effect.getFlag("neuroshima", "areaDuration") ?? "sustained";
 
-    await canvas.scene.refresh?.();
-    const templateObj = canvas.templates.get(templateDoc.id);
-    if (!templateObj?.shape) return;
-
-    const originX = templateDoc.x;
-    const originY = templateDoc.y;
-    const gs = canvas.grid.size;
+    const scene = templateDoc.parent ?? canvas.scene;
+    const gs = scene.grid?.size ?? canvas.grid.size;
 
     const inRange = new Set();
 
-    for (const tokenDoc of canvas.scene.tokens) {
+    for (const tokenDoc of scene.tokens) {
       const targetActor = tokenDoc.actor;
       if (!targetActor) continue;
 
-      const centerX = tokenDoc.x + (tokenDoc.width * gs) / 2 - originX;
-      const centerY = tokenDoc.y + (tokenDoc.height * gs) / 2 - originY;
-      if (!templateObj.shape.contains(centerX, centerY)) continue;
+      const centerX = tokenDoc.x + (tokenDoc.width * gs) / 2;
+      const centerY = tokenDoc.y + (tokenDoc.height * gs) / 2;
+      if (!NeuroshimaAreas.contains(templateDoc, centerX, centerY, tokenDoc.elevation ?? 0)) continue;
 
-      inRange.add(targetActor.id);
+      inRange.add(targetActor.uuid);
 
       const hasCopy = (targetActor.effects ?? []).some(e =>
         e.getFlag("neuroshima", "fromArea")?.templateId === templateDoc.id
@@ -710,14 +708,14 @@ export class NeuroshimaAuraManager {
       const filtered = await this._runFilterScript(effect, targetActor, sourceActor);
       if (filtered) continue;
 
-      const baseData = this._buildAreaCopyData(effect, templateDoc.id, effectId, actorId);
+      const baseData = this._buildAreaCopyData(effect, templateDoc.id, effectId, actorId, sourceActor);
       await targetActor.createEmbeddedDocuments("ActiveEffect", [baseData]);
     }
 
     if (!keep) {
-      for (const tokenDoc of canvas.scene.tokens) {
+      for (const tokenDoc of scene.tokens) {
         const targetActor = tokenDoc.actor;
-        if (!targetActor || inRange.has(targetActor.id)) continue;
+        if (!targetActor || inRange.has(targetActor.uuid)) continue;
         const copies = (targetActor.effects ?? []).filter(e =>
           e.getFlag("neuroshima", "fromArea")?.templateId === templateDoc.id
         );
@@ -738,9 +736,9 @@ export class NeuroshimaAuraManager {
    * @param {object}  [opts]
    * @param {boolean} [opts.force=false] - Skip the keep flag check and always remove.
    */
-  static async removeAreaCopies(templateId, { force = false } = {}) {
-    if (!canvas?.scene) return;
-    for (const tokenDoc of canvas.scene.tokens) {
+  static async removeAreaCopies(templateId, { force = false, scene = canvas?.scene } = {}) {
+    if (!scene) return;
+    for (const tokenDoc of scene.tokens) {
       const targetActor = tokenDoc.actor;
       if (!targetActor) continue;
       const copies = (targetActor.effects ?? []).filter(e =>
@@ -750,8 +748,8 @@ export class NeuroshimaAuraManager {
 
       if (!force) {
         const fa = copies[0].getFlag("neuroshima", "fromArea");
-        const srcActor = fa?.sourceActorId ? game.actors.get(fa.sourceActorId) : null;
-        const srcEffect = srcActor?.effects?.get(fa?.sourceEffectId);
+        const srcActor = fa?.sourceActorUuid ? await fromUuid(fa.sourceActorUuid) : fa?.sourceActorId ? game.actors.get(fa.sourceActorId) : null;
+        const srcEffect = fa?.sourceEffectUuid ? await fromUuid(fa.sourceEffectUuid) : srcActor?.effects?.get(fa?.sourceEffectId);
         if (srcEffect?.getFlag("neuroshima", "auraKeep")) continue;
       }
 
@@ -762,12 +760,12 @@ export class NeuroshimaAuraManager {
   /**
    * Build the effect data object for an area copy.
    */
-  static _buildAreaCopyData(effect, templateId, sourceEffectId, sourceActorId) {
+  static _buildAreaCopyData(effect, templateId, sourceEffectId, sourceActorId, sourceActor = null) {
     const data = effect.convertToApplied();
-    data.duration = foundry.utils.mergeObject(data.duration ?? {}, { startTime: game.time.worldTime });
-    const sourceActor = game.actors.get(sourceActorId);
+    stampEffectStart(data);
+    sourceActor ??= effect.actor ?? game.actors.get(sourceActorId);
     if (sourceActor) data.origin = sourceActor.uuid;
-    foundry.utils.setProperty(data, "flags.neuroshima.fromArea", { templateId, sourceEffectId, sourceActorId });
+    foundry.utils.setProperty(data, "flags.neuroshima.fromArea", { templateId, sourceEffectId, sourceActorId, sourceActorUuid: sourceActor?.uuid ?? null, sourceEffectUuid: effect.uuid ?? null });
     foundry.utils.setProperty(data, "flags.neuroshima.transferType", "owningDocument");
     return data;
   }

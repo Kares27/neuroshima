@@ -1,3 +1,4 @@
+import { rollModeChoices, legacyMessageMode } from "../../helpers/foundry-compat.js";
 import { expandDialogModifiers } from "../../helpers/dialog-script-groups.js";
 import { NEUROSHIMA } from "../../config.js";
 import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
@@ -38,7 +39,7 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
       useArmorPenalty:   options.useArmorPenalty    ?? true,
       useDiseasePenalty: options.useDiseasePenalty  ?? true,
       useEffectPenalty:  options.useEffectPenalty   ?? true,
-      rollMode:          options.rollMode           ?? game.settings.get("core", "rollMode")
+      rollMode:          options.rollMode           ?? legacyMessageMode()
     };
 
     this.grenadeTargetPoint = options.grenadeTargetPoint ?? null;
@@ -183,7 +184,7 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
     ctx.baseDifficulty  = effectDifficulty;
     ctx.difficulties    = NEUROSHIMA.difficulties;
     ctx.rollMode        = rollMode;
-    ctx.rollModes       = CONFIG.Dice.rollModes;
+    ctx.rollModes       = rollModeChoices();
     ctx.dialogModifiers = dialogModifiers;
     return ctx;
   }
@@ -275,7 +276,7 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
     const modifier        = parseInt(data.modifier         ?? 0) || 0;
     const attributeBonus  = parseInt(data.attributeBonus   ?? 0) || 0;
     const skillBonus      = parseInt(data.skillBonus       ?? 0) || 0;
-    const rollMode        = data.rollMode ?? game.settings.get("core", "rollMode");
+    const rollMode        = data.rollMode ?? legacyMessageMode();
     const useArmor        = !!data.useArmorPenalty;
     const useWound        = !!data.useWoundPenalty;
     const useDisease      = !!data.useDiseasePenalty;

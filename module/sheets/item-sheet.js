@@ -1,3 +1,4 @@
+import { effectDurationLabel, isTemporaryEffect } from "../helpers/foundry-compat.js";
 import { clampArmor } from "../helpers/armor-limit.js";
 import { NEUROSHIMA } from "../config.js";
 import { TraitBrowserApp } from "../apps/trait-browser.js";
@@ -191,6 +192,8 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
   }
 
   _showTraitContextMenu(event, key) {
+    const document = this.element?.ownerDocument ?? globalThis.document;
+    const window = document.defaultView ?? globalThis.window;
     event.preventDefault();
 
     document.querySelectorAll(".ns-item-ctx-menu").forEach(el => el.remove());
@@ -200,7 +203,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       { action: "delete", icon: "fas fa-trash", label: game.i18n.localize("Delete") }
     ];
 
-    const menu = document.createElement("nav");
+    const menu = (this.element?.ownerDocument ?? document).createElement("nav");
     menu.className = "ns-item-ctx-menu context-menu themed theme-dark";
     menu.style.cssText = "position:fixed;z-index:99999;";
     menu.innerHTML = `<menu class="context-items">${
@@ -706,7 +709,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
         disabled: e.disabled,
         suppressed: hasEnableScript && e.isSuppressed,
         scriptControlled: hasEnableScript,
-        durationLabel: e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—"),
+        durationLabel: effectDurationLabel(e),
         fromModId,
         sourceName
       };
@@ -919,7 +922,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     const canUnjam = game.user.isGM || game.user.role >= unjamMinRole;
 
     if (item.type === "container" && game.user.isGM) {
-      const btn = document.createElement("button");
+      const btn = (this.element?.ownerDocument ?? document).createElement("button");
       btn.type = "button";
       btn.className = "header-control container-lock-btn";
       Object.assign(btn.dataset, { action: "toggleState", property: "system.locked" });
@@ -929,7 +932,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     }
 
     if (item.type === "weapon" && "jammed" in item.system && canUnjam) {
-      const btn = document.createElement("button");
+      const btn = (this.element?.ownerDocument ?? document).createElement("button");
       btn.type = "button";
       btn.className = "header-control jam-toggle-btn";
       Object.assign(btn.dataset, { action: "toggleState", property: "system.jammed" });
@@ -939,7 +942,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     }
 
     if (item.isEquippable) {
-      const btn = document.createElement("button");
+      const btn = (this.element?.ownerDocument ?? document).createElement("button");
       btn.type = "button";
       btn.className = "header-control equip-toggle-btn";
       Object.assign(btn.dataset, { action: "toggleState", property: "system.equipped" });
@@ -1361,7 +1364,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
    */
   async _onEditImage(event, target) {
     const item = this.document;
-    return new FilePicker({
+    return new foundry.applications.apps.FilePicker.implementation({
       type: "image",
       current: item.img,
       callback: async path => {

@@ -205,7 +205,7 @@
     <li><a href="#helpers">Helpery i narzędzia</a>
       <ul style="margin-top:0.2rem; padding-left:1.1rem; list-style:disc;">
         <li><a href="#apply-damage-api"><code>game.neuroshima.applyDamage()</code></a></li>
-        <li><a href="#apply-wound-api"><code>NeuroshimaDice.applyDamage()</code></a></li>
+        <li><a href="#apply-wound-api"><code>CombatHelper.applyDamage()</code></a></li>
       </ul>
     </li>
     <li><a href="#item-resources">Zasoby itemu</a></li>
@@ -272,6 +272,31 @@
     <li><strong>Uruchom gdy wyłączony</strong> (<code>runIfDisabled</code>) — checkbox; gdy zaznaczony, skrypt uruchamia się nawet jeśli efekt jest wyłączony. Dla triggera <code>immediate</code> edytor pokazuje również <strong>Delete Script</strong> (<code>deleteAfterRun</code>), które po udanym wykonaniu usuwa tylko ten wpis skryptu, a nie cały Active Effect.</li>
     <li><strong>Kod</strong> — edytor JavaScript z podświetlaniem składni (CodeMirror)</li>
   </ul>
+
+  <h3>Zgodność z Foundry V13 i V14</h3>
+  <p>
+    Skrypty korzystają z tego samego kontekstu <code>args</code>, triggerów i helperów w obu wersjach.
+    Różnice zapisu dokumentów obsługuje wspólna warstwa <code>module/helpers/foundry-compat.js</code>.
+    Do nakładania efektów używaj <code>effect.applyEffect()</code> albo <code>this.applyEffect()</code>:
+    zachowują skrypty, źródło i dane potrzebne do późniejszego usunięcia kopii.
+  </p>
+  <table>
+    <thead><tr><th>Dane</th><th>Foundry V13</th><th>Foundry V14</th></tr></thead>
+    <tbody>
+      <tr><td>Zmiany AE</td><td><code>changes[]</code>, liczbowy <code>mode</code></td><td><code>system.changes[]</code>, tekstowy <code>type</code>, <code>phase</code> i <code>priority</code></td></tr>
+      <tr><td>Czas trwania</td><td><code>duration.seconds</code>, <code>rounds</code> lub <code>turns</code></td><td><code>duration.value</code> i <code>duration.units</code>; początek w <code>start</code></td></tr>
+      <tr><td>Obszary aur i granatów</td><td>MeasuredTemplate</td><td>Region; sprawdzanie zasięgu działa również bez wyrenderowanego obiektu sceny</td></tr>
+    </tbody>
+  </table>
+  <div class="callout info">
+    Dotychczasowe nadpisania, np. <code>{ "duration.seconds": 3600 }</code>, są tłumaczone także w V14.
+    Nowa kopia dostaje aktualny moment rozpoczęcia. V14 oblicza wygaśnięcie przez własny rejestr;
+    system usuwa wygasłe efekty po stronie aktywnego MG, o ile nie przejął tego aktywny moduł Times Up.
+    V13 zachowuje dotychczasową obsługę czasu i rund.
+    Import ustawień JSON przelicza również efekty zapisane w migawkach i definicjach stanów.
+    V13 przyjmuje wspólne jednostki czasu i liczbowe <code>subtract</code>; import fazy <code>final</code>,
+    zdarzenia <code>expiry</code> lub czasu w miesiącach i latach jest odrzucany przed zapisem ustawień.
+  </div>
 
   <h3>Automatyczne usuwanie itemów stworzonych przez skrypt (<code>fromEffect</code>)</h3>
   <p>
@@ -348,7 +373,7 @@
     <div class="ctx-row"><span class="ctx-name">this.getWounds(filter?, actor?)</span><span class="ctx-type">Item[]</span><span class="ctx-desc">Rany z filtrem: <code>{ active, location, damageType, bruise }</code> — identyczny jak <code>actor.getWounds()</code></span></div>
     <div class="ctx-row"><span class="ctx-name">this.getWoundCount(actor?)</span><span class="ctx-type">number</span><span class="ctx-desc">Liczba aktywnych ran na aktorze</span></div>
     <div class="ctx-row"><span class="ctx-name">this.hasWounds(types, actor?)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true jeśli aktor ma co najmniej jedną aktywną ranę pasującą do podanego typu (string) lub tablicy typów. Np. <code>hasWounds("C")</code>, <code>hasWounds(["D","sD","L","sL"])</code></span></div>
-    <div class="ctx-row"><span class="ctx-name">await this.applyWound(damageType, location?, actor?)</span><span class="ctx-type">Promise&lt;Item&gt;</span><span class="ctx-desc">Tworzy ranę bezpośrednio (bypass). Wrapper dla <code>NeuroshimaDice.applyDamage</code> — zwraca <code>Item</code> pierwszej rany. <code>location</code> domyślnie <code>"torso"</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.applyWound(damageType, location?, actor?)</span><span class="ctx-type">Promise&lt;Item&gt;</span><span class="ctx-desc">Tworzy ranę bezpośrednio (bypass). Wrapper dla <code>CombatHelper.applyDamage</code> — zwraca <code>Item</code> pierwszej rany. <code>location</code> domyślnie <code>"torso"</code>.</span></div>
     <div class="ctx-row ctx-separator"><span class="ctx-name">— Helpery kondycji —</span><span class="ctx-type"></span><span class="ctx-desc">operacje na status efektach (krwawienie, trucizna, itp.)</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getConditionValue(key, actor?)</span><span class="ctx-type">number</span><span class="ctx-desc">Aktualny poziom kondycji int (0 = nieaktywna)</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.setConditionValue(key, value, actor?)</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Ustaw poziom kondycji int bezpośrednio. <code>0</code> usuwa efekt kondycji.</span></div>
@@ -2813,7 +2838,7 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
     oznaczony <code>isBeastCombat</code>. Nie jest to rzeczywisty item jednej z akcji: profil ma <code>id</code> i <code>uuid</code> równe <code>null</code>.
     Nie używaj więc <code>args.weapon.id</code> do wskazania wybranej akcji i nie zakładaj, że wszystkie efekty itemów są automatycznie nakładane na przeciwnika.
     Starsze kontenery są rozdzielane przez migrację; zgodność dawnych odwołań czatu jest zachowana.
-    Krok schematu 2.5 utrwala aktualne dane zdolności i przypisania efektów, migruje starsze skrypty AE oraz progi wymaganych testów. Obejmuje dokumenty świata, niezależnych aktorów tokenów oraz kompendia Actor/Item świata i systemu. Nieudany krok nie podnosi wersji schematu; blokady kompendiów są przywracane. Dokumenty importowane później przechodzą normalizację przy imporcie.
+    Krok schematu 2.6 utrwala aktualne dane zdolności i przypisania efektów, migruje starsze skrypty AE, progi wymaganych testów i formaty efektów właściwe dla uruchomionej wersji Foundry. Obejmuje dokumenty świata, niezależnych aktorów tokenów, migawki, konfigurację stanów oraz kompendia Actor/Item świata i systemu. Nieudany krok nie podnosi wersji schematu; blokady kompendiów są przywracane. Dokumenty importowane później przechodzą normalizację przy imporcie.
   </div>
 
   <h4 class="key-group">Cecha (<code>trait</code>)</h4>
@@ -5910,6 +5935,9 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
     Zapis formularza efektu zachowuje identyfikatory <code>statuses</code>, których nie ma na liście
     skonfigurowanych stanów, więc zwykłe Submit nie zmienia efektu tymczasowego w pasywny.
     Tymczasowość nie usuwa efektu automatycznie przy śmierci źródła ani zakończeniu walki.
+    W V14 natywne <code>isTemporary</code> opisuje czas trwania; karty systemu zachowują powyższy
+    podział efektów na podstawie identyfikatorów. Nie nadają bezterminowym efektom sztucznego czasu wygaśnięcia.
+    Nakładane kopie i stany zachowują widoczność ikony przez <code>showIcon</code>.
   </p>
   <p>
     Metoda <code>convertToApplied(overrides?)</code> tworzy kopię efektu gotową do nałożenia na aktora.
@@ -6389,11 +6417,11 @@ console.<span class="fn">log</span>(<span class="var">diceRoll</span>.total);
 
   <h4>Helpery ran i pancerza</h4>
   <div class="callout danger" style="margin-bottom:0.75rem; font-size:0.86em;">
-    W Neuroshima 1.5 <strong>nie modyfikuje się PŻ bezpośrednio</strong>. Obrażenia = nałożenie rany (<code>NeuroshimaDice.applyDamage</code>), leczenie = redukcja lub usunięcie rany (<code>reduceLevel</code>, <code>healAllWounds</code>).
+    W Neuroshima 1.5 <strong>nie modyfikuje się PŻ bezpośrednio</strong>. Obrażenia = nałożenie rany (<code>CombatHelper.applyDamage</code>), leczenie = redukcja lub usunięcie rany (<code>reduceLevel</code>, <code>healAllWounds</code>).
   </div>
   <table>
     <tbody><tr><th>Metoda</th><th>Opis</th></tr>
-    <tr><td><code>await this.applyWound(type, loc?, actor?)</code></td><td>Wrapper (bypass) dla <code>NeuroshimaDice.applyDamage</code>. Nakłada ranę bez odporności na ból; zwraca <code>Item</code>. Do pełnej kontroli użyj <code>NeuroshimaDice.applyDamage</code> bezpośrednio.</td></tr>
+    <tr><td><code>await this.applyWound(type, loc?, actor?)</code></td><td>Wrapper (bypass) dla <code>CombatHelper.applyDamage</code>. Nakłada ranę bez odporności na ból; zwraca <code>Item</code>. Do pełnej kontroli użyj <code>CombatHelper.applyDamage</code> bezpośrednio.</td></tr>
     <tr><td><code>await this.reduceWorstWound(actor?)</code></td><td>Obniż najcięższą aktywną ranę o 1 poziom. Zwraca <code>true</code> jeśli coś zredukowano.</td></tr>
     <tr><td><code>actor.getArmorAt(location)</code></td><td>Zwraca <code>{ totalSP, details, weakPoint }</code> dla danej lokalizacji (pancerz + efekty)</td></tr>
     <tr><td colspan="2" style="background:var(--bg2); color:var(--accent3); font-weight:bold; padding:4px 8px;">Helpery pancerza i broni (item = Item armor / weapon)</td></tr>
@@ -6831,7 +6859,7 @@ console.<span class="fn">log</span>(<span class="var">diceRoll</span>.total);
 
   <div class="callout warning">
     <strong>Tryb bezpośredni</strong> (<code>penaltyOverride</code> ustawiony na liczbę)<br>
-    Deleguje do <code>NeuroshimaDice.applyDamage()</code> — tej samej funkcji co system radiacji i krwawienia.
+    Deleguje do <code>CombatHelper.applyDamage()</code> — tej samej funkcji co system radiacji i krwawienia.
     Pomija pancerz, pomija test odporności na ból, pomija oba hooki skryptów.
     Rana ma dokładnie podaną karę i zawiera komplet pól systemowych (<code>originalPenalty</code>, <code>hadFirstAid</code>, <code>healingAttempts</code> itd.).
     Przydatne do ran środowiskowych (trucizna, toksyny, pola minowe) gdzie system nie powinien ingerować w wartość kary.
@@ -6943,18 +6971,18 @@ console.<span class="fn">log</span>(<span class="var">diceRoll</span>.total);
   </div>
 
   <div class="callout info">
-    <strong>Jeden punkt wejścia — <code>NeuroshimaDice.applyDamage</code>:</strong>
+    <strong>Jeden punkt wejścia — <code>CombatHelper.applyDamage</code>:</strong>
     <ul style="margin: 0.4rem 0 0 1.2rem; padding: 0;">
-      <li><code>game.neuroshima.NeuroshimaDice.applyDamage(actor, opts)</code> — <strong>jedyna funkcja zadawania ran</strong>. Obsługuje wszystkie tryby przez flagi: bypass (domyślny), test bólu (<code>withPainResistance</code>), hooki skryptów (<code>withHooks</code>), dokładna kara (<code>penaltyOverride</code>), batch (<code>wounds[]</code>). Używana wewnętrznie przez cały pipeline walki.</li>
-      <li><code>game.neuroshima.applyDamage(actor, config)</code> — wrapper skryptowy: tryb pełny (z pancerzem) deleguje do <code>CombatHelper.applyDamageToActor</code>; tryb bezpośredni (<code>penaltyOverride</code>) deleguje do <code>NeuroshimaDice.applyDamage</code>.</li>
-      <li><code>game.neuroshima.radiation.applyWound(actor, config)</code> — specjalizowane API radiacyjne; pod spodem wywołuje <code>NeuroshimaDice.applyDamage</code>.</li>
+      <li><code>game.neuroshima.CombatHelper.applyDamage(actor, opts)</code> — <strong>jedyna funkcja zadawania ran</strong>. Obsługuje wszystkie tryby przez flagi: bypass (domyślny), test bólu (<code>withPainResistance</code>), hooki skryptów (<code>withHooks</code>), dokładna kara (<code>penaltyOverride</code>), batch (<code>wounds[]</code>). Używana wewnętrznie przez cały pipeline walki.</li>
+      <li><code>game.neuroshima.applyDamage(actor, config)</code> — wrapper skryptowy: tryb pełny (z pancerzem) deleguje do <code>CombatHelper.applyDamageToActor</code>; tryb bezpośredni (<code>penaltyOverride</code>) deleguje do <code>CombatHelper.applyDamage</code>.</li>
+      <li><code>game.neuroshima.radiation.applyWound(actor, config)</code> — specjalizowane API radiacyjne; pod spodem wywołuje <code>CombatHelper.applyDamage</code>.</li>
     </ul>
   </div>
 
 </section>
 
 <section>
-  <h3 id="apply-wound-api"><code>game.neuroshima.NeuroshimaDice.applyDamage(actor, opts)</code></h3>
+  <h3 id="apply-wound-api"><code>game.neuroshima.CombatHelper.applyDamage(actor, opts)</code></h3>
 
   <p>
     Jedyny punkt wejścia do zadawania ran — dla skryptów efektów, kondycji, środowisk i wewnętrznie
@@ -7019,9 +7047,9 @@ console.<span class="fn">log</span>(<span class="var">diceRoll</span>.total);
       <span class="trigger-badge">Execute Script / Manual</span>
       Przykład 1 — bypass: rana ze źródłem i dokładną karą
     </div>
-    <pre><code><span class="kw">const</span> { NeuroshimaDice } = game.neuroshima;
+    <pre><code><span class="kw">const</span> { CombatHelper } = game.neuroshima;
 
-<span class="kw">await</span> NeuroshimaDice.<span class="fn">applyDamage</span>(actor, {
+<span class="kw">await</span> CombatHelper.<span class="fn">applyDamage</span>(actor, {
   damageType:      <span class="str">"L"</span>,
   location:        <span class="str">"torso"</span>,
   source:          <span class="str">"Toksyna środowiskowa"</span>,
@@ -7042,10 +7070,10 @@ console.<span class="fn">log</span>(<span class="var">diceRoll</span>.total);
       <span class="trigger-badge">Execute Script / Manual</span>
       Przykład 2 — z testem bólu i raportem w chacie
     </div>
-    <pre><code><span class="kw">const</span> { NeuroshimaDice } = game.neuroshima;
+    <pre><code><span class="kw">const</span> { CombatHelper } = game.neuroshima;
 
 <span class="cmt">// Test 3k20 Odporności na Ból. C: zdany → 30%, niezdany → 60%. Raport trafia do chatu.</span>
-<span class="kw">const</span> { wounds, results } = <span class="kw">await</span> NeuroshimaDice.<span class="fn">applyDamage</span>(actor, {
+<span class="kw">const</span> { wounds, results } = <span class="kw">await</span> CombatHelper.<span class="fn">applyDamage</span>(actor, {
   damageType:         <span class="str">"C"</span>,
   location:           <span class="str">"head"</span>,
   source:             <span class="str">"Eksplozja miny"</span>,
@@ -7058,11 +7086,11 @@ console.<span class="fn">log</span>(<span class="var">diceRoll</span>.total);
       <span class="trigger-badge">Execute Script / Manual</span>
       Przykład 3 — forcePassed + withHooks (tarcza może zablokować)
     </div>
-    <pre><code><span class="kw">const</span> { NeuroshimaDice } = game.neuroshima;
+    <pre><code><span class="kw">const</span> { CombatHelper } = game.neuroshima;
 
 <span class="cmt">// Hook "applyDamage" odpalony — skrypt tarczy może ustawić wound.forceSkip = true.</span>
 <span class="cmt">// Jeśli rana przejdzie, test bólu jest auto-zdany (min kara).</span>
-<span class="kw">await</span> NeuroshimaDice.<span class="fn">applyDamage</span>(actor, {
+<span class="kw">await</span> CombatHelper.<span class="fn">applyDamage</span>(actor, {
   damageType:         <span class="str">"L"</span>,
   withHooks:          <span class="kw">true</span>,
   withPainResistance: <span class="kw">true</span>,
@@ -7236,7 +7264,7 @@ console.<span class="fn">log</span>(<span class="var">diceRoll</span>.total);
       <tr><td>Ręczna zmiana <code>Roll.dice</code> lub samych danych HTML</td><td><code>replaceTestDie</code> / <code>copyTestDie</code></td><td>Historia zmiany i późniejszy przerzut pozostają spójne.</td></tr>
       <tr><td>Ręczne uruchamianie pipeline dialogu</td><td>W skrypcie <code>dialog</code> modyfikuj <code>args.fields</code></td><td>Dialog sam przelicza aktywne skrypty przez bieżący reaktywny pipeline.</td></tr>
       <tr><td><code>maxDifficulty</code></td><td><code>maximumDifficulty</code></td><td>Limit clampuje każdą trudniejszą wartość do ustawionego maksimum.</td></tr>
-      <tr><td><code>NeuroshimaDice.applyWound()</code></td><td><code>NeuroshimaDice.applyDamage()</code> lub <code>game.neuroshima.applyDamage()</code></td><td>Aktualne API używa jednej funkcji obrażeń z opcjami trybu.</td></tr>
+      <tr><td><code>NeuroshimaDice.applyWound()</code></td><td><code>CombatHelper.applyDamage()</code> lub <code>game.neuroshima.applyDamage()</code></td><td>Aktualne API używa jednej funkcji obrażeń z opcjami trybu.</td></tr>
     </tbody>
   </table>
 

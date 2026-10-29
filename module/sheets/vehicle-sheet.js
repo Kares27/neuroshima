@@ -1,33 +1,16 @@
+import { collectArmorEffectSources, buildBreakdownTooltip } from "../helpers/tooltip-renderer.js";
+import { effectDurationLabel, isTemporaryEffect, effectChanges } from "../helpers/foundry-compat.js";
 import { clampArmor } from "../helpers/armor-limit.js";
 import { NEUROSHIMA } from "../config.js";
 import { createLoadedMagazineFromWeapon } from "../helpers/ammunition.js";
 import { getConditions } from "../apps/config/condition-config.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
-import { buildBreakdownTooltip } from "../helpers/tooltip-renderer.js";
 import {
   crewMemberData,
   crewMemberMatches,
   resolveCrewActor
 } from "../helpers/vehicle-crew.js";
 
-function _collectVehicleArmorBonusByEffect(actor) {
-  const byLoc = {};
-  if (!actor) return byLoc;
-  const seen = new Set();
-  for (const effect of actor.appliedEffects ?? []) {
-    const key = effect.origin ?? effect.uuid;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    for (const change of effect.changes ?? []) {
-      const m = change.key.match(/^system\.armorBonus\.(\w+)$/);
-      if (!m) continue;
-      const loc = m[1];
-      if (!byLoc[loc]) byLoc[loc] = [];
-      byLoc[loc].push({ name: effect.name, value: Number(change.value) || 0 });
-    }
-  }
-  return byLoc;
-}
 
 /**
  * Actor sheet for Vehicle actors (cars, bikes, trucks, etc.).
@@ -42,7 +25,7 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
     form: { submitOnChange: true, submitOnClose: true, submitOnUnfocus: true },
     actions: {
       editImage: async function(event, target) {
-        const fp = new FilePicker({ type: "image", callback: src => this.document.update({ img: src }) });
+        const fp = new foundry.applications.apps.FilePicker.implementation({ type: "image", callback: src => this.document.update({ img: src }) });
         fp.browse(this.document.img);
       },
       rollWeapon: async function(event, target) {
@@ -379,7 +362,7 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
 
     const vBonusAll    = Number(system.armorBonus?.all) || 0;
     const vPlateLabel  = game.i18n.localize("NEUROSHIMA.Vehicle.Armor");
-    const vEffBonus    = _collectVehicleArmorBonusByEffect(actor);
+    const vEffBonus    = collectArmorEffectSources(actor);
     context.vehicleArmorLocations = vehicleArmorKeys.map(key => {
       const plate    = Number(system.armor?.[key]?.reduction) || 0;
       const bonusLoc = Number(system.armorBonus?.[key]) || 0;
@@ -475,7 +458,7 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
     };
 
     context.notes = {
-      enriched: await foundry.applications.ux.TextEditor.implementation.enrichHTML(system.notes || "", {
+      enriched: await foundry.applications.ux.TextEditor.enrichHTML(system.notes || "", {
         secrets: actor.isOwner,
         async: true,
         relativeTo: actor
@@ -484,8 +467,8 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
 
     const condDefs = getConditions();
     const condTypeMap = Object.fromEntries(condDefs.map(c => [c.key, c.type ?? "boolean"]));
-    const effectDurationLabel = (e) => e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—");
-    const isTemporary = (e) => e.isTemporary;
+
+    const isTemporary = isTemporaryEffect;
     const isConditionEffect = (e) => e.isCondition;
 
     const temporary     = [];
@@ -619,6 +602,8 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
   }
 
   _showItemContextMenu(event, itemId) {
+    const document = this.element?.ownerDocument ?? globalThis.document;
+    const window = document.defaultView ?? globalThis.window;
     event.preventDefault();
     const item = this.document.items.get(itemId);
     if (!item) return;
@@ -637,7 +622,7 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
       menuItems.splice(-1, 0, { action: 'generateMagazine', icon: 'fas fa-boxes-stacked', label: game.i18n.localize('NEUROSHIMA.ContextMenu.GenerateLoadedMagazine') });
     }
 
-    const menu = document.createElement('nav');
+    const menu = (this.element?.ownerDocument ?? document).createElement('nav');
     menu.className = 'ns-item-ctx-menu context-menu themed theme-dark';
     menu.style.cssText = 'position:fixed;z-index:99999;';
     menu.innerHTML = `<menu class="context-items">${

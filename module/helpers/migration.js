@@ -1,3 +1,4 @@
+import { normalizeTransferredSetting, effectChanges, effectChangesUpdate, normalizeEffectPenaltyChanges } from "./foundry-compat.js";
 import { migrateCurrentDocument, migrateRequiredTestMessage } from "./document-migrations.js";
 import { getConditions } from "../apps/config/condition-config.js";
 /**
@@ -38,10 +39,9 @@ import { getConditions } from "../apps/config/condition-config.js";
  */
 
 import { collectTraitSnapshots } from "./trait-snapshot.js";
-import { normalizeEffectPenaltyChanges } from "./effect-penalty.js";
 import { GEAR_TYPE_KEYS, normalizeGearType } from "./gear-types.js";
 
-const CURRENT_SCHEMA_VERSION = "2.5";
+const CURRENT_SCHEMA_VERSION = "2.6";
 
 export function registerMigrationHook() {
     const migrateImported = async item => {
@@ -111,7 +111,7 @@ export function registerMigrationHook() {
             // refactor was being developed cannot retain weapon-type grenades.
             if (!_versionGte(stored, "2.0")) await _migrate_1_9_to_2_0();
             if (!_versionGte(stored, "2.1")) await _migrate_2_0_to_2_1();
-            if (!_versionGte(stored, "2.5")) await migrateCurrentWorld();
+            if (!_versionGte(stored, "2.6")) await migrateCurrentWorld();
 
             await game.settings.set("neuroshima", "schemaVersion", CURRENT_SCHEMA_VERSION);
             ui.notifications.info(game.i18n.localize("NEUROSHIMA.Migration.Done"));
@@ -441,11 +441,11 @@ async function _migrate_1_5_to_1_6() {
 async function _migrateEffectPenaltyChanges(document) {
     for (const effect of document?.effects ?? []) {
         const normalized = normalizeEffectPenaltyChanges(
-            effect._source?.changes ?? effect.changes ?? []
+            effectChanges(effect._source ?? effect)
         );
         if (!normalized.changed) continue;
         await effect.update(
-            { changes: normalized.changes },
+            effectChangesUpdate(normalized.changes),
             { neuroshimaEffectPenaltyMigration: true }
         );
     }
@@ -874,6 +874,11 @@ export async function normalizeAll() {
 }
 
 async function _normalizeLiveCurrentDocuments() {
+    const conditions = game.settings.get("neuroshima", "conditions");
+    if (conditions) {
+        const normalized = normalizeTransferredSetting("conditions", conditions);
+        if (JSON.stringify(conditions) !== JSON.stringify(normalized)) await game.settings.set("neuroshima", "conditions", normalized);
+    }
     for (const actor of collectMigrationActors()) {
         await migrateCurrentDocument(actor);
     }
@@ -922,8 +927,8 @@ export async function migrateCurrentWorld({ includeCompendia = true } = {}) {
     const list = Array.isArray(raw) ? raw : raw?.list;
     if (Array.isArray(list) && list.length) {
         const canonical = new Map(getConditions().map(condition => [condition.key, condition]));
-        const migrated = list.map(condition => ({ ...condition,
-            conditionCheckCode: canonical.get(condition.key)?.conditionCheckCode ?? condition.conditionCheckCode }));
+        const migrated = normalizeTransferredSetting("conditions", list.map(condition => ({ ...condition,
+            conditionCheckCode: canonical.get(condition.key)?.conditionCheckCode ?? condition.conditionCheckCode })));
         if (JSON.stringify(migrated) !== JSON.stringify(list)) {
             await game.settings.set("neuroshima", "conditions", Array.isArray(raw) ? migrated : { ...raw, list: migrated });
         }

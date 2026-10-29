@@ -88,7 +88,7 @@ export class RestDialog {
             label: game.i18n.localize("NEUROSHIMA.Rest.Button"),
             default: true,
             callback: (event, button, dialog) => {
-              const fd = new FormDataExtended(dialog.element.querySelector("form"));
+              const fd = new foundry.applications.ux.FormDataExtended(dialog.element.querySelector("form"));
               const data = fd.object;
               return {
                 days: Math.round(parseInt(data.days) || 1),

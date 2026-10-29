@@ -1,3 +1,4 @@
+import { effectDurationLabel, isTemporaryEffect } from "../helpers/foundry-compat.js";
 import { getConditions } from "../apps/config/condition-config.js";
 import { createLoadedMagazineFromWeapon } from "../helpers/ammunition.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
@@ -12,7 +13,7 @@ export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {
     form: { submitOnChange: true, submitOnClose: true, submitOnUnfocus: true },
     actions: {
       editImage: async function(event, target) {
-        const fp = new FilePicker({ type: "image", callback: src => this.document.update({ img: src }) });
+        const fp = new foundry.applications.apps.FilePicker.implementation({ type: "image", callback: src => this.document.update({ img: src }) });
         fp.browse(this.document.img);
       },
       editResident: async function(event, target) {
@@ -242,15 +243,14 @@ export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {
     context.homeBaseEncumbrance = { value: encValue, max: encMax, pct: encPct, color: encColor };
 
     context.notes = {
-      enriched: await foundry.applications.ux.TextEditor.implementation.enrichHTML(system.notes || "", {
+      enriched: await foundry.applications.ux.TextEditor.enrichHTML(system.notes || "", {
         secrets: actor.isOwner,
         async: true,
         relativeTo: actor
       })
     };
 
-    const effectDurationLabel = (e) => e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—");
-    const isTemporary = (e) => e.isTemporary;
+    const isTemporary = isTemporaryEffect;
     const isConditionEffect = (e) => e.isCondition;
 
     const temporary = [];
@@ -377,6 +377,8 @@ export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {
   }
 
   _showItemContextMenu(event, itemId) {
+    const document = this.element?.ownerDocument ?? globalThis.document;
+    const window = document.defaultView ?? globalThis.window;
     event.preventDefault();
     const item = this.document.items.get(itemId);
     if (!item) return;
@@ -400,7 +402,7 @@ export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {
     }
     menuItems.push({ action: 'delete', icon: 'fas fa-trash', label: game.i18n.localize('Delete') });
 
-    const menu = document.createElement('nav');
+    const menu = (this.element?.ownerDocument ?? document).createElement('nav');
     menu.className = 'ns-item-ctx-menu context-menu themed theme-dark';
     menu.style.cssText = 'position:fixed;z-index:99999;';
     menu.innerHTML = `<menu class="context-items">${
