@@ -2,7 +2,7 @@ import {
   collectTraitSnapshots,
   createTraitSnapshot,
   itemDataFromTraitSnapshot
-} from "../helpers/trait-snapshot.js";
+} from "../helpers/item-helper.js";
 
 /**
  * Open the regular Neuroshima ItemSheet for a trait copy stored inside an

@@ -1,5 +1,5 @@
 import { NEUROSHIMA } from "../config.js";
-import { getEffectiveRadiationResistance } from "../helpers/mod-helpers.js";
+import { getEffectiveRadiationResistance } from "../helpers/item-helper.js";
 import { CombatHelper } from "../helpers/combat-helper.js";
 
 /**

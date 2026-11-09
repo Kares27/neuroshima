@@ -3,7 +3,7 @@ import {
     GEAR_TYPE_KEYS,
     isGearTypeEquippable,
     reconcileGearTypes
-} from "../../helpers/gear-types.js";
+} from "../../helpers/item-helper.js";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
@@ -327,6 +327,6 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
 
         this._pendingState = null;
         ui.notifications.info(game.i18n.localize("NEUROSHIMA.Settings.CurrencyGearConfig.Saved"));
-        SettingsConfig.reloadConfirm();
+        foundry.applications.settings.SettingsConfig.reloadConfirm();
     }
 }

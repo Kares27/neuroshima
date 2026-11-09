@@ -3,7 +3,7 @@ import { test } from "node:test";
 import {
   isV14, nativeEffectChanges, effectChanges, normalizeEffectData, normalizeEmbeddedEffects,
   normalizeTransferredSetting, applyDerivedEffectValue, stampEffectStart, effectHasExpired,
-  effectDurationLabel, effectDurationUnit, effectDurationValue, effectStartTime, effectStartTimeUpdate, applicationInstances, legacyMessageMode,
+  effectDurationLabel, effectDurationUnit, effectDurationValue, effectStartTime, effectStartTimeUpdate, applicationInstances, configureEffectExpiry, legacyMessageMode,
   applyMessageMode, rollModeChoices, mergeWithDeletions, NeuroshimaAreas
 } from "../module/helpers/foundry-compat.js";
 
@@ -115,10 +115,16 @@ test("V13 import accepts common native durations and numeric subtraction but ref
   assert.deepEqual(data.duration, { seconds: 7200, startTime: 0 });
   for (const unsupported of [
     { system: { changes: [{ type: "add", phase: "final", value: 2 }] } },
-    { duration: { units: "rounds", value: 2, expiry: "turnStart" } },
+    { duration: { units: "rounds", value: 2, expiry: "turnEnd" } },
     { duration: { units: "months", value: 1 } }
   ]) assert.throws(() => normalizeEffectData(unsupported), /Foundry V13/);
   assert.deepEqual(nativeEffectChanges([{ key: "x", mode: 2, value: "1" }]), [{ key: "x", mode: 2, value: "1" }]);
+});
+
+test("V13 removes a native null clock when importing an indefinite V14 effect", () => {
+  setup(13);
+  const data = normalizeEffectData({ duration: { units: "seconds", value: null, expiry: null, expired: false }, start: null });
+  assert.deepEqual(data, { duration: {} });
 });
 
 test("nested effect snapshots and condition settings migrate without rewriting activity changes", () => {
@@ -170,6 +176,25 @@ test("V14 delegates initial changes to a detached target and leaves final change
   assert.deepEqual(calls.map(call => call.phase), ["initial"]);
   assert.equal(calls[0].value, 4);
   assert.equal(calls[0].options.modifyTarget, false);
+  assert.equal(actor.system.movement, 99);
+});
+
+test("V14 derived values preserve the system model's schema and prepared data without mutating the actor", () => {
+  setup(14);
+  class SystemModel {
+    constructor(movement) { this.movement = movement; }
+    toObject() { return { movement: this.movement }; }
+    clone(data, options) { assert.ok(options.parent); return new SystemModel(data.movement); }
+    getFieldForProperty() { return "movement-number-field"; }
+  }
+  CONFIG.ActiveEffect = { documentClass: { applyChange(target, change) {
+    assert.ok(target.system instanceof SystemModel);
+    assert.equal(target.system.getFieldForProperty("movement"), "movement-number-field");
+    return { "system.movement": target.system.movement * Number(change.value) };
+  } } };
+  const actor = { system: new SystemModel(99), appliedEffects: [{ active: true,
+    system: { changes: [{ key: "system.movement", type: "multiply", value: 2 }] } }] };
+  assert.equal(applyDerivedEffectValue(actor, "system.movement", 4), 8);
   assert.equal(actor.system.movement, 99);
 });
 
@@ -321,26 +346,20 @@ test("real effect schema inherits V14 changes alongside script fields and condit
   assert.equal(applied.showIcon, 2);
   assert.equal(condition._start.time, 1);
   const { NeuroshimaActor } = await import("../module/documents/actor.js");
-  const actor = Object.create(NeuroshimaActor.prototype);
-  const expired = { id: "expired", duration: { expired: true } };
-  actor.effects = new Map([[expired.id, expired]]);
-  const removed = [];
-  actor.deleteEmbeddedDocuments = async (type, ids) => { removed.push(ids); ids.forEach(id => actor.effects.delete(id)); };
-  game.user.isGM = true;
-  game.users = { activeGM: { id: game.user.id } };
-  await actor.onUpdateEffectDurations([expired, { id: "live", duration: { expired: false } }]);
-  await actor.onUpdateEffectDurations([expired]);
-  assert.deepEqual(removed, [["expired"]]);
-  game.user.isGM = false;
-  actor.effects.set(expired.id, expired);
-  await actor.onUpdateEffectDurations([expired]);
-  assert.equal(removed.length, 1);
+  assert.equal(Object.hasOwn(NeuroshimaActor.prototype, "onUpdateEffectDurations"), false);
+  CONFIG.ActiveEffect = { expiryAction: "update" };
+  configureEffectExpiry();
+  assert.equal(CONFIG.ActiveEffect.expiryAction, "delete");
+  game.modules = new Map([["times-up", { active: true }]]);
+  CONFIG.ActiveEffect.expiryAction = "update";
+  configureEffectExpiry();
+  assert.equal(CONFIG.ActiveEffect.expiryAction, "update");
 });
 
 test("grenade placement targets in V13, cleans previews on cancellation and uses native placement in V14", async () => {
   setup(13);
   const { NeuroshimaChatMessage } = await import("../module/documents/chat-message.js");
-  const { NeuroshimaSocket } = await import("../module/helpers/socket-helper.js");
+  const { NeuroshimaSocket } = await import("../module/helpers/foundry-compat.js");
   const original = NeuroshimaSocket.gmExecute;
   const requests = [];
   NeuroshimaSocket.gmExecute = async (...args) => requests.push(args);
@@ -391,7 +410,7 @@ test("grenade placement targets in V13, cleans previews on cancellation and uses
 test("versioned effect migration persists the native format and source metadata is retained", async () => {
   setup(14);
   foundry.utils.deepClone = structuredClone;
-  const { migrateCurrentEffect } = await import("../module/helpers/document-migrations.js");
+  const { migrateCurrentEffect } = await import("../module/helpers/migration.js");
   const source = { origin: "Scene.scene.Token.beast.Actor.base", statuses: ["grab"],
     changes: [{ key: "system.movement", mode: 2, value: "-1" }], duration: { rounds: 2, startRound: 3 },
     system: { scriptData: [] }, flags: { neuroshima: { sourceEffect: "Effect.template" } } };

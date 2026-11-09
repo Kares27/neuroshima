@@ -1,6 +1,6 @@
 import { normalizeEmbeddedEffects, isV14, effectHasExpired } from "../helpers/foundry-compat.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
-import { isGearTypeEquippable, normalizeGearType } from "../helpers/gear-types.js";
+import { isGearTypeEquippable, normalizeGearType } from "../helpers/item-helper.js";
 
 /**
  * Extended Item document class for Neuroshima 1.5.
@@ -595,7 +595,7 @@ export class NeuroshimaItem extends Item {
           buildInstalledMap,
           computeWeaponEffective,
           buildWeaponWriteback
-        } = await import("../helpers/mod-helpers.js");
+        } = await import("../helpers/item-helper.js");
         const modsRaw = foundry.utils.deepClone(parentWeapon.system.mods ?? {});
         const base = modsRaw.__baseStats;
         if (base) {

@@ -1,6 +1,6 @@
 import { NeuroshimaScript } from "../apps/neuroshima-script-engine.js";
 import { NeuroshimaTestBase } from "../tests.mjs";
-import { buildRichTextTooltip } from "../helpers/tooltip-renderer.js";
+import { buildRichTextTooltip } from "../helpers/rolls.js";
 
 /**
  * Runtime for post-roll actions declared by Active Effects.

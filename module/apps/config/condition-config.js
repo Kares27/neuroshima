@@ -661,6 +661,6 @@ export class ConditionConfig extends HandlebarsApplicationMixin(ApplicationV2) {
     await game.settings.set("neuroshima", "conditions", conditions);
     ui.notifications.info(game.i18n.localize("NEUROSHIMA.Settings.ConditionConfig.Saved"));
     game.neuroshima?.log("Conditions saved:", conditions);
-    SettingsConfig.reloadConfirm({ world: true });
+    foundry.applications.settings.SettingsConfig.reloadConfirm({ world: true });
   }
 }

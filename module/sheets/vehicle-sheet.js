@@ -1,15 +1,9 @@
-import { collectArmorEffectSources, buildBreakdownTooltip } from "../helpers/tooltip-renderer.js";
+import { collectArmorEffectSources, buildBreakdownTooltip } from "../helpers/rolls.js";
 import { effectDurationLabel, isTemporaryEffect, effectChanges } from "../helpers/foundry-compat.js";
-import { clampArmor } from "../helpers/armor-limit.js";
+import { clampArmor, createLoadedMagazineFromWeapon, crewMemberData, crewMemberMatches, resolveCrewActor } from "../helpers/item-helper.js";
 import { NEUROSHIMA } from "../config.js";
-import { createLoadedMagazineFromWeapon } from "../helpers/ammunition.js";
 import { getConditions } from "../apps/config/condition-config.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
-import {
-  crewMemberData,
-  crewMemberMatches,
-  resolveCrewActor
-} from "../helpers/vehicle-crew.js";
 
 
 /**

@@ -36,6 +36,23 @@ test("runtime imports resolve after helper consolidation", () => {
   assert.deepEqual(errors, []);
 });
 
+test("named runtime imports exist in their target modules after consolidation", () => {
+  const errors = [];
+  const exported = new Map(modules.map(name => [name, new Set([
+    ...sources.get(name).matchAll(/^export\s+(?:async\s+)?(?:class|function|const|let)\s+(\w+)/gm)
+  ].map(match => match[1]))]));
+  for (const name of modules) {
+    for (const match of sources.get(name).matchAll(/^import\s*\{([^}]+)\}\s*from\s*["'](\.[^"']+)["']/gm)) {
+      const target = path.posix.normalize(path.posix.join(path.posix.dirname(name), match[2]));
+      for (const entry of match[1].split(",")) {
+        const symbol = entry.trim().split(/\s+as\s+/)[0];
+        if (symbol && !exported.get(target)?.has(symbol)) errors.push(`${name} -> ${target}: ${symbol}`);
+      }
+    }
+  }
+  assert.deepEqual(errors, []);
+});
+
 test("system template paths in modules and HBS refer to existing files with exact casing", () => {
   const known = new Set(templates.map(name => prefix + name));
   const errors = [];

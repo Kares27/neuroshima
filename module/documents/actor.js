@@ -1,4 +1,4 @@
-import { normalizeEmbeddedEffects, isV14, effectHasExpired } from "../helpers/foundry-compat.js";
+import { normalizeEmbeddedEffects } from "../helpers/foundry-compat.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import {
   AttributeTest,
@@ -149,14 +149,6 @@ export class NeuroshimaActor extends Actor {
   static migrateData(source, options) {
     normalizeEmbeddedEffects(source);
     return super.migrateData(source, options);
-  }
-
-  async onUpdateEffectDurations(effects, event, context) {
-    await super.onUpdateEffectDurations?.(effects, event, context);
-    if (!isV14() || !game.user.isGM || (game.users?.activeGM && game.users.activeGM.id !== game.user.id)) return;
-    if (game.modules?.get("times-up")?.active) return;
-    const ids = effects.filter(effect => effectHasExpired(effect) && this.effects.has(effect.id)).map(effect => effect.id);
-    if (ids.length) await this.deleteEmbeddedDocuments("ActiveEffect", ids, { neuroshimaDurationExpired: true });
   }
 
   _setupTest(TestClass, data = {}) {

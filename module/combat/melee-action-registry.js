@@ -1,4 +1,4 @@
-import { beastActivities, isBeastAction } from "../helpers/beast-actions.js";
+import { beastActivities, isBeastAction } from "../helpers/combat-helper.js";
 /**
  * @file melee-action-registry.js
  * @description Data layer for melee action normalization in Neuroshima 1.5.

@@ -1,6 +1,5 @@
 import { effectDurationLabel, isTemporaryEffect } from "../helpers/foundry-compat.js";
-import { normalizeRequiredEffects } from "../helpers/required-test.js";
-import { beastActivities, isBeastAbility, isBeastSegment } from "../helpers/beast-actions.js";
+import { normalizeRequiredEffects, beastActivities, isBeastAbility, isBeastSegment } from "../helpers/combat-helper.js";
 import { NEUROSHIMA } from "../config.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;

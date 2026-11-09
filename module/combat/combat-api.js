@@ -1,6 +1,5 @@
-import { ArmorDurabilityBatchGroup } from "../helpers/armor-durability.js";
-import { postBeastRequiredTest, applyBeastEffectIds } from "../helpers/beast-required-test.js";
-import { beastActivities, resolveBeastActionItem, isBeastAction } from "../helpers/beast-actions.js";
+import { ArmorDurabilityBatchGroup } from "../helpers/item-helper.js";
+import { postBeastRequiredTest, applyBeastEffectIds, beastActivities, resolveBeastActionItem, isBeastAction } from "../helpers/combat-helper.js";
 import { resolveDefensiveManeuver } from "./melee-maneuvers.js";
 /**
  * @file combat-api.js

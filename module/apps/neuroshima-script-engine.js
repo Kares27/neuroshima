@@ -1,8 +1,7 @@
-import { isV14, effectDurationUnit, effectDurationValue, effectStartTime, effectStartTimeUpdate, legacyMessageMode, applyMessageMode } from "../helpers/foundry-compat.js";
-import { requiredTestSuccesses } from "../helpers/required-test.js";
-import { specialityChoices } from "../helpers/speciality.js";
-import { dialogScriptSignature, dialogScriptGroupId, groupDialogModifiers } from "../helpers/dialog-script-groups.js";
-import { NeuroshimaChoiceRouter } from "../helpers/choice-router.js";
+import { isV14, effectTime, effectDurationUnit, effectDurationValue, effectStartTime, effectStartTimeUpdate, legacyMessageMode, applyMessageMode } from "../helpers/foundry-compat.js";
+import { requiredTestSuccesses } from "../helpers/combat-helper.js";
+import { specialityChoices } from "../helpers/xp.js";
+import { dialogScriptSignature, dialogScriptGroupId, groupDialogModifiers, NeuroshimaChoiceRouter } from "../helpers/rolls.js";
 import { NEUROSHIMA } from "../config.js";
 import {
   EFFECT_TRIGGERS,
@@ -175,6 +174,10 @@ export class ResourceHandle {
 export function normalizeLegacySuccessScriptData(value) {
   if (typeof value === "string") {
     return value
+      // Keep legacy time reads in scripts portable; never rewrite quoted text or comments.
+      .replace(/\/\*[\s\S]*?\*\/|\/\/[^\n\r]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\b((?:this\.)?[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\.duration(?:\?\.|\.)(seconds|startTime|remaining)\b(?!\s*(?:=(?!=)|[+*/%\-]=|\+\+|--))|\bCONST\.ACTIVE_EFFECT_MODES\.(CUSTOM|MULTIPLY|ADD|DOWNGRADE|UPGRADE|OVERRIDE)\b/g,
+        (match, receiver, field, mode) => receiver ? `this.effectTime(${receiver}).${field}`
+          : mode ? String(["CUSTOM", "MULTIPLY", "ADD", "DOWNGRADE", "UPGRADE", "OVERRIDE"].indexOf(mode)) : match)
       .replace(/\bargs\.result\.addSuccesses\s*\(/g, "args.result.addSuccessPoints(")
       .replace(/\bargs\.test\.addSuccesses\s*\(/g, "args.test.addSuccessPoints(")
       .replace(/\bargs\.test\.result\.successCount\b/g, "args.test.result.successPoints")
@@ -2067,7 +2070,7 @@ export class NeuroshimaScript {
    * @returns {Promise<void>}
    */
   async requestTest(actorOrOptions, options = {}) {
-    const { NeuroshimaSocket } = await import("../helpers/socket-helper.js");
+    const { NeuroshimaSocket } = await import("../helpers/foundry-compat.js");
 
     let opts;
     let targetActorId = null;
@@ -3222,6 +3225,11 @@ export class NeuroshimaScript {
    */
   getWorldTime() {
     return game.time.worldTime;
+  }
+
+  /** Time-based durations in seconds; unconvertible combat durations retain their counter. */
+  effectTime(effect = this.effect) {
+    return effectTime(effect);
   }
 
   /**
@@ -4758,6 +4766,13 @@ export class NeuroshimaScriptRunner {
     const getDiseaseStateId   = (aOrItem = actor) => { const s = getDiseaseStateName(aOrItem); const i = _diseaseStates.indexOf(s); return i < 0 ? 0 : i; };
 
     const collectFromEffect = (effect, skipSuppressedCheck = false, sourceItem = null) => {
+      if (isV14() && effect.duration?.expired === true && trigger !== "deleteEffect") return;
+      // The native registry queues deletion before the world-time hook runs.
+      // Do not run a second expiry script while that deletion is in flight.
+      if (trigger === "worldTimeUpdate" && isV14() && !game.modules?.get("times-up")?.active
+        && effect.isExpiryTrackable && effect.duration.remaining <= 0
+        && !CONFIG.ActiveEffect.documentClass.registry.has(effect)
+        && effect.isExpiryEvent("updateWorldTime")) return;
       if (!skipSuppressedCheck && effect.isSuppressed) return;
       const isDisabled = effect.disabled;
       const enableScript = effect.getFlag?.("neuroshima", "enableScript");
@@ -5684,8 +5699,10 @@ export class NeuroshimaScriptRunner {
       actors.push(actor);
     };
 
-    if (globalThis.canvas?.scene) {
-      for (const tokenDoc of canvas.scene.tokens) collect(tokenDoc.actor);
+    if (globalThis.canvas?.scene) for (const tokenDoc of canvas.scene.tokens) collect(tokenDoc.actor);
+    for (const scene of (game.scenes ?? [])) {
+      if (scene === globalThis.canvas?.scene) continue;
+      for (const tokenDoc of scene.tokens) if (tokenDoc.actorLink === false) collect(tokenDoc.actor);
     }
     for (const actor of (game.actors ?? [])) collect(actor);
     return actors;
@@ -5705,12 +5722,13 @@ export class NeuroshimaScriptRunner {
    * @returns {Promise<number>} Number of expired effects removed.
    */
   static async expireWorldTimeEffects(actors = this._worldTimeActors()) {
-    if (isV14()) return 0; // Actor.onUpdateEffectDurations owns V14 expiry.
+    if (isV14() || game.modules?.get("times-up")?.active) return 0;
 
     let expired = 0;
     for (const actor of actors) {
       const ids = (actor.effects ?? [])
         .filter(effect => {
+          if (effect.getFlag?.("neuroshima", "durationExpiry") === "turnStart" && actor.inCombat) return false;
           const seconds = Number(effect.duration?.seconds);
           const remaining = Number(effect.duration?.remaining);
           return Number.isFinite(seconds) && seconds > 0
@@ -5745,30 +5763,30 @@ export class NeuroshimaScriptRunner {
     if (!Number.isFinite(delta) || delta === 0) return 0;
 
     let adjusted = 0;
-    const worldTime = Number(game.time?.worldTime ?? 0);
     for (const actor of this._worldTimeActors()) {
-      const updates = (actor.effects ?? [])
-        .filter(effect => {
-          const unit = effectDurationUnit(effect);
-          const value = Number(effectDurationValue(effect));
-          return unit && !["rounds", "turns"].includes(unit) && Number.isFinite(value) && value > 0;
-        })
-        .map(effect => {
-          const rawStart = effectStartTime(effect);
-          const startTime = rawStart === null || rawStart === undefined || !Number.isFinite(Number(rawStart))
-            ? worldTime
-            : Number(rawStart);
-          return {
-            _id: effect.id,
-            ...effectStartTimeUpdate(startTime - delta)
-          };
-        });
+      // Item templates without a clock must not start merely because time moved.
+      for (const parent of [actor, ...(actor.items ?? [])]) {
+        const updates = (parent.effects ?? [])
+          .filter(effect => {
+            const unit = effectDurationUnit(effect);
+            const value = Number(effectDurationValue(effect));
+            const start = effectStartTime(effect);
+            return start != null && Number.isFinite(Number(start)) && !effect.inCompendium
+              && unit && !["rounds", "turns"].includes(unit) && Number.isFinite(value) && value > 0;
+          })
+          .map(effect => {
+            return {
+              _id: effect.id,
+              ...effectStartTimeUpdate(Number(effectStartTime(effect)) - delta)
+            };
+          });
 
-      if (!updates.length) continue;
-      await actor.updateEmbeddedDocuments("ActiveEffect", updates, {
-        neuroshimaSimpleCalendarAdvance: true
-      });
-      adjusted += updates.length;
+        if (!updates.length) continue;
+        await parent.updateEmbeddedDocuments("ActiveEffect", updates, {
+          neuroshimaSimpleCalendarAdvance: true
+        });
+        adjusted += updates.length;
+      }
     }
 
     game.neuroshima?.log("[Simple Calendar] advanced isolated effect durations", {
@@ -6006,6 +6024,8 @@ export class NeuroshimaScriptRunner {
 
       const toDelete = actor.effects
         .filter(e => {
+          if (e.getFlag?.("neuroshima", "durationExpiry") === "turnStart"
+            && combat.combatant?.actor?.uuid !== actor.uuid) return false;
           // Primary: use Foundry's computed remaining (works when duration.combat is set)
           const d = e.duration;
           if (d && d.type !== "none" && d.remaining !== null && d.remaining !== undefined && d.remaining <= 0) {

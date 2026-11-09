@@ -72,7 +72,7 @@ export class EncumbranceConfig extends HandlebarsApplicationMixin(ApplicationV2)
             ui.notifications.info(game.i18n.localize("NEUROSHIMA.Settings.EncumbranceConfig.Saved"));
 
             // Prompt for reload since these settings require it
-            SettingsConfig.reloadConfirm({ world: true });
+            foundry.applications.settings.SettingsConfig.reloadConfirm({ world: true });
         } catch (err) {
             game.neuroshima.error("Error saving encumbrance settings:", err);
             ui.notifications.error(game.i18n.localize("NEUROSHIMA.Notifications.SettingsSaveError"));

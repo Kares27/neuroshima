@@ -1,5 +1,5 @@
 import { rollModeChoices, legacyMessageMode } from "../../helpers/foundry-compat.js";
-import { expandDialogModifiers } from "../../helpers/dialog-script-groups.js";
+import { expandDialogModifiers } from "../../helpers/rolls.js";
 import { NEUROSHIMA } from "../../config.js";
 import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
 import { GrenadeTest, TestRules } from "../../tests.mjs";

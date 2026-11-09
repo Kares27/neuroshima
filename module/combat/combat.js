@@ -1,7 +1,7 @@
 import { isElement, applicationInstances, legacyMessageMode } from "../helpers/foundry-compat.js";
-import { ArmorDurabilityBatch } from "../helpers/armor-durability.js";
+import { ArmorDurabilityBatch } from "../helpers/item-helper.js";
 import { exchangeDamageHits, summarizeExchangeDamage } from "./melee-damage-summary.js";
-import { beastActivities, isBeastAbility, isBeastAction } from "../helpers/beast-actions.js";
+import { beastActivities, isBeastAbility, isBeastAction } from "../helpers/combat-helper.js";
 /**
  * @file combat.js
  * @description Merged Neuroshima 1.5 melee combat module.
@@ -1212,7 +1212,7 @@ export class MeleeEncounter {
   static async end(id) {
     const encounter = MeleeStore.getEncounter(id);
     if (encounter) {
-      const { NeuroshimaSocket } = await import("../helpers/socket-helper.js");
+      const { NeuroshimaSocket } = await import("../helpers/foundry-compat.js");
       game.neuroshima?.log("[MeleeEncounter.end] clearing maneuver conditions for all participants", { id });
       for (const p of Object.values(encounter.participants)) {
         game.neuroshima?.log("[MeleeEncounter.end] clearing", { name: p.name, uuid: p.tokenUuid ?? p.actorUuid });
@@ -1292,7 +1292,7 @@ export class MeleeOpposedChat {
       onRoll: async (rawResult, attackerTest) => {
         delete attacker._neuroshimaAttackInitiated;
         if (!rawResult || !attackerTest) return;
-        const { NeuroshimaSocket: _NSAtk } = await import("../helpers/socket-helper.js");
+        const { NeuroshimaSocket: _NSAtk } = await import("../helpers/foundry-compat.js");
         const attackerUuid = attacker.token?.uuid ?? attacker.uuid;
         const condKey = MeleeTurnService._MANEUVER_TO_CONDITION[rawResult.maneuver] || null;
         const hasCharge = (rawResult.chargeLevel ?? 0) > 0;
@@ -1416,7 +1416,7 @@ export class MeleeOpposedChat {
       opposedLink,
       onRoll: async (rawResult, defenderTest) => {
         if (!rawResult || !defenderTest) return;
-        const { NeuroshimaSocket: _NSDef } = await import("../helpers/socket-helper.js");
+        const { NeuroshimaSocket: _NSDef } = await import("../helpers/foundry-compat.js");
         const defenderUuid = defenderActor.token?.uuid ?? defenderActor.uuid;
         const condKey = MeleeTurnService._MANEUVER_TO_CONDITION[rawResult.maneuver] || null;
         const tempoLevel = rawResult.tempoLevel || 0;
@@ -2333,7 +2333,7 @@ export class MeleeOpposedChat {
     // For direct (non-duel-card) resolution, clear maneuver conditions here — this is
     // the final step of the exchange, equivalent to state.status === "done" on a duel card.
     {
-      const { NeuroshimaSocket: _NSClear } = await import("../helpers/socket-helper.js");
+      const { NeuroshimaSocket: _NSClear } = await import("../helpers/foundry-compat.js");
       await _NSClear.gmExecute("clearActorManeuverConditions", data.attackerTokenUuid || data.attackerUuid);
       await _NSClear.gmExecute("clearActorManeuverConditions", data.defenderTokenUuid || data.defenderUuid);
       game.neuroshima?.log("[melee-opposed-chat.resolveOpposed] maneuver conditions cleared (direct path)", {
@@ -4684,7 +4684,7 @@ export class MeleeOpposedChat {
       isPoolRoll:  true,
       onRoll: async (defenseResult) => {
         if (!defenseResult) return;
-        const { NeuroshimaSocket: _NSHailDef } = await import("../helpers/socket-helper.js");
+        const { NeuroshimaSocket: _NSHailDef } = await import("../helpers/foundry-compat.js");
         const defenderUuid = defenderActor.token?.uuid ?? defenderActor.uuid;
         const condKey = MeleeTurnService._MANEUVER_TO_CONDITION[defenseResult.maneuver] || null;
         const tempoLevel = defenseResult.tempoLevel || 0;
@@ -4704,7 +4704,7 @@ export class MeleeOpposedChat {
   static async _resolveHailCard(message, hailCard, defenderActor, defenseResult) {
     await MeleeOpposedChat._setChatFlag(message, "hailCard", { ...hailCard, status: "resolved" });
 
-    const { NeuroshimaSocket: _NSHailResolve } = await import("../helpers/socket-helper.js");
+    const { NeuroshimaSocket: _NSHailResolve } = await import("../helpers/foundry-compat.js");
     const defenderUuid = defenderActor.token?.uuid ?? defenderActor.uuid;
     game.neuroshima?.log("[melee-opposed-chat._resolveHailCard] clearing maneuver conditions", { attacker: hailCard.attackerUuid, defender: defenderUuid });
     await _NSHailResolve.gmExecute("clearActorManeuverConditions", hailCard.attackerUuid);
@@ -6744,7 +6744,7 @@ export class MeleeTurnService {
 
     // Always route through GM socket so conditions are applied regardless of which
     // client triggered setPool (player may not own the opponent actor).
-    const { NeuroshimaSocket } = await import("../helpers/socket-helper.js");
+    const { NeuroshimaSocket } = await import("../helpers/foundry-compat.js");
 
     const _syncOne = async (participant) => {
       const condKey = this._MANEUVER_TO_CONDITION[participant.maneuver] || null;
@@ -7640,7 +7640,7 @@ export class MeleeTurnService {
     // MANEUVER — Trash collector (prevTurn / GM rewind):
     // Same cleanup as startNewTurn — maneuver conditions are reset so the rewound
     // turn starts with a clean slate.
-    const { NeuroshimaSocket: _NS2 } = await import("../helpers/socket-helper.js");
+    const { NeuroshimaSocket: _NS2 } = await import("../helpers/foundry-compat.js");
     game.neuroshima?.log("[MeleeTurnService.prevTurn] clearing maneuver conditions for all active participants");
     for (const p of Object.values(updated.participants)) {
       if (!p.isActive) continue;

@@ -1,29 +1,16 @@
 import { isElement, effectDurationLabel, isTemporaryEffect, effectChanges, effectChangeType, additiveEffectValue, EFFECT_PENALTY_KEY, LEGACY_EFFECT_PENALTY_KEY } from "../helpers/foundry-compat.js";
-import { collectArmorEffectSources, buildBreakdownTooltip, buildRichTextTooltip, collectAttributeEffectSources, collectDocumentEffectSources, collectSkillEffectSources, renderTooltipSections } from "../helpers/tooltip-renderer.js";
-import { remainingArmorDurability, armorLocationProtects, modifyArmorDurability } from "../helpers/armor-durability.js";
-import { armorLocationProtections } from "../helpers/armor-location.js";
-import { advanceSpeciality } from "../helpers/speciality.js";
-import { clampArmor } from "../helpers/armor-limit.js";
-import { beastActivities } from "../helpers/beast-actions.js";
+import { collectArmorEffectSources, buildBreakdownTooltip, buildRichTextTooltip, collectAttributeEffectSources, collectDocumentEffectSources, collectSkillEffectSources, renderTooltipSections, NeuroshimaDice, NeuroshimaChoiceRouter } from "../helpers/rolls.js";
+import { remainingArmorDurability, armorLocationProtects, modifyArmorDurability, armorLocationProtections, clampArmor, createLoadedMagazineFromWeapon, getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveRadiationResistance, getRadiationResistanceSources, installMod, buildItemPreviewTooltip, collectTraitSnapshots, itemDataFromTraitSnapshot, traitSnapshotPreview } from "../helpers/item-helper.js";
+import { advanceSpeciality } from "../helpers/xp.js";
+import { beastActivities, CombatHelper } from "../helpers/combat-helper.js";
 import { NEUROSHIMA } from "../config.js";
-import { createLoadedMagazineFromWeapon } from "../helpers/ammunition.js";
-import { NeuroshimaDice } from "../helpers/rolls.js";
 import { NeuroshimaItem } from "../documents/item.js";
 import { NeuroshimaWeaponRollDialog } from "../apps/dialogs/weapon-roll-dialog.js";
 import { AmmunitionLoadingDialog, RestDialog } from "../apps/dialogs/minor-dialogs.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
-import { CombatHelper } from "../helpers/combat-helper.js";
 import { getConditions } from "../apps/config/condition-config.js";
 import { NeuroshimaGrenadeRollDialog } from "../apps/dialogs/grenade-roll-dialog.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
-import { getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveRadiationResistance, getRadiationResistanceSources, installMod } from "../helpers/mod-helpers.js";
-import { buildItemPreviewTooltip } from "../helpers/item-tooltip.js";
-import { NeuroshimaChoiceRouter } from "../helpers/choice-router.js";
-import {
-  collectTraitSnapshots,
-  itemDataFromTraitSnapshot,
-  traitSnapshotPreview
-} from "../helpers/trait-snapshot.js";
 import { createUnarmedWeapon, getUnarmedDamageProfile } from "../combat/unarmed.js";
 import {
   AmmunitionResolver,
@@ -1678,7 +1665,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     event._nsHandled = true;
     game.neuroshima.log("_onDrop triggered");
     try {
-      const rawData = foundry.applications.ux.TextEditor.implementation.getDragEventData(event);
+      const rawData = foundry.applications.ux.TextEditor.getDragEventData(event);
       if (rawData?.fromChatCard) {
         event._fromChatCard = true;
         event._itemCardMessageId = rawData.messageId ?? null;
@@ -3727,7 +3714,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         });
         app.render(true);
       } else {
-        const { NeuroshimaSocket } = await import("../helpers/socket-helper.js");
+        const { NeuroshimaSocket } = await import("../helpers/foundry-compat.js");
         NeuroshimaSocket.executeAsUser("healingRequestPrompt", medicUserId, {
           patientUuid: resolvedPatientActor.uuid,
           patientName: resolvedPatientActor.name,

@@ -1,5 +1,5 @@
-﻿import { mergeWithDeletions } from "../helpers/foundry-compat.js";
-import { isBeastAbility } from "../helpers/beast-actions.js";
+import { mergeWithDeletions } from "../helpers/foundry-compat.js";
+import { isBeastAbility } from "../helpers/combat-helper.js";
 
 /** Keep actor-owned ability copies separate from same-ID world items during directory sorting. */
 export class NeuroshimaItemDirectory extends foundry.applications.sidebar.tabs.ItemDirectory {

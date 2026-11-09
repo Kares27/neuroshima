@@ -1,8 +1,4 @@
-import { expandDialogModifiers } from "../../helpers/dialog-script-groups.js";
-import {
-  buildBreakdownTooltip,
-  collectDocumentEffectSources
-} from "../../helpers/tooltip-renderer.js";
+import { expandDialogModifiers, buildBreakdownTooltip, collectDocumentEffectSources } from "../../helpers/rolls.js";
 import {
   EFFECT_PENALTY_KEY,
   LEGACY_EFFECT_PENALTY_KEY

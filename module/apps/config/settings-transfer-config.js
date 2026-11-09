@@ -1,4 +1,4 @@
-import { exportSystemSettings, planSettingsImport, importSystemSettings, SettingsTransferError } from "../../helpers/settings-transfer.js";
+import { exportSystemSettings, planSettingsImport, importSystemSettings, SettingsTransferError } from "../../helpers/foundry-compat.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -78,7 +78,7 @@ export class SettingsTransferConfig extends HandlebarsApplicationMixin(Applicati
       this._bundle = null;
       ui.notifications.info(game.i18n.format("NEUROSHIMA.Settings.Transfer.Imported", { count: plan.changes.length }));
       await this.close();
-      if (plan.changes.length) SettingsConfig.reloadConfirm({ world: true });
+      if (plan.changes.length) foundry.applications.settings.SettingsConfig.reloadConfirm({ world: true });
     } catch (error) {
       this._reportError(error);
       this._busy = false;

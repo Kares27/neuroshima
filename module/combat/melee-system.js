@@ -1,5 +1,6 @@
-import { beastActivities, createBeastCombatWeapon, isBeastAbility } from "../helpers/beast-actions.js";
+import { beastActivities, createBeastCombatWeapon, isBeastAbility } from "../helpers/combat-helper.js";
 import { clampMeleeTempo, maxMeleeTempo } from "./melee-maneuvers.js";
+import { stampEffectStart } from "../helpers/foundry-compat.js";
 /**
  * Canonical Neuroshima melee engine.
  *
@@ -1408,7 +1409,8 @@ export class MeleeEffectService {
     if (existing.length) {
       if (mode === "ignore") return existing[0];
       if (mode === "refresh") {
-        await existing[0].update({ duration: clone(duration || template.duration || {}) });
+        const update = stampEffectStart({ duration: clone(duration ?? template.toObject().duration ?? {}) });
+        await existing[0].update(update);
         return existing[0];
       }
       if (mode === "replace") await target.deleteEmbeddedDocuments("ActiveEffect", existing.map(effect => effect.id));
@@ -1419,6 +1421,7 @@ export class MeleeEffectService {
     source.transfer = false;
     source.origin = template.uuid;
     if (duration) source.duration = clone(duration);
+    stampEffectStart(source);
     source.flags ??= {};
     source.flags.neuroshima = {
       ...(source.flags.neuroshima ?? {}),

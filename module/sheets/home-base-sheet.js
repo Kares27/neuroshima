@@ -1,6 +1,6 @@
 import { effectDurationLabel, isTemporaryEffect } from "../helpers/foundry-compat.js";
 import { getConditions } from "../apps/config/condition-config.js";
-import { createLoadedMagazineFromWeapon } from "../helpers/ammunition.js";
+import { createLoadedMagazineFromWeapon } from "../helpers/item-helper.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
 
 export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {

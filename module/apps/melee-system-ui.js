@@ -1,5 +1,5 @@
 import { isElement, applicationInstances, legacyMessageMode } from "../helpers/foundry-compat.js";
-import { createBeastCombatWeapon, isBeastAbility } from "../helpers/beast-actions.js";
+import { createBeastCombatWeapon, isBeastAbility } from "../helpers/combat-helper.js";
 import {
   MeleeActionCatalog,
   MeleeMigration,

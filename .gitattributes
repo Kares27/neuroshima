@@ -1,0 +1,2 @@
+# LevelDB metadata must retain its original line endings.
+packs/** -text

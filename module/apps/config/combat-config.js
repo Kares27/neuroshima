@@ -289,7 +289,7 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
                 || prevMeleeType !== data.meleeCombatType;
 
             if (needsReload) {
-                SettingsConfig.reloadConfirm({ world: true });
+                foundry.applications.settings.SettingsConfig.reloadConfirm({ world: true });
             }
         } catch (err) {
             console.error("Neuroshima | Error saving combat settings:", err);

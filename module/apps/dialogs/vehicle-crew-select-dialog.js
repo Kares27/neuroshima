@@ -1,4 +1,4 @@
-import { crewMemberData, resolveCrewActor } from "../../helpers/vehicle-crew.js";
+import { crewMemberData, resolveCrewActor } from "../../helpers/item-helper.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ApplicationV2 } = foundry.applications.api;

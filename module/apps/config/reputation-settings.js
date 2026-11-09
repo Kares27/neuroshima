@@ -118,7 +118,7 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
 
         this._pendingState = null;
         ui.notifications.info(game.i18n.localize("NEUROSHIMA.Settings.ReputationConfig.Saved"));
-        SettingsConfig.reloadConfirm();
+        foundry.applications.settings.SettingsConfig.reloadConfirm();
     }
 
     _extractRelationTable(data) {

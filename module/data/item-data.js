@@ -1,4 +1,4 @@
-import { armorLocationProtects } from "../helpers/armor-durability.js";
+import { armorLocationProtects } from "../helpers/item-helper.js";
 /**
  * Base schema for all Neuroshima items.
  */

@@ -1,9 +1,8 @@
 import { NeuroshimaAreas } from "../helpers/foundry-compat.js";
-import { modifyArmorResistance, armorProtectionColor } from "../helpers/armor-location.js";
+import { modifyArmorResistance, armorProtectionColor, getEquippableGearTypes, isGearTypeEquippable, normalizeGearType } from "../helpers/item-helper.js";
 import { NeuroshimaSkillRollDialog } from "../apps/dialogs/skill-roll-dialog.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { NEUROSHIMA } from "../config.js";
-import { getEquippableGearTypes, isGearTypeEquippable, normalizeGearType } from "../helpers/gear-types.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;

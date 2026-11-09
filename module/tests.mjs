@@ -1,5 +1,5 @@
 import { NEUROSHIMA } from "./config.js";
-import { buildDiceTooltipSection, renderTooltipSections } from "./helpers/tooltip-renderer.js";
+import { buildDiceTooltipSection, renderTooltipSections } from "./helpers/rolls.js";
 import { AmmunitionResolver } from "./combat/ammunition-resolver.js";
 
 export const DIFFICULTY_ORDER = Object.freeze([

@@ -1,13 +1,11 @@
 import { isElement, NeuroshimaAreas, isV14, legacyMessageMode, applyMessageMode } from "../helpers/foundry-compat.js";
-import { collectArmorDurabilityWear } from "../helpers/armor-durability.js";
-import { requiredTestSuccesses, requiredTestPassed } from "../helpers/required-test.js";
-import { clampArmor } from "../helpers/armor-limit.js";
-import { beastActivities, isBeastAction } from "../helpers/beast-actions.js";
+import { collectArmorDurabilityWear, clampArmor } from "../helpers/item-helper.js";
+import { requiredTestSuccesses, requiredTestPassed, beastActivities, isBeastAction } from "../helpers/combat-helper.js";
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { EffectActionRuntime } from "../effects/effect-action-runtime.js";
 import { HealingTest } from "../tests.mjs";
-import { buildDiceTooltipSection, renderTooltipSections } from "../helpers/tooltip-renderer.js";
+import { buildDiceTooltipSection, renderTooltipSections } from "../helpers/rolls.js";
 import { isMeleeSessionMarker } from "../combat/melee-system.js";
 
 /**
@@ -907,7 +905,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
    */
   static async _deleteExistingGrenadeTemplates(messageId) {
     if (!canvas?.scene || !messageId) return;
-    const { NeuroshimaSocket } = await import("../helpers/socket-helper.js");
+    const { NeuroshimaSocket } = await import("../helpers/foundry-compat.js");
     await NeuroshimaSocket.gmExecute("deleteGrenadeTemplates", messageId, canvas.scene?.uuid);
   }
 
@@ -958,7 +956,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       }
     };
 
-    const { NeuroshimaSocket } = await import("../helpers/socket-helper.js");
+    const { NeuroshimaSocket } = await import("../helpers/foundry-compat.js");
     await NeuroshimaSocket.gmExecute("createGrenadeTemplate", templateData, canvas.scene?.uuid);
   }
 
@@ -1014,7 +1012,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
           token.document.y + token.document.height * gs / 2, token.document.elevation ?? 0)).map(token => token.id));
       });
       if (!placed) { this._clearTokenTargets(); return; }
-      const { NeuroshimaSocket } = await import("../helpers/socket-helper.js");
+      const { NeuroshimaSocket } = await import("../helpers/foundry-compat.js");
       await NeuroshimaSocket.gmExecute("createGrenadeTemplate", placed.toObject(), placed.parent?.uuid ?? canvas.scene?.uuid);
       return;
     }
@@ -1091,7 +1089,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
         const snapped = snapPos(raw.x, raw.y);
         cleanup(false);
         const data = { ...templateData, ...snapped };
-        const { NeuroshimaSocket } = await import("../helpers/socket-helper.js");
+        const { NeuroshimaSocket } = await import("../helpers/foundry-compat.js");
         await NeuroshimaSocket.gmExecute("createGrenadeTemplate", data, canvas.scene?.uuid);
       } catch (e) {
         console.error("Neuroshima | Template placement failed:", e);
@@ -1584,7 +1582,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
     }
 
     if (!patient.isOwner && !game.user.isGM) {
-        const { NeuroshimaSocket } = await import("../helpers/socket-helper.js");
+        const { NeuroshimaSocket } = await import("../helpers/foundry-compat.js");
         return NeuroshimaSocket.gmExecute("applyHealingBatch", {
             patientUuid: patient.uuid,
             results: results,

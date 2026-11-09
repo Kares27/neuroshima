@@ -96,7 +96,7 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
       const parentItem = parentId ? actor.items.get(parentId) : null;
       if (!parentItem) return;
       const entry = parentItem.system.mods?.[item.id];
-      const { syncMountedModEffects } = await import("../helpers/mod-helpers.js");
+      const { syncMountedModEffects } = await import("../helpers/item-helper.js");
       await syncMountedModEffects(parentItem, item.id, entry, entry?.attached === true);
       return;
     }
@@ -612,20 +612,15 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
       foundry.utils.setProperty(data, "flags.neuroshima.documentType",  "actor");
     }
 
+    // A template's saved clock is never the start of a newly applied copy.
+    // Normalize overrides separately so native source fields cannot mask them.
+    if (isV14() || effectTimeDuration(data)) stampEffectStart(data);
+    else normalizeEffectData(data);
     if (Object.keys(overrides).length) {
-      foundry.utils.mergeObject(data, foundry.utils.expandObject(overrides));
-    }
-
-    // A seconds-based applied effect must be anchored to the canonical Foundry
-    // world clock. Item effects are templates and commonly keep startTime null;
-    // without stamping the applied copy, duration.remaining cannot be tracked
-    // reliably and calendar integrations have no stable point to advance.
-    if (!isV14()) {
-      const durationSeconds = Number(foundry.utils.getProperty(data, "duration.seconds"));
-      const durationStart = foundry.utils.getProperty(data, "duration.startTime");
-      if (Number.isFinite(durationSeconds) && durationSeconds > 0
-        && (durationStart === null || durationStart === undefined || !Number.isFinite(Number(durationStart)))) {
-        foundry.utils.setProperty(data, "duration.startTime", Number(game.time?.worldTime ?? 0));
+      const update = normalizeEffectData(foundry.utils.expandObject(overrides));
+      foundry.utils.mergeObject(data, update);
+      if (!isV14() && effectTimeDuration(data) && !Object.hasOwn(update.duration ?? {}, "startTime")) {
+        stampEffectStart(data);
       }
     }
 
@@ -638,7 +633,6 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
 
     normalizeEffectData(data);
     if (isV14()) {
-      stampEffectStart(data);
       if (data.showIcon !== 0 && !Object.hasOwn(overrides, "showIcon")) data.showIcon = 2;
     }
     return data;
@@ -731,6 +725,10 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
     const doc = fromUuidSync(uuid);
     return doc ?? null;
   }
+}
+
+function effectTimeDuration(data) {
+  return ["seconds", "rounds", "turns"].some(unit => Number(data.duration?.[unit]) > 0);
 }
 
 const NativeActiveEffectData = foundry.data?.ActiveEffectTypeDataModel;

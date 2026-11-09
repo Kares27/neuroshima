@@ -3673,10 +3673,11 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
       Tworzenie efektu z <code>duration</code> — czas w sekundach, rundach i turach
     </div>
     <p style="margin:6px 0 8px; font-size:0.88em; color:#888;">
-      Foundry obsługuje trzy jednostki czasu trwania efektu.
+      Wspólny zapis skryptów V13/V14 obsługuje sekundy, rundy i tury.
       Można je ustawiać zarówno w <code>convertToApplied()</code> jak i bezpośrednio
       przy tworzeniu efektu przez <code>actor.createEmbeddedDocuments()</code>.
-      Poniżej pełne zestawienie — wybierz jednostkę odpowiednią do kontekstu (czas rzeczywisty vs walka).
+      System konwertuje ten zapis na natywne pola używane przez daną wersję Foundry.
+      Sekundy oznaczają czas świata gry, nie czas zegara komputera.
     </p>
     <table style="font-size:0.86em; margin-bottom:0.75rem;">
       <thead><tr><th>Pole</th><th>Jednostka</th><th>Kiedy używać</th></tr></thead>
@@ -3686,6 +3687,9 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
         <tr><td><code>duration.turns</code></td><td>tury (walka)</td><td>Efekty trwające N tur (inicjatywa jednego aktora)</td></tr>
         <tr><td><code>duration.startRound</code></td><td>runda startu</td><td>Ustaw gdy chcesz by Foundry liczył od bieżącej rundy</td></tr>
         <tr><td><code>duration.startTurn</code></td><td>tura startu</td><td>Ustaw gdy chcesz by Foundry liczył od bieżącej tury</td></tr>
+        <tr><td><code>duration.value</code>, <code>duration.units</code></td><td>natywny zapis V14</td><td>Wartość i jednostka, np. <code>2</code> i <code>"hours"</code></td></tr>
+        <tr><td><code>start.time</code></td><td>natywny początek w V14</td><td>Odpowiednik <code>duration.startTime</code> z V13; <code>start: null</code> oznacza brak uruchomionego zegara</td></tr>
+        <tr><td><code>duration.expiry</code></td><td>zdarzenie wygaśnięcia w V14</td><td>Jeżeli ustawione, muszą zostać spełnione oba warunki: upływ czasu i zdarzenie, np. <code>"turnStart"</code></td></tr>
       </tbody>
     </table>
 
@@ -3717,9 +3721,9 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
 });
 <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffect</span>({ effectData: [<span class="var">effectData</span>] });</code></pre>
 
-    <p style="margin:10px 0 2px; font-size:0.82em; color:var(--accent2);">▶ Bez limitu czasu (stały efekt)</p>
-    <pre><code><span class="cmt">// Efekt bezterminowy — nie podajesz żadnych pól duration
-// Trwa aż do ręcznego usunięcia lub skryptu deleteEffect</span>
+    <p style="margin:10px 0 2px; font-size:0.82em; color:var(--accent2);">▶ Zachowanie czasu trwania szablonu</p>
+    <pre><code><span class="cmt">// Brak nadpisania duration — kopia zachowuje czas trwania szablonu.
+// Szablon bez limitu i bez zdarzenia wygaśnięcia pozostaje do usunięcia.</span>
 <span class="kw">const</span> <span class="var">effectData</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">0</span>].<span class="fn">convertToApplied</span>();
 <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffect</span>({ effectData: [<span class="var">effectData</span>] });</code></pre>
 
@@ -3736,8 +3740,12 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
 }]);</code></pre>
 
     <div class="callout info" style="margin-top:0.75rem;">
-      <strong>Tip:</strong> Foundry automatycznie odlicza czas i usuwa efekt po upływie duration
-      <em>gdy aktywna jest walka</em>. Poza walką licznik sekund zależy od czasu świata (<code>game.time.worldTime</code>).
+      <strong>Czas i wygasanie:</strong> <code>convertToApplied()</code> uruchamia zegar nowej kopii od bieżącego czasu,
+      zachowując czas trwania szablonu. Jawne nadpisanie początku ma pierwszeństwo.
+      W V14 system ustawia natywne <code>CONFIG.ActiveEffect.expiryAction = "delete"</code>;
+      wygaszanie wykonuje rejestr Foundry. W V13 obsługuje je system. Aktywny moduł Times Up przejmuje zarządzanie wygasaniem.
+      Nie dodawaj drugiego skryptu usuwającego efekt tylko dlatego, że jego licznik dobiegł końca.
+      Poza walką licznik sekund zależy od czasu świata (<code>game.time.worldTime</code>).
       Dla efektów jednorazowych (jak Propital) lepiej usunąć efekt ręcznie w skrypcie <code>immediate</code>
       przez <code>await this.deleteEffect()</code>.
     </div>
@@ -5812,8 +5820,9 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
 
   <h3>Czas świata — wyzwalacz <code>worldTimeUpdate</code></h3>
   <p>
-    Wyzwalacz <code>worldTimeUpdate</code> jest wywoływany dla każdego aktora z tokenem na scenie gdy czas świata się zmienia
-    (<code>game.time.advance()</code> lub SimpleCalendar). Działa poza i w trakcie walki.
+    Wyzwalacz <code>worldTimeUpdate</code> obsługuje aktorów świata i niezależnych aktorów tokenów ze wszystkich scen,
+    bez powtarzania tego samego dokumentu. Wykonuje go aktywny MG po zmianie czasu świata
+    (<code>game.time.advance()</code> lub połączony kalendarz). Działa poza i w trakcie walki.
     Dostępne argumenty:
   </p>
   <table>
@@ -5843,6 +5852,7 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
     <thead><tr><th>Helper</th><th>Zwraca</th><th>Opis</th></tr></thead>
     <tbody>
       <tr><td><code>this.getWorldTime()</code></td><td>number</td><td>Aktualny <code>game.time.worldTime</code> w sekundach.</td></tr>
+      <tr><td><code>this.effectTime(effect?)</code></td><td>object</td><td><code>{ startTime, seconds, remaining, elapsed }</code> — czas trwania, pozostały i przebyty czas dla efektów czasowych w sekundach; domyślnie dla <code>this.effect</code>. Początek może wynosić <code>0</code> lub <code>null</code>; czas bezterminowy daje <code>Infinity</code>. Dla rund/tur bez przelicznika czasu <code>seconds</code> wynosi <code>null</code>, a <code>remaining</code> zachowuje licznik walki Foundry. <code>elapsed</code> i <code>remaining</code> mogą być ujemne.</td></tr>
       <tr><td><code>this.worldTimeElapsed(flagKey, target?)</code></td><td>number</td><td>Sekundy minęłe od flagi <code>flagKey</code>. Gdy flaga nie istnieje — <code>Infinity</code> (pierwsze wywołanie zawsze przechodzi próg).</td></tr>
       <tr><td><code>await this.worldTimeOnInterval(flagKey, secs, target?)</code></td><td>Promise&lt;boolean&gt;</td><td>Zwraca <code>true</code> i aktualizuje flagę gdy ≥ <code>secs</code> sekund od poprzedniego. Przy pierwszym wywołaniu inicjalizuje i zwraca <code>false</code>.</td></tr>
       <tr><td><code>await this.worldTimeStampNow(flagKey, target?)</code></td><td>Promise&lt;void&gt;</td><td>Zapisuje bieżący worldTime jako flagę.</td></tr>
@@ -5852,6 +5862,23 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
   <p style="font-size:0.85em;color:var(--text-dim);">
     Parametr <code>target</code> jest opcjonalny (domyślnie <code>this.actor</code>). Możesz przekazać <code>this.effect</code> by zapisywać flag bezpośrednio na efekcie.
   </p>
+
+  <div class="callout info">
+    <strong>Odczyt czasu w V13/V14:</strong> używaj <code>this.effectTime().remaining</code> i
+    <code>this.effectTime().startTime</code>. Natywne <code>duration.remaining</code> w V14 ma jednostkę efektu,
+    więc dla godzin nie oznacza sekund. Warstwa zgodności przepisuje proste starsze odczyty
+    <code>effect.duration.seconds</code>, <code>effect.duration.startTime</code> i <code>effect.duration.remaining</code>
+    podczas przygotowania skryptu; nie zmienia komentarzy ani tekstów w cudzysłowach.
+    Dostęp z nawiasami, np. <code>effect["duration"]["startTime"]</code>, należy przepisać ręcznie na helper.
+  </div>
+  <div class="callout info">
+    <strong>Kalendarz w trybie „none”:</strong> mostek przesuwa zegary uruchomionych efektów na aktorach i itemach,
+    również na niezależnych tokenach innych scen, a następnie odświeża natywne wygasanie w V14.
+    Nie uruchamia szablonów bez początku ani nie zmienia czasu świata Foundry.
+    Flagi używane przez <code>worldTimeElapsed()</code>, <code>worldTimeOnInterval()</code> i bezpośredni
+    <code>game.time.worldTime</code> nadal mierzą czas Foundry. Do skryptów opartych na takich flagach
+    używaj kalendarza połączonego z zegarem świata; do wieku konkretnego efektu służy <code>this.effectTime().elapsed</code>.
+  </div>
 
   <div class="example-block">
     <div class="example-header">
@@ -5974,7 +6001,7 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
       </tr>
       <tr>
         <td><em>(brak pól)</em></td>
-        <td>Efekt tymczasowy bez limitu czasu — pozostaje do ręcznego usunięcia lub usunięcia przez skrypt</td>
+        <td>Czas trwania odziedziczony z szablonu. Szablon bez limitu i bez zdarzenia wygaśnięcia pozostaje do ręcznego usunięcia lub usunięcia przez skrypt.</td>
         <td><code>convertToApplied()</code> bez argumentów</td>
       </tr>
     </tbody>
@@ -7861,7 +7888,7 @@ args.sp += <span class="num">2</span>; <span class="cmt">// Dodaj 2 SP do tułow
       <tr>
         <td>radiation.getEffectiveResistance(actor)</td>
         <td>Actor</td>
-        <td>Zwraca efektywną odporność na promieniowanie aktora: bazowe <code>system.radiationResistance</code> + suma <code>radiationProtection</code> ze wszystkich założonych pancerzy (z uwzględnieniem modów <code>deltaRadiationProtection</code>). Odpowiednik <code>getEffectiveRadiationResistance()</code> z <code>mod-helpers.js</code>. Preferowany mechanizm w nowych strefach (bez <code>protectionKeys</code>).</td>
+        <td>Zwraca efektywną odporność na promieniowanie aktora: bazowe <code>system.radiationResistance</code> + suma <code>radiationProtection</code> ze wszystkich założonych pancerzy (z uwzględnieniem modów <code>deltaRadiationProtection</code>). Odpowiednik <code>getEffectiveRadiationResistance()</code> z <code>item-helper.js</code>. Preferowany mechanizm w nowych strefach (bez <code>protectionKeys</code>).</td>
       </tr>
       <tr>
         <td>radiation.exposeActor(actor, sourceId, config)</td>

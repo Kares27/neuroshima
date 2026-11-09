@@ -1,19 +1,12 @@
-import { collectArmorEffectSources, buildBreakdownTooltip, buildRichTextTooltip, collectAttributeEffectSources, collectDocumentEffectSources, renderTooltipSections } from "../helpers/tooltip-renderer.js";
+import { collectArmorEffectSources, buildBreakdownTooltip, buildRichTextTooltip, collectAttributeEffectSources, collectDocumentEffectSources, renderTooltipSections, NeuroshimaDice } from "../helpers/rolls.js";
 import { legacyMessageMode, effectDurationLabel, isTemporaryEffect, effectChanges, EFFECT_PENALTY_KEY, LEGACY_EFFECT_PENALTY_KEY } from "../helpers/foundry-compat.js";
-import { remainingArmorDurability, armorLocationProtects, modifyArmorDurability } from "../helpers/armor-durability.js";
-import { armorLocationProtections } from "../helpers/armor-location.js";
-import { postBeastRequiredTest, applyBeastEffectIds } from "../helpers/beast-required-test.js";
+import { remainingArmorDurability, armorLocationProtects, modifyArmorDurability, armorLocationProtections, buildItemPreviewTooltip, clampArmor, preserveArmorSourceValues, createLoadedMagazineFromWeapon, getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveRadiationResistance } from "../helpers/item-helper.js";
+import { postBeastRequiredTest, applyBeastEffectIds, beastActivities, resolveBeastActionItem, createBeastSegmentWeapon, createBeastSegmentGrenade, createBeastCombatWeapon, isBeastAbility, isBeastAction, isBeastSegment } from "../helpers/combat-helper.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
-import { buildItemPreviewTooltip } from "../helpers/item-tooltip.js";
-import { clampArmor, preserveArmorSourceValues } from "../helpers/armor-limit.js";
-import { beastActivities, resolveBeastActionItem, createBeastSegmentWeapon, createBeastSegmentGrenade, createBeastCombatWeapon, isBeastAbility, isBeastAction, isBeastSegment } from "../helpers/beast-actions.js";
 import { NEUROSHIMA } from "../config.js";
-import { createLoadedMagazineFromWeapon } from "../helpers/ammunition.js";
-import { NeuroshimaDice } from "../helpers/rolls.js";
 import { RestDialog } from "../apps/dialogs/minor-dialogs.js";
 import { getConditions } from "../apps/config/condition-config.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
-import { getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveRadiationResistance } from "../helpers/mod-helpers.js";
 
 
 /**

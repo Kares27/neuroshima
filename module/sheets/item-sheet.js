@@ -1,15 +1,7 @@
 import { effectDurationLabel, isTemporaryEffect } from "../helpers/foundry-compat.js";
-import { clampArmor } from "../helpers/armor-limit.js";
+import { clampArmor, normalizeGearType, installMod, attachMod, detachMod, removeMod, buildInstalledMap, buildModDeltaSummary, getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveWeight, getEffectiveCost, buildItemPreviewTooltip, collectTraitSnapshots, createTraitSnapshot, traitSnapshotPreview } from "../helpers/item-helper.js";
 import { NEUROSHIMA } from "../config.js";
 import { TraitBrowserApp } from "../apps/trait-browser.js";
-import { normalizeGearType } from "../helpers/gear-types.js";
-import { installMod, attachMod, detachMod, removeMod, buildInstalledMap, buildModDeltaSummary, getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveWeight, getEffectiveCost } from "../helpers/mod-helpers.js";
-import { buildItemPreviewTooltip } from "../helpers/item-tooltip.js";
-import {
-  collectTraitSnapshots,
-  createTraitSnapshot,
-  traitSnapshotPreview
-} from "../helpers/trait-snapshot.js";
 import { openTraitSnapshotItemSheet } from "../apps/trait-snapshot-item-editor.js";
 import { getMagazineAmmoCategory } from "../combat/ammunition-resolver.js";
 
@@ -1126,7 +1118,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
           if (action === "attachMod") await attachMod(this.document, modId);
           else if (action === "detachMod") await detachMod(this.document, modId);
           else if (action === "removeMod") await removeMod(this.document, modId);
-          else if (action === "uninstallMod") { const { uninstallMod } = await import("../helpers/mod-helpers.js"); await uninstallMod(this.document, modId); }
+          else if (action === "uninstallMod") { const { uninstallMod } = await import("../helpers/item-helper.js"); await uninstallMod(this.document, modId); }
           else if (action === "openModSheet") {
             const modItem = this.document.actor?.items.get(modId);
             if (modItem) {
@@ -1394,7 +1386,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
   async _onUninstallMod(event, target) {
     const modId = target.dataset.modId ?? target.closest("[data-mod-id]")?.dataset.modId;
     if (!modId) return;
-    const { uninstallMod } = await import("../helpers/mod-helpers.js");
+    const { uninstallMod } = await import("../helpers/item-helper.js");
     await uninstallMod(this.document, modId);
   }
 

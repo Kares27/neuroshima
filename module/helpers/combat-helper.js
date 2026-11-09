@@ -1,13 +1,226 @@
+/** Combat, beast abilities, required tests and damage. */
+import { getArmorRating, armorLocationProtects, applyArmorDurabilityWear, reverseArmorDurabilityWear, collectArmorDurabilityWear, ArmorDurabilityBatch, clampArmor, getEffectiveArmorResistances } from "./item-helper.js";
 import { applyMessageMode } from "./foundry-compat.js";
-import { armorLocationProtects, applyArmorDurabilityWear, reverseArmorDurabilityWear, collectArmorDurabilityWear, ArmorDurabilityBatch } from "./armor-durability.js";
-import { postBeastRequiredTest, applyBeastEffectIds } from "./beast-required-test.js";
-import { isBeastAbility, isBeastSegment, beastActivities } from "../helpers/beast-actions.js";
-import { clampArmor } from "./armor-limit.js";
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaChatMessage } from "../documents/chat-message.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
-import { getEffectiveArmorResistances } from "./mod-helpers.js";
 import { AttributeTest, SkillTest } from "../tests.mjs";
+
+/** Required tests use two successes when closed, or their configured threshold when open. */
+export function requiredTestSuccesses(data = {}) {
+  if (data.isOpen !== true) return 2;
+  const value = Number(data.requiredSuccesses);
+  return Number.isFinite(value) ? Math.max(1, Math.trunc(value)) : 1;
+}
+
+export function requiredTestPassed(data, result = {}) {
+  const points = Number(result.successPoints ?? result.successes);
+  if (!Number.isFinite(points)) return result.isSuccess === true;
+  return points >= requiredTestSuccesses(data);
+}
+
+/** Convert legacy overlapping outcome lists into one choice per linked effect. */
+export function normalizeRequiredEffects(activity = {}) {
+  const ids = [...new Set([...(activity.testEffectIds ?? []), ...(activity.effectIds ?? []),
+    ...(activity.onFailureEffectIds ?? []), ...(activity.alwaysEffectIds ?? [])])];
+  const result = { testEffectIds: ids, effectIds: [], onFailureEffectIds: [], alwaysEffectIds: [] };
+  for (const id of ids) {
+    const success = activity.effectIds?.includes(id);
+    const failure = activity.onFailureEffectIds?.includes(id);
+    if (activity.alwaysEffectIds?.includes(id) || (success && failure) || (!success && !failure)) result.alwaysEffectIds.push(id);
+    else if (success) result.effectIds.push(id);
+    else result.onFailureEffectIds.push(id);
+  }
+  return result;
+}
+
+/** Category predicates are the only runtime distinction between creature abilities. */
+export const isBeastAbility = item => item?.type === "beast-ability";
+export const isBeastSegment = item => isBeastAbility(item) && item.system?.abilityCategory === "segment";
+export const isBeastAction = item => isBeastAbility(item) && !isBeastSegment(item);
+
+/** Each beast action or segment Item defines one activity. */
+export function beastActivities(item) {
+  if (!item) return [];
+  if (!isBeastAbility(item)) return Array.from(item.system?.activities ?? []);
+  const legacy = item.system?.legacyActivities?.length ? item.system.legacyActivities
+    : item._source?.system?.activities ?? item.system?.activities;
+  if (Array.isArray(legacy) && legacy.length) return legacy;
+  const system = item.system?.toObject?.(false) ?? item.system ?? {};
+  return [{ ...system, costType: isBeastSegment(item) ? "segment" : "success", id: system.id || item.id, name: item.name, img: item.img }];
+}
+
+/** Shared roll profile for the creature's entire action table. */
+export function createBeastCombatWeapon(actor) {
+  return {
+    id: null, uuid: null, isSynthetic: true, isBeastCombat: true, beastItemId: null,
+    name: game.i18n.localize("NEUROSHIMA.BeastAction.Label"), img: actor.img, type: "weapon",
+    system: {
+      weaponType: "melee", attribute: "dexterity", skill: "experience",
+      attackBonus: 0, defenseBonus: 0, weaponModifier: 0,
+      damageMelee1: "D", damageMelee2: "D", damageMelee3: "D",
+      requiredBuild: 0, piercing: 0, magazine: null, jamming: 20
+    }
+  };
+}
+
+/** Older chat cards may still refer to the original package Item ID. */
+export function resolveBeastActionItem(actor, itemId, activityId) {
+  const original = actor.items.get(itemId);
+  if (beastActivities(original).some(activity => activity.id === activityId)) return original;
+  return actor.items.find(item => item.type === original?.type &&
+    ["beastAbilityOrigin", "beastSegmentOrigin", "beastActionOrigin"].some(flag =>
+      item.getFlag("neuroshima", flag) === `${original?.uuid}#${activityId}`)) ?? null;
+}
+
+/** Build flat item data without discarding shared resources, tests or embedded effects. */
+export function flattenBeastItem(source, activity = {}) {
+  const data = structuredClone(source);
+  data.name = activity.name || source.name;
+  data.img = activity.img || source.img;
+  const legacy = source.system?.activities?.length || source.system?.legacyActivities?.length;
+  // A hydrated package exposes its first activity at the root. Other activities must
+  // inherit only the original shared fields, not that first activity's tests or attacks.
+  const shared = legacy ? {
+    description: source.system?.description ?? "",
+    resources: structuredClone(source.system?.resources ?? []),
+    tests: structuredClone(source.system?.tests ?? {}),
+    abilityCategory: source.system?.abilityCategory ?? "action"
+  } : data.system;
+  data.system = { ...shared, ...structuredClone(activity) };
+  delete data.system.activities;
+  delete data.system.legacyActivities;
+  delete data.system.name;
+  delete data.system.img;
+  data.system.id = activity.id || data.system.id || source._id;
+  data.system.description = activity.description || source.system?.description || "";
+  data.system.costType = source.system?.abilityCategory === "segment" ? "segment" : "success";
+  if (source.system?.abilityCategory === "segment" && !data.system.fireModes) data.system.fireModes = { all: true };
+  return data;
+}
+
+const migrating = new WeakSet();
+
+/** Split old packages, keeping the original Item ID for the first activity.
+ * Child provenance makes retries safe if a previous run stopped partway through.
+ */
+export async function migrateBeastItem(item) {
+  if (!isBeastAbility(item) || migrating.has(item)) return 0;
+  const source = item.toObject();
+  const stored = source.system?.activities?.length ? source.system.activities : source.system?.legacyActivities;
+  if (!Array.isArray(stored) || !stored.length) return 0;
+  const legacy = stored.map((activity, index) => ({ ...activity, id: activity.id || `${item.id}-${index}` }));
+  migrating.add(item);
+  try {
+    const collection = item.parent?.items ?? item.collection;
+    const originFlag = "beastAbilityOrigin";
+    for (const activity of legacy.slice(1)) {
+      const provenance = `${item.uuid}#${activity.id}`;
+      if (collection?.some(existing => [originFlag, "beastSegmentOrigin", "beastActionOrigin"]
+        .some(flag => existing.getFlag("neuroshima", flag) === provenance))) continue;
+      const data = flattenBeastItem(source, activity);
+      delete data._id;
+      if (data.flags?.neuroshima) delete data.flags.neuroshima.meleeActivities;
+      data.flags ??= {};
+      data.flags.neuroshima ??= {};
+      data.flags.neuroshima[originFlag] = provenance;
+      const created = await item.constructor.create(data, { parent: item.parent, pack: item.pack, keepEmbeddedIds: true });
+      if (!created) throw new Error(`Cannot split beast item ${item.uuid}`);
+    }
+    const first = flattenBeastItem(source, legacy[0]);
+    const update = { name: first.name, img: first.img,
+      "system.legacyActivities": [], "system.-=activities": null,
+      "flags.neuroshima.-=meleeActivities": null };
+    for (const [key, value] of Object.entries(first.system)) update[`system.${key}`] = value;
+    await item.update(update);
+    return legacy.length;
+  } finally {
+    migrating.delete(item);
+  }
+}
+
+/** Weapon-roll profile for one segment Item; the Item remains the effect source. */
+export function createBeastSegmentWeapon(actor, item, act = beastActivities(item)[0] ?? {}) {
+  const isMeleeAct = (act.weaponType || "melee") === "melee";
+  const fallbackDmg = act.damage || "D";
+  return {
+    id: item.id,
+    beastItemId: item.id,
+    beastActivityId: act.id,
+    name: act.name || item.name,
+    img: act.img || item.img,
+    type: "weapon", actor, isSynthetic: true,
+    system: {
+      weaponType: act.weaponType || "melee",
+      attribute: (act.attribute || "dexterity"),
+      skill: act.skillMode === "none" ? null : "experience",
+      attackBonus:    act.attackBonus    ?? 0,
+      defenseBonus:   act.defenseBonus   ?? 0,
+      weaponModifier: act.weaponModifier  ?? 0,
+      requiredBuild:  act.requiredBuild   ?? 0,
+      damageCategory: act.damageCategory || "physical",
+      damageMelee1: isMeleeAct ? (act.damage1 || fallbackDmg) : fallbackDmg,
+      damageMelee2: isMeleeAct ? (act.damage2 || fallbackDmg) : fallbackDmg,
+      damageMelee3: isMeleeAct ? (act.damage3 || fallbackDmg) : fallbackDmg,
+      damageRanged: fallbackDmg,
+      damage:       fallbackDmg,
+      rangedSubtype: act.rangedSubtype || "pistols",
+      fireRate:      act.fireRate      ?? 0,
+      fireModes: act.fireModes ?? { all: true },
+      fireModeModifiers: act.fireModeModifiers ?? {},
+      piercing:      act.piercing      ?? 0,
+      magazine: null,
+      jamming:  act.jamming ?? 20,
+      skipMagazineCheck: true
+    }
+  };
+}
+
+/** Blast attacks keep the segment's test settings and source identity. */
+export function createBeastSegmentGrenade(actor, item, act = beastActivities(item)[0] ?? {}) {
+  const profile = createBeastSegmentWeapon(actor, item, act);
+  return { ...profile, type: "grenade", system: { ...profile.system, blastZones: act.blastZones ?? [] } };
+}
+
+/** Post the ability's required test for its target using the native test pipeline. */
+export async function postBeastRequiredTest(item, activity, target, runner) {
+  if (!target) return 0;
+  const resolve = ids => [...new Set(ids ?? [])].map(id => item.effects.get(id)?.uuid).filter(Boolean);
+  const outcomes = normalizeRequiredEffects(activity);
+  const always = outcomes.alwaysEffectIds;
+  await runner.postRequiredTest({
+    title: `${activity.name || item.name}: ${target.name}`,
+    testType: activity.testType || "attribute",
+    testKey: activity.testKey || "constitution",
+    testAttributeOverride: activity.testAttributeOverride || "",
+    requiredSuccesses: requiredTestSuccesses({ isOpen: activity.testIsOpen === true, requiredSuccesses: activity.testSuccesses }),
+    isOpen: activity.testIsOpen ?? false,
+    baseDifficulty: activity.testDifficulty || "average",
+    defenderActorUuid: target.uuid,
+    whisperToDefender: true,
+    onSuccessEffectUuids: resolve([...outcomes.effectIds, ...always]),
+    onFailureEffectUuids: resolve([...outcomes.onFailureEffectIds, ...always])
+  });
+  return 1;
+}
+
+/** Apply selected templates through native conversion so source identity and scripts survive. */
+export async function applyBeastEffectIds(item, ids, target, flags = {}) {
+  if (!target) return;
+  for (const id of new Set(ids ?? [])) {
+    const effect = item.effects.get(id);
+    if (!effect || effect.disabled) continue;
+    const data = effect.convertToApplied?.() ?? effect.toObject();
+    delete data._id;
+    data.disabled = false;
+    data.transfer = false;
+    data.origin ||= item.uuid;
+    data.flags ??= {};
+    data.flags.neuroshima = { ...data.flags.neuroshima, ...flags };
+    if (typeof target.applyEffect === "function") await target.applyEffect({ effectData: [data] });
+    else await ActiveEffect.implementation.create(data, { parent: target });
+  }
+}
 
 /**
  * Helper class for Neuroshima 1.5 combat-related automation.
@@ -986,7 +1199,7 @@ export class CombatHelper {
       throw new Error("Nieprawidłowy raport odporności na ból.");
     }
     if (!game.user.isGM) {
-      const { NeuroshimaSocket } = await import("./socket-helper.js");
+      const { NeuroshimaSocket } = await import("./foundry-compat.js");
       return NeuroshimaSocket.gmExecute("rerollPainResistance", message.id, indices);
     }
     return this._withPainReportLock(message, async () => {
@@ -1298,90 +1511,7 @@ export class CombatHelper {
    * @returns {{ totalSP: number, details: Array<{name,ratings,damage,effective}>, weakPoint: boolean }}
    */
   static getArmorRating(actor, location, damageCategory = "physical", durabilityBatch = null) {
-    let totalSP = 0;
-    const details = [];
-    let weakPoint = false;
-
-    if (actor.type === "creature" && actor.system.naturalArmor) {
-      const commonReduction = Math.max(0, Number(actor.system.naturalArmorReduction) || 0);
-      totalSP += commonReduction;
-      if (commonReduction > 0) details.push({
-        name: game.i18n.localize("NEUROSHIMA.Creature.NaturalArmor.CommonReduction"),
-        ratings: commonReduction, damage: 0, effective: commonReduction
-      });
-      const naturalPart = actor.system.naturalArmor[location];
-      if (naturalPart) {
-        const reduction = Number(naturalPart.reduction) || 0;
-        totalSP += reduction;
-        weakPoint = !!naturalPart.weakPoint;
-        if (reduction > 0) {
-          details.push({
-            name: game.i18n.localize("NEUROSHIMA.Creature.NaturalArmor"),
-            ratings: reduction,
-            damage: 0,
-            effective: reduction
-          });
-        }
-      }
-    } else if (actor.type === "vehicle" && actor.system.armor) {
-      const plate = actor.system.armor[location];
-      if (plate) {
-        const reduction = Number(plate.reduction) || 0;
-        weakPoint = !!plate.weakPoint;
-        totalSP += reduction;
-        if (reduction > 0) {
-          details.push({
-            name: game.i18n.localize("NEUROSHIMA.Vehicle.Armor"),
-            ratings: reduction,
-            damage: 0,
-            effective: reduction
-          });
-        }
-      }
-    }
-
-    const equippedArmor = actor.items.filter(item =>
-      item.type === "armor" && item.system.equipped === true
-      && (!durabilityBatch || durabilityBatch.remaining(item, location) !== 0)
-    );
-
-    if (damageCategory === "physical") {
-      for (const armor of equippedArmor) {
-        const effectiveValue = armorLocationProtects(armor.system.armor, location) ? (armor.system.effectiveArmor?.[location] || 0) : 0;
-        const ratings = armor.system.armor?.ratings?.[location] ?? armor.system.currentRating ?? armor.system.rating ?? 0;
-        const damage  = armor.system.armor?.damage?.[location]  || 0;
-        if (effectiveValue > 0 || ratings > 0) {
-          totalSP += effectiveValue;
-          details.push({ name: armor.name, ratings, damage, effective: effectiveValue });
-        }
-      }
-
-      const bonusAll = Number(actor.system.armorBonus?.all)      || 0;
-      const bonusLoc = Number(actor.system.armorBonus?.[location]) || 0;
-      const totalBonus = bonusAll + bonusLoc;
-      if (totalBonus !== 0) {
-        totalSP += totalBonus;
-        details.push({
-          name: game.i18n.localize("NEUROSHIMA.Effects.ArmorBonus"),
-          ratings: totalBonus,
-          damage: 0,
-          effective: totalBonus
-        });
-      }
-    } else {
-      for (const armor of equippedArmor) {
-        const resistances = getEffectiveArmorResistances(armor);
-        const row = resistances[damageCategory];
-        if (!row) continue;
-        const sp = Number(row[location]) || 0;
-        if (sp > 0) {
-          totalSP += sp;
-          details.push({ name: armor.name, ratings: sp, damage: 0, effective: sp });
-        }
-      }
-    }
-
-    return { totalSP: clampArmor(actor, totalSP, damageCategory), uncappedSP: totalSP, details, weakPoint };
+    return getArmorRating(actor, location, damageCategory, durabilityBatch);
   }
 
   /**

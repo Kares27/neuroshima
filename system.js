@@ -1,7 +1,7 @@
-import { isElement, NeuroshimaAreas, applicationInstances } from "./module/helpers/foundry-compat.js";
+import { isV14, isElement, NeuroshimaAreas, applicationInstances, configureEffectExpiry } from "./module/helpers/foundry-compat.js";
 import { NeuroshimaItemDirectory } from "./module/apps/item-directory.js";
-import { isBeastAction, createBeastCombatWeapon } from "./module/helpers/beast-actions.js";
-import { refreshArmorLimits } from "./module/helpers/armor-limit.js";
+import { isBeastAction, createBeastCombatWeapon, CombatHelper } from "./module/helpers/combat-helper.js";
+import { refreshArmorLimits, applyCustomGearTypes, DEFAULT_EQUIPPABLE_GEAR_TYPES, isGearTypeEquippable, normalizeGearType, reconcileGearTypes, buildRef, resolveRef, buildItemPreviewTooltip, InteractiveItemTooltip, resolveCrewActor } from "./module/helpers/item-helper.js";
 import { BeastActivitySheet } from "./module/apps/beast-activity-sheet.js";
 import { NEUROSHIMA } from "./module/config.js";
 import { NeuroshimaActor } from "./module/documents/actor.js";
@@ -16,19 +16,12 @@ import { NeuroshimaNPCSheet } from "./module/sheets/npc-sheet.js";
 import { NeuroshimaCreatureSheet } from "./module/sheets/creature-sheet.js";
 import { NeuroshimaVehicleSheet } from "./module/sheets/vehicle-sheet.js";
 import { NeuroshimaHomeBaseSheet } from "./module/sheets/home-base-sheet.js";
-import {
-    applyCustomGearTypes,
-    DEFAULT_EQUIPPABLE_GEAR_TYPES,
-    isGearTypeEquippable,
-    normalizeGearType,
-    reconcileGearTypes
-} from "./module/helpers/gear-types.js";
 import { NeuroshimaItemSheet } from "./module/sheets/item-sheet.js";
 import { NeuroshimaEffectSheet } from "./module/sheets/neuroshima-effect-sheet.js";
 import {
     NeuroshimaScriptRunner
 } from "./module/apps/neuroshima-script-engine.js";
-import { NeuroshimaDice, NeuroshimaRollTestRouter } from "./module/helpers/rolls.js";
+import { NeuroshimaDice, NeuroshimaRollTestRouter, buildBreakdownTooltip, canViewRollTooltip, NeuroshimaChoiceRouter } from "./module/helpers/rolls.js";
 import {
     NEUROSHIMA_TESTS,
     NeuroshimaTestBase,
@@ -45,14 +38,7 @@ import {
     runMeleeTests
 } from "./module/tests.mjs";
 import { TriggerRegistry } from "./module/effects/trigger-registry.js";
-import { CombatHelper } from "./module/helpers/combat-helper.js";
 import { NeuroshimaMeleeCombat, NeuroshimaCombatTracker, NeuroshimaTokenRuler, MeleeVanillaChat, MeleeOpposedChat, MeleeStore } from "./module/combat/combat.js";
-import { buildRef, resolveRef } from "./module/helpers/mod-helpers.js";
-import { buildItemPreviewTooltip, InteractiveItemTooltip } from "./module/helpers/item-tooltip.js";
-import {
-    buildBreakdownTooltip,
-    canViewRollTooltip
-} from "./module/helpers/tooltip-renderer.js";
 import { EncumbranceConfig } from "./module/apps/config/encumbrance-config.js";
 import { CombatConfig, _applyCustomDamageCategories } from "./module/apps/config/combat-config.js";
 import { SettingsTransferConfig } from "./module/apps/config/settings-transfer-config.js";
@@ -67,8 +53,6 @@ import { DebugRollDialog } from "./module/apps/dialogs/debug-roll-dialog.js";
 import { EditRollDialog } from "./module/apps/dialogs/minor-dialogs.js";
 import { PointAllocationDialog } from "./module/apps/dialogs/point-allocation-dialog.js";
 import { ListChoiceDialog } from "./module/apps/dialogs/list-choice-dialog.js";
-import { NeuroshimaChoiceRouter } from "./module/helpers/choice-router.js";
-import { resolveCrewActor } from "./module/helpers/vehicle-crew.js";
 import { NeuroshimaInitiativeRollDialog } from "./module/apps/dialogs/initiative-roll-dialog.js";
 import { HealingApp } from "./module/apps/healing-app.js";
 import { showHealingRollDialog } from "./module/apps/dialogs/healing-roll-dialog.js";
@@ -387,6 +371,7 @@ Hooks.once('init', async function() {
     CONFIG.Item.documentClass = NeuroshimaItem;
     CONFIG.ChatMessage.documentClass = NeuroshimaChatMessage;
     CONFIG.ActiveEffect.documentClass = NeuroshimaActiveEffect;
+    configureEffectExpiry();
 
     // Initiative
     CONFIG.Combat.initiative.formula = "0";
@@ -1379,7 +1364,7 @@ Hooks.once("ready", () => {
 // parent weapon/armor.
 Hooks.once("ready", async () => {
     if (!game.user.isGM) return;
-    const { syncMountedModEffects } = await import("./module/helpers/mod-helpers.js");
+    const { syncMountedModEffects } = await import("./module/helpers/item-helper.js");
     for (const actor of game.actors) {
         // Installed modifications remain embedded on the Actor so their sheets
         // can be edited, but they are only source definitions. Prevent legacy
@@ -2290,7 +2275,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
                                 updateDiePreview(dieEl, idx);
                                 refreshAll();
                                 if (state.remaining === 0) {
-                                    const { NeuroshimaSocket } = await import("./module/helpers/socket-helper.js");
+                                    const { NeuroshimaSocket } = await import("./module/helpers/foundry-compat.js");
                                     await NeuroshimaSocket.gmExecute("applyTrickDieBonus", message.id, { ...state.reductions });
                                     delete window._nsTrickState[message.id];
                                 }
@@ -3356,7 +3341,7 @@ function initializeSocketlib() {
 
         if (!result?.accepted) {
             if (requesterUserId) {
-                const { NeuroshimaSocket } = await import("./module/helpers/socket-helper.js");
+                const { NeuroshimaSocket } = await import("./module/helpers/foundry-compat.js");
                 await NeuroshimaSocket.executeAsUser("healingRequestDeclined", requesterUserId, {
                     medicName: game.user.character?.name ?? game.user.name
                 });
@@ -3541,10 +3526,17 @@ Hooks.on("updateActiveEffect", async (effect, changes, options, userId) => {
     await NeuroshimaAuraManager._syncRenderTemplates(tokenDoc, actor, null, null);
 });
 
+let effectTimeQueue = Promise.resolve();
+function queueEffectTimeUpdate(callback) {
+    const update = effectTimeQueue.then(callback);
+    effectTimeQueue = update.catch(error => console.error("Neuroshima | Effect time update failed", error));
+    return update;
+}
+
 Hooks.on("updateWorldTime", async (worldTime, dt) => {
-    if (!game.user.isGM) return;
+    if (!game.user.isGM || (game.users.activeGM && game.users.activeGM.id !== game.user.id)) return;
     game.neuroshima?.log("[hook:updateWorldTime]", { worldTime, dt });
-    await NeuroshimaScriptRunner.runWorldTimeUpdate(worldTime, dt);
+    await queueEffectTimeUpdate(() => NeuroshimaScriptRunner.runWorldTimeUpdate(worldTime, dt));
 });
 
 // Simple Calendar Reborn exposes four world-time integration modes:
@@ -3554,7 +3546,7 @@ Hooks.on("updateWorldTime", async (worldTime, dt) => {
 // The first three are handled by updateWorldTime above. Only "none" needs an
 // explicit bridge, otherwise seconds-based Active Effects never lose time.
 Hooks.on("simple-calendar-date-time-change", async (data) => {
-    if (!game.user.isGM) return;
+    if (!game.user.isGM || (game.users.activeGM && game.users.activeGM.id !== game.user.id)) return;
     const calendar = globalThis.SimpleCalendar?.api?.getCurrentCalendar?.();
     const integration = calendar?.generalSettings?.gameWorldTimeIntegration;
     if (integration !== "none") return;
@@ -3568,8 +3560,11 @@ Hooks.on("simple-calendar-date-time-change", async (data) => {
         currentWorldTime,
         dt
     });
-    await NeuroshimaScriptRunner.advanceIndependentCalendarDurations(dt);
-    await NeuroshimaScriptRunner.runWorldTimeUpdate(currentWorldTime, dt);
+    await queueEffectTimeUpdate(async () => {
+        await NeuroshimaScriptRunner.advanceIndependentCalendarDurations(dt);
+        await NeuroshimaScriptRunner.runWorldTimeUpdate(currentWorldTime, dt);
+        if (isV14()) await CONFIG.ActiveEffect.documentClass.registry.refresh("updateWorldTime");
+    });
 });
 
 Hooks.on(`create${NeuroshimaAreas.documentName}`, async (templateDoc, options, userId) => {

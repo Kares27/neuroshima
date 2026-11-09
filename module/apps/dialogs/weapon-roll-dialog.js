@@ -1,9 +1,8 @@
 import { rollModeChoices, legacyMessageMode } from "../../helpers/foundry-compat.js";
-import { expandDialogModifiers } from "../../helpers/dialog-script-groups.js";
+import { expandDialogModifiers, NeuroshimaDice } from "../../helpers/rolls.js";
 import { maxMeleeTempo, clampMeleeTempo } from "../../combat/melee-maneuvers.js";
 
 import { NEUROSHIMA } from "../../config.js";
-import { NeuroshimaDice } from "../../helpers/rolls.js";
 import { getDistancePenalty } from "../config/distance-config.js";
 import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
 import { NeuroshimaRollDialogBase } from "./roll-dialog-base.js";

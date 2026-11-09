@@ -2,7 +2,7 @@ import { NEUROSHIMA } from "../../config.js";
 import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
 import { NeuroshimaRollDialogBase } from "./roll-dialog-base.js";
 import { HealingTest, TestRules } from "../../tests.mjs";
-import { buildBreakdownTooltip } from "../../helpers/tooltip-renderer.js";
+import { buildBreakdownTooltip } from "../../helpers/rolls.js";
 
 /**
  * Helper: Get healing difficulty based on wound damage type from world settings.

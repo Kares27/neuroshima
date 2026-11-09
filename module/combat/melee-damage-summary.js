@@ -1,4 +1,4 @@
-﻿import { beastActivities, resolveBeastActionItem } from "../helpers/beast-actions.js";
+import { beastActivities, resolveBeastActionItem } from "../helpers/combat-helper.js";
 import { MeleeActionRegistry } from "./melee-action-registry.js";
 
 /** Project the same paid beast actions used by damage application, preserving repetitions. */

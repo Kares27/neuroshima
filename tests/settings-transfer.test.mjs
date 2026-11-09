@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { exportSystemSettings, planSettingsImport, importSystemSettings, transferableSettings } from "../module/helpers/settings-transfer.js";
+import { exportSystemSettings, planSettingsImport, importSystemSettings, transferableSettings } from "../module/helpers/foundry-compat.js";
 
 function setup() {
   const values = new Map();
@@ -178,7 +178,7 @@ test("settings menu reads and previews a file before saving and clears stale dat
   assert.equal(writes.length, 0);
   await menu._onChangeForm({}, { target: { name: "settingsFile", files: [{ name: "settings.json", text: async () => JSON.stringify(bundle) }] } });
   let reload;
-  globalThis.SettingsConfig = { reloadConfirm: options => { reload = options; } };
+  foundry.applications.settings = { SettingsConfig: { reloadConfirm: options => { reload = options; } } };
   globalThis.ui = { notifications: { info: () => {} } };
   await menu._onImport();
   assert.equal(values.get("armorLimitCreature"), 6);

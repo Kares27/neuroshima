@@ -29,8 +29,8 @@ globalThis.game = { i18n: { localize: key => key, format: key => key }, user: { 
   settings: { get: (scope, key) => settings[key] }, neuroshima: { log: () => {} } };
 Math.clamp ??= (value, min, max) => Math.min(max, Math.max(min, value));
 const settings = { armorLimitEnabled: true, armorLimitCharacter: 6, armorLimitCreature: 4, armorLimitVehicle: 9 };
-const { clampArmor, preserveArmorSourceValues } = await import("../module/helpers/armor-limit.js");
-const { specialityBonus, specialityCost, advanceSpeciality } = await import("../module/helpers/speciality.js");
+const { clampArmor, preserveArmorSourceValues } = await import("../module/helpers/item-helper.js");
+const { specialityBonus, specialityCost, advanceSpeciality } = await import("../module/helpers/xp.js");
 const { SkillTest, RangedWeaponTest } = await import("../module/tests.mjs");
 const { NeuroshimaScriptRunner } = await import("../module/apps/neuroshima-script-engine.js");
 const { CombatHelper } = await import("../module/helpers/combat-helper.js");
@@ -958,7 +958,7 @@ test("a beast segment is one definition with root fields, fixed segment cost and
 });
 
 test("beast package migration preserves all segment definitions, effects, resources and references without duplicate retries", async () => {
- const {migrateBeastItem,beastActivities,resolveBeastActionItem}=await import("../module/helpers/beast-actions.js");
+ const {migrateBeastItem,beastActivities,resolveBeastActionItem}=await import("../module/helpers/combat-helper.js");
  const collection=[];let failUpdate=true,creates=0;
  class Segment {
    constructor(data,parent){this.data=structuredClone(data);this.id=data._id;this.uuid=`Actor.beast.Item.${this.id}`;this.type=data.type;this.parent=parent;}
@@ -993,7 +993,7 @@ test("beast package migration preserves all segment definitions, effects, resour
 });
 
 test("segment ranged profiles expose configured fire modes and keep them through test recreation", async () => {
- const {createBeastSegmentWeapon}=await import("../module/helpers/beast-actions.js");
+ const {createBeastSegmentWeapon}=await import("../module/helpers/combat-helper.js");
  const {getAvailableFireModes,getFireModeModifier}=await import("../module/apps/dialogs/weapon-roll-dialog.js");
  const owner=actor("creature");owner.system.experience=4;
  const segment={id:"spit",type:"beast-ability",name:"Spit",system:{abilityCategory:"segment",id:"spit",weaponType:"ranged",damage:"L",fireRate:6}};
@@ -1167,7 +1167,7 @@ test("former beast traits migrate to beast abilities without changing embedded e
 
 test("one ability switches categories without losing attack fields and only actions enter success spending", async () => {
  const {BeastActivitySheet}=await import("../module/apps/beast-activity-sheet.js");
- const {isBeastAction,isBeastSegment}=await import("../module/helpers/beast-actions.js");
+ const {isBeastAction,isBeastSegment}=await import("../module/helpers/combat-helper.js");
  const {MeleeActionRegistry}=await import("../module/combat/melee-action-registry.js");
  const owner=actor("creature");
  const item={id:"ability",type:"beast-ability",name:"Bite",img:"x",isOwner:true,system:{id:"bite",abilityCategory:"action",successCost:2,damage:"C",fireModes:{all:false,single:true}},
@@ -1209,7 +1209,7 @@ test("required-test effects save success, failure and unconditional selections f
 });
 
 test("required ability tests belong to the target and unconditional effects occur in both outcomes without duplicates", async () => {
- const {postBeastRequiredTest}=await import("../module/helpers/beast-required-test.js");
+ const {postBeastRequiredTest}=await import("../module/helpers/combat-helper.js");
  const effects=new Map(["pass","fail","always"].map(id=>[id,{uuid:`Item.ability.ActiveEffect.${id}`}]))
  const item={name:"Grab",effects};const target=actor();const cards=[];
  const activity={effectIds:["pass","always"],onFailureEffectIds:["fail"],alwaysEffectIds:["always","missing"],testSuccesses:2,testIsOpen:true};
@@ -1278,7 +1278,7 @@ test("creature action and segment add buttons create abilities with matching cat
 });
 
 test("required tests use two successes when closed and the configured threshold when open", async () => {
- const {requiredTestSuccesses,requiredTestPassed}=await import("../module/helpers/required-test.js");
+ const {requiredTestSuccesses,requiredTestPassed}=await import("../module/helpers/combat-helper.js");
  assert.equal(requiredTestSuccesses({isOpen:false,requiredSuccesses:7}),2);
  assert.equal(requiredTestPassed({isOpen:false,requiredSuccesses:1},{successPoints:1,isSuccess:true}),false);
  assert.equal(requiredTestPassed({isOpen:false,requiredSuccesses:7},{successPoints:2,isSuccess:false}),true);
@@ -1294,7 +1294,7 @@ test("required tests use two successes when closed and the configured threshold 
 });
 
 test("legacy mixed required effect outcomes normalize to exactly one outcome", async () => {
- const {normalizeRequiredEffects}=await import("../module/helpers/required-test.js");
+ const {normalizeRequiredEffects}=await import("../module/helpers/combat-helper.js");
  const result=normalizeRequiredEffects({testEffectIds:["unset"],effectIds:["pass","mixed","always"],onFailureEffectIds:["fail","mixed"],alwaysEffectIds:["always"]});
  assert.deepEqual(result.effectIds,["pass"]);assert.deepEqual(result.onFailureEffectIds,["fail"]);
  assert.deepEqual(new Set(result.alwaysEffectIds),new Set(["mixed","always","unset"]));
@@ -1394,7 +1394,7 @@ function migrationDocument(documentName,data){
 }
 
 test("current document migration persists canonical ability data and legacy effect scripts and is idempotent", async () => {
- const {migrateCurrentDocument}=await import("../module/helpers/document-migrations.js");
+ const {migrateCurrentDocument}=await import("../module/helpers/migration.js");
  const ability=migrationDocument("Item",{_id:"ability",type:"beast-ability",system:{abilityCategory:"segment",costType:"success",resources:[{value:3}],effectIds:["effect"],onFailureEffectIds:["effect"]}});
  const effect=migrationDocument("ActiveEffect",{_id:"effect",system:{},flags:{neuroshima:{scripts:[{trigger:"manual",code:"args.result.addSuccesses(1);"}]}},changes:[]});
  ability.effects=[effect];
@@ -1442,7 +1442,7 @@ test("failed compendium migration restores its lock and never advances the schem
 });
 
 test("splitting a hydrated legacy package does not leak its first activity's tests or damage into siblings", async () => {
- const {flattenBeastItem}=await import("../module/helpers/beast-actions.js");
+ const {flattenBeastItem}=await import("../module/helpers/combat-helper.js");
  const source={_id:"package",type:"beast-ability",name:"Package",effects:[{_id:"effect"}],system:{abilityCategory:"segment",description:"Shared",resources:[{value:2}],tests:{value:"Shared test"},
    legacyActivities:[{id:"first",testRequired:true,effectIds:["effect"]},{id:"second",name:"Second"}],
    damage:"K",testRequired:true,effectIds:["effect"],onFailureEffectIds:["effect"],testEffectIds:["effect"]}};
@@ -1527,7 +1527,7 @@ test("combat settings save custom types and their caps together and reject inval
  try{
    game.settings={get:(_scope,key)=>key==="customDamageCategories"?"[]":key==="meleeCombatType"?"default":key==="armorDurabilityRangedTiming"?"beforeArmor":false,async set(_scope,key,value){writes.set(key,value);}};
    game.neuroshima.config={damageCategories:{physical:{},explosive:{},obsolete:{}}};
-   globalThis.ui={notifications:{info(){},error(){errors++;}}};globalThis.SettingsConfig={reloadConfirm(){}};console.error=()=>{};
+   globalThis.ui={notifications:{info(){},error(){errors++;}}};globalThis.SettingsConfig={reloadConfirm(){}};foundry.applications.settings={SettingsConfig:globalThis.SettingsConfig};console.error=()=>{};
    const app=new CombatConfig();app._readDamageCategories=()=>({custom:[{key:"acid",label:"Acid",color:"#123456",maxArmor:"2.5"}],builtinLimits:{explosive:"3"}});
    app._readUnarmedDamageTable=()=>[{maxBuild:null,damage1:"D",damage2:"L",damage3:"C"}];
    const data={armorLimitEnabled:true,armorLimitCharacter:6,armorLimitCreature:6,armorLimitVehicle:6,meleeCombatType:"default",meleeBonusMode:"attribute",damageApplicationMinRole:4,painResistanceMinRole:4,combatActionsMinRole:1,unjamMinRole:1};
@@ -1560,7 +1560,7 @@ test("physical armor uses only actor-type restrictions while category settings s
 
 test("body-location protection previews match damage totals and include resistance-only armor", async () => {
   const { NEUROSHIMA } = await import("../module/config.js");
-  const { armorLocationProtections } = await import("../module/helpers/armor-location.js");
+  const { armorLocationProtections } = await import("../module/helpers/item-helper.js");
   const { NeuroshimaActorSheet } = await import("../module/sheets/actor-sheet.js");
   const { NeuroshimaCreatureSheet } = await import("../module/sheets/creature-sheet.js");
   const originalCategories = NEUROSHIMA.damageCategories;
@@ -1613,8 +1613,8 @@ test("body-location protection previews match damage totals and include resistan
 
 test("armor resistance damage is per item, category and location, respects ownership and survives recalculation", async () => {
   const { NEUROSHIMA } = await import("../module/config.js");
-  const { getEffectiveArmorResistances } = await import("../module/helpers/mod-helpers.js");
-  const { modifyArmorResistance, armorLocationProtections } = await import("../module/helpers/armor-location.js");
+  const { getEffectiveArmorResistances } = await import("../module/helpers/item-helper.js");
+  const { modifyArmorResistance, armorLocationProtections } = await import("../module/helpers/item-helper.js");
   const categories = NEUROSHIMA.damageCategories;
   const previousGlobalDamage = settings.armorCategoryGlobalDamage;
   settings.armorCategoryGlobalDamage = { fire: false, explosive: false };
@@ -1655,8 +1655,8 @@ test("armor resistance damage is per item, category and location, respects owner
 
 
 test("category damage defaults to the whole armor and can be restricted to one location", async () => {
-  const { modifyArmorResistance } = await import("../module/helpers/armor-location.js");
-  const { getEffectiveArmorResistances } = await import("../module/helpers/mod-helpers.js");
+  const { modifyArmorResistance } = await import("../module/helpers/item-helper.js");
+  const { getEffectiveArmorResistances } = await import("../module/helpers/item-helper.js");
   const previous = settings.armorCategoryGlobalDamage;
   try {
     settings.armorCategoryGlobalDamage = {};
@@ -1789,7 +1789,7 @@ test("creature experience and initiative dialogs retain the experience skill key
 });
 
 test("beast blast profiles preserve attribute, skill mode and source keys through dialogs and recreation", async () => {
-  const { createBeastSegmentGrenade,createBeastSegmentWeapon }=await import("../module/helpers/beast-actions.js");
+  const { createBeastSegmentGrenade,createBeastSegmentWeapon }=await import("../module/helpers/combat-helper.js");
   const { NeuroshimaGrenadeRollDialog }=await import("../module/apps/dialogs/grenade-roll-dialog.js");
   const { GrenadeTest }=await import("../module/tests.mjs");
   const owner=actor("creature");owner.system.experience=5;
@@ -1836,8 +1836,8 @@ test("beast blast profiles preserve attribute, skill mode and source keys throug
 
 
 test("armor durability wear is local, honors firearm timing, stops protection at zero and reverses only its own wear", async () => {
-  const {applyArmorDurabilityWear,remainingArmorDurability,reverseArmorDurabilityWear}=await import("../module/helpers/armor-durability.js");
-  const {getEffectiveArmorResistances}=await import("../module/helpers/mod-helpers.js");
+  const {applyArmorDurabilityWear,remainingArmorDurability,reverseArmorDurabilityWear}=await import("../module/helpers/item-helper.js");
+  const {getEffectiveArmorResistances}=await import("../module/helpers/item-helper.js");
   const old={melee:settings.armorDurabilityMelee,ranged:settings.armorDurabilityRanged,timing:settings.armorDurabilityRangedTiming};
   const owner=actor();
   const armor={id:"vest",type:"armor",system:{equipped:true,armor:{durability:6,durabilityDamage:1,ratings:{torso:2,head:2},resistances:[{category:"explosive",torso:3,head:3}]}},
@@ -1955,7 +1955,7 @@ test("starting melee from an existing untargeted attack reuses its dice and bind
 test("manual durability changes remain local on character and creature sheets, including legacy shared wear", async () => {
   const {NeuroshimaActorSheet}=await import("../module/sheets/actor-sheet.js");
   const {NeuroshimaCreatureSheet}=await import("../module/sheets/creature-sheet.js");
-  const {remainingArmorDurability}=await import("../module/helpers/armor-durability.js");
+  const {remainingArmorDurability}=await import("../module/helpers/item-helper.js");
   for(const handler of [NeuroshimaActorSheet.prototype._onModifyDurability,NeuroshimaCreatureSheet.DEFAULT_OPTIONS.actions.modifyDurability]){
     const owner=actor();
     const item={id:"vest",type:"armor",system:{armor:{durability:6,durabilityDamage:1,locationDurabilityDamage:{torso:2},ratings:{torso:3}}},async update(data){for(const [key,value]of Object.entries(data))setProperty(this,key,value);}};
@@ -2008,7 +2008,7 @@ test("start-fight context action reads the message test and forwards the saved a
 
 
 test("fully absorbed hits expose a reversible armor-only report and undo is idempotent", async () => {
-  const {remainingArmorDurability}=await import("../module/helpers/armor-durability.js");
+  const {remainingArmorDurability}=await import("../module/helpers/item-helper.js");
   const {NeuroshimaChatMessage}=await import("../module/documents/chat-message.js");
   const previous={user:game.user,resolver:globalThis.fromUuid,ui:globalThis.ui,melee:settings.armorDurabilityMelee,group:game.neuroshima.group,end:game.neuroshima.groupEnd,actors:game.actors};
   const target=actor();trackEmbeddedUpdates(target);
@@ -2093,7 +2093,7 @@ test("melee exchanges calculate destruction between hits but persist all armor p
 
 
 test("zero AP does not prevent critical firearm hits wearing armor that covers the struck location", async () => {
-  const {remainingArmorDurability}=await import("../module/helpers/armor-durability.js");
+  const {remainingArmorDurability}=await import("../module/helpers/item-helper.js");
   const previous={ranged:settings.armorDurabilityRanged,timing:settings.armorDurabilityRangedTiming,group:game.neuroshima.group,end:game.neuroshima.groupEnd,actors:game.actors};
   class Helper extends CombatHelper {
     static async applyDamage(_actor,{wounds}){return {results:wounds.map(w=>({damageType:w.damageType})),woundIds:[]};}
@@ -2122,7 +2122,7 @@ test("zero AP does not prevent critical firearm hits wearing armor that covers t
 
 
 test("the melee bruise switch never enables firearm bruise wear, including obsolete saved preferences", async () => {
-  const {applyArmorDurabilityWear}=await import("../module/helpers/armor-durability.js");
+  const {applyArmorDurabilityWear}=await import("../module/helpers/item-helper.js");
   const keys=["armorDurabilityMelee","armorDurabilityRanged","armorDurabilityRangedTiming","armorDurabilityMeleeBruises","armorDurabilityRangedBruises"];
   const previous=Object.fromEntries(keys.map(key=>[key,settings[key]]));
   const owner=actor();
@@ -2176,7 +2176,7 @@ test("durability settings enable their dependent controls and retain disabled br
   try{
     game.settings={get:(_scope,key)=>key==="customDamageCategories"?"[]":key==="meleeCombatType"?"default":false,async set(_scope,key,value){writes.set(key,value);}};
     game.neuroshima.config={damageCategories:{physical:{},explosive:{}}};
-    globalThis.ui={notifications:{info(){},error(){throw new Error("Settings save failed");}}};globalThis.SettingsConfig={reloadConfirm(){}};
+    globalThis.ui={notifications:{info(){},error(){throw new Error("Settings save failed");}}};globalThis.SettingsConfig={reloadConfirm(){}};foundry.applications.settings={SettingsConfig:globalThis.SettingsConfig};
     app._readDamageCategories=()=>({custom:[],builtinLimits:{}});app._readUnarmedDamageTable=()=>[];
     const data={armorLimitCharacter:6,armorLimitCreature:6,armorLimitVehicle:6,meleeCombatType:"default"};
     await app._onSubmit(null,null,{object:data});
