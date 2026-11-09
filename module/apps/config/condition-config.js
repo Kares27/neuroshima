@@ -1,4 +1,4 @@
-import { effectChanges, normalizeEffectData, stampEffectStart, isV14 } from "../../helpers/foundry-compat.js";
+import { effectChanges, normalizeEffectData, stampEffectStart } from "../../helpers/foundry-compat.js";
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
 const LEGACY_OVERWEIGHT_CHECK_CODE = `const enc = this.encumbrance;
@@ -246,7 +246,7 @@ export function conditionEffectData(condDef, extraFlags = {}, { applied = false 
     }
   };
   normalizeEffectData(data);
-  if (applied && isV14()) stampEffectStart(data);
+  if (applied) stampEffectStart(data);
   return data;
 }
 

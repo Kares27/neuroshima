@@ -614,15 +614,11 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
 
     // A template's saved clock is never the start of a newly applied copy.
     // Normalize overrides separately so native source fields cannot mask them.
+    normalizeEffectData(data);
+    const update = normalizeEffectData(foundry.utils.expandObject(overrides));
+    if (update.duration) foundry.utils.mergeObject(data, { duration: update.duration });
     if (isV14() || effectTimeDuration(data)) stampEffectStart(data);
-    else normalizeEffectData(data);
-    if (Object.keys(overrides).length) {
-      const update = normalizeEffectData(foundry.utils.expandObject(overrides));
-      foundry.utils.mergeObject(data, update);
-      if (!isV14() && effectTimeDuration(data) && !Object.hasOwn(update.duration ?? {}, "startTime")) {
-        stampEffectStart(data);
-      }
-    }
+    if (Object.keys(update).length) foundry.utils.mergeObject(data, update);
 
     game.neuroshima?.log("[NeuroshimaActiveEffect.convertToApplied]", {
       effectName:           this.name,

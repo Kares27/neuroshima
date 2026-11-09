@@ -271,3 +271,58 @@ test("persistent V13 effect conversion retains the native expiry metadata throug
   assert.equal(update.duration.seconds, 60);
   assert.equal(update["flags.neuroshima.durationExpiry"], "turnStart");
 });
+
+test("explicit combat start overrides take precedence over automatic application clocks on both generations", () => {
+  for (const generation of [13, 14]) {
+    setup(generation, 500);
+    game.combat = { id: "current", round: 3, turn: 1 };
+    const source = generation === 14
+      ? { duration: { value: 2, units: "rounds" }, start: { time: 1, combat: "old", round: 1, turn: 0 } }
+      : { duration: { rounds: 2, startTime: 1, combat: "old", startRound: 1, startTurn: 0 } };
+    const copy = sourceEffect(source).convertToApplied({
+      "duration.rounds": 3, "duration.startRound": 7, "duration.startTurn": 2
+    });
+    assert.equal(generation === 14 ? copy.start.time : copy.duration.startTime, 500);
+    assert.equal(generation === 14 ? copy.start.round : copy.duration.startRound, 7);
+    assert.equal(generation === 14 ? copy.start.turn : copy.duration.startTurn, 2);
+  }
+});
+
+test("applying a timed condition refreshes its template clock in V13 and V14 without altering the definition", async () => {
+  const { conditionEffectData } = await import("../module/apps/config/condition-config.js");
+  for (const generation of [13, 14]) {
+    setup(generation, 500);
+    const condition = generation === 14
+      ? { key: "timed", name: "Timed", _duration: { units: "seconds", value: 60 }, _start: { time: 1 } }
+      : { key: "timed", name: "Timed", _duration: { seconds: 60, startTime: 1 } };
+    const original = structuredClone(condition);
+    const template = conditionEffectData(condition);
+    const copy = conditionEffectData(condition, {}, { applied: true });
+    assert.equal(generation === 14 ? template.start.time : template.duration.startTime, 1);
+    assert.equal(generation === 14 ? copy.start.time : copy.duration.startTime, 500);
+    assert.deepEqual(condition, original);
+  }
+});
+
+test("V13 application, time scripts and expiry never access V14-only effect APIs", async () => {
+  setup(13, 500);
+  const forbidden = () => assert.fail("V14-only effect API accessed in V13");
+  CONFIG.ActiveEffect.documentClass = {};
+  for (const key of ["registry", "getEffectStart", "applyChange"]) {
+    Object.defineProperty(CONFIG.ActiveEffect.documentClass, key, { get: forbidden });
+  }
+  Object.defineProperty(CONFIG.ActiveEffect, "expiryAction", { get: forbidden, set: forbidden });
+  configureEffectExpiry();
+  const copy = sourceEffect({ duration: { seconds: 60, startTime: 1 } }).convertToApplied();
+  assert.equal(copy.duration.startTime, 500);
+  assert.equal(copy.start, undefined);
+  assert.equal(copy.duration.units, undefined);
+  const script = { trigger: "worldTimeUpdate", code: "return;" };
+  const effect = { id: "timed", duration: { seconds: 60, startTime: 0, remaining: -440 },
+    scripts: [script], getFlag: () => undefined };
+  const deleted = [];
+  const actor = { uuid: "Actor.owner", items: [], effects: [effect], deleteEmbeddedDocuments: async (_type, ids) => deleted.push(ids) };
+  assert.deepEqual(NeuroshimaScriptRunner.getScripts(actor, "worldTimeUpdate"), [script]);
+  assert.equal(await NeuroshimaScriptRunner.expireWorldTimeEffects([actor]), 1);
+  assert.deepEqual(deleted, [["timed"]]);
+});
