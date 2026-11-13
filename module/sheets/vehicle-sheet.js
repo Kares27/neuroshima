@@ -33,16 +33,15 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
           vehicle,
           weapon: item,
           onSelect: async (crewActor) => {
-            const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
-            const rollDialog = new NeuroshimaWeaponRollDialog({
-              actor:    crewActor,
-              weapon:   item,
-              rollType: item.system.weaponType
-            });
-            rollDialog.render(true);
+            try {
+              await this._rollCrewWeapon(item, crewActor);
+            } catch (error) {
+              console.error("Neuroshima | Vehicle weapon dialog failed", error);
+              ui.notifications.error(game.i18n.format("NEUROSHIMA.Notifications.WeaponRollFailed", { error: error.message }));
+            }
           }
         });
-        crewDialog.render(true);
+        await crewDialog.render(true);
       },
       createItem:  async function(event, target) {
         const type = target.dataset.type || "weapon";
@@ -713,6 +712,71 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
     }
 
     return super._onChangeForm(formConfig, event);
+  }
+
+  /** Open a mounted weapon with crew statistics and the vehicle's inventory and position. */
+  async _rollCrewWeapon(weapon, crewActor) {
+    const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
+    const { RangedWeaponTest } = await import("../tests.mjs");
+    const { NeuroshimaDice } = await import("../helpers/rolls.js");
+    const isMelee = weapon.system.weaponType === "melee";
+    const isLauncher = weapon.system.weaponType === "launcher";
+    let ammunition;
+    if (!isMelee) {
+      if (weapon.system.jammed) {
+        ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.WeaponIsJammed"));
+        return null;
+      }
+      ammunition = RangedWeaponTest.planAmmunition(crewActor, weapon, 1);
+      if (!ammunition.valid) {
+        ui.notifications.warn(ammunition.reason === "noMagazine"
+          ? game.i18n.localize("NEUROSHIMA.Notifications.NoMagazineSelected")
+          : game.i18n.format("NEUROSHIMA.Notifications.OutOfAmmo", { name: weapon.name }));
+        return null;
+      }
+    }
+
+    const sourceToken = this._getSourceToken();
+    let targets = isLauncher ? [] : Array.from(game.user.targets ?? []);
+    let distance = sourceToken && targets.length ? NeuroshimaDice.measureDistance(sourceToken, targets[0]) : 0;
+    let launcherTargetPoint = null;
+    if (isLauncher) {
+      for (const token of game.user.targets ?? []) {
+        token.setTarget(false, { user: game.user, releaseOthers: false, groupSelection: true });
+      }
+    }
+    if (sourceToken && !targets.length) {
+      const zones = ammunition?.bulletSequence?.[0]?.ammoSnapshot?.blastZones ?? [];
+      const templateRadius = isLauncher ? Math.max(0, ...zones.map(zone => Number(zone.radius) || 0)) : 0;
+      await this.minimize();
+      let selection;
+      try {
+        selection = await this._waitForTarget({ templateRadius, pointOnly: isLauncher });
+      } finally {
+        await this.maximize();
+      }
+      if (!selection || (isLauncher && selection.cancelled)) return null;
+      if (!selection.cancelled) {
+        distance = Number(selection.distance ?? 0);
+        if (isLauncher) launcherTargetPoint = selection.point ?? null;
+        else if (selection.token) {
+          selection.token.setTarget(true, { releaseOthers: true });
+          targets = [selection.token];
+        }
+      }
+    }
+
+    const lastRoll = crewActor.system.lastWeaponRoll ?? {};
+    const dialog = new NeuroshimaWeaponRollDialog({
+      actor: crewActor, weapon,
+      sourceActor: this.document, sourceToken,
+      rollType: isMelee ? "melee" : "ranged",
+      targets: targets.map(token => token.document?.uuid ?? token.uuid).filter(Boolean),
+      launcherTargetPoint,
+      lastRoll: { ...lastRoll, distance: sourceToken ? distance : (lastRoll.distance ?? 0) }
+    });
+    await dialog.render(true);
+    return dialog;
   }
 
   /** @override */

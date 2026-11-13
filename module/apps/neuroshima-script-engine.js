@@ -4747,12 +4747,14 @@ export class NeuroshimaScriptRunner {
   /**
    * Collect all scripts from actor effects and embedded item effects for a given trigger.
    * Supports character, NPC, creature, and vehicle actor types.
+   * A used Item outside the Actor inventory contributes only its item-scoped scripts.
    * For items: only collects from equipped items (if item has equipped property).
    * @param {Actor} actor
    * @param {string} trigger
+   * @param {Item|null} [usedItem] Explicit weapon or other Item used by this Actor.
    * @returns {NeuroshimaScript[]}
    */
-  static getScripts(actor, trigger) {
+  static getScripts(actor, trigger, usedItem = null) {
     const scripts = [];
     if (!actor) return scripts;
 
@@ -4816,11 +4818,16 @@ export class NeuroshimaScriptRunner {
     // on items are templates; only "owningDocument" effects transfer passively.
     const PASSIVE_TRANSFER_TYPES = new Set(["owningDocument"]);
 
-    for (const item of (actor.items ?? [])) {
+    const items = Array.from(actor.items ?? []);
+    const isForeignItem = usedItem && !items.some(item => item === usedItem || (item.uuid && item.uuid === usedItem.uuid));
+    if (isForeignItem) items.push(usedItem);
+    for (const item of items) {
       if (item.type === "weapon-mod" || item.type === "armor-mod") continue;
       const hasEquipped  = "equipped" in (item.system ?? {});
       const isUnequipped = hasEquipped && (item.system.equipped === false || item.isEquippable === false);
       for (const effect of (item.effects ?? [])) {
+        // A borrowed or mounted weapon contributes its item scripts, not its owner's actor buffs.
+        if (isForeignItem && item === usedItem && effect.getFlag("neuroshima", "documentType") !== "item") continue;
         const fromModId = effect.getFlag("neuroshima", "fromModId");
         if (fromModId) {
           const modSnap = item.system?.mods?.[fromModId];
@@ -4886,7 +4893,7 @@ export class NeuroshimaScriptRunner {
     const actor = args.actor;
     if (!actor) return;
     game.neuroshima?.log?.(`[${trigger}] fired`, NeuroshimaScriptRunner._triggerArgsForLog(args));
-    const scripts = this.getScripts(actor, trigger);
+    const scripts = this.getScripts(actor, trigger, args.item ?? args.weapon);
     for (const script of scripts) {
       if (trigger === "takeDamage" && Array.isArray(args.wounds)) {
         const before = args.wounds.map(w => ({ forcePassed: w.forcePassed, annotation: w.annotation }));
@@ -4927,7 +4934,7 @@ export class NeuroshimaScriptRunner {
 
     game.neuroshima?.log?.(`[${publicTrigger}] fired`, this._triggerArgsForLog(eventArgs));
 
-    const canonicalScripts = this.getScripts(actor, publicTrigger)
+    const canonicalScripts = this.getScripts(actor, publicTrigger, metadata.item ?? args.item ?? args.weapon)
       .filter(script => this._matchesItemDocumentScope(script, publicTrigger, metadata.item ?? args.item))
       .filter(script => !(publicTrigger === "getMeleeActions" && script.useActionDef));
     for (const script of canonicalScripts) {
@@ -4997,7 +5004,7 @@ export class NeuroshimaScriptRunner {
     const actor = args.actor;
     if (!actor) return;
 
-    const scripts = this.getScripts(actor, trigger);
+    const scripts = this.getScripts(actor, trigger, args.item ?? args.weapon);
     const scoped = scripts.filter(script => {
       const effect = script.effect;
       if (!effect) return false;
@@ -5028,7 +5035,7 @@ export class NeuroshimaScriptRunner {
     const actor = args.actor;
     if (!actor) return;
     game.neuroshima?.log?.(`[${trigger}] fired`, NeuroshimaScriptRunner._triggerArgsForLog(args));
-    const scripts = this.getScripts(actor, trigger);
+    const scripts = this.getScripts(actor, trigger, args.item ?? args.weapon);
     for (const script of scripts) {
       script.executeSync(args);
     }
@@ -5047,7 +5054,7 @@ export class NeuroshimaScriptRunner {
     const eventArgs = args;
     eventArgs.trigger = publicTrigger;
     eventArgs.eventContext = context;
-    const canonicalScripts = this.getScripts(actor, publicTrigger)
+    const canonicalScripts = this.getScripts(actor, publicTrigger, metadata.item ?? args.item ?? args.weapon)
       .filter(script => this._matchesItemDocumentScope(script, publicTrigger, metadata.item ?? args.item))
       .filter(script => !(publicTrigger === "getMeleeActions" && script.useActionDef));
     for (const script of canonicalScripts) {
@@ -5250,7 +5257,7 @@ export class NeuroshimaScriptRunner {
       allScriptEntries.push({ script, sourceActor: actor, sourceLabel: null });
     }
 
-    const ownScripts = this.getScripts(actor, "dialog").filter(s => !s.targeter);
+    const ownScripts = this.getScripts(actor, "dialog", rollContext.weapon ?? rollContext.item).filter(s => !s.targeter);
     for (const script of ownScripts) {
       allScriptEntries.push({ script, sourceActor: actor, sourceLabel: null });
     }
@@ -5271,7 +5278,7 @@ export class NeuroshimaScriptRunner {
     // `code` (passive script) still fires separately via the duel-card getMeleeActions pipeline.
     // execDialogModifier dispatches to executeDialogCode() for these entries (dm.isMeleePreRoll=true).
     if (rollContext.rollType === "melee") {
-      const meleeDialogScripts = this.getScripts(actor, "getMeleeActions").filter(s => s.isDialogScript);
+      const meleeDialogScripts = this.getScripts(actor, "getMeleeActions", rollContext.weapon ?? rollContext.item).filter(s => s.isDialogScript);
       for (const script of meleeDialogScripts) {
         allScriptEntries.push({ script, sourceActor: actor, sourceLabel: null, isMeleePreRoll: true });
       }
@@ -5517,7 +5524,7 @@ export class NeuroshimaScriptRunner {
   static async runDialogScripts(actor, rollContext = {}) {
     if (!actor) return { dialogModifiers: [], totalDialogModifier: 0, fieldTotals: { modifier: 0, attributeBonus: 0, skillBonus: 0 } };
     game.neuroshima?.log?.(`[dialog] fired`, { _actor: actor.name, ...rollContext });
-    const scripts = this.getScripts(actor, "dialog");
+    const scripts = this.getScripts(actor, "dialog", rollContext.weapon ?? rollContext.item);
     const dialogModifiers = [];
 
     for (const script of scripts) {

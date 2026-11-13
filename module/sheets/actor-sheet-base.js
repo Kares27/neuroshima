@@ -333,7 +333,7 @@ export class NeuroshimaBaseActorSheet extends HandlebarsApplicationMixin(ActorSh
 
   _getSourceToken() {
     if (this.document.token) return this.document.token.object;
-    const tokens = canvas.tokens.placeables.filter(t => t.actor?.id === this.document.id);
+    const tokens = (globalThis.canvas?.tokens?.placeables ?? []).filter(t => t.actor?.id === this.document.id);
     if (tokens.length === 0) return null;
     if (tokens.length === 1) return tokens[0];
     const controlled = tokens.filter(t => t.controlled);

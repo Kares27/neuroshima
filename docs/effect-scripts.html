@@ -4981,6 +4981,9 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
   <div class="callout warning">
     <strong>Pasywne vs jawne zbieranie skryptów.</strong><br>
     <code>getScripts()</code> zbiera efekty z dwóch źródeł: efekty bezpośrednio na aktorze oraz efekty na itemach aktora.
+    W rzucie z użyciem broni spoza ekwipunku testującego, np. broni pojazdu obsługiwanej przez załoganta,
+    uwzględnia również skrypty tej broni z zakresem <code>Item</code>. Statystyki i efekty aktora pochodzą
+    od wybranego strzelca; efekty pojazdu z zakresem <code>Actor</code> nie są przekazywane strzelcowi.
     Z itemów zbierane są <strong>wyłącznie efekty z <code>transferType: owningDocument</code></strong>.
     Typy <code>other</code>, <code>target</code>, <code>damage</code>, <code>auraActor</code>, <code>areaActor</code> są pomijane — są to template'y,
     których skrypty stają się aktywne dopiero gdy efekt zostanie jawnie nałożony na aktora przez

@@ -747,8 +747,9 @@ test("the pool dialog rejects defensive maneuvers after a lost charge and tempo 
  let formData={maneuver:"fullDefense"},warnings=0;
  foundry.applications.ux={FormDataExtended:class{constructor(){this.object=formData;}}};
  globalThis.ui={notifications:{warn:()=>warnings++}};
- const dialog={element:{tagName:"FORM"},weapon:{system:{weaponType:"melee"}},actor:actor(),
-   userEntry:{},rollOptions:{},chargeDexPenalty:2,canIncreaseTempo:true};
+ const dialog=Object.assign(Object.create(NeuroshimaWeaponRollDialog.prototype),{
+   element:{tagName:"FORM"},weapon:{system:{weaponType:"melee"}},actor:actor(),
+   userEntry:{},rollOptions:{},chargeDexPenalty:2,canIncreaseTempo:true});
  try{
    await NeuroshimaWeaponRollDialog.prototype._onRoll.call(dialog);assert.equal(warnings,1);
    dialog.chargeDexPenalty=0;dialog.canIncreaseTempo=false;formData={maneuver:"increasedTempo"};

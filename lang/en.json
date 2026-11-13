@@ -1256,7 +1256,8 @@
             "RestReversed": "Reversed rest for {name}.",
             "NoWoundsFoundToReverse": "No matching wounds found to reverse.",
             "StatusReversed": "Damage has been reversed by GM.",
-            "WeaponIsJammed": "Weapon is jammed! Clear the jam first."
+            "WeaponIsJammed": "Weapon is jammed! Clear the jam first.",
+            "WeaponRollFailed": "The weapon roll could not be completed: {error}"
         },
         "Tricks": {
             "Placeholder": "Your Tricks (coming soon)",

@@ -74,7 +74,9 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     // Combined with any user-selected increasedTempo in _updateRollPreview / _onRoll.
     this._conditionTempo = this.actor?.getConditionValue?.("maneuver-pace") ?? 0;
     this.weapon = options.weapon;
-    this.rollType = options.rollType || "ranged";
+    this.rollType = (options.rollType ?? this.weapon?.system?.weaponType) === "melee" ? "melee" : "ranged";
+    this.sourceActor = options.sourceActor ?? (this.weapon?.actor?.type === "vehicle" ? this.weapon.actor : this.actor);
+    this._sourceToken = options.sourceToken ?? null;
     this.targets = options.targets || [];
     this.isLauncher = this.weapon?.system?.weaponType === "launcher";
     this.launcherTargetPoint = options.launcherTargetPoint ?? null;
@@ -118,16 +120,29 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     this.shooterMovedPenalty = 0;
     this.targetMovedPenalty = 0;
     if (game.combats?.active && this.rollType === "ranged") {
-      const shooterToken = canvas.scene?.tokens?.find(t => t.actor?.id === this.actor?.id);
+      const shooterToken = this._getSourceToken()?.document;
       if (shooterToken?.movementHistory?.length > 0) {
         this.shooterMovedPenalty = 30;
       }
-      const firstTarget = (options.targets || [])[0];
+      let firstTarget = (options.targets || [])[0];
+      if (typeof firstTarget === "string") {
+        firstTarget = Array.from(game.user.targets ?? []).find(token =>
+          (token.document?.uuid ?? token.uuid) === firstTarget);
+      }
       const targetTokenDoc = firstTarget?.document ?? firstTarget;
       if (targetTokenDoc?.movementHistory?.length > 0) {
         this.targetMovedPenalty = 20;
       }
     }
+  }
+
+  /** Measure fire from the mounted weapon, while the crew Actor supplies statistics. */
+  _getSourceToken() {
+    if (this._sourceToken) return this._sourceToken.object ?? this._sourceToken;
+    if (this.sourceActor?.token) return this.sourceActor.token.object ?? null;
+    const tokens = (globalThis.canvas?.tokens?.placeables ?? []).filter(token =>
+      token.actor === this.sourceActor || token.actor?.uuid === this.sourceActor?.uuid);
+    return tokens.find(token => token.controlled) ?? tokens[0] ?? null;
   }
 
   static DEFAULT_OPTIONS = {
@@ -203,7 +218,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     let distance = this.userEntry.distance ?? this.rollOptions.distance ?? 0;
     const targets = game.user.targets;
     if (targets.size > 0 && this.userEntry.distance === undefined) {
-      const actorToken = canvas.tokens.placeables.find(t => t.actor?.id === this.actor.id && (t.controlled || !canvas.tokens.controlled.length));
+      const actorToken = this._getSourceToken();
       const targetToken = Array.from(targets)[0];
       if (actorToken && targetToken) {
         distance = measureDistance(actorToken, targetToken);
@@ -658,6 +673,21 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
   }
 
   async _onRoll(event, target) {
+    if (this._isSubmitting) return null;
+    this._isSubmitting = true;
+    try {
+      return await this._submitWeaponRoll(event, target);
+    } catch (error) {
+      console.error("Neuroshima | Weapon roll failed", error);
+      ui.notifications.error(game.i18n.format("NEUROSHIMA.Notifications.WeaponRollFailed", { error: error.message }));
+      await this._onErrorCallback?.(error);
+      return null;
+    } finally {
+      this._isSubmitting = false;
+    }
+  }
+
+  async _submitWeaponRoll(event, target) {
     const html = this.element;
     const form = html.tagName === "FORM" ? html : html.querySelector('form');
     const formData = new foundry.applications.ux.FormDataExtended(form).object;
@@ -693,7 +723,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     let _effectiveDiff  = (sf?.difficulty && ue.baseDifficulty === undefined) ? sf.difficulty : _userBaseDiff;
     if (sf?.difficultyShift) _effectiveDiff = NeuroshimaScriptRunner.shiftDifficultyKey(_effectiveDiff, sf.difficultyShift);
 
-    await this.actor.update({
+    if (this.actor.isOwner !== false || game.user.isGM) await this.actor.update({
       "system.lastWeaponRoll": {
         isOpen:            this.rollType === "melee" ? false : (formData.isOpen === "true"),
         difficulty:        _userBaseDiff,
@@ -760,22 +790,19 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     };
 
     const submissionOptions = await this._runSubmissionScripts();
-    this.close();
 
     if (this.isPoolRoll && this.onPoolRoll) {
+      this.close();
       let rawResult;
       let rolledTest;
-      try {
-        rolledTest = await this._executeWeaponTest({ ...rollData, options: submissionOptions });
-        rawResult = rolledTest.result;
-        Object.defineProperty(rawResult, "roll", {
-          value: rolledTest.diceRoll,
-          configurable: true,
-          enumerable: false
-        });
-      } catch (err) {
-        console.error("Neuroshima | Pool roll: rollWeaponTest failed:", err);
-      }
+      rolledTest = await this._executeWeaponTest({ ...rollData, options: submissionOptions });
+      if (rolledTest.preData?.cancelled) return null;
+      rawResult = rolledTest.result;
+      Object.defineProperty(rawResult, "roll", {
+        value: rolledTest.diceRoll,
+        configurable: true,
+        enumerable: false
+      });
       if (rawResult) {
         rawResult.isGradCios = !!(formData.gradCios);
         rawResult.activatedMeleePreRollMods = expandDialogModifiers(this._dialogModifiers)
@@ -801,6 +828,8 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     }
 
     const test = await this._executeWeaponTest({ ...rollData, options: submissionOptions });
+    if (test.preData?.cancelled) return null;
+    await this.close();
     if (this.isLauncher && test?.message && this.launcherTargetPoint && canvas?.scene) {
       const { NeuroshimaChatMessage } = await import("../../documents/chat-message.js");
       await NeuroshimaChatMessage.placeGrenadeTemplateAt(test.message, this.launcherTargetPoint);

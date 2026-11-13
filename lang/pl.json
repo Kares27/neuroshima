@@ -1283,7 +1283,8 @@
             "RestReversed": "Cofnięto odpoczynek u {name}.",
             "NoWoundsFoundToReverse": "Nie znaleziono nałożonych ran do wycofania.",
             "StatusReversed": "Obrażenia zostały wycofane przez MG.",
-            "WeaponIsJammed": "Broń jest zacięta! Najpierw usuń zacięcie."
+            "WeaponIsJammed": "Broń jest zacięta! Najpierw usuń zacięcie.",
+            "WeaponRollFailed": "Nie udało się wykonać rzutu bronią: {error}"
         },
         "Tricks": {
             "Placeholder": "Miejsce na Twoje Sztuczki (w przygotowaniu)",
