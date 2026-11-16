@@ -2255,6 +2255,12 @@
             "DefendingAgainstHint": "Uruchamia ten skrypt w dialogu aktora, który celuje w tego aktora lub przedmiot",
             "DeletingItems": "Usuwanie przedmiotów stworzonych przez efekt:",
             "AdvancedConfig": "Zaawansowana Konfiguracja",
+            "AuraVisibility": "Widoczność aury",
+            "AuraVisibilityLayer": "Tylko na warstwie Regionów",
+            "AuraVisibilityGM": "Zawsze dla MG",
+            "AuraVisibilityEveryone": "Zawsze dla wszystkich",
+            "AuraVisibilityHint": "Określa widoczność Regionu aury. Aura działa niezależnie od jego widoczności.",
+            "TransferredAuraHint": "Przekaż aurę celowi lub sobie. Odbiorca staje się jej źródłem; efekty w jego zasięgu nie przekazują aury dalej.",
             "ForcePassed": "Auto-zdany (przez skrypt efektu)",
             "AutoSuccess": "Automatyczny sukces (efekt aktywny)",
             "Trigger": {

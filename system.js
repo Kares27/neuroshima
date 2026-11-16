@@ -3436,83 +3436,72 @@ Hooks.on("controlToken", () => {
     refreshAllCombatCards();
 });
 
+function managesSceneEffects() {
+    return game.user.isGM && (!game.users?.activeGM || game.users.activeGM.id === game.user.id);
+}
+
 Hooks.on("createToken", async (tokenDocument, options, userId) => {
-    if (userId !== game.user.id) return;
     game.neuroshima?.log("[hook:createToken] firing createToken scripts", { tokenName: tokenDocument.name, actorName: tokenDocument.actor?.name, sceneId: tokenDocument.parent?.id });
-    await NeuroshimaScriptRunner.runCreateToken(tokenDocument);
-    if (game.user.isGM) {
+    if (userId === game.user.id) await NeuroshimaScriptRunner.runCreateToken(tokenDocument);
+    if (managesSceneEffects() && tokenDocument.parent?.id === canvas.scene?.id) {
         const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
         await NeuroshimaAuraManager.refreshAllAuras();
     }
 });
 
 Hooks.on("preUpdateToken", (tokenDocument, changes, options) => {
-    if (!game.user.isGM) return;
-    if (!("x" in changes) && !("y" in changes)) return;
+    if (!managesSceneEffects()) return;
+    if (!["x", "y", "width", "height", "elevation", "level"].some(key => key in changes)) return;
     if (!options._nsNewPos) options._nsNewPos = {};
     options._nsNewPos[tokenDocument.id] = {
         x: changes.x ?? tokenDocument.x,
-        y: changes.y ?? tokenDocument.y
+        y: changes.y ?? tokenDocument.y,
+        width: changes.width ?? tokenDocument.width,
+        height: changes.height ?? tokenDocument.height,
+        elevation: changes.elevation ?? tokenDocument.elevation
     };
 });
 
 Hooks.on("updateToken", async (tokenDocument, changes, options) => {
-    if (!game.user.isGM) return;
-    if (!("x" in changes) && !("y" in changes)) return;
+    if (!managesSceneEffects() || tokenDocument.parent?.id !== canvas.scene?.id) return;
+    if (!["x", "y", "width", "height", "elevation", "level", "actorId", "actorLink"].some(key => key in changes)) return;
     const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
     const movedTokenNewPos = options._nsNewPos?.[tokenDocument.id] ?? null;
     await NeuroshimaAuraManager.refreshAllAuras(tokenDocument, movedTokenNewPos);
 });
 
-Hooks.on("deleteToken", async (tokenDocument, options, userId) => {
-    if (!game.user.isGM) return;
+// The canonical movement workflow is available on both supported generations.
+Hooks.on("moveToken", async (tokenDocument, movement) => {
+    if (!managesSceneEffects() || tokenDocument.parent?.id !== canvas.scene?.id) return;
     const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
-    const actor = tokenDocument.actor;
-    const deletedTokenId = tokenDocument.id;
-    if (actor) {
-        await NeuroshimaAuraManager.removeAllCopiesForEffect(null, actor.id, actor.uuid);
-    }
-    for (const otherToken of canvas.scene?.tokens ?? []) {
-        if (otherToken.id === deletedTokenId) continue;
-        const otherActor = otherToken.actor;
-        if (!otherActor) continue;
-        const stale = (otherActor.effects ?? []).filter(e => {
-            const fa = e.getFlag("neuroshima", "fromAura");
-            if (!fa || !actor) return false;
-            return fa.sourceActorUuid
-                ? fa.sourceActorUuid === actor.uuid
-                : fa.sourceActorId === actor.id && fa.sourceTokenId === deletedTokenId;
-        });
-        if (stale.length) {
-            await otherActor.deleteEmbeddedDocuments("ActiveEffect", stale.map(e => e.id), { ns_skipAuraCleanup: true });
-        }
-    }
+    const destination = movement?.passed?.waypoints?.at(-1);
+    await NeuroshimaAuraManager.refreshAllAuras(tokenDocument, {
+        x: destination?.x ?? tokenDocument.x, y: destination?.y ?? tokenDocument.y,
+        width: tokenDocument.width, height: tokenDocument.height,
+        elevation: destination?.elevation ?? tokenDocument.elevation
+    });
 });
 
-Hooks.on("canvasReady", async () => {
-    if (!game.user.isGM) return;
+Hooks.on("deleteToken", async (tokenDocument, options, userId) => {
+    if (!managesSceneEffects() || tokenDocument.parent?.id !== canvas.scene?.id) return;
     const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
     await NeuroshimaAuraManager.refreshAllAuras();
 });
 
-// updateActiveEffect — re-sync the visual render template when an auraActor effect
-// with auraRender=true is updated (e.g. the user changes auraRadius or templateData
-// in Advanced Config).  Without this hook the MeasuredTemplate on the canvas would
-// only update on the next token move or reload, because _syncRenderTemplates is
-// normally called only by updateToken / createToken / canvasReady.
-//
-// Only the GM runs this: template mutations are server-authoritative and the hook
-// fires once on all connected clients; restricting to GM avoids duplicate updates.
-//
-// Parent resolution covers both cases:
-//   - Effect lives directly on an Actor  → effect.parent is the Actor
-//   - Effect lives on an Item owned by an Actor → effect.parent is the Item,
-//     effect.parent.actor is the owning Actor
-Hooks.on("updateActiveEffect", async (effect, changes, options, userId) => {
-    if (!game.user.isGM) return;
+Hooks.on("canvasReady", async () => {
+    if (!managesSceneEffects()) return;
+    const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
+    await NeuroshimaAuraManager.refreshAllAuras();
+});
+
+// Reconcile both effect membership and visuals on the active GM, regardless of the editing user.
+async function refreshEffectAreas(effect, changes = {}, deleted = false) {
+    if (!managesSceneEffects()) return;
     const ns = effect.flags?.neuroshima ?? {};
-    if (ns.transferType !== "auraActor") return;
-    if (!ns.auraRender) return;
+    if (ns.fromAura || ns.fromArea) return;
+    if (!["auraActor", "areaActor"].includes(ns.transferType)
+        && !foundry.utils.hasProperty(changes, "flags.neuroshima.transferType")
+        && !("flags.neuroshima.transferType" in changes)) return;
     const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
     const actor = effect.parent?.documentName === "Actor"
         ? effect.parent
@@ -3520,11 +3509,25 @@ Hooks.on("updateActiveEffect", async (effect, changes, options, userId) => {
             ? effect.parent.actor
             : null;
     if (!actor) return;
-    const tokenDoc = actor.getActiveTokens()[0]?.document ?? null;
-    if (!tokenDoc) return;
-    game.neuroshima?.log("[hook:updateActiveEffect] re-syncing render template", { effectName: effect.name, actorName: actor.name });
-    await NeuroshimaAuraManager._syncRenderTemplates(tokenDoc, actor, null, null);
-});
+    if (deleted) {
+        await NeuroshimaAuraManager.semaphore.add(() => ns.transferType === "areaActor"
+            ? NeuroshimaAuraManager.removeAllAreaCopiesForEffect(effect.id, actor.id, actor.uuid)
+            : NeuroshimaAuraManager.removeAllCopiesForEffect(effect.id, actor.id, actor.uuid));
+    }
+    await NeuroshimaAuraManager.refreshAllAuras();
+}
+Hooks.on("createActiveEffect", effect => refreshEffectAreas(effect));
+Hooks.on("updateActiveEffect", (effect, changes) => refreshEffectAreas(effect, changes));
+Hooks.on("deleteActiveEffect", effect => refreshEffectAreas(effect, {}, true));
+for (const event of ["createItem", "updateItem", "deleteItem", "updateActor"]) {
+    Hooks.on(event, async document => {
+        if (!managesSceneEffects()) return;
+        const actor = document.documentName === "Actor" ? document : document.actor;
+        if (!actor || !Array.from(canvas.scene?.tokens ?? []).some(token => token.actor?.uuid === actor.uuid)) return;
+        const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
+        await NeuroshimaAuraManager.refreshAllAuras();
+    });
+}
 
 let effectTimeQueue = Promise.resolve();
 function queueEffectTimeUpdate(callback) {
@@ -3568,8 +3571,8 @@ Hooks.on("simple-calendar-date-time-change", async (data) => {
 });
 
 Hooks.on(`create${NeuroshimaAreas.documentName}`, async (templateDoc, options, userId) => {
-    if (templateDoc.getFlag("neuroshima", "fromAreaEffect")) {
-        if (!game.user.isGM) return;
+    if (templateDoc.getFlag("neuroshima", "fromAreaEffect") && !options.ns_skipAreaCheck) {
+        if (!managesSceneEffects()) return;
         const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
         await NeuroshimaAuraManager.applyAreaEffect(templateDoc);
     }
@@ -3591,14 +3594,14 @@ Hooks.on(`create${NeuroshimaAreas.documentName}`, async (templateDoc, options, u
 });
 
 Hooks.on(`update${NeuroshimaAreas.documentName}`, async (templateDoc, changes, options, userId) => {
-    if (!game.user.isGM) return;
+    if (!managesSceneEffects() || options.skipAreaCheck || options.ns_skipAreaCheck) return;
     if (!templateDoc.getFlag("neuroshima", "fromAreaEffect")) return;
     const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
     await NeuroshimaAuraManager.applyAreaEffect(templateDoc);
 });
 
 Hooks.on(`delete${NeuroshimaAreas.documentName}`, async (templateDoc, options, userId) => {
-    if (!game.user.isGM) return;
+    if (!managesSceneEffects() || options.ns_skipAreaCleanup) return;
     if (!templateDoc.getFlag("neuroshima", "fromAreaEffect")) return;
     const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
     await NeuroshimaAuraManager.removeAreaCopies(templateDoc.id, { scene: templateDoc.parent });

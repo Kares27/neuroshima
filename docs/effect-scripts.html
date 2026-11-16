@@ -2838,7 +2838,7 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
     oznaczony <code>isBeastCombat</code>. Nie jest to rzeczywisty item jednej z akcji: profil ma <code>id</code> i <code>uuid</code> równe <code>null</code>.
     Nie używaj więc <code>args.weapon.id</code> do wskazania wybranej akcji i nie zakładaj, że wszystkie efekty itemów są automatycznie nakładane na przeciwnika.
     Starsze kontenery są rozdzielane przez migrację; zgodność dawnych odwołań czatu jest zachowana.
-    Krok schematu 2.6 utrwala aktualne dane zdolności i przypisania efektów, migruje starsze skrypty AE, progi wymaganych testów i formaty efektów właściwe dla uruchomionej wersji Foundry. Obejmuje dokumenty świata, niezależnych aktorów tokenów, migawki, konfigurację stanów oraz kompendia Actor/Item świata i systemu. Nieudany krok nie podnosi wersji schematu; blokady kompendiów są przywracane. Dokumenty importowane później przechodzą normalizację przy imporcie.
+    Krok schematu 2.7 utrwala aktualne dane zdolności i przypisania efektów, migruje starsze skrypty AE, progi wymaganych testów i formaty efektów właściwe dla uruchomionej wersji Foundry. Uzupełnia widoczność aur i przywraca emitowanie aury w rozpoznanych starszych kopiach Transferred Aura. Obejmuje dokumenty świata, niezależnych aktorów tokenów, migawki, konfigurację stanów oraz kompendia Actor/Item świata i systemu. Nieudany krok nie podnosi wersji schematu; blokady kompendiów są przywracane. Dokumenty importowane później przechodzą normalizację przy imporcie.
   </div>
 
   <h4 class="key-group">Cecha (<code>trait</code>)</h4>
@@ -5616,13 +5616,25 @@ return false; // nie blokuj nikogo</span></code></pre>
     <tbody>
       <tr><td><strong>Radius</strong></td><td>liczba</td><td>Aura + Area</td><td>Dodatni promień w jednostkach sceny. Dla automatycznej aury pusty promień lub <code>0</code> powoduje pominięcie nakładania; dla Area brak promienia blokuje umieszczenie szablonu.</td></tr>
       <tr><td><strong>Keep</strong></td><td>checkbox</td><td>Aura + Area</td><td>Kopia efektu pozostaje na celu po wyjściu z zasięgu / obszaru.</td></tr>
-      <tr><td><strong>Template Data</strong></td><td>przycisk</td><td>Aura + Area</td><td>Dialog konfiguracji wyglądu szablonu (kolor wypełnienia, obramowania, opacity).</td></tr>
-      <tr><td><strong>Render Aura</strong></td><td>checkbox</td><td>Aura</td><td>Widoczny szablon kołowy na canvasie, przemieszcza się z tokenem właściciela.</td></tr>
-      <tr><td><strong>Transferred Aura</strong></td><td>checkbox</td><td>Aura</td><td>Efekt <strong>nie jest aplikowany automatycznie na podstawie zasięgu</strong>. Zamiast tego — po zaznaczeniu tej opcji — kopia efektu jest nakładana na aktualnie wskazane tokeny gdy efekt zostaje utworzony na aktorze (GM). Kopiowanie można też wywołać ręcznie przez skrypt: <code>await this.applyTransferredAura()</code> lub <code>await this.applyTransferredAura(targetActor)</code>. Cleanup (usunięcie kopii) działa identycznie jak dla normalnych aur — przez usunięcie/wyłączenie efektu źródłowego.</td></tr>
-      <tr><td><strong>Area Effect Duration</strong></td><td>select</td><td>Area</td><td><code>Instantaneous</code> — szablon usuwa się po jednorazowym nałożeniu. <code>Sustained</code> — szablon pozostaje.</td></tr>
+      <tr><td><strong>Template Data</strong></td><td>przycisk</td><td>Aura + Area</td><td>Dialog wyglądu obszaru. V13: kolor wypełnienia, obramowania i przezroczystość. V14: kolor Regionu; osobne obramowanie i przezroczystość pozostają zapisane dla V13.</td></tr>
+      <tr><td><strong>Render Aura</strong></td><td>checkbox</td><td>Aura, V13</td><td>Opcjonalny widoczny szablon kołowy. Wyłączenie grafiki nie zatrzymuje działania aury.</td></tr>
+      <tr><td><strong>Aura Visibility / Widoczność aury</strong></td><td>select</td><td>Aura, V14</td><td><code>0</code> — tylko warstwa Regionów, <code>1</code> — zawsze dla MG, <code>2</code> — zawsze dla wszystkich. Region jest przypięty do tokena; aura działa przy każdym ustawieniu. Dawne Render Aura włączone odpowiada <code>2</code>, wyłączone — <code>0</code>.</td></tr>
+      <tr><td><strong>Transferred Aura</strong></td><td>checkbox</td><td>Aura, V13 + V14</td><td>Źródło służy do przekazania aury zamiast emitowania jej z własnego tokena. Odbiorca otrzymuje samodzielny efekt <code>auraActor</code> z <code>auraTransferred: false</code> i emituje aurę ze swojego tokena. Możesz użyć <code>await this.applyTransferredAura()</code>, <code>await this.applyTransferredAura(targetActor)</code> albo <code>await this.effect.applyEffect(targetActor)</code>. Kopie w zasięgu odbiorcy są zwykłymi efektami <code>owningDocument</code> i nie emitują aury dalej. Wyłączenie lub usunięcie oryginału nie usuwa przekazanego źródła; zarządzasz nim na odbiorcy.</td></tr>
+      <tr><td><strong>Area Effect Duration</strong></td><td>select</td><td>Area</td><td><code>Instantaneous</code> — obszar usuwa się po jednorazowym nałożeniu, a nałożone efekty pozostają. <code>Sustained</code> — obszar pozostaje i aktualizuje cele przy ich ruchu.</td></tr>
       <tr><td><strong>Place Template</strong></td><td>przycisk</td><td>Area</td><td>Umieszcza szablon kołowy na canvasie przy tokenie właściciela.</td></tr>
     </tbody>
   </table>
+
+  <div class="callout info">
+    <strong>V13 / V14:</strong> system automatycznie wybiera <code>MeasuredTemplate</code> w V13
+    albo <code>Region</code> w V14. Promień nadal podajesz w jednostkach sceny.
+    Zasięg, filtry i wygląd aury są przeliczane po zmianie efektu, ekwipunku lub tokena.
+    Ruch, zmiana rozmiaru i wysokości tokena odświeżają również obecność w utrzymywanych obszarach Area.
+    Operacje wykonuje jeden aktywny MG, aby uniknąć równoległego nakładania kopii.
+    Zmiana skryptów lub modyfikatorów źródła nie przepisuje zawartości już istniejących kopii.
+    Ustawienia widoczności są zachowywane między wersjami. Zapis w V14 ustawia też odpowiednik Render Aura dla V13;
+    zmiana tego checkboxa w V13 wybiera widoczność <code>0</code> lub <code>2</code> dla V14.
+  </div>
 
   <h4>Kopie efektów Aura / Area — flagi identyfikacyjne</h4>
   <p>
@@ -5636,9 +5648,11 @@ return false; // nie blokuj nikogo</span></code></pre>
       <tr><td><code>flags.neuroshima.fromAura.sourceActorId</code></td><td>string</td><td><strong>(Aura)</strong> ID aktora będącego źródłem aury.</td></tr>
       <tr><td><code>flags.neuroshima.fromAura.sourceActorUuid</code></td><td>string</td><td><strong>(Aura)</strong> UUID aktora źródłowego, także aktora syntetycznego tokena. Pozwala odróżnić źródła współdzielące bazowy Actor ID.</td></tr>
       <tr><td><code>flags.neuroshima.fromAura.sourceTokenId</code></td><td>string | null</td><td><strong>(Aura)</strong> ID tokena źródłowego, jeśli kopia powstała z automatycznego zasięgu.</td></tr>
-      <tr><td><code>flags.neuroshima.fromArea.templateId</code></td><td>string</td><td><strong>(Area)</strong> ID szablonu MeasuredTemplate w scenie.</td></tr>
+      <tr><td><code>flags.neuroshima.fromArea.templateId</code></td><td>string</td><td><strong>(Area)</strong> ID obszaru w scenie: MeasuredTemplate w V13 lub Region w V14.</td></tr>
       <tr><td><code>flags.neuroshima.fromArea.sourceEffectId</code></td><td>string</td><td><strong>(Area)</strong> ID efektu źródłowego (na aktorze właścicielu).</td></tr>
       <tr><td><code>flags.neuroshima.fromArea.sourceActorId</code></td><td>string</td><td><strong>(Area)</strong> ID aktora-właściciela efektu Area.</td></tr>
+      <tr><td><code>flags.neuroshima.fromArea.sourceActorUuid</code></td><td>string | null</td><td><strong>(Area)</strong> UUID aktora źródłowego, także aktora syntetycznego tokena.</td></tr>
+      <tr><td><code>flags.neuroshima.fromArea.sourceEffectUuid</code></td><td>string | null</td><td><strong>(Area)</strong> UUID efektu źródłowego, również efektu na itemie aktora.</td></tr>
       <tr><td><code>flags.neuroshima.transferType</code></td><td>string</td><td>Na kopii zawsze ustawiane na <code>"owningDocument"</code> — kopia jest traktowana jako zwykły efekt na docelowym aktorze.</td></tr>
     </tbody>
   </table>
@@ -5660,7 +5674,7 @@ return false; // nie blokuj nikogo</span></code></pre>
 
   <div class="example-block">
     <div class="example-header"><span class="trigger-badge">Aura + dialog</span> Ciszej niż Cień — maksymalnie +1 poziom trudności mimo kilku źródeł</div>
-    <p class="example-desc">Effect Application: <strong>Aura</strong>, Document Type: <strong>Actor</strong>, dodatni Radius (np. <strong>99</strong>), Keep i Transferred Aura wyłączone. Render Aura jest opcjonalny i steruje wyłącznie widocznością szablonu. Efekt umieść na itemie sztuczki należącym do każdego właściciela aury.</p>
+    <p class="example-desc">Effect Application: <strong>Aura</strong>, Document Type: <strong>Actor</strong>, dodatni Radius (np. <strong>99</strong>), Keep i Transferred Aura wyłączone. Render Aura (V13) lub Aura Visibility (V14) steruje wyłącznie widocznością obszaru. Efekt umieść na itemie sztuczki należącym do każdego właściciela aury.</p>
     <p class="example-desc"><strong>Pre-Apply Script</strong> — odbiorca neutralny lub wrogi, nie przyjazny:</p>
     <pre><code><span class="kw">return</span> !<span class="fn">isFriendlyToken</span>(targetActor);</code></pre>
     <p class="example-desc"><strong>Filter</strong> pozostaw pusty. Na efekcie dodaj skrypt o wyzwalaczu <code>dialog</code>, bez Targeted i Defending Against.</p>
@@ -5682,7 +5696,7 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
       Prosta aura strachu — wszyscy w promieniu 5m dostają +1 poziom trudności testu umiejętności
     </div>
     <p style="margin:6px 1rem;font-size:0.88em;color:#888;">
-      Effect Application: <strong>Aura</strong> | Radius: <strong>5</strong> | Render Aura: <strong>zaznaczony</strong>
+      Effect Application: <strong>Aura</strong> | Radius: <strong>5</strong> | V13: Render Aura <strong>zaznaczony</strong> | V14: Aura Visibility <strong>2</strong>
     </p>
     <p style="margin:6px 1rem;font-size:0.88em;">Skrypt <code>dialog</code>:</p>
     <pre><code>args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
@@ -5770,7 +5784,7 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
 <span class="cmt">// Sprawdź czy efekt pochodzi z Area (szablonu)</span>
 <span class="kw">const</span> <span class="var">fromArea</span> = <span class="kw">this</span>.effect.getFlag(<span class="str">"neuroshima"</span>, <span class="str">"fromArea"</span>);
 <span class="kw">if</span> (<span class="var">fromArea</span>) {
-  <span class="cmt">// fromArea.templateId — ID szablonu MeasuredTemplate</span>
+  <span class="cmt">// fromArea.templateId — ID MeasuredTemplate (V13) lub Regionu (V14)</span>
   <span class="cmt">// fromArea.sourceActorId, fromArea.sourceEffectId</span>
   <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Efekt ze strefy. Szablon: <span class="kw">${</span><span class="var">fromArea</span>.templateId<span class="kw">}</span>`</span>);
 }</code></pre>
@@ -5806,12 +5820,13 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
   <div class="example-block">
     <div class="example-header">
       <span class="trigger-badge">manual</span>
-      Aura przekazana (Transferred Aura) — nałóż kopię efektu na wskazane tokeny
+      Aura przekazana (Transferred Aura) — przekaż emitowanie aury wskazanym tokenom
     </div>
     <p class="example-desc">
       Effect Application: <strong>Aura</strong> | <strong>Transferred Aura: zaznaczony</strong><br>
-      Efekt nie jest nakładany automatycznie przez zasięg. GM wskazuje tokeny docelowe, następnie tworzy lub
-      włącza efekt — system aplikuje kopię do wybranych celów. Można też wywołać ręcznie z wyzwalacza <code>manual</code>:
+      Ten efekt nie emituje aury na właścicielu. GM może wskazać tokeny docelowe przed utworzeniem efektu na aktorze
+      albo wywołać przekazanie ręcznie z wyzwalacza <code>manual</code>. Odbiorca staje się nowym źródłem aury;
+      jego kopie zasięgowe są usuwane po wyjściu z zasięgu, chyba że zaznaczono Keep.
     </p>
     <pre><code><span class="cmt">// Manual trigger — nałóż aurę na aktualnie wskazane tokeny</span>
 <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyTransferredAura</span>();
@@ -5819,6 +5834,7 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
 <span class="cmt">// Lub podaj konkretnego aktora</span>
 <span class="kw">const</span> [<span class="var">target</span>] = <span class="kw">this</span>.<span class="fn">getTargets</span>();
 <span class="kw">if</span> (<span class="var">target</span>) <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyTransferredAura</span>(<span class="var">target</span>);</code></pre>
+    <p class="example-desc">Aby zakończyć przekazaną aurę, wyłącz lub usuń jej efekt na odbiorcy. Nadal dostępne są <code>origin</code> i <code>flags.neuroshima.sourceEffect</code>, wskazujące pierwotne źródło. Ponowne wywołanie helpera dla tego samego źródła i odbiorcy nie tworzy kolejnego emitera.</p>
   </div>
 
   <h3>Czas świata — wyzwalacz <code>worldTimeUpdate</code></h3>

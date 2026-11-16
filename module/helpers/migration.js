@@ -1,5 +1,5 @@
 /** Versioned world migrations and imported-document normalization. */
-import { normalizeTransferredSetting, effectChanges, effectChangesUpdate, normalizeEffectPenaltyChanges, normalizeEmbeddedEffects, normalizeEffectData, isV14 } from "./foundry-compat.js";
+import { normalizeTransferredSetting, effectChanges, effectChangesUpdate, normalizeEffectPenaltyChanges, normalizeEmbeddedEffects, normalizeEffectData, normalizeAuraData, isV14 } from "./foundry-compat.js";
 import { getConditions } from "../apps/config/condition-config.js";
 import { collectTraitSnapshots, GEAR_TYPE_KEYS, normalizeGearType } from "./item-helper.js";
 import { migrateBeastItem, isBeastAbility, normalizeRequiredEffects, requiredTestSuccesses } from "./combat-helper.js";
@@ -42,7 +42,7 @@ import { normalizeLegacySuccessScriptData } from "../apps/neuroshima-script-engi
  *   4. Update normalizeAll() / normalizeActor() if applicable.
  */
 
-const CURRENT_SCHEMA_VERSION = "2.6";
+const CURRENT_SCHEMA_VERSION = "2.7";
 
 export function registerMigrationHook() {
     const migrateImported = async item => {
@@ -112,7 +112,7 @@ export function registerMigrationHook() {
             // refactor was being developed cannot retain weapon-type grenades.
             if (!_versionGte(stored, "2.0")) await _migrate_1_9_to_2_0();
             if (!_versionGte(stored, "2.1")) await _migrate_2_0_to_2_1();
-            if (!_versionGte(stored, "2.6")) await migrateCurrentWorld();
+            if (!_versionGte(stored, "2.7")) await migrateCurrentWorld();
 
             await game.settings.set("neuroshima", "schemaVersion", CURRENT_SCHEMA_VERSION);
             ui.notifications.info(game.i18n.localize("NEUROSHIMA.Migration.Done"));
@@ -979,10 +979,16 @@ export async function migrateCurrentDocument(document, { persist = false } = {})
 
 export async function migrateCurrentEffect(effect, { persist = false } = {}) {
   const source = effect.toObject?.() ?? effect._source ?? {};
+  const originalAura = JSON.stringify(source.flags?.neuroshima);
+  normalizeAuraData(source);
   const legacy = source.flags?.neuroshima?.scripts;
   const current = source.system?.scriptData?.length ? source.system.scriptData : Array.isArray(legacy) ? legacy : [];
   const scripts = normalizeLegacySuccessScriptData(current);
   const update = {};
+  if (originalAura !== JSON.stringify(source.flags?.neuroshima)
+    || (persist && source.flags?.neuroshima?.auraVisibility != null)) {
+    update["flags.neuroshima"] = source.flags.neuroshima;
+  }
   if (persist) {
     normalizeEffectData(source);
     Object.assign(update, effectChangesUpdate(effectChanges(source)));

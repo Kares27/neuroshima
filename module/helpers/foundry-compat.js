@@ -84,8 +84,33 @@ export function effectChangesUpdate(changes) {
   return { [isV14() ? "system.changes" : "changes"]: nativeEffectChanges(changes) };
 }
 
+/** Preserve legacy aura visibility and distinguish transferred emitters from range copies. */
+export function auraVisibility(flags = {}) {
+  const value = flags.auraVisibility;
+  return value != null && value !== "" && [0, 1, 2].includes(Number(value))
+    ? Number(value) : (flags.auraRender === true ? 2 : 0);
+}
+
+export function normalizeAuraData(data) {
+  const ns = data.flags?.neuroshima;
+  if (!ns) return data;
+  if (ns.transferType === "auraActor" || ns.originalTransferType === "auraActor") {
+    ns.auraVisibility = auraVisibility(ns);
+    // Previous manually transferred copies became ordinary effects. Restore the emitter,
+    // retaining origin/sourceEffect while detaching it from range-based cleanup.
+    if (ns.transferType === "owningDocument" && ns.originalTransferType === "auraActor"
+      && ns.auraTransferred === true && ns.fromAura && !ns.fromAura.sourceTokenId) {
+      ns.transferType = "auraActor";
+      ns.auraTransferred = false;
+      ns.fromAura = null;
+    }
+  }
+  return data;
+}
+
 /** Normalize only supplied fields: this also accepts partial document updates. */
 export function normalizeEffectData(data, v14 = isV14()) {
+  normalizeAuraData(data);
   if (v14 && data.statuses?.length && data.showIcon == null) data.showIcon = 2;
   const changes = data["system.changes"] ?? data.system?.changes ?? data.changes;
   if (Array.isArray(changes)) {
@@ -394,6 +419,15 @@ export class NeuroshimaAreas {
   }
   static get(id, scene = canvas.scene) { return this.collection(scene)?.get(id); }
   static layer() { return isV14() ? canvas.regions : canvas.templates; }
+  static rendersAura(effect) { return isV14() || effect.getFlag("neuroshima", "auraRender") === true; }
+  static auraAppearance(effect, token) {
+    if (!isV14()) return {};
+    return {
+      visibility: auraVisibility(effect.flags?.neuroshima),
+      attachment: { token: token.id },
+      ...(token.level ? { levels: [typeof token.level === "string" ? token.level : token.level.id] } : {})
+    };
+  }
   static pixelsPerUnit(scene = canvas.scene) {
     return Number(scene?.grid?.size ?? canvas.grid?.size ?? 100) / Number(scene?.grid?.distance || 1);
   }
@@ -405,9 +439,11 @@ export class NeuroshimaAreas {
       shapes: [{ type: "circle", x: Number(data.x ?? 0), y: Number(data.y ?? 0), radius: Number(data.distance ?? 0) * this.pixelsPerUnit(scene), gridBased: false }],
       color: data.fillColor?.css ?? data.fillColor ?? "#ff0000",
       hidden: data.hidden ?? false,
-      visibility: globalThis.CONST?.REGION_VISIBILITY?.ALWAYS ?? 2,
+      visibility: data.visibility ?? globalThis.CONST?.REGION_VISIBILITY?.ALWAYS ?? 2,
       displayMeasurements: !data.flags?.neuroshima?.auraVisual,
-      ...(canvas.scene?.id === scene?.id && canvas.level?.id ? { levels: [canvas.level.id] } : {}),
+      ...(data.attachment ? { attachment: clone(data.attachment) } : {}),
+      ...(data.levels ? { levels: clone(data.levels) }
+        : canvas.scene?.id === scene?.id && canvas.level?.id ? { levels: [canvas.level.id] } : {}),
       ownership: { [game.user.id]: globalThis.CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OWNER ?? 3 },
       flags: clone(data.flags ?? {})
     };

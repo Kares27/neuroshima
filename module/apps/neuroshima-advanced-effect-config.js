@@ -1,4 +1,4 @@
-
+import { isV14, auraVisibility } from "../helpers/foundry-compat.js";
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 
 export class NeuroshimaAdvancedEffectConfig extends HandlebarsApplicationMixin(foundry.applications.api.ApplicationV2) {
@@ -84,6 +84,7 @@ export class NeuroshimaAdvancedEffectConfig extends HandlebarsApplicationMixin(f
       isArea,
       isAuraOrArea:    isAura || isArea,
       isDocument,
+      usesRegions: isV14(),
 
       testIndependent: ns.testIndependent ?? false,
       avoidTestType:   ns.avoidTestType   ?? "none",
@@ -95,7 +96,13 @@ export class NeuroshimaAdvancedEffectConfig extends HandlebarsApplicationMixin(f
       prompt:          ns.prompt          ?? false,
 
       auraTransferred: ns.auraTransferred ?? false,
-      auraRender:      ns.auraRender      ?? false,
+      auraRender:      ns.auraRender      ?? (auraVisibility(ns) !== 0),
+      auraVisibility:  auraVisibility(ns),
+      auraVisibilities: {
+        0: game.i18n.localize("NEUROSHIMA.Scripts.AuraVisibilityLayer"),
+        1: game.i18n.localize("NEUROSHIMA.Scripts.AuraVisibilityGM"),
+        2: game.i18n.localize("NEUROSHIMA.Scripts.AuraVisibilityEveryone")
+      },
       auraKeep:        ns.auraKeep        ?? false,
       auraRadius:      ns.auraRadius      ?? "",
 
@@ -147,6 +154,7 @@ export class NeuroshimaAdvancedEffectConfig extends HandlebarsApplicationMixin(f
       .map(el => el.value).filter(Boolean);
     foundry.utils.setProperty(update, "flags.neuroshima.requiredTestTrigger.onSuccessEffectIds", successIds);
     foundry.utils.setProperty(update, "flags.neuroshima.requiredTestTrigger.onFailureEffectIds", failureIds);
+    this._synchronizeAuraVisibility(update);
     await this.effect.update(update);
     this.render({ force: true });
   }
@@ -163,9 +171,23 @@ export class NeuroshimaAdvancedEffectConfig extends HandlebarsApplicationMixin(f
       .map(el => el.value).filter(Boolean);
     foundry.utils.setProperty(update, "flags.neuroshima.requiredTestTrigger.onSuccessEffectIds", successIds);
     foundry.utils.setProperty(update, "flags.neuroshima.requiredTestTrigger.onFailureEffectIds", failureIds);
+    this._synchronizeAuraVisibility(update);
 
     await this.effect.update(update);
     this.render({ force: true });
+  }
+
+  _synchronizeAuraVisibility(update) {
+    const ns = update.flags?.neuroshima;
+    if (!ns) return;
+    if (Object.hasOwn(ns, "auraVisibility")) {
+      ns.auraVisibility = auraVisibility(ns);
+      ns.auraRender = ns.auraVisibility !== 0;
+    } else if (Object.hasOwn(ns, "auraRender")) {
+      const previous = this.effect.getFlag("neuroshima", "auraRender")
+        ?? (auraVisibility(this.effect.flags?.neuroshima) !== 0);
+      if (ns.auraRender !== previous) ns.auraVisibility = ns.auraRender ? 2 : 0;
+    }
   }
 
   static async _onPlaceTemplate(event, target) {
@@ -181,6 +203,7 @@ export class NeuroshimaAdvancedEffectConfig extends HandlebarsApplicationMixin(f
   static async _onConfigureTemplate(event, target) {
     const ns = this.effect.flags?.neuroshima ?? {};
     const tplData = ns.templateData ?? {};
+    const region = isV14();
 
     const current = {
       fillColor:   tplData.fillColor   ?? game.user?.color?.css ?? "#4444ff",
@@ -199,15 +222,16 @@ export class NeuroshimaAdvancedEffectConfig extends HandlebarsApplicationMixin(f
         <div class="form-group">
           <label>Border Colour</label>
           <div class="form-fields">
-            <input type="color" name="borderColor" value="${current.borderColor}" style="width:60px;height:28px;">
+            <input type="color" name="borderColor" value="${current.borderColor}" style="width:60px;height:28px;" ${region ? "disabled" : ""}>
           </div>
         </div>
         <div class="form-group">
           <label>Fill Opacity (0–1)</label>
           <div class="form-fields">
-            <input type="number" name="fillOpacity" value="${current.fillOpacity}" min="0" max="1" step="0.05" style="width:80px;">
+            <input type="number" name="fillOpacity" value="${current.fillOpacity}" min="0" max="1" step="0.05" style="width:80px;" ${region ? "disabled" : ""}>
           </div>
         </div>
+        ${region ? '<p class="hint">W V14 obszar używa koloru Regionu. Osobny kolor obramowania i przezroczystość pozostają zapisane dla V13.</p>' : ""}
       </form>`;
 
     const result = await foundry.applications.api.DialogV2.prompt({
@@ -220,7 +244,8 @@ export class NeuroshimaAdvancedEffectConfig extends HandlebarsApplicationMixin(f
           return {
             fillColor:   form.querySelector("[name=fillColor]").value,
             borderColor: form.querySelector("[name=borderColor]").value,
-            fillOpacity: parseFloat(form.querySelector("[name=fillOpacity]").value) || 0.1
+            fillOpacity: Number.isFinite(Number(form.querySelector("[name=fillOpacity]").value))
+              ? Math.min(1, Math.max(0, Number(form.querySelector("[name=fillOpacity]").value))) : current.fillOpacity
           };
         }
       }
@@ -228,14 +253,5 @@ export class NeuroshimaAdvancedEffectConfig extends HandlebarsApplicationMixin(f
 
     if (!result) return;
     await this.effect.setFlag("neuroshima", "templateData", result);
-
-    const { NeuroshimaAuraManager } = await import("./aura-manager.js");
-    const actor = this.effect.actor ?? null;
-    if (actor) {
-      const tokenDoc = actor.getActiveTokens()[0]?.document ?? null;
-      if (tokenDoc) {
-        await NeuroshimaAuraManager._syncRenderTemplates(tokenDoc, actor, null, null);
-      }
-    }
   }
 }

@@ -1,4 +1,4 @@
-import { stampEffectStart, NeuroshimaAreas } from "../helpers/foundry-compat.js";
+import { stampEffectStart, effectHasExpired, NeuroshimaAreas } from "../helpers/foundry-compat.js";
 /**
  * Manages Aura (anchored to actor token) and Area (static template) effect transfer types.
  *
@@ -11,6 +11,18 @@ import { stampEffectStart, NeuroshimaAreas } from "../helpers/foundry-compat.js"
 export class NeuroshimaAuraManager {
 
   static semaphore = new foundry.utils.Semaphore(1);
+
+  static _isActive(effect) {
+    return !effect.disabled && !effect.isSuppressed && !effectHasExpired(effect);
+  }
+
+  static async _resolveSource(uuid) {
+    try { return await fromUuid(uuid); }
+    catch (error) {
+      game.neuroshima?.log("Aura/Area | Unavailable source", { uuid, error });
+      return null;
+    }
+  }
 
   // ─── Script helpers ───────────────────────────────────────────────────────
 
@@ -126,13 +138,14 @@ export class NeuroshimaAuraManager {
   // ─── Render Aura (visual MeasuredTemplate) ───────────────────────────────
 
   /**
-   * Ensure a visual MeasuredTemplate exists for every active auraActor effect
-   * that has auraRender=true, positioned at the source token center.
+   * Ensure a visual area (MeasuredTemplate V13 / Region V14) exists for every active auraActor effect
+   * positioned at the source token center. V13 visuals are optional; V14 always
+   * maintains a Region and controls its visibility independently.
    *
    * Called in three situations:
    *   1. Token moves (updateToken hook) — updates position only.
    *   2. Effect flags change (updateActiveEffect hook) — updates ALL visual properties
-   *      including radius, fill colour, border colour and opacity so that the canvas
+   *      including radius and the appearance supported by the current generation so that the canvas
    *      immediately reflects a changed auraRadius or templateData without requiring a
    *      token move or toggle cycle.
    *   3. Canvas ready / token created — initial placement.
@@ -150,9 +163,9 @@ export class NeuroshimaAuraManager {
   static async _syncRenderTemplates(sourceToken, sourceActor, movedToken, movedTokenNewPos) {
     if (!canvas?.scene) return;
     const auraEffects = this._getActorAuraEffects(sourceActor).filter(e =>
-      !e.disabled &&
+      this._isActive(e) && Number(e.getFlag("neuroshima", "auraRadius")) > 0 &&
       !e.getFlag("neuroshima", "auraTransferred") &&
-      e.getFlag("neuroshima", "auraRender")
+      NeuroshimaAreas.rendersAura(e)
     );
 
     const allTemplates = NeuroshimaAreas.documents();
@@ -173,7 +186,7 @@ export class NeuroshimaAuraManager {
 
       const existing = allTemplates.find(t =>
         t.getFlag("neuroshima", "auraVisual")?.effectId === effect.id &&
-        t.getFlag("neuroshima", "auraVisual")?.actorId  === sourceActor.id
+        this._matchesVisualSource(t.getFlag("neuroshima", "auraVisual"), sourceActor.id, sourceActor.uuid)
       );
 
       if (existing) {
@@ -186,7 +199,9 @@ export class NeuroshimaAuraManager {
           distance: radiusUnits,
           fillColor,
           borderColor,
-          fillAlpha: fillOpacity
+          fillAlpha: fillOpacity,
+          ...NeuroshimaAreas.auraAppearance(effect, sourceToken),
+          "flags.neuroshima.auraVisual": { effectId: effect.id, actorId: sourceActor.id, actorUuid: sourceActor.uuid, tokenId: sourceToken.id }
         }, { skipAreaCheck: true, ns_skipAuraCheck: true });
       } else {
         await NeuroshimaAreas.create( [{
@@ -198,9 +213,10 @@ export class NeuroshimaAuraManager {
           borderColor,
           fillAlpha: fillOpacity,
           hidden: false,
+          ...NeuroshimaAreas.auraAppearance(effect, sourceToken),
           flags: {
             neuroshima: {
-              auraVisual: { effectId: effect.id, actorId: sourceActor.id }
+              auraVisual: { effectId: effect.id, actorId: sourceActor.id, actorUuid: sourceActor.uuid, tokenId: sourceToken.id }
             }
           }
         }], { ns_skipAuraCheck: true });
@@ -210,7 +226,7 @@ export class NeuroshimaAuraManager {
     const activeEffectIds = new Set(auraEffects.map(e => e.id));
     for (const t of allTemplates) {
       const av = t.getFlag("neuroshima", "auraVisual");
-      if (!av || av.actorId !== sourceActor.id) continue;
+      if (!this._matchesVisualSource(av, sourceActor.id, sourceActor.uuid)) continue;
       if (!activeEffectIds.has(av.effectId)) {
         await t.delete();
       }
@@ -222,12 +238,16 @@ export class NeuroshimaAuraManager {
    * @param {string}      sourceActorId
    * @param {string|null} effectId  - If null, removes all for the actor.
    */
-  static async _removeRenderTemplates(sourceActorId, effectId = null) {
+  static _matchesVisualSource(visual, actorId, actorUuid = null) {
+    return Boolean(visual && (actorUuid && visual.actorUuid ? visual.actorUuid === actorUuid : visual.actorId === actorId));
+  }
+
+  static async _removeRenderTemplates(sourceActorId, effectId = null, sourceActorUuid = null) {
     if (!canvas?.scene) return;
     const toDelete = NeuroshimaAreas.documents().filter(t => {
       const av = t.getFlag("neuroshima", "auraVisual");
       if (!av) return false;
-      if (av.actorId !== sourceActorId) return false;
+      if (!this._matchesVisualSource(av, sourceActorId, sourceActorUuid)) return false;
       return effectId === null || av.effectId === effectId;
     });
     for (const t of toDelete) await t.delete();
@@ -258,7 +278,7 @@ export class NeuroshimaAuraManager {
       for (const tokenDoc of canvas.scene.tokens) {
         const actor = tokenDoc.actor;
         if (!actor) continue;
-        const hasAuras = this._getActorAuraEffects(actor).some(e => !e.disabled);
+        const hasAuras = this._getActorAuraEffects(actor).length > 0;
         if (!hasAuras) continue;
         if (isLinkedUuid(actor.uuid)) {
           if (!sourceTokenByActorUuid.has(actor.uuid)) {
@@ -275,6 +295,10 @@ export class NeuroshimaAuraManager {
       for (const { tokenDoc, actor } of sourceTokenByActorUuid.values()) {
         await this._updateActorAuras(tokenDoc, actor, movedToken, movedTokenNewPos);
       }
+      await this._cleanupOrphanAuraCopies();
+      for (const area of NeuroshimaAreas.documents()) {
+        if (area.getFlag("neuroshima", "fromAreaEffect")) await this._applyAreaEffect(area, movedToken, movedTokenNewPos);
+      }
     });
   }
 
@@ -289,11 +313,10 @@ export class NeuroshimaAuraManager {
    */
   static async _updateActorAuras(sourceToken, sourceActor, movedToken = null, movedTokenNewPos = null) {
     const auraEffects = this._getActorAuraEffects(sourceActor).filter(e =>
-      !e.disabled &&
+      this._isActive(e) &&
       !e.getFlag("neuroshima", "auraTransferred")
     );
 
-    if (!auraEffects.length) return;
     game.neuroshima?.log("Aura | _updateActorAuras", {
       source: sourceActor.name,
       effects: auraEffects.map(e => e.name)
@@ -305,8 +328,11 @@ export class NeuroshimaAuraManager {
 
     for (const effect of auraEffects) {
       const radiusUnits = Number(effect.getFlag("neuroshima", "auraRadius") ?? 0);
-      if (!radiusUnits) {
+      if (!Number.isFinite(radiusUnits) || radiusUnits <= 0) {
         game.neuroshima?.log("Aura | skipping effect (no radius)", { effect: effect.name });
+        if (!effect.getFlag("neuroshima", "auraKeep")) {
+          await this.removeAllCopiesForEffect(effect.id, sourceActor.id, sourceActor.uuid);
+        }
         continue;
       }
 
@@ -329,6 +355,10 @@ export class NeuroshimaAuraManager {
       const sourceActorUuid = sourceActor.uuid;
 
       for (const [, targetActor] of inRange) {
+        if (await this._runFilterScript(effect, targetActor, sourceActor)) {
+          inRange.delete(targetActor.uuid);
+          continue;
+        }
         const hasCopy = (targetActor.effects ?? []).some(e => {
           const fa = e.getFlag("neuroshima", "fromAura");
           return fa?.sourceEffectId === effect.id && fa?.sourceActorUuid === sourceActorUuid;
@@ -341,12 +371,6 @@ export class NeuroshimaAuraManager {
         const preOk = await this._runPreApplyScript(effect, sourceActor, targetActor);
         if (!preOk) {
           game.neuroshima?.log("Aura | blocked by preApplyScript", { from: sourceActor.name, to: targetActor.name });
-          continue;
-        }
-
-        const filtered = await this._runFilterScript(effect, targetActor, sourceActor);
-        if (filtered) {
-          game.neuroshima?.log("Aura | blocked by filterScript", { from: sourceActor.name, to: targetActor.name });
           continue;
         }
 
@@ -385,9 +409,11 @@ export class NeuroshimaAuraManager {
    */
   static _resolveTokenPos(token, movedToken, movedTokenNewPos) {
     if (movedTokenNewPos && movedToken && token.id === movedToken.id) {
-      return { x: movedTokenNewPos.x, y: movedTokenNewPos.y, width: token.width, height: token.height };
+      return { x: movedTokenNewPos.x ?? token.x, y: movedTokenNewPos.y ?? token.y,
+        width: movedTokenNewPos.width ?? token.width, height: movedTokenNewPos.height ?? token.height,
+        elevation: movedTokenNewPos.elevation ?? token.elevation ?? 0 };
     }
-    return { x: token.x, y: token.y, width: token.width, height: token.height };
+    return { x: token.x, y: token.y, width: token.width, height: token.height, elevation: token.elevation ?? 0 };
   }
 
   /**
@@ -396,7 +422,7 @@ export class NeuroshimaAuraManager {
   static async _cleanupStaleAuraCopies(sourceActor, sceneActorTokens, sourceTokenId = null) {
     const activeIds = new Set(
       this._getActorAuraEffects(sourceActor)
-        .filter(e => !e.disabled)
+        .filter(e => this._isActive(e) && !e.getFlag("neuroshima", "auraTransferred"))
         .map(e => e.id)
     );
     game.neuroshima?.log("Aura | _cleanupStaleAuraCopies", {
@@ -420,6 +446,46 @@ export class NeuroshimaAuraManager {
           stale: stale.map(e => ({ id: e.id, name: e.name, fromAura: e.getFlag("neuroshima", "fromAura") }))
         });
         await targetActor.deleteEmbeddedDocuments("ActiveEffect", stale.map(e => e.id), { ns_skipAuraCleanup: true });
+      }
+    }
+  }
+
+  /** Reconcile sources removed from a token, item or Actor, including the last aura. */
+  static async _cleanupOrphanAuraCopies() {
+    const actors = new Map();
+    for (const token of canvas.scene.tokens) if (token.actor) actors.set(token.actor.uuid, token.actor);
+    const active = new Map();
+    const sourceEffect = (actor, id) => {
+      if (!actor) return null;
+      if (!active.has(actor.uuid)) active.set(actor.uuid, this._getActorAuraEffects(actor)
+        .filter(effect => this._isActive(effect) && !effect.getFlag("neuroshima", "auraTransferred")));
+      return active.get(actor.uuid).find(effect => effect.id === id);
+    };
+    for (const actor of actors.values()) {
+      const stale = [];
+      for (const copy of actor.effects ?? []) {
+        const source = copy.getFlag("neuroshima", "fromAura");
+        if (!source) continue;
+        let owner = source.sourceActorUuid ? actors.get(source.sourceActorUuid)
+          : Array.from(actors.values()).find(entry => entry.id === source.sourceActorId);
+        // Manually transferred auras need not have a source token in the viewed scene.
+        if (!owner && !source.sourceTokenId) {
+          owner = source.sourceActorUuid ? await this._resolveSource(source.sourceActorUuid) : game.actors.get(source.sourceActorId);
+          owner = owner?.actor ?? owner;
+        }
+        if (!sourceEffect(owner, source.sourceEffectId)) stale.push(copy.id);
+      }
+      if (stale.length) await actor.deleteEmbeddedDocuments("ActiveEffect", stale, { ns_skipAuraCleanup: true });
+    }
+    for (const document of NeuroshimaAreas.documents()) {
+      const visual = document.getFlag("neuroshima", "auraVisual");
+      if (!visual) continue;
+      const owner = visual.actorUuid ? actors.get(visual.actorUuid)
+        : Array.from(actors.values()).find(actor => actor.id === visual.actorId);
+      const effect = sourceEffect(owner, visual.effectId);
+      if (!effect || !NeuroshimaAreas.rendersAura(effect)
+        || effect.getFlag("neuroshima", "auraTransferred") || !(Number(effect.getFlag("neuroshima", "auraRadius")) > 0)) {
+        await document.delete();
       }
     }
   }
@@ -448,7 +514,7 @@ export class NeuroshimaAuraManager {
         await targetActor.deleteEmbeddedDocuments("ActiveEffect", copies.map(e => e.id), { ns_skipAuraCleanup: true });
       }
     }
-    await this._removeRenderTemplates(sourceActorId, effectId);
+    await this._removeRenderTemplates(sourceActorId, effectId, sourceActorUuid);
   }
 
   /**
@@ -457,14 +523,15 @@ export class NeuroshimaAuraManager {
    * @param {string} effectId
    * @param {string} sourceActorId
    */
-  static async removeAllAreaCopiesForEffect(effectId, sourceActorId) {
+  static async removeAllAreaCopiesForEffect(effectId, sourceActorId, sourceActorUuid = null) {
     if (!canvas?.scene) return;
     for (const tokenDoc of canvas.scene.tokens) {
       const targetActor = tokenDoc.actor;
       if (!targetActor) continue;
       const copies = (targetActor.effects ?? []).filter(e => {
         const fa = e.getFlag("neuroshima", "fromArea");
-        return fa?.sourceEffectId === effectId && fa?.sourceActorId === sourceActorId;
+        return fa?.sourceEffectId === effectId && (sourceActorUuid && fa.sourceActorUuid
+          ? fa.sourceActorUuid === sourceActorUuid : fa?.sourceActorId === sourceActorId);
       });
       if (copies.length) {
         await targetActor.deleteEmbeddedDocuments("ActiveEffect", copies.map(e => e.id));
@@ -473,9 +540,8 @@ export class NeuroshimaAuraManager {
   }
 
   /**
-   * Apply a "Transferred Aura" effect (auraTransferred=true) to specific target actors.
-   * Unlike range-based auras, transferred auras are not applied automatically by proximity.
-   * Call this when you want to manually push the aura to specific actors (e.g. from a script).
+   * Give specific actors an independent emitter of this transferred aura.
+   * Recipients emit a normal aura; their range copies cannot emit or transfer again.
    *
    * Respects filterScript and preApplyScript — same as range auras.
    *
@@ -484,15 +550,29 @@ export class NeuroshimaAuraManager {
    * @param {Actor[]}      [targets]     - Target actors. If omitted, uses current user token targets.
    */
   static async applyTransferredAuraCopies(effect, sourceActor, targets = null) {
+    if (!this._isActive(effect) || effect.getFlag("neuroshima", "transferType") !== "auraActor"
+      || effect.getFlag("neuroshima", "auraTransferred") !== true) return;
+    return this.semaphore.add(() => this._applyTransferredAuraCopies(effect, sourceActor, targets));
+  }
+
+  static async _applyTransferredAuraCopies(effect, sourceActor, targets) {
+    if (!this._isActive(effect) || effect.getFlag("neuroshima", "transferType") !== "auraActor"
+      || effect.getFlag("neuroshima", "auraTransferred") !== true) return;
+    return this.semaphore.add(() => this._applyTransferredAuraCopies(effect, sourceActor, targets));
+  }
+
+  static async _applyTransferredAuraCopies(effect, sourceActor, targets) {
+    if (!this._isActive(effect)) return;
     const resolvedTargets = targets ?? Array.from(game.user.targets).map(t => t.actor).filter(a => a);
     if (!resolvedTargets.length) {
       game.neuroshima?.log("Aura | applyTransferredAuraCopies: no targets");
       return;
     }
-    for (const targetActor of resolvedTargets) {
+    for (const targetActor of new Set(resolvedTargets.map(target => target.actor ?? target))) {
       const hasCopy = (targetActor.effects ?? []).some(e => {
-        const fa = e.getFlag("neuroshima", "fromAura");
-        return fa?.sourceEffectId === effect.id && fa?.sourceActorId === sourceActor.id;
+        return e.getFlag("neuroshima", "sourceEffect") === effect.uuid
+          && e.getFlag("neuroshima", "transferType") === "auraActor"
+          && !e.getFlag("neuroshima", "auraTransferred");
       });
       if (hasCopy) {
         game.neuroshima?.log("Aura | applyTransferredAuraCopies: already has copy", { target: targetActor.name });
@@ -509,7 +589,9 @@ export class NeuroshimaAuraManager {
         continue;
       }
       game.neuroshima?.log("Aura | applyTransferredAuraCopies: applying copy", { source: sourceActor.name, target: targetActor.name });
-      await this._applyAuraCopy(effect, sourceActor, targetActor);
+      const data = effect.convertToApplied();
+      stampEffectStart(data);
+      await targetActor.createEmbeddedDocuments("ActiveEffect", [data], { ns_skipAuraTrigger: true });
     }
   }
 
@@ -569,6 +651,7 @@ export class NeuroshimaAuraManager {
       if (e.getFlag("neuroshima", "transferType") === "auraActor") results.push(e);
     }
     for (const item of actor.items ?? []) {
+      if (["weapon-mod", "armor-mod"].includes(item.type)) continue;
       const isUnequipped = item.system?.equipped === false;
       for (const e of item.effects ?? []) {
         if (e.getFlag("neuroshima", "transferType") !== "auraActor") continue;
@@ -623,7 +706,7 @@ export class NeuroshimaAuraManager {
    */
   static async placeAreaTemplate(effect, actor) {
     const radius = Number(effect.getFlag("neuroshima", "auraRadius") ?? 0);
-    if (!radius) {
+    if (!Number.isFinite(radius) || radius <= 0) {
       ui.notifications.warn("NS | Area effect requires a radius to be configured on the effect.");
       return;
     }
@@ -656,9 +739,9 @@ export class NeuroshimaAuraManager {
       }
     };
 
-    const docs = await NeuroshimaAreas.create( [templateData]);
+    const docs = await NeuroshimaAreas.create([templateData], { ns_skipAreaCheck: true });
     if (docs?.length) {
-      NeuroshimaAreas.layer().get(docs[0].id)?.control({ releaseOthers: true });
+      NeuroshimaAreas.layer()?.get(docs[0].id)?.control({ releaseOthers: true });
       ui.notifications.info("NS | Area template placed. You can drag it to reposition.");
       await this.applyAreaEffect(docs[0]);
     }
@@ -671,18 +754,26 @@ export class NeuroshimaAuraManager {
    * @param {MeasuredTemplateDocument} templateDoc
    */
   static async applyAreaEffect(templateDoc) {
+    return this.semaphore.add(() => this._applyAreaEffect(templateDoc));
+  }
+
+  static async _applyAreaEffect(templateDoc, movedToken = null, movedTokenNewPos = null) {
     const fromArea = templateDoc.getFlag("neuroshima", "fromAreaEffect");
     if (!fromArea) return;
     const { effectId, actorId } = fromArea;
 
-    const sourceActor = fromArea.actorUuid ? await fromUuid(fromArea.actorUuid) : game.actors.get(actorId);
-    const effect = fromArea.effectUuid ? await fromUuid(fromArea.effectUuid) : sourceActor?.effects?.get(effectId);
-    if (!effect) return;
+    const sourceActor = fromArea.actorUuid ? await this._resolveSource(fromArea.actorUuid) : game.actors.get(actorId);
+    const effect = fromArea.effectUuid ? await this._resolveSource(fromArea.effectUuid) : sourceActor?.effects?.get(effectId);
+    const scene = templateDoc.parent ?? canvas.scene;
+    if (templateDoc.parent && templateDoc.id && !NeuroshimaAreas.get(templateDoc.id, scene)) return;
+    if (!effect || !this._isActive(effect) || effect.getFlag("neuroshima", "transferType") !== "areaActor") {
+      await this.removeAreaCopies(templateDoc.id, { force: true, scene });
+      return;
+    }
 
     const keep = effect.getFlag("neuroshima", "auraKeep") ?? false;
     const duration = effect.getFlag("neuroshima", "areaDuration") ?? "sustained";
 
-    const scene = templateDoc.parent ?? canvas.scene;
     const gs = scene.grid?.size ?? canvas.grid.size;
 
     const inRange = new Set();
@@ -691,9 +782,11 @@ export class NeuroshimaAuraManager {
       const targetActor = tokenDoc.actor;
       if (!targetActor) continue;
 
-      const centerX = tokenDoc.x + (tokenDoc.width * gs) / 2;
-      const centerY = tokenDoc.y + (tokenDoc.height * gs) / 2;
-      if (!NeuroshimaAreas.contains(templateDoc, centerX, centerY, tokenDoc.elevation ?? 0)) continue;
+      const pos = this._resolveTokenPos(tokenDoc, movedToken, movedTokenNewPos);
+      const centerX = pos.x + (pos.width * gs) / 2;
+      const centerY = pos.y + (pos.height * gs) / 2;
+      if (!NeuroshimaAreas.contains(templateDoc, centerX, centerY, pos.elevation)) continue;
+      if (await this._runFilterScript(effect, targetActor, sourceActor)) continue;
 
       inRange.add(targetActor.uuid);
 
@@ -704,9 +797,6 @@ export class NeuroshimaAuraManager {
 
       const preOk = await this._runPreApplyScript(effect, sourceActor, targetActor);
       if (!preOk) continue;
-
-      const filtered = await this._runFilterScript(effect, targetActor, sourceActor);
-      if (filtered) continue;
 
       const baseData = this._buildAreaCopyData(effect, templateDoc.id, effectId, actorId, sourceActor);
       await targetActor.createEmbeddedDocuments("ActiveEffect", [baseData]);
@@ -726,7 +816,7 @@ export class NeuroshimaAuraManager {
     }
 
     if (duration === "instantaneous") {
-      await templateDoc.delete();
+      await templateDoc.delete({ ns_skipAreaCleanup: true });
     }
   }
 
@@ -748,8 +838,8 @@ export class NeuroshimaAuraManager {
 
       if (!force) {
         const fa = copies[0].getFlag("neuroshima", "fromArea");
-        const srcActor = fa?.sourceActorUuid ? await fromUuid(fa.sourceActorUuid) : fa?.sourceActorId ? game.actors.get(fa.sourceActorId) : null;
-        const srcEffect = fa?.sourceEffectUuid ? await fromUuid(fa.sourceEffectUuid) : srcActor?.effects?.get(fa?.sourceEffectId);
+        const srcActor = fa?.sourceActorUuid ? await this._resolveSource(fa.sourceActorUuid) : fa?.sourceActorId ? game.actors.get(fa.sourceActorId) : null;
+        const srcEffect = fa?.sourceEffectUuid ? await this._resolveSource(fa.sourceEffectUuid) : srcActor?.effects?.get(fa?.sourceEffectId);
         if (srcEffect?.getFlag("neuroshima", "auraKeep")) continue;
       }
 

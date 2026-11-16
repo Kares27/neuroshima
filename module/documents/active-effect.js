@@ -433,22 +433,11 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
     if (!this.actor) return;
     game.neuroshima?.log("[NeuroshimaActiveEffect._onDelete] running deleteEffect scripts + cleanup", { effectName: this.name, actorName: this.actor?.name, isAuraCopy, isAreaCopy });
 
-    const transferType = this.getFlag("neuroshima", "transferType");
-
     if (!isAuraCopy && !isAreaCopy && !options.skipDeletingItems) {
       await this.deleteCreatedItems();
     }
 
-    if (!options.ns_skipAuraCleanup && !isAuraCopy && !isAreaCopy) {
-      if (transferType === "auraActor" && game.user.isGM) {
-        const { NeuroshimaAuraManager } = await import("../apps/aura-manager.js");
-        await NeuroshimaAuraManager.removeAllCopiesForEffect(this.id, this.actor.id, this.actor.uuid);
-      }
-      if (transferType === "areaActor" && game.user.isGM) {
-        const { NeuroshimaAuraManager } = await import("../apps/aura-manager.js");
-        await NeuroshimaAuraManager.removeAllAreaCopiesForEffect(this.id, this.actor.id);
-      }
-    }
+    // Scene hooks reconcile source deletion on the active GM, including player-originated changes.
 
     if (!isAuraCopy && !isAreaCopy) {
       const deleteScripts = this.scripts.filter(s => s.trigger === "deleteEffect");
@@ -548,8 +537,9 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
    * - Stores source item/effect UUIDs in flags.neuroshima so scripts can trace origin.
    * - Stores the original transferType in flags.neuroshima.originalTransferType.
    * - Normalises the transferType so the applied copy behaves as a plain owningDocument
-   *   effect on the actor — prevents aura/area/other copies from trying to re-propagate:
-   *     • "auraActor" / "areaActor" → "owningDocument"  (copy is a plain actor effect)
+   *   effect on the actor, except an explicitly transferred aura which becomes an emitter:
+   *     • transferred "auraActor" → "auraActor" with auraTransferred=false
+   *     • range "auraActor" / "areaActor" → "owningDocument"
    *     • "other" / "target" / "damage" → "owningDocument"  (same logic)
    *     • "owningDocument" → kept as-is
    * - Accepts optional overrides merged on top (e.g. duration, name).
@@ -599,15 +589,21 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
 
     const originalTransferType = this.getFlag("neuroshima", "transferType") ?? "owningDocument";
 
-    foundry.utils.setProperty(data, "flags.neuroshima.sourceItem",         this.parent?.documentName === "Item" ? this.parent.uuid : null);
+    foundry.utils.setProperty(data, "flags.neuroshima.sourceItem",         this.parent?.documentName === "Item" ? this.parent.uuid : this.getFlag("neuroshima", "sourceItem") ?? null);
     foundry.utils.setProperty(data, "flags.neuroshima.sourceEffect",       this.uuid);
     foundry.utils.setProperty(data, "flags.neuroshima.originalTransferType", originalTransferType);
 
-    // Normalise transferType: applied copies are always plain actor effects.
-    // auraActor/areaActor copies must NOT re-propagate their own aura/area;
-    // other/target/damage effects likewise become regular owning-document effects.
+    // Only an explicitly transferred aura creates an emitter on the recipient.
+    // Subsequent range copies are ordinary actor effects and cannot propagate again.
+    const transferredAura = originalTransferType === "auraActor"
+      && this.getFlag("neuroshima", "auraTransferred") === true;
     const applicativeTypes = new Set(["auraActor", "areaActor", "other", "target", "damage"]);
-    if (applicativeTypes.has(originalTransferType)) {
+    if (transferredAura) {
+      foundry.utils.setProperty(data, "flags.neuroshima.transferType", "auraActor");
+      foundry.utils.setProperty(data, "flags.neuroshima.auraTransferred", false);
+      foundry.utils.setProperty(data, "flags.neuroshima.fromAura", null);
+      foundry.utils.setProperty(data, "flags.neuroshima.documentType", "actor");
+    } else if (applicativeTypes.has(originalTransferType)) {
       foundry.utils.setProperty(data, "flags.neuroshima.transferType",  "owningDocument");
       foundry.utils.setProperty(data, "flags.neuroshima.documentType",  "actor");
     }
