@@ -2780,59 +2780,8 @@ function initializeSocketlib() {
 
     console.log("Neuroshima 1.5 | Rejestracja handlerów Socketlib");
     
-    // Healing batch application
-    game.neuroshima.socket.register("applyHealingBatch", async (data) => {
-        const doc = await fromUuid(data.patientUuid);
-        const patient = doc?.actor || doc;
-        if (!patient) return;
-
-        const results = data.results || [];
-        const updates = [];
-        const toDelete = [];
-        
-        const message = data.messageId ? game.messages.get(data.messageId) : null;
-        const method = message?.getFlag("neuroshima", "healingMethod");
-
-        for (const r of results) {
-            const wound = patient.items.get(r.woundId);
-            if (!wound || wound.type !== "wound") continue;
-
-            const hEffect = r.healingEffect;
-            if (!hEffect) continue;
-
-            if (hEffect.newPenalty <= 0) {
-                toDelete.push(r.woundId);
-            } else {
-                const currentAttempts = wound.system.healingAttempts || 0;
-                const updateData = {
-                    _id: r.woundId,
-                    "system.penalty": hEffect.newPenalty,
-                    "system.healingAttempts": currentAttempts + 1
-                };
-                
-                if (r.isSuccess) {
-                    updateData["system.isHealing"] = true;
-                    if (method === "firstAid") {
-                        updateData["system.hadFirstAid"] = true;
-                    }
-                }
-                
-                updates.push(updateData);
-            }
-        }
-
-        if (updates.length > 0) {
-            await patient.updateEmbeddedDocuments("Item", updates);
-        }
-
-        if (toDelete.length > 0) {
-            await patient.deleteEmbeddedDocuments("Item", toDelete);
-        }
-
-        if (message) {
-            await message.setFlag("neuroshima", "healingApplied", true);
-        }
-    });
+    // Both document owners and GM delegation use the same healing transaction.
+    HealingApp.registerSocketHandlers(game.neuroshima.socket);
 
     // Combat Flag Proxy - Allows players to update flags on the Combat document
     game.neuroshima.socket.register("updateCombatFlag", async (key, value) => {

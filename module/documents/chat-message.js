@@ -1517,89 +1517,22 @@ export class NeuroshimaChatMessage extends ChatMessage {
    * Aplikuje wyniki leczenia do aktora.
    */
   static async onApplyHealing(event, message) {
-    const btn = event.currentTarget;
-    const card = btn.closest(".healing-batch-report");
-    const patientUuid = card?.dataset.patientUuid;
+    const card = event.currentTarget.closest(".healing-batch-report");
+    const patientUuid = message.getFlag("neuroshima", "patientUuid") ?? card?.dataset.patientUuid;
     if (!patientUuid) return;
-
-    const patient = await fromUuid(patientUuid);
+    const document = await fromUuid(patientUuid);
+    const patient = document?.actor ?? document;
     if (!patient) return;
-
-    const serializedTests =
-      message.getFlag("neuroshima", "test")?.context?.batchTests ?? [];
-    const results = serializedTests.map(test => test.result);
-    const healingMethod = message.getFlag("neuroshima", "healingMethod");
-    const extraData = message.getFlag("neuroshima", "extraData") || {};
-    const isFirstAid = healingMethod === "firstAid";
-    const updates = [];
-    const toDelete = [];
-
-    for (const r of results) {
-        const wound = patient.items.get(r.woundId);
-        if (!wound || wound.type !== "wound") continue;
-
-        const hEffect = r.healingEffect;
-        if (!hEffect) continue;
-
-        const isSuccess = r.isSuccess;
-        const oldPenalty = wound.system.penalty || 0;
-        const firstAidApplied = wound.system.firstAidHealingApplied || 0;
-        const newPenalty = Number(hEffect.newPenalty);
-
-        const updateData = {
-            _id: r.woundId,
-            "system.healingAttempts": (wound.system.healingAttempts || 0) + 1
-        };
-
-        if (wound.system.originalPenalty === null || wound.system.originalPenalty === undefined) {
-            updateData["system.originalPenalty"] = oldPenalty;
-        }
-
-        if (isSuccess) {
-            updateData["system.isHealing"] = true;
-            if (isFirstAid) {
-                updateData["system.hadFirstAid"] = true;
-                const actualHealed = oldPenalty - newPenalty;
-                updateData["system.firstAidHealingApplied"] = firstAidApplied + actualHealed;
-                updateData["system.failedFirstAidAttempts"] = 0;
-            } else {
-                updateData["system.failedTreatmentAttempts"] = 0;
-            }
-        } else {
-            if (isFirstAid) {
-                updateData["system.failedFirstAidAttempts"] = (wound.system.failedFirstAidAttempts || 0) + 1;
-            } else {
-                updateData["system.failedTreatmentAttempts"] = (wound.system.failedTreatmentAttempts || 0) + 1;
-            }
-        }
-
-        if (newPenalty <= 0) {
-            toDelete.push(r.woundId);
-        } else {
-            updateData["system.penalty"] = newPenalty;
-            updates.push(updateData);
-        }
-    }
-
+    const data = { patientUuid: patient.uuid, messageId: message.id };
+    let applied;
     if (!patient.isOwner && !game.user.isGM) {
-        const { NeuroshimaSocket } = await import("../helpers/foundry-compat.js");
-        return NeuroshimaSocket.gmExecute("applyHealingBatch", {
-            patientUuid: patient.uuid,
-            results: results,
-            messageId: message.id
-        });
+      const { NeuroshimaSocket } = await import("../helpers/foundry-compat.js");
+      applied = await NeuroshimaSocket.gmExecute("applyHealingBatch", data);
+    } else {
+      const { HealingApp } = await import("../apps/healing-app.js");
+      applied = await HealingApp.applyHealingBatch(data);
     }
-
-    if (updates.length > 0) {
-        await patient.updateEmbeddedDocuments("Item", updates);
-    }
-    
-    if (toDelete.length > 0) {
-        await patient.deleteEmbeddedDocuments("Item", toDelete);
-    }
-
-    await message.setFlag("neuroshima", "healingApplied", true);
-    ui.notifications.info(game.i18n.localize("NEUROSHIMA.Notifications.HealingApplied"));
+    if (applied) ui.notifications.info(game.i18n.localize("NEUROSHIMA.Notifications.HealingApplied"));
   }
 
   /**

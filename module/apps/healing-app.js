@@ -2,11 +2,95 @@ const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaDice } from "../helpers/rolls.js";
 import { HealingTest } from "../tests.mjs";
+import { applicationInstances, NeuroshimaSocket } from "../helpers/foundry-compat.js";
 
 /**
  * Application V2 dla panelu leczenia pacjenta
  */
 export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
+
+    static _healingBatches = new Map();
+
+    static registerSocketHandlers(socket) {
+        socket.register("applyHealingBatch", data => this.applyHealingBatch(data));
+        socket.register("refreshHealingPanels", data => this.refreshPanels(data));
+    }
+
+    /** Refresh only existing panels; socket notifications carry no patient data. */
+    static refreshPanels({ patientUuid } = {}) {
+        if (!patientUuid) return;
+        for (const app of applicationInstances()) {
+            if (app instanceof HealingApp
+                && (app._patientActorUuid === patientUuid || app.patientRef?.uuid === patientUuid)) {
+                app._queueRefresh();
+            }
+        }
+    }
+
+    static async notifyPatientChanged(patientUuid) {
+        this.refreshPanels({ patientUuid });
+        try { await NeuroshimaSocket.executeForAll("refreshHealingPanels", { patientUuid }); }
+        catch (error) { console.error("Neuroshima | Healing panel refresh notification failed", error); }
+    }
+
+    /** The owner and GM socket share the same wound-state updates. */
+    static async applyHealingBatch(data) {
+        const key = data.messageId ?? data.patientUuid;
+        if (this._healingBatches.has(key)) return this._healingBatches.get(key);
+        const operation = this._applyHealingBatch(data);
+        this._healingBatches.set(key, operation);
+        try { return await operation; }
+        finally { this._healingBatches.delete(key); }
+    }
+
+    static async _applyHealingBatch({ patientUuid, results = [], messageId = null }) {
+        const document = await fromUuid(patientUuid);
+        const patient = document?.actor ?? document;
+        if (!patient?.items) return false;
+        const message = messageId ? game.messages.get(messageId) : null;
+        if (messageId && !message) return false;
+        const recordedPatient = message?.getFlag("neuroshima", "patientUuid");
+        if (recordedPatient && recordedPatient !== patientUuid && recordedPatient !== patient.uuid) return false;
+        if (message?.getFlag("neuroshima", "healingApplied")) return false;
+        const storedTests = message?.getFlag("neuroshima", "test")?.context?.batchTests;
+        if (Array.isArray(storedTests)) results = storedTests.map(test => test.result);
+        const isFirstAid = message?.getFlag("neuroshima", "healingMethod") === "firstAid";
+        const updates = [], toDelete = [];
+        for (const result of results) {
+            const wound = patient.items.get(result?.woundId);
+            if (!wound || wound.type !== "wound" || !result.healingEffect) continue;
+            const newPenalty = Number(result.healingEffect.newPenalty);
+            if (!Number.isFinite(newPenalty)) continue;
+            const oldPenalty = wound.system.penalty || 0;
+            const update = {
+                _id: wound.id,
+                "system.healingAttempts": (wound.system.healingAttempts || 0) + 1
+            };
+            if (wound.system.originalPenalty == null) update["system.originalPenalty"] = oldPenalty;
+            if (result.isSuccess) {
+                update["system.isHealing"] = true;
+                if (isFirstAid) {
+                    update["system.hadFirstAid"] = true;
+                    update["system.firstAidHealingApplied"] = (wound.system.firstAidHealingApplied || 0)
+                        + Math.max(0, oldPenalty - newPenalty);
+                    update["system.failedFirstAidAttempts"] = 0;
+                } else update["system.failedTreatmentAttempts"] = 0;
+            } else {
+                const field = isFirstAid ? "failedFirstAidAttempts" : "failedTreatmentAttempts";
+                update[`system.${field}`] = (wound.system[field] || 0) + 1;
+            }
+            if (newPenalty <= 0) toDelete.push(wound.id);
+            else {
+                update["system.penalty"] = newPenalty;
+                updates.push(update);
+            }
+        }
+        if (updates.length) await patient.updateEmbeddedDocuments("Item", updates);
+        if (toDelete.length) await patient.deleteEmbeddedDocuments("Item", toDelete);
+        if (message) await message.setFlag("neuroshima", "healingApplied", true);
+        await this.notifyPatientChanged(patient.uuid);
+        return true;
+    }
 
     /**
      * Calculates healing penalty change based on success, method, and modifiers
@@ -182,6 +266,7 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
             await patientActor.deleteEmbeddedDocuments("Item", fullyHealedIds);
             game.neuroshima?.log("Fully healed wounds deleted", { count: fullyHealedIds.length });
         }
+        if (woundsToUpdate.length || fullyHealedIds.length) await this.notifyPatientChanged(patientActor.uuid);
         
         game.neuroshima?.groupEnd();
         return healingResults;
@@ -237,6 +322,9 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._selectedWoundIds = new Set();
         this._documentHooks = [];
         this._observedActorUuids = new Set();
+        this._observedRelatedUuids = new Set();
+        this._refreshPending = false;
+        this._closing = false;
         
         game.neuroshima?.log("HealingApp constructor", {
             sessionId: this.sessionId,
@@ -247,35 +335,54 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     _observeDocuments() {
         if (this._documentHooks.length) return;
+        this._closing = false;
         const changed = document => {
             let current = document;
             while (current) {
-                if (this._observedActorUuids.has(current.uuid)) {
+                if (this._observedActorUuids.has(current.uuid) || this._observedRelatedUuids.has(current.uuid)
+                    || this._observedActorUuids.has(current.actor?.uuid)
+                    || this._observedActorUuids.has(current.syntheticActor?.uuid)) {
                     this._queueRefresh();
                     return;
                 }
                 current = current.parent;
             }
         };
-        for (const type of ["Actor", "Item", "ActiveEffect"]) {
+        for (const type of ["Actor", "Item", "ActiveEffect", "ActorDelta", "Token"]) {
             for (const action of ["create", "update", "delete"]) {
                 const name = `${action}${type}`;
                 this._documentHooks.push([name, Hooks.on(name, changed)]);
             }
         }
+        for (const event of ["createChatMessage", "updateChatMessage"]) {
+            this._documentHooks.push([event, Hooks.on(event, message => {
+                const patientUuid = message.getFlag("neuroshima", "patientUuid");
+                if (patientUuid && (patientUuid === this._patientActorUuid || patientUuid === this.patientRef?.uuid)) {
+                    this._queueRefresh();
+                }
+            })]);
+        }
         this._documentHooks.push(["updateWorldTime", Hooks.on("updateWorldTime", () => this._queueRefresh())]);
     }
 
     _queueRefresh() {
+        if (this._closing) return;
+        this._refreshPending = true;
         if (!this.rendered) return;
         clearTimeout(this._refreshTimer);
         this._refreshTimer = setTimeout(() => {
             this._refreshTimer = null;
-            if (this.rendered) this.render({ parts: ["header", "main"] });
+            if (!this.rendered || this._closing) return;
+            this._refreshPending = false;
+            Promise.resolve(this.render({ parts: ["header", "main"] })).catch(error => {
+                console.error("Neuroshima | Healing panel refresh failed", error);
+            });
         }, 100);
     }
 
     async close(options = {}) {
+        this._closing = true;
+        this._refreshPending = false;
         clearTimeout(this._refreshTimer);
         for (const [name, id] of this._documentHooks) Hooks.off(name, id);
         this._documentHooks = [];
@@ -300,8 +407,13 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         this._observedActorUuids = new Set([patientActor.uuid, medicActor?.uuid].filter(Boolean));
+        this._patientActorUuid = patientActor.uuid;
+        this._observedRelatedUuids = new Set([patientActor, medicActor].flatMap(actor => [
+            actor?.token?.uuid, actor?.token?.baseActor?.uuid
+        ]).filter(Boolean));
+        this._observeDocuments();
         for (const id of this._selectedWoundIds) {
-            if (!patientActor.items.get(id)) this._selectedWoundIds.delete(id);
+            if (patientActor.items.get(id)?.type !== "wound") this._selectedWoundIds.delete(id);
         }
 
         // Permissions: Medic (owner of medic actor or GM)
@@ -455,6 +567,7 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
             checkbox.checked = this._selectedWoundIds.has(checkbox.dataset.woundId);
         });
         this._updateHealButton(this.element);
+        if (this._refreshPending) this._queueRefresh();
     }
 
     /**
@@ -670,6 +783,7 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 // Complete healing — remove wound
                 game.neuroshima?.log("Action: Complete healing — removing wound");
                 await actor.deleteEmbeddedDocuments("Item", [woundId]);
+                await this.notifyPatientChanged(actor.uuid);
                 
                 game.neuroshima?.log("Wound removed", { woundId: woundId });
                 game.neuroshima?.groupEnd();
@@ -679,6 +793,7 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
             // Update wound
             if (Object.keys(updateData).length > 0) {
                 await wound.update(updateData);
+                await this.notifyPatientChanged(actor.uuid);
                 
                 game.neuroshima?.log("Wound updated", {
                     updates: updateData
@@ -755,15 +870,16 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
         });
 
         // Show healing roll dialog with healing method selection
-        const woundData = selectedWoundIds.map(woundId => {
-            const wound = patientActor.items.get(woundId);
-            return {
-                id: woundId,
-                name: wound?.name || "Unknown",
-                damageType: wound?.system.damageType || "D",
-                hadFirstAid: wound?.system.hadFirstAid || false
-            };
-        });
+        const selectedIds = new Set(selectedWoundIds);
+        const woundData = game.neuroshima.CombatHelper.generatePatientCard(patientActor)
+            .locations.flatMap(location => location.wounds)
+            .filter(wound => selectedIds.has(wound.id));
+        if (!woundData.length) {
+            this._queueRefresh();
+            ui.notifications.warn(game.i18n.localize("NEUROSHIMA.HealingRequest.NoWoundsSelected"));
+            game.neuroshima?.groupEnd();
+            return;
+        }
 
         game.neuroshima?.log("Opening healing roll dialog");
 
