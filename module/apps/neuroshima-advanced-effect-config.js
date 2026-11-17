@@ -96,9 +96,10 @@ export class NeuroshimaAdvancedEffectConfig extends HandlebarsApplicationMixin(f
       prompt:          ns.prompt          ?? false,
 
       auraTransferred: ns.auraTransferred ?? false,
-      auraRender:      ns.auraRender      ?? (auraVisibility(ns) !== 0),
+      auraRender:      auraVisibility(ns) !== -1 && (ns.auraRender ?? (auraVisibility(ns) > 0)),
       auraVisibility:  auraVisibility(ns),
       auraVisibilities: {
+        [-1]: game.i18n.localize("NEUROSHIMA.Scripts.AuraVisibilityNone"),
         0: game.i18n.localize("NEUROSHIMA.Scripts.AuraVisibilityLayer"),
         1: game.i18n.localize("NEUROSHIMA.Scripts.AuraVisibilityGM"),
         2: game.i18n.localize("NEUROSHIMA.Scripts.AuraVisibilityEveryone")
@@ -182,10 +183,10 @@ export class NeuroshimaAdvancedEffectConfig extends HandlebarsApplicationMixin(f
     if (!ns) return;
     if (Object.hasOwn(ns, "auraVisibility")) {
       ns.auraVisibility = auraVisibility(ns);
-      ns.auraRender = ns.auraVisibility !== 0;
+      ns.auraRender = ns.auraVisibility > 0;
     } else if (Object.hasOwn(ns, "auraRender")) {
-      const previous = this.effect.getFlag("neuroshima", "auraRender")
-        ?? (auraVisibility(this.effect.flags?.neuroshima) !== 0);
+      const visibility = auraVisibility(this.effect.flags?.neuroshima);
+      const previous = visibility !== -1 && (this.effect.getFlag("neuroshima", "auraRender") ?? (visibility > 0));
       if (ns.auraRender !== previous) ns.auraVisibility = ns.auraRender ? 2 : 0;
     }
   }

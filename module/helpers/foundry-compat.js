@@ -87,7 +87,7 @@ export function effectChangesUpdate(changes) {
 /** Preserve legacy aura visibility and distinguish transferred emitters from range copies. */
 export function auraVisibility(flags = {}) {
   const value = flags.auraVisibility;
-  return value != null && value !== "" && [0, 1, 2].includes(Number(value))
+  return value != null && value !== "" && [-1, 0, 1, 2].includes(Number(value))
     ? Number(value) : (flags.auraRender === true ? 2 : 0);
 }
 
@@ -419,7 +419,10 @@ export class NeuroshimaAreas {
   }
   static get(id, scene = canvas.scene) { return this.collection(scene)?.get(id); }
   static layer() { return isV14() ? canvas.regions : canvas.templates; }
-  static rendersAura(effect) { return isV14() || effect.getFlag("neuroshima", "auraRender") === true; }
+  static rendersAura(effect) {
+    return auraVisibility(effect.flags?.neuroshima) !== -1
+      && (isV14() || effect.getFlag("neuroshima", "auraRender") === true);
+  }
   static auraAppearance(effect, token) {
     if (!isV14()) return {};
     return {

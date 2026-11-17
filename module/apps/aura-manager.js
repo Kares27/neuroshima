@@ -139,8 +139,8 @@ export class NeuroshimaAuraManager {
 
   /**
    * Ensure a visual area (MeasuredTemplate V13 / Region V14) exists for every active auraActor effect
-   * positioned at the source token center. V13 visuals are optional; V14 always
-   * maintains a Region and controls its visibility independently.
+   * positioned at the source token center. V13 visuals are optional; V14 uses
+   * Region visibility modes unless the user explicitly disables the visual area.
    *
    * Called in three situations:
    *   1. Token moves (updateToken hook) — updates position only.

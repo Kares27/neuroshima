@@ -5618,7 +5618,7 @@ return false; // nie blokuj nikogo</span></code></pre>
       <tr><td><strong>Keep</strong></td><td>checkbox</td><td>Aura + Area</td><td>Kopia efektu pozostaje na celu po wyjściu z zasięgu / obszaru.</td></tr>
       <tr><td><strong>Template Data</strong></td><td>przycisk</td><td>Aura + Area</td><td>Dialog wyglądu obszaru. V13: kolor wypełnienia, obramowania i przezroczystość. V14: kolor Regionu; osobne obramowanie i przezroczystość pozostają zapisane dla V13.</td></tr>
       <tr><td><strong>Render Aura</strong></td><td>checkbox</td><td>Aura, V13</td><td>Opcjonalny widoczny szablon kołowy. Wyłączenie grafiki nie zatrzymuje działania aury.</td></tr>
-      <tr><td><strong>Aura Visibility / Widoczność aury</strong></td><td>select</td><td>Aura, V14</td><td><code>0</code> — tylko warstwa Regionów, <code>1</code> — zawsze dla MG, <code>2</code> — zawsze dla wszystkich. Region jest przypięty do tokena; aura działa przy każdym ustawieniu. Dawne Render Aura włączone odpowiada <code>2</code>, wyłączone — <code>0</code>.</td></tr>
+      <tr><td><strong>Aura Visibility / Widoczność aury</strong></td><td>select</td><td>Aura, V14</td><td><code>-1</code> — Nie pokazuj obszaru: bez grafiki również na warstwie Regionów; <code>0</code> — tylko warstwa Regionów, <code>1</code> — zawsze dla MG, <code>2</code> — zawsze dla wszystkich. Widoczny Region jest przypięty do tokena; aura działa przy każdym ustawieniu. Dawne Render Aura włączone odpowiada <code>2</code>, wyłączone — <code>0</code>.</td></tr>
       <tr><td><strong>Transferred Aura</strong></td><td>checkbox</td><td>Aura, V13 + V14</td><td>Źródło służy do przekazania aury zamiast emitowania jej z własnego tokena. Odbiorca otrzymuje samodzielny efekt <code>auraActor</code> z <code>auraTransferred: false</code> i emituje aurę ze swojego tokena. Możesz użyć <code>await this.applyTransferredAura()</code>, <code>await this.applyTransferredAura(targetActor)</code> albo <code>await this.effect.applyEffect(targetActor)</code>. Kopie w zasięgu odbiorcy są zwykłymi efektami <code>owningDocument</code> i nie emitują aury dalej. Wyłączenie lub usunięcie oryginału nie usuwa przekazanego źródła; zarządzasz nim na odbiorcy.</td></tr>
       <tr><td><strong>Area Effect Duration</strong></td><td>select</td><td>Area</td><td><code>Instantaneous</code> — obszar usuwa się po jednorazowym nałożeniu, a nałożone efekty pozostają. <code>Sustained</code> — obszar pozostaje i aktualizuje cele przy ich ruchu.</td></tr>
       <tr><td><strong>Place Template</strong></td><td>przycisk</td><td>Area</td><td>Umieszcza szablon kołowy na canvasie przy tokenie właściciela.</td></tr>
@@ -5634,6 +5634,8 @@ return false; // nie blokuj nikogo</span></code></pre>
     Zmiana skryptów lub modyfikatorów źródła nie przepisuje zawartości już istniejących kopii.
     Ustawienia widoczności są zachowywane między wersjami. Zapis w V14 ustawia też odpowiednik Render Aura dla V13;
     zmiana tego checkboxa w V13 wybiera widoczność <code>0</code> lub <code>2</code> dla V14.
+    Opcja <strong>Nie pokazuj obszaru</strong> usuwa istniejący wizualny Region lub template i nie tworzy go ponownie,
+    dopóki nie zmienisz widoczności. Nie usuwa efektów aury; zasięg i nakładanie kopii nadal są przeliczane.
   </div>
 
   <h4>Kopie efektów Aura / Area — flagi identyfikacyjne</h4>
