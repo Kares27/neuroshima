@@ -1,18 +1,788 @@
-import { beastActivities, createBeastCombatWeapon, isBeastAbility } from "../helpers/combat-helper.js";
-import { clampMeleeTempo, maxMeleeTempo } from "./melee-maneuvers.js";
+import {
+  beastActivities, createBeastCombatWeapon, isBeastAbility, isBeastAction, resolveBeastActionItem
+} from "../helpers/combat-helper.js";
 import { stampEffectStart } from "../helpers/foundry-compat.js";
+import { DuelContext, DuelLifecycle, DuelDeclarationEngine, DuelSegmentEngine } from "./combat.js";
+
+/** Melee rules, actions, and session management. Rendering lives in melee-system-ui.js. */
+// ─── Unarmed attacks ─────────────────────────────────────────────────────
+
+export const DEFAULT_UNARMED_DAMAGE_TABLE = Object.freeze([
+  { maxBuild: 10, damage1: "sD", damage2: "sD", damage3: "sD" },
+  { maxBuild: 12, damage1: "sD", damage2: "sD", damage3: "sL" },
+  { maxBuild: 14, damage1: "sD", damage2: "sL", damage3: "sL" },
+  { maxBuild: 16, damage1: "sD", damage2: "sL", damage3: "sC" },
+  { maxBuild: 18, damage1: "sL", damage2: "sL", damage3: "sC" },
+  { maxBuild: null, damage1: "sL", damage2: "sC", damage3: "sC" }
+]);
+
+export const UNARMED_DAMAGE_TYPES = Object.freeze(["D", "L", "C", "K", "sD", "sL", "sC", "sK"]);
+
+export function normalizeUnarmedDamageTable(table) {
+  const rows = Array.isArray(table) ? table : [];
+  const normalized = rows.map(row => {
+    const rawMax = row?.maxBuild;
+    const maxBuild = rawMax === null || rawMax === "" || rawMax === undefined
+      ? null
+      : Number(rawMax);
+    const damage = key => UNARMED_DAMAGE_TYPES.includes(row?.[key]) ? row[key] : "sD";
+    return {
+      maxBuild: Number.isFinite(maxBuild) ? maxBuild : null,
+      damage1: damage("damage1"),
+      damage2: damage("damage2"),
+      damage3: damage("damage3")
+    };
+  });
+  return normalized.sort((left, right) => {
+    if (left.maxBuild === null) return right.maxBuild === null ? 0 : 1;
+    if (right.maxBuild === null) return -1;
+    return left.maxBuild - right.maxBuild;
+  });
+}
+
+export function getUnarmedDamageProfile(actor, table = null) {
+  const configured = table ?? game.settings?.get?.("neuroshima", "unarmedDamageTable");
+  const rows = normalizeUnarmedDamageTable(
+    Array.isArray(configured) && configured.length ? configured : DEFAULT_UNARMED_DAMAGE_TABLE
+  );
+  const build = Number(actor?.system?.attributeTotals?.constitution)
+    || Number(actor?.system?.attributes?.constitution)
+    || 0;
+  const row = rows.find(entry => entry.maxBuild === null || build <= entry.maxBuild)
+    ?? rows.at(-1)
+    ?? DEFAULT_UNARMED_DAMAGE_TABLE[0];
+  return { build, damage1: row.damage1, damage2: row.damage2, damage3: row.damage3 };
+}
+
+export function createUnarmedWeapon(actor) {
+  const damage = getUnarmedDamageProfile(actor);
+  return {
+    id: null,
+    uuid: null,
+    isSynthetic: true,
+    isUnarmed: true,
+    name: game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.Unarmed"),
+    img: "systems/neuroshima/assets/img/weapon-melee.svg",
+    type: "weapon",
+    actor,
+    system: {
+      isUnarmed: true,
+      weaponType: "melee",
+      attribute: "dexterity",
+      skill: "brawl",
+      attackBonus: 0,
+      defenseBonus: 0,
+      weaponModifier: 0,
+      piercing: 0,
+      requiredBuild: 0,
+      magazine: null,
+      jamming: 20,
+      damageCategory: "physical",
+      damageMelee1: damage.damage1,
+      damageMelee2: damage.damage2,
+      damageMelee3: damage.damage3,
+      tags: ["unarmed"]
+    }
+  };
+}
+
+// ─── Maneuvers ───────────────────────────────────────────────────────────
+
+export function maxMeleeTempo(actor, weapon) {
+  const key = weapon?.system?.skill;
+  const value = key === "experience" && actor?.type === "creature"
+    ? actor.system.experience : actor?.system?.skills?.[key]?.value;
+  return Math.min(3, Math.max(0, Math.trunc(Number(value) || 0)));
+}
+
+export function clampMeleeTempo(value, maximum = 3) {
+  return Math.min(maximum, Math.max(0, Math.trunc(Number(value) || 0)));
+}
+
+/** Full defense needs two consecutive successful defenses against failed attacks. */
+export function resolveDefensiveManeuver(state, { ownerSide, ownerSuccesses, responderSuccesses, responderAction, outcome }) {
+  const responderSide = ownerSide === "attacker" ? "defender" : "attacker";
+  const maneuver = state[`${responderSide}Maneuver`];
+  state.fullDefenseStreak ??= { attacker: 0, defender: 0 };
+  if (responderAction === "attack" || maneuver !== "fullDefense") {
+    state.fullDefenseStreak[responderSide] = 0;
+    return outcome;
+  }
+  const consecutive = ownerSuccesses === 0 && responderSuccesses > 0;
+  state.fullDefenseStreak[responderSide] = consecutive
+    ? (Number(state.fullDefenseStreak[responderSide]) || 0) + responderSuccesses : 0;
+  if (outcome !== "takeover") return outcome;
+  if (state.fullDefenseStreak[responderSide] < 2) return "blocked";
+  state.fullDefenseStreak[responderSide] = 0;
+  return "takeover";
+}
+
+// ─── Melee action definitions and execution ──────────────────────────────
+
 /**
- * Canonical Neuroshima melee engine.
+ * @description Data layer for melee action normalization in Neuroshima 1.5.
  *
- * This module is deliberately the single domain boundary for melee.  It owns
- * the session schema, activity catalogue, conditions, outcomes, operations,
- * effect lifetime, persistence, migration and the authoritative command bus.
- * Rendering lives in melee-system-ui.js; global Foundry initiative remains in
- * the normal Combat/Combatant documents and is never written here.
+ * MeleeActionRegistry collects and normalizes melee action entries from every
+ * source the system recognizes:
+ *   - beast-action item activities (creature actors, success-cost)
+ *   - legacy trick queue strings: "trick:ID:damage"
+ *   - (future) getMeleeActions effect scripts (non-creature actors)
+ *
+ * The registry is a PURE DATA LAYER.  It never executes scripts, applies
+ * effects, or mutates combat state.  All execution is delegated to
+ * MeleeActionRunner and the existing combat.js pipeline.
+ *
+ * ── MeleeAction descriptor ──────────────────────────────────────────────────
+ * Every normalized action is a plain object conforming to:
+ *
+ *   {
+ *     id:               string      — composite "itemId::actId", trick id, etc.
+ *     name:             string      — display name
+ *     img:              string|null — image path
+ *     type:             "beastActivity" | "trick" | "effectAction" | "weapon"
+ *     sourceItemId:     string|null — id of originating Item
+ *     sourceItemUuid:   string|null — uuid of originating Item
+ *     sourceEffectUuid: string|null — uuid of originating ActiveEffect
+ *     activityId:       string|null — activity.id within the source item
+ *     costType:         "success" | "dice" | "segment"
+ *     successCost:      number      — successes required (for costType "success")
+ *     damage:           string|null — raw damage spec ("D", "sC", "2L + 1D", …)
+ *     effectIds:        string[]    — ids of linked effects on the source item
+ *     effectTiming:     "onUse" | "onHit" | "afterDamage"
+ *     effectTarget:     "self" | "target" | "selected" | "manual"
+ *     onHitScript:              string|null — JS code executed on hit (null = none)
+ *     immediateOnHit:           boolean     — true → fire during resolution, not at apply-time
+ *     gmNote:                   string      — GM-facing note from the activity definition
+ *     applyEffectsAutomatically: boolean    — false → skip auto-apply (effects are manual/scripted)
+ *     resolverKind:             "opposedMelee" | "directApply" — how the action resolves
+ *     isAffordable:             boolean     — UI hint: action fits within current success budget
+ *     hasEffects:               boolean     — shorthand for effectIds.length > 0
+ *   }
  */
 
-import { DuelContext, DuelLifecycle, DuelDeclarationEngine, DuelSegmentEngine } from "./combat-api.js";
-import { createUnarmedWeapon } from "./unarmed.js";
+export class MeleeActionRegistry {
+
+  // ── Damage spec parsing ────────────────────────────────────────────────────
+
+  /**
+   * Parse a damage spec string into an array of wound-type tokens.
+   *
+   * Format (case-sensitive wound abbreviations):
+   *   ""          → []
+   *   "—"         → []          (placeholder for "no damage")
+   *   "D"         → ["D"]
+   *   "sC"        → ["sC"]
+   *   "3D"        → ["D","D","D"]
+   *   "2L + 1D"   → ["L","L","D"]
+   *
+   * This method is the canonical implementation.  MeleeOpposedChat._parseDamageSpec
+   * delegates to this method for backward compatibility.
+   *
+   * @param {string|null|undefined} damage
+   * @returns {string[]} Array of wound-type strings; empty when there is no damage.
+   */
+  static parseDamageSpec(damage) {
+    if (!damage || damage === "—") return [];
+    const segments = damage.split(/\s*\+\s*/);
+    const result = [];
+    for (const seg of segments) {
+      const m = seg.trim().match(/^(\d+)?([A-Za-z]+)$/);
+      if (!m) continue;
+      const n    = m[1] ? parseInt(m[1], 10) : 1;
+      const type = m[2];
+      for (let i = 0; i < n; i++) result.push(type);
+    }
+    return result;
+  }
+
+  // ── Beast action collection ────────────────────────────────────────────────
+
+  /**
+   * Collect and normalize all success-cost beast-action activities for a creature actor.
+   * Used by MeleeOpposedChat._buildDuelContext to populate the action picker UI while
+   * the initiative owner is choosing their committed dice.
+   *
+   * Only activities with costType === "success" are included; segment-cost activities
+   * are handled by a separate pipeline.
+   *
+   * @param {Actor}       actor                 - The creature actor owning the beast-action items
+   * @param {number}      committedSuccessPoints - Success points the owner has committed so far
+   *                                              (used to set isAffordable on each action)
+   * @returns {MeleeAction[]} Sorted ascending by successCost
+   */
+  static collectBeastActions(actor, committedSuccessPoints) {
+    const flat = [];
+    for (const item of actor.items.filter(i =>
+      isBeastAction(i)
+    )) {
+      for (const act of beastActivities(item)) {
+        if (act.costType !== "success") continue;
+        flat.push(MeleeActionRegistry._normalizeBeastActivity(item, act, committedSuccessPoints));
+      }
+    }
+    return flat.sort((a, b) => a.successCost - b.successCost);
+  }
+
+  /**
+   * Collect success-cost beast-action activities that are affordable given the net success budget.
+   * Used by MeleeOpposedChat.commitExchangeAction when the duel resolves (state.status === "done")
+   * to populate the list of actions the creature can spend their net successes on.
+   *
+   * @param {Actor}       actor           - The creature actor
+   * @param {number}      netSuccesses    - Total successes available for spending
+   * @returns {MeleeAction[]} Sorted ascending by successCost
+   */
+  static collectAffordableBeastActions(actor, netSuccesses) {
+    const flat = [];
+    for (const item of actor.items.filter(i =>
+      isBeastAction(i)
+    )) {
+      for (const act of beastActivities(item)) {
+        if (act.costType !== "success") continue;
+        if ((act.successCost ?? 1) > netSuccesses) continue;
+        flat.push(MeleeActionRegistry._normalizeBeastActivity(item, act, netSuccesses));
+      }
+    }
+    return flat.sort((a, b) => a.successCost - b.successCost);
+  }
+
+  // ── Queue normalization ────────────────────────────────────────────────────
+
+  /**
+   * Split an imported queue into beast activity ids and normalized trick descriptors.
+   * normalized trick action descriptors.
+   *
+   * Beast entries are raw composite id strings ("itemId::activityId").
+   * Trick entries begin with the prefix "trick:" and are parsed into MeleeAction objects.
+   *
+   * @param {string[]|null} rawQueue
+   * @returns {{ beastEntries: string[], trickActions: MeleeAction[] }}
+   */
+  static splitQueue(rawQueue) {
+    if (!Array.isArray(rawQueue)) return { beastEntries: [], trickActions: [] };
+    const beastEntries = [];
+    const trickActions = [];
+    for (const entry of rawQueue) {
+      if (typeof entry !== "string") continue;
+      if (entry.startsWith("trick:")) {
+        const action = MeleeActionRegistry.parseTrickString(entry);
+        if (action) trickActions.push(action);
+      } else {
+        beastEntries.push(entry);
+      }
+    }
+    return { beastEntries, trickActions };
+  }
+
+  /**
+   * Parse a legacy trick queue string ("trick:ID:damage") into a normalized MeleeAction.
+   * Returns null when the entry is not a valid trick string.
+   *
+   * The damage field may contain the full damage spec including ":" separators, so
+   * everything after the second ":" is treated as part of the damage string.
+   *
+   * @param {string} entry - e.g. "trick:barbarka-headbutt:sC" or "trick:disarm:"
+   * @returns {MeleeAction|null}
+   */
+  static parseTrickString(entry) {
+    if (!entry?.startsWith("trick:")) return null;
+    const firstColon  = entry.indexOf(":");           // after "trick"
+    const secondColon = entry.indexOf(":", firstColon + 1);
+    const id          = secondColon > firstColon + 1
+      ? entry.slice(firstColon + 1, secondColon)
+      : entry.slice(firstColon + 1);
+    const damage = secondColon !== -1 ? (entry.slice(secondColon + 1) || null) : null;
+    if (!id) return null;
+
+    return {
+      id,
+      name:             id,
+      img:              null,
+      type:             "trick",
+      sourceItemId:     null,
+      sourceItemUuid:   null,
+      sourceEffectUuid: null,
+      activityId:       null,
+      costType:         "success",
+      successCost:      1,
+      damage,
+      effectIds:        [],
+      effectTiming:     "onHit",
+      effectTarget:     "target",
+      onHitScript:      null,
+      immediateOnHit:   false,
+      gmNote:           "",
+      isAffordable:     true,
+      hasEffects:       false
+    };
+  }
+
+  /**
+   * Serialize a normalized trick MeleeAction back to the legacy queue string format.
+   * Used when the action must be passed through the existing string-based queue pipeline
+   * for backward compatibility.
+   *
+   * @param {MeleeAction} action
+   * @returns {string} e.g. "trick:barbarka-headbutt:sC"
+   */
+  static serializeTrickLegacy(action) {
+    return `trick:${action.id}:${action.damage ?? ""}`;
+  }
+
+  // ── Effect-action normalization (non-creature actors) ─────────────────────
+
+  /**
+   * Normalize a single raw action entry produced by a `getMeleeActions` effect script into a
+   * canonical `MeleeAction` descriptor.  Fills defaults for any missing fields.
+   *
+   * @param {object} entry               - Raw entry as pushed by a getMeleeActions script
+   * @param {number} [availableSuccesses=0]
+   * @returns {MeleeAction}
+   */
+  static normalizeEffectAction(entry, availableSuccesses = 0) {
+    // Legacy definitions have no mode and retain their stored successCost.
+    // The explicit standalone mode always behaves as a zero-success action.
+    const successCost = entry.mode === "standalone" ? 0 : (entry.successCost ?? 0);
+    const effectIds   = Array.isArray(entry.effectIds) ? entry.effectIds : [];
+    return {
+      id:                       entry.id             ?? `trick-${foundry.utils.randomID(8)}`,
+      name:                     entry.name           ?? entry.label ?? "Sztuczka",
+      img:                      entry.img            ?? "systems/neuroshima/assets/effects/gears.svg",
+      type:                     "effectAction",
+      sourceItemId:             null,
+      sourceItemUuid:           null,
+      sourceEffectUuid:         entry._effectUuid    ?? null,
+      activityId:               null,
+      costType:                 successCost > 0 ? "success" : "dice",
+      successCost,
+      damage:                   entry.damage         ?? null,
+      effectIds,
+      effectTiming:             entry.effectTiming   ?? "onHit",
+      effectTarget:             entry.effectTarget   ?? "target",
+      onHitScript:              entry.onHitScript    ?? null,
+      immediateOnHit:           entry.immediateOnHit ?? false,
+      gmNote:                   entry.gmNote ?? entry.annotation ?? "",
+      applyEffectsAutomatically: entry.applyEffectsAutomatically ?? true,
+      resolverKind:             entry.resolverKind   ?? "opposedMelee",
+      minDice:                  entry.minDice        ?? 1,
+      maxDice:                  entry.maxDice        ?? 3,
+      isAffordable:             successCost === 0 || availableSuccesses >= successCost,
+      hasEffects:               effectIds.length > 0
+    };
+  }
+
+  /**
+   * Normalize an array of raw `getMeleeActions` entries (from effect scripts) into canonical
+   * `MeleeAction` descriptors.  Null / undefined entries are filtered out.
+   *
+   * @param {Array}  rawEntries         - Array of raw entries as pushed by getMeleeActions scripts
+   * @param {number} [availableSuccesses=0]
+   * @returns {MeleeAction[]}
+   */
+  static normalizeEffectActions(rawEntries, availableSuccesses = 0) {
+    if (!Array.isArray(rawEntries)) return [];
+    return rawEntries
+      // actionDefs is shared with result-card actions. Only the explicit new
+      // "result" discriminator is excluded; all legacy/custom descriptors
+      // (including descriptors without type) remain fully compatible.
+      .filter(e => e != null && e.type !== "result")
+      .map(e => MeleeActionRegistry.normalizeEffectAction(e, availableSuccesses));
+  }
+
+  /**
+   * Collect all normalized melee actions for an actor.
+   *
+   * For creature actors (`actor.type === "beast"` or similar), delegates to
+   * `collectBeastActions`.  For non-creature actors, normalizes the pre-collected
+   * `extraActionsArr` produced by the `getMeleeActions` trigger.
+   *
+   * @param {Actor}  actor
+   * @param {object} [options={}]
+   * @param {boolean} [options.isCreature=false]        - When true, use beast activity collection
+   * @param {number} [options.availableSuccesses=0]     - Success budget for affordability check
+   * @param {Array|null} [options.extraActionsArr=null] - Pre-collected script entries (non-creature)
+   * @returns {MeleeAction[]}
+   */
+  static collectForActor(actor, {
+    isCreature          = false,
+    availableSuccesses  = 0,
+    extraActionsArr     = null
+  } = {}) {
+    if (isCreature) {
+      return MeleeActionRegistry.collectBeastActions(actor, availableSuccesses);
+    }
+    if (!extraActionsArr?.length) return [];
+    return MeleeActionRegistry.normalizeEffectActions(extraActionsArr, availableSuccesses);
+  }
+
+  // ── Internal helpers ───────────────────────────────────────────────────────
+
+  /**
+   * Normalize a single beast-action activity object into a MeleeAction descriptor.
+   * Reads all available fields from the activity and fills defaults for any that are absent.
+   *
+   * @param {Item}   item               - The beast-action Item document
+   * @param {object} act                - The beast Item definition from item.system
+   * @param {number} availableSuccesses - Used to compute the isAffordable flag
+   * @returns {MeleeAction}
+   */
+  static _normalizeBeastActivity(item, act, availableSuccesses) {
+    const successCost = act.successCost ?? 1;
+    return {
+      id:                       `${item.id}::${act.id}`,
+      name:                     act.name  || item.name,
+      img:                      act.img   || item.img,
+      type:                     "beastActivity",
+      sourceItemId:             item.id,
+      sourceItemUuid:           item.uuid,
+      sourceEffectUuid:         null,
+      activityId:               act.id,
+      costType:                 "success",
+      successCost,
+      damage:                   act.damage       || null,
+      effectIds:                act.effectIds    ?? [],
+      effectTiming:             act.effectTiming ?? "onUse",
+      effectTarget:             act.effectTarget ?? "target",
+      onHitScript:              null,
+      immediateOnHit:           false,
+      gmNote:                   act.gmNote ?? "",
+      applyEffectsAutomatically: act.applyEffectsAutomatically ?? true,
+      resolverKind:             act.resolverKind ?? "opposedMelee",
+      isAffordable:             availableSuccesses >= successCost,
+      hasEffects:               (act.effectIds?.length ?? 0) > 0
+    };
+  }
+}
+
+/**
+ * @description Execution layer for melee action outcomes in Neuroshima 1.5.
+ *
+ * MeleeActionRunner is the single execution point for all side-effects that
+ * arise from a melee action resolving.  It replaces ad-hoc inline code in
+ * MeleeOpposedChat and provides named, well-documented entry points that
+ * effect scripts and other systems can also use.
+ *
+ * Responsibilities:
+ *   - Fire onHitScripts (immediate and deferred) for trick actions
+ *   - Apply trick hit damage through CombatHelper.applyDamageToActor
+ *   - Apply queued-trick damage (successCost tricks from the queue section)
+ *
+ * Out of scope (handled elsewhere):
+ *   - canonical melee-session state mutation
+ *   - Beast activity effect application (applyBeastActions)
+ *   - Damage accumulation display / notifications (applyOpposedDamage)
+ *
+ * ── Execution flow overview ─────────────────────────────────────────────────
+ *
+ *  Segment resolves → the exchange command records hitEntry in state.hits
+ *    → MeleeActionRunner.onHit({ state, hitEntry, isOwnerAttacker })
+ *        └─ fireImmediateOnHitScript (fires during resolution if trick.immediate)
+ *
+ *  GM clicks "Apply Damage" → applyOpposedDamage iterates state.hits
+ *    → for trick hits:
+ *        MeleeActionRunner.fireOnHitScript(hit, rd, attackerActor, targetActor)
+ *        MeleeActionRunner.applyTrickHitDamage(hit, context) → batch
+ *    → for queue tricks (successCost):
+ *        MeleeActionRunner.applyQueueTrickEntry(entry, context) → batch
+ */
+
+
+export class MeleeActionRunner {
+
+  // ── Segment-time execution ─────────────────────────────────────────────────
+
+  /**
+   * Entry point called immediately when a segment resolves to "hit" for an action.
+   * Currently handles immediate-onHitScript execution for trick hits.
+   * Deferred damage and non-immediate scripts are handled by applyOpposedDamage.
+   *
+   * @param {object}  args
+   * @param {object}  args.state           - Duel card state flag object (mutable)
+   * @param {object}  args.hitEntry        - The hit entry being added: { tier, damageType, trickId }
+   * @param {boolean} args.isOwnerAttacker - True when the initiative owner is the attacker
+   * @returns {Promise<void>}
+   */
+  static async onHit({ state, hitEntry, isOwnerAttacker }) {
+    if (hitEntry.trickId) {
+      await MeleeActionRunner.fireImmediateOnHitScript(state, hitEntry, isOwnerAttacker);
+    }
+  }
+
+  /**
+   * Fire the "immediate" onHitScript for a trick hit entry.
+   *
+   * Immediate scripts run at duel resolution time rather than
+   * at damage-apply time (inside applyOpposedDamage).  Use this timing for effects that
+   * must take place before the next segment begins, such as status effects, initiative
+   * manipulation, or disarm triggers.
+   *
+   * A script is considered immediate when trickOnHitScripts[trickId].immediate === true.
+   * Scripts without the immediate flag are handled by fireOnHitScript instead.
+   *
+   * Extracted from MeleeOpposedChat._fireImmediateOnHitScript.
+   *
+   * @param {object}  state           - Duel card state flag (mutable)
+   * @param {object}  hitEntry        - { tier, damageType, trickId }
+   * @param {boolean} isOwnerAttacker - True when the initiative owner is the attacker
+   * @returns {Promise<void>}
+   */
+  static async fireImmediateOnHitScript(state, hitEntry, isOwnerAttacker) {
+    const entry = state.trickOnHitScripts?.[hitEntry.trickId];
+    if (!entry?.immediate) return;
+    try {
+      const { NeuroshimaScript } = await import("../apps/neuroshima-script-engine.js");
+      const effect = entry.effectUuid ? fromUuidSync(entry.effectUuid) : null;
+
+      const ownerDoc = fromUuidSync(isOwnerAttacker
+        ? (state.attackerTokenUuid || state.attackerUuid)
+        : (state.defenderTokenUuid || state.defenderUuid));
+      const ownerActor  = ownerDoc?.actor ?? ownerDoc;
+
+      const targetDoc = fromUuidSync(isOwnerAttacker
+        ? (state.defenderTokenUuid || state.defenderUuid)
+        : (state.attackerTokenUuid || state.attackerUuid));
+      const targetActor = targetDoc?.actor ?? targetDoc;
+
+      const scriptObj = new NeuroshimaScript(
+        { code: entry.code, trigger: "afterMeleeAction", label: "onHitScript:immediate" },
+        effect
+      );
+      await scriptObj.execute({ actor: ownerActor, target: targetActor, state, hit: hitEntry });
+      game.neuroshima?.log?.("[MeleeActionRunner] immediate onHitScript executed", hitEntry.trickId);
+    } catch (err) {
+      game.neuroshima?.log?.("[MeleeActionRunner] immediate onHitScript error", hitEntry.trickId, err);
+    }
+  }
+
+  // ── Damage-apply-time execution ────────────────────────────────────────────
+
+  /**
+   * Fire the deferred onHitScript for a trick hit entry.
+   * Called by applyOpposedDamage when the GM confirms damage application.
+   *
+   * Deferred scripts (immediate === false or absent) run at apply-time so they can
+   * use the final resolved actor state (e.g. after wounds are applied to the target).
+   * Examples: Aramis – Rozbrojenie (script replaces damage), Boa – Pochwycenie.
+   *
+   * @param {object}  hit            - Hit entry from opposedResult.hits: { tier, damageType, trickId }
+   * @param {object}  rd             - Opposed result flag data (read-only at this point)
+   * @param {Actor}   attackerActor
+   * @param {Actor}   targetActor
+   * @returns {Promise<void>}
+   */
+  static async fireOnHitScript(hit, rd, attackerActor, targetActor) {
+    const entry = rd.trickOnHitScripts?.[hit.trickId];
+    if (!entry) return;
+    // Immediate scripts are executed while the segment is resolved.  They must
+    // never be repeated when the GM later confirms damage application.
+    if (typeof entry === "object" && entry.immediate === true) return;
+    try {
+      const { NeuroshimaScript } = await import("../apps/neuroshima-script-engine.js");
+      const onHitCode  = typeof entry === "string" ? entry : entry.code;
+      const effectUuid = typeof entry === "string" ? null  : entry.effectUuid;
+      const effect     = effectUuid ? fromUuidSync(effectUuid) : null;
+      const scriptObj  = new NeuroshimaScript(
+        { code: onHitCode, trigger: "afterMeleeAction", label: "onHitScript" },
+        effect
+      );
+      await scriptObj.execute({ actor: attackerActor, target: targetActor, state: rd, hit });
+      game.neuroshima?.log?.("[MeleeActionRunner] onHitScript executed for trick", hit.trickId);
+    } catch (err) {
+      game.neuroshima?.log?.("[MeleeActionRunner] onHitScript error for trick", hit.trickId, err);
+    }
+  }
+
+  /**
+   * Apply damage for a single trick hit entry to the target actor.
+   *
+   * Parses the damage spec string (e.g. "D", "sC", "2L + 1D") and calls
+   * CombatHelper.applyDamageToActor once per wound token.  Each wound goes through
+   * the full damage pipeline: preApplyDamage → armor reduction → takeDamage.
+   *
+   * Returns an accumulated batch result so the caller can aggregate wounds and
+   * display a single pain-resistance report.
+   *
+   * Extracted from the trick-hit branch of MeleeOpposedChat.applyOpposedDamage.
+   *
+   * @param {object}   hit                    - { tier, damageType, trickId }
+   * @param {object}   context
+   * @param {Actor}    context.attackerActor
+   * @param {Actor}    context.targetActor
+   * @param {Item|null} context.weaponItem    - May be null for unarmed attacks
+   * @param {object}   context.rd             - Opposed result flag data
+   * @param {object}   context.CombatHelper   - Imported CombatHelper module
+   * @returns {Promise<{ results: any[], woundIds: string[], reduced: number, reducedDetails: any[] }>}
+   */
+  static async applyTrickHitDamage(hit, { attackerActor, targetActor, weaponItem, rd, CombatHelper }) {
+    const trickWounds = MeleeActionRegistry.parseDamageSpec(hit.damageType);
+    game.neuroshima?.log?.("[MeleeActionRunner] applying trick hit damage",
+      { trickId: hit.trickId, damageType: hit.damageType, wounds: trickWounds });
+
+    const allResults       = [];
+    const allWoundIds      = [];
+    let   totalReduced     = 0;
+    const allReducedDetails = [];
+
+    if (trickWounds.length === 0) return { results: [], woundIds: [], reduced: 0, reducedDetails: [] };
+
+    for (const woundType of trickWounds) {
+      const attackData = {
+        isMelee:       true,
+        actorId:       attackerActor?.id,
+        weaponId:      rd.weaponId,
+        label:         weaponItem?.name ?? game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
+        damageMelee1:  woundType,
+        damageMelee2:  woundType,
+        damageMelee3:  woundType,
+        finalLocation: rd.location,
+        headDamageApplied: rd.headDamageApplied === true,
+        successPoints: hit.tier
+      };
+      const batch = await CombatHelper.applyDamageToActor(targetActor, attackData, {
+        isOpposed:    true,
+        spDifference: hit.tier,
+        location:     rd.location,
+        suppressChat: true
+      });
+      if (batch) {
+        allResults.push(...(batch.results ?? []));
+        allWoundIds.push(...(batch.woundIds ?? []));
+        totalReduced += batch.reducedProjectiles ?? 0;
+        allReducedDetails.push(...(batch.reducedDetails ?? []));
+      }
+    }
+    return { results: allResults, woundIds: allWoundIds, reduced: totalReduced, reducedDetails: allReducedDetails };
+  }
+
+  /**
+   * Process a single entry from the pending trick queue (successCost tricks).
+   *
+   * Queue tricks are pre-paid at the start of the segment: the player spends successes
+   * before the dice comparison occurs.  They always trigger regardless of segment outcome.
+   *
+   * Handles both the onHitScript and the damage application for one queue entry.
+   * Returns an accumulated batch result or null if there is no damage.
+   *
+   * Extracted from the pendingTrickQueue loop in MeleeOpposedChat.applyOpposedDamage.
+   *
+   * @param {string}   trickEntry             - Legacy "trick:ID:damage" string
+   * @param {object}   context
+   * @param {Actor}    context.attackerActor
+   * @param {Actor}    context.defenderActor
+   * @param {Item|null} context.weaponItem
+   * @param {object}   context.rd
+   * @param {object}   context.CombatHelper
+   * @returns {Promise<{ results: any[], woundIds: string[], reduced: number, reducedDetails: any[] }|null>}
+   */
+  static async applyQueueTrickEntry(trickEntry, { attackerActor, defenderActor, weaponItem, rd, CombatHelper }) {
+    if (!trickEntry?.startsWith("trick:")) return null;
+
+    const firstColon  = trickEntry.indexOf(":");
+    const secondColon = trickEntry.indexOf(":", firstColon + 1);
+    const trickId     = secondColon > firstColon + 1
+      ? trickEntry.slice(firstColon + 1, secondColon)
+      : trickEntry.slice(firstColon + 1);
+    const trickDamage = secondColon !== -1 ? trickEntry.slice(secondColon + 1) : "";
+
+    if (!trickId) return null;
+
+    if (rd.trickOnHitScripts?.[trickId]) {
+      try {
+        const { NeuroshimaScript } = await import("../apps/neuroshima-script-engine.js");
+        const entry2      = rd.trickOnHitScripts[trickId];
+        const onHitCode   = typeof entry2 === "string" ? entry2 : entry2.code;
+        const effectUuid  = typeof entry2 === "string" ? null   : entry2.effectUuid;
+        const effect      = effectUuid ? fromUuidSync(effectUuid) : null;
+        const scriptObj   = new NeuroshimaScript(
+          { code: onHitCode, trigger: "getMeleeActions", label: "onHitScript" },
+          effect
+        );
+        await scriptObj.execute({
+          actor:  attackerActor,
+          target: defenderActor,
+          state:  rd,
+          hit:    { trickId, damageType: trickDamage, tier: 1 }
+        });
+        game.neuroshima?.log?.("[MeleeActionRunner] queue trick onHitScript executed", trickId);
+      } catch (err) {
+        game.neuroshima?.log?.("[MeleeActionRunner] queue trick onHitScript error", trickId, err);
+      }
+    }
+
+    const queueWounds = MeleeActionRegistry.parseDamageSpec(trickDamage);
+    game.neuroshima?.log?.("[MeleeActionRunner] queue trick damage",
+      { trickId, trickDamage, wounds: queueWounds });
+
+    if (queueWounds.length === 0) return null;
+
+    const allResults       = [];
+    const allWoundIds      = [];
+    let   totalReduced     = 0;
+    const allReducedDetails = [];
+
+    for (const woundType of queueWounds) {
+      const attackData = {
+        isMelee:       true,
+        actorId:       attackerActor?.id,
+        label:         `${weaponItem?.name ?? game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed")} (sztuczka)`,
+        damageMelee1:  woundType,
+        damageMelee2:  woundType,
+        damageMelee3:  woundType,
+        finalLocation: rd.location,
+        headDamageApplied: rd.headDamageApplied === true,
+        successPoints: 1
+      };
+      const batch = await CombatHelper.applyDamageToActor(defenderActor, attackData, {
+        isOpposed:    true,
+        spDifference: 1,
+        location:     rd.location,
+        suppressChat: true
+      });
+      if (batch) {
+        allResults.push(...(batch.results ?? []));
+        allWoundIds.push(...(batch.woundIds ?? []));
+        totalReduced += batch.reducedProjectiles ?? 0;
+        allReducedDetails.push(...(batch.reducedDetails ?? []));
+      }
+    }
+    return { results: allResults, woundIds: allWoundIds, reduced: totalReduced, reducedDetails: allReducedDetails };
+  }
+}
+
+// ─── Exchange damage summary ─────────────────────────────────────────────
+
+/** Project the same paid beast actions used by damage application, preserving repetitions. */
+export function exchangeDamageHits(state, attacker, defender) {
+  const queue = state.allBeastQueue ?? state.pendingBeastQueue ?? [];
+  const attackHits = attacker?.type === "creature" && queue.length
+    ? queue.map(id => {
+      const [itemId, activityId] = id.split("::");
+      const item = resolveBeastActionItem(attacker, itemId, activityId);
+      const activity = beastActivities(item).find(entry => entry.id === activityId);
+      return { damageType: activity?.damage ?? "?", actionName: activity?.name ?? item?.name ?? "?" };
+    })
+    : (state.hits ?? []);
+  return [
+    ...attackHits.map(hit => ({ ...hit, sourceName: attacker?.name ?? "?", targetName: defender?.name ?? "?" })),
+    ...(state.counterHits ?? []).map(hit => ({ ...hit, isCounter: true, sourceName: defender?.name ?? "?", targetName: attacker?.name ?? "?" }))
+  ];
+}
+
+/** Group individual wound tokens by recipient side, including repeated and compound damage. */
+export function summarizeExchangeDamage(hits) {
+  const received = { attacker: new Map(), defender: new Map() };
+  for (const hit of hits) {
+    const counts = hit.isCounter ? received.attacker : received.defender;
+    for (const damageType of MeleeActionRegistry.parseDamageSpec(typeof hit.damageType === "string" ? hit.damageType : "")) {
+      counts.set(damageType, (counts.get(damageType) ?? 0) + 1);
+    }
+  }
+  return Object.fromEntries(Object.entries(received).map(([side, counts]) => [
+    side, [...counts].map(([damageType, count]) => ({ damageType, count }))
+  ]));
+}
+
+// ─── Melee sessions and commands ─────────────────────────────────────────
 
 export const MELEE_VERSION = 2;
 export const MELEE_FLAG = "meleeSessionsV2";

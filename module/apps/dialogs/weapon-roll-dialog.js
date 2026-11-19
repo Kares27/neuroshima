@@ -1,6 +1,6 @@
 import { rollModeChoices, legacyMessageMode } from "../../helpers/foundry-compat.js";
 import { expandDialogModifiers, NeuroshimaDice } from "../../helpers/rolls.js";
-import { maxMeleeTempo, clampMeleeTempo } from "../../combat/melee-maneuvers.js";
+import { maxMeleeTempo, clampMeleeTempo } from "../../combat/melee-system.js";
 
 import { NEUROSHIMA } from "../../config.js";
 import { getDistancePenalty } from "../config/distance-config.js";

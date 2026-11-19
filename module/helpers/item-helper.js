@@ -1,7 +1,7 @@
 /** Items, equipment, armor, modifications, references and previews. */
 import { effectChanges, isElement } from "./foundry-compat.js";
 import { NEUROSHIMA } from "../config.js";
-import { createAmmoSnapshot } from "../combat/ammunition-resolver.js";
+import { createAmmoSnapshot } from "../combat/combat.js";
 
 /** Default equipability of built-in gear subtypes. */
 export const DEFAULT_EQUIPPABLE_GEAR_TYPES = Object.freeze({

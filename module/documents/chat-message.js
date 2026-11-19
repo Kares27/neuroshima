@@ -1517,16 +1517,18 @@ export class NeuroshimaChatMessage extends ChatMessage {
    * Aplikuje wyniki leczenia do aktora.
    */
   static async onApplyHealing(event, message) {
-    const card = event.currentTarget.closest(".healing-batch-report");
-    const patientUuid = message.getFlag("neuroshima", "patientUuid") ?? card?.dataset.patientUuid;
+    const patientUuid = message.getFlag("neuroshima", "patientUuid");
     if (!patientUuid) return;
     const document = await fromUuid(patientUuid);
     const patient = document?.actor ?? document;
     if (!patient) return;
-    const data = { patientUuid: patient.uuid, messageId: message.id };
+    const data = { messageId: message.id };
+    const { NeuroshimaSocket } = await import("../helpers/foundry-compat.js");
+    const activeGM = game.users?.activeGM;
     let applied;
-    if (!patient.isOwner && !game.user.isGM) {
-      const { NeuroshimaSocket } = await import("../helpers/foundry-compat.js");
+    if (NeuroshimaSocket.socket && activeGM && activeGM.id !== game.user.id) {
+      applied = await NeuroshimaSocket.executeAsUser("applyHealingBatch", activeGM.id, data);
+    } else if (!game.user.isGM && (!patient.isOwner || !message.isOwner)) {
       applied = await NeuroshimaSocket.gmExecute("applyHealingBatch", data);
     } else {
       const { HealingApp } = await import("../apps/healing-app.js");

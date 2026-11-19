@@ -9,10 +9,14 @@ import { applicationInstances, NeuroshimaSocket } from "../helpers/foundry-compa
  */
 export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
-    static _healingBatches = new Map();
+    static _patientUpdates = new Map();
 
     static registerSocketHandlers(socket) {
-        socket.register("applyHealingBatch", data => this.applyHealingBatch(data));
+        socket.register("applyHealingBatch", function (data) {
+            const requester = game.users?.get(this?.socketdata?.userId);
+            if (game.user.isGM && requester) return HealingApp.applyHealingBatch(data, requester);
+            return false;
+        });
         socket.register("refreshHealingPanels", data => this.refreshPanels(data));
     }
 
@@ -33,46 +37,81 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
         catch (error) { console.error("Neuroshima | Healing panel refresh notification failed", error); }
     }
 
-    /** The owner and GM socket share the same wound-state updates. */
-    static async applyHealingBatch(data) {
-        const key = data.messageId ?? data.patientUuid;
-        if (this._healingBatches.has(key)) return this._healingBatches.get(key);
-        const operation = this._applyHealingBatch(data);
-        this._healingBatches.set(key, operation);
+    /** Apply results from a saved report with the requesting user's permissions. */
+    static async applyHealingBatch({ patientUuid, messageId } = {}, requester = game.user) {
+        const message = game.messages.get(messageId);
+        if (message?.getFlag("neuroshima", "messageType") !== "healingBatchReport") return false;
+        const recordedPatient = message.getFlag("neuroshima", "patientUuid");
+        if (!recordedPatient) return false;
+        const document = await fromUuid(recordedPatient);
+        const patient = document?.actor ?? document;
+        if (!patient?.items || (patientUuid && patientUuid !== recordedPatient && patientUuid !== patient.uuid)) return false;
+        if (!requester) return false;
+        if (!requester.isGM && !patient.testUserPermission(requester, "OWNER")) {
+            if (requester.id !== message.author?.id) return false;
+            const medicUuid = message.getFlag("neuroshima", "medicUuid");
+            const medic = medicUuid ? await fromUuid(medicUuid) : null;
+            if (!(medic?.actor ?? medic)?.testUserPermission(requester, "OWNER")) return false;
+        }
+
+        const key = patient.uuid;
+        const previous = this._patientUpdates.get(key) ?? Promise.resolve();
+        const operation = previous.catch(() => {}).then(() => this._applyHealingBatch(patient, message));
+        this._patientUpdates.set(key, operation);
         try { return await operation; }
-        finally { this._healingBatches.delete(key); }
+        finally {
+            if (this._patientUpdates.get(key) === operation) this._patientUpdates.delete(key);
+        }
     }
 
-    static async _applyHealingBatch({ patientUuid, results = [], messageId = null }) {
-        const document = await fromUuid(patientUuid);
-        const patient = document?.actor ?? document;
-        if (!patient?.items) return false;
-        const message = messageId ? game.messages.get(messageId) : null;
-        if (messageId && !message) return false;
-        const recordedPatient = message?.getFlag("neuroshima", "patientUuid");
-        if (recordedPatient && recordedPatient !== patientUuid && recordedPatient !== patient.uuid) return false;
-        if (message?.getFlag("neuroshima", "healingApplied")) return false;
-        const storedTests = message?.getFlag("neuroshima", "test")?.context?.batchTests;
-        if (Array.isArray(storedTests)) results = storedTests.map(test => test.result);
-        const isFirstAid = message?.getFlag("neuroshima", "healingMethod") === "firstAid";
+    static async _applyHealingBatch(patient, message) {
+        if (message.getFlag("neuroshima", "healingApplied")) return false;
+        const method = message.getFlag("neuroshima", "healingMethod");
+        const tests = message.getFlag("neuroshima", "test")?.context?.batchTests;
+        if (!["firstAid", "woundTreatment"].includes(method) || !Array.isArray(tests)) return false;
+        const results = new Map();
+        for (const test of tests) {
+            const { preData, result } = test ?? {};
+            const wound = patient.items.get(result?.woundId);
+            if (wound?.type !== "wound" || results.has(wound.id) || typeof result.isSuccess !== "boolean") continue;
+            const config = preData?.woundConfig;
+            if (config && config.woundId !== wound.id) continue;
+            if (preData?.patientUuid && preData.patientUuid !== patient.uuid
+                && preData.patientUuid !== message.getFlag("neuroshima", "patientUuid")) continue;
+            const savedEffect = result.healingEffect;
+            const oldChange = savedEffect?.penaltyChange ?? (savedEffect?.newPenalty - savedEffect?.oldPenalty);
+            if (!config && !Number.isFinite(oldChange)) continue;
+            results.set(wound.id, HealingTest.calculateWoundResult(wound, method, result.isSuccess, config,
+                config ? null : oldChange));
+        }
+        if (!results.size) return false;
+        await this._updateWounds(patient, method, results.values());
+        await message.setFlag("neuroshima", "healingApplied", true);
+        await this.notifyPatientChanged(patient.uuid);
+        return true;
+    }
+
+    /** Save wound penalties and attempt counters, then remove healed wounds. */
+    static async _updateWounds(patient, method, results) {
+        const isFirstAid = method === "firstAid";
         const updates = [], toDelete = [];
         for (const result of results) {
-            const wound = patient.items.get(result?.woundId);
-            if (!wound || wound.type !== "wound" || !result.healingEffect) continue;
-            const newPenalty = Number(result.healingEffect.newPenalty);
-            if (!Number.isFinite(newPenalty)) continue;
-            const oldPenalty = wound.system.penalty || 0;
+            const wound = patient.items.get(result.woundId);
+            if (wound?.type !== "wound") continue;
+            const { oldPenalty, newPenalty } = result;
             const update = {
                 _id: wound.id,
                 "system.healingAttempts": (wound.system.healingAttempts || 0) + 1
             };
             if (wound.system.originalPenalty == null) update["system.originalPenalty"] = oldPenalty;
+            if (isFirstAid && newPenalty < oldPenalty) {
+                update["system.firstAidHealingApplied"] = (wound.system.firstAidHealingApplied || 0)
+                    + oldPenalty - newPenalty;
+            }
             if (result.isSuccess) {
                 update["system.isHealing"] = true;
                 if (isFirstAid) {
                     update["system.hadFirstAid"] = true;
-                    update["system.firstAidHealingApplied"] = (wound.system.firstAidHealingApplied || 0)
-                        + Math.max(0, oldPenalty - newPenalty);
                     update["system.failedFirstAidAttempts"] = 0;
                 } else update["system.failedTreatmentAttempts"] = 0;
             } else {
@@ -87,189 +126,37 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         if (updates.length) await patient.updateEmbeddedDocuments("Item", updates);
         if (toDelete.length) await patient.deleteEmbeddedDocuments("Item", toDelete);
-        if (message) await message.setFlag("neuroshima", "healingApplied", true);
-        await this.notifyPatientChanged(patient.uuid);
-        return true;
     }
 
-    /**
-     * Calculates healing penalty change based on success, method, and modifiers
-     * @param {number} successPoints - Success points from closed test
-     * @param {string} healingMethod - "firstAid" or "woundTreatment"
-     * @param {boolean} hadFirstAid - Whether wound had First Aid previously
-     * @param {number} healingModifier - Per-wound modifier (%)
-     * @returns {number} Penalty change (negative=healing, positive=damage)
-     */
-    static calculatePenaltyChange(successPoints, healingMethod, hadFirstAid = false, healingModifier = 0, scriptHealingModifier = 0) {
-        const isSuccess = successPoints >= 2;
-        const isFirstAid = healingMethod === "firstAid";
-        
-        let penaltyChange = 0;
-        if (isSuccess) {
-            if (isFirstAid) {
-                penaltyChange = -5;
-            } else {
-                penaltyChange = hadFirstAid ? -10 : -15;
-            }
-        } else {
-            penaltyChange = 5;
-        }
-        
-        penaltyChange += healingModifier;
-        
-        const applyScriptOnFailure = game.settings.get("neuroshima", "healingScriptModifierOnFailure") ?? false;
-        if (isSuccess || applyScriptOnFailure) {
-            penaltyChange += scriptHealingModifier;
-        }
-        
-        return penaltyChange;
+    /** Calculate a healing modifier before applying wound limits. */
+    static calculatePenaltyChange(successPoints, method, hadFirstAid = false, healingModifier = 0, scriptHealingModifier = 0) {
+        return HealingTest.calculatePenaltyChange(method, successPoints >= 2, {
+            hadFirstAid, healingModifier, scriptHealingModifier
+        });
     }
 
-    /**
-     * Calculates healing effects for wounds without applying them
-     * @param {Actor} patientActor - Patient actor
-     * @param {Array} woundIds - Wound IDs to process
-     * @param {number} successPoints - Success points
-     * @param {string} healingMethod - "firstAid" or "woundTreatment"
-     * @param {boolean} hadFirstAid - Whether wound had First Aid
-     * @param {number} healingModifier - Per-wound modifier (%)
-     * @returns {Array} Array of healing results with oldPenalty, newPenalty, penaltyChange
-     */
-    static calculateHealingResults(patientActor, woundIds, successPoints, healingMethod, hadFirstAid = false, healingModifier = 0, scriptHealingModifier = 0) {
-        game.neuroshima?.group("HealingApp | calculateHealingResults");
-        
-        const penaltyChange = this.calculatePenaltyChange(successPoints, healingMethod, hadFirstAid, healingModifier, scriptHealingModifier);
-        const healingResults = [];
-        
-        for (const woundId of woundIds) {
-            const wound = patientActor.items.get(woundId);
-            if (!wound || wound.type !== "wound") continue;
-            
-            const oldPenalty = wound.system.penalty || 0;
-            const isSuccess = successPoints >= 2;
-            const isFirstAidMethod = healingMethod === "firstAid";
-            let newPenalty = Math.max(0, oldPenalty + penaltyChange);
-
-            if (isSuccess) {
-                const allowRepeated = game.settings.get("neuroshima", "allowRepeatedHealing") ?? false;
-                if (!allowRepeated) {
-                    const origPenalty = wound.system.originalPenalty ?? oldPenalty;
-                    if (isFirstAidMethod) {
-                        const faRemaining = Math.max(0, 5 - (wound.system.firstAidHealingApplied || 0));
-                        newPenalty = Math.max(oldPenalty - faRemaining, newPenalty);
-                    }
-                    newPenalty = Math.max(origPenalty - 15, newPenalty);
-                }
-                newPenalty = Math.max(0, newPenalty);
-            }
-            
-            game.neuroshima?.log("Healing calculation", {
-                woundName: wound.name,
-                oldPenalty,
-                newPenalty,
-                penaltyChange: newPenalty - oldPenalty
-            });
-            
-            healingResults.push({
-                woundId,
-                woundName: wound.name,
-                damageType: wound.system.damageType || "D",
-                oldPenalty,
-                newPenalty,
-                penaltyChange: newPenalty - oldPenalty
-            });
+    /** Preview healing for the selected wounds. */
+    static calculateHealingResults(patient, woundIds, successPoints, method, hadFirstAid = false, healingModifier = 0, scriptHealingModifier = 0) {
+        const results = [];
+        for (const id of new Set(woundIds)) {
+            const wound = patient.items.get(id);
+            if (wound?.type !== "wound") continue;
+            results.push(HealingTest.calculateWoundResult(wound, method, successPoints >= 2, {
+                hadFirstAid, healingModifier, scriptHealingModifier
+            }));
         }
-        
-        game.neuroshima?.groupEnd();
-        return healingResults;
+        return results;
     }
 
-    /**
-     * Applies healing effects to wounds (updates actor)
-     * @param {Actor} patientActor - Patient actor
-     * @param {Array} woundIds - Wound IDs to process
-     * @param {number} successPoints - Success points
-     * @param {string} healingMethod - "firstAid" or "woundTreatment"
-     * @param {boolean} hadFirstAid - Whether wound had First Aid
-     * @param {number} healingModifier - Per-wound modifier (%)
-     * @returns {Promise<Array>} Array of applied healing results
-     */
-    static async applyHealingToWounds(patientActor, woundIds, successPoints, healingMethod, hadFirstAid = false, healingModifier = 0, scriptHealingModifier = 0) {
-        game.neuroshima?.group("HealingApp | applyHealingToWounds");
-        
-        const penaltyChange = this.calculatePenaltyChange(successPoints, healingMethod, hadFirstAid, healingModifier, scriptHealingModifier);
-        const isSuccess = successPoints >= 2;
-        const isFirstAid = healingMethod === "firstAid";
-        const woundsToUpdate = [];
-        const healingResults = [];
-        
-        for (const woundId of woundIds) {
-            const wound = patientActor.items.get(woundId);
-            if (!wound || wound.type !== "wound") continue;
-            
-            const oldPenalty = wound.system.penalty || 0;
-            const newPenalty = Math.max(0, oldPenalty + penaltyChange);
-            
-            game.neuroshima?.log("Applying healing to wound", {
-                woundName: wound.name,
-                oldPenalty,
-                newPenalty,
-                penaltyChange,
-                isSuccess
-            });
-            
-            // Prepare update data
-            const updateData = {
-                _id: woundId,
-                "system.penalty": newPenalty
-            };
-            
-            // Only flag as isHealing if test succeeded
-            if (isSuccess) {
-                updateData["system.isHealing"] = true;
-            }
-            
-            // Mark hadFirstAid if First Aid succeeded
-            if (isFirstAid && isSuccess) {
-                updateData["system.hadFirstAid"] = true;
-            }
-            
-            // Increment healing attempt counter
-            const currentAttempts = wound.system.healingAttempts || 0;
-            updateData["system.healingAttempts"] = currentAttempts + 1;
-            
-            woundsToUpdate.push(updateData);
-            
-            healingResults.push({
-                woundId,
-                woundName: wound.name,
-                oldPenalty,
-                newPenalty,
-                penaltyChange,
-                wasFullyHealed: newPenalty === 0,
-                isSuccess
-            });
+    /** Apply healing from a test and refresh the patient's open panels. */
+    static async applyHealingToWounds(patient, woundIds, successPoints, method, hadFirstAid = false, healingModifier = 0, scriptHealingModifier = 0) {
+        const results = this.calculateHealingResults(patient, woundIds, successPoints, method,
+            hadFirstAid, healingModifier, scriptHealingModifier);
+        if (results.length) {
+            await this._updateWounds(patient, method, results);
+            await this.notifyPatientChanged(patient.uuid);
         }
-        
-        // Apply all updates at once
-        if (woundsToUpdate.length > 0) {
-            await patientActor.updateEmbeddedDocuments("Item", woundsToUpdate);
-            game.neuroshima?.log("Wounds updated", { count: woundsToUpdate.length });
-        }
-        
-        // Delete fully healed wounds (penalty = 0)
-        const fullyHealedIds = healingResults
-            .filter(r => r.wasFullyHealed)
-            .map(r => r.woundId);
-        
-        if (fullyHealedIds.length > 0) {
-            await patientActor.deleteEmbeddedDocuments("Item", fullyHealedIds);
-            game.neuroshima?.log("Fully healed wounds deleted", { count: fullyHealedIds.length });
-        }
-        if (woundsToUpdate.length || fullyHealedIds.length) await this.notifyPatientChanged(patientActor.uuid);
-        
-        game.neuroshima?.groupEnd();
-        return healingResults;
+        return results;
     }
 
 

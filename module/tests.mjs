@@ -1,6 +1,6 @@
 import { NEUROSHIMA } from "./config.js";
 import { buildDiceTooltipSection, renderTooltipSections } from "./helpers/rolls.js";
-import { AmmunitionResolver, createAmmoSnapshot } from "./combat/ammunition-resolver.js";
+import { AmmunitionResolver, createAmmoSnapshot } from "./combat/combat.js";
 
 export const DIFFICULTY_ORDER = Object.freeze([
   "easy", "average", "problematic", "hard", "veryHard",
@@ -1411,15 +1411,37 @@ export class HealingTest extends SkillTest {
   }
 
   computeHealingResult(wound, successPoints, config = {}) {
-    const success = Number(successPoints) >= 2 || this.result.success === true;
-    const firstAid = this.preData.healingMethod === "firstAid";
-    let change = success ? (firstAid ? -5 : (config.hadFirstAid ? -10 : -15)) : 5;
-    change += Number(config.healingModifier ?? 0);
-    if (success || game.settings.get("neuroshima", "healingScriptModifierOnFailure")) {
-      change += Number(config.scriptHealingModifier ?? 0);
+    return HealingTest.calculateWoundResult(wound, this.preData.healingMethod,
+      this.result.success ?? (Number(successPoints) >= 2), config);
+  }
+
+  /** Calculate the requested change before applying the wound's limits. */
+  static calculatePenaltyChange(method, success, {
+    hadFirstAid = false, healingModifier = 0, scriptHealingModifier = 0
+  } = {}) {
+    const base = success ? (method === "firstAid" ? -5 : hadFirstAid ? -10 : -15) : 5;
+    const useScriptModifier = success || game.settings.get("neuroshima", "healingScriptModifierOnFailure");
+    const healing = Number(healingModifier);
+    const script = Number(scriptHealingModifier);
+    const modifier = Number.isFinite(healing) ? healing : 0;
+    const scriptModifier = useScriptModifier && Number.isFinite(script) ? script : 0;
+    return base + modifier + scriptModifier;
+  }
+
+  /** Apply the first aid and total healing limits to the current wound state. */
+  static calculateWoundResult(wound, method, success, config = {}, requestedChange = null) {
+    const { penalty = 0, originalPenalty, firstAidHealingApplied = 0, hadFirstAid } = wound.system;
+    const oldPenalty = Number(penalty);
+    let change = requestedChange ?? this.calculatePenaltyChange(method, success, {
+      ...config, hadFirstAid: hadFirstAid ?? config?.hadFirstAid
+    });
+    if (change < 0 && !game.settings.get("neuroshima", "allowRepeatedHealing")) {
+      const minimumPenalty = Math.max(0, (originalPenalty ?? oldPenalty) - 15);
+      const remainingTotal = Math.max(0, oldPenalty - minimumPenalty);
+      const remainingFirstAid = method === "firstAid" ? Math.max(0, 5 - firstAidHealingApplied) : Infinity;
+      change = -Math.min(-change, remainingFirstAid, remainingTotal);
     }
-    const oldPenalty = Number(wound.system?.penalty ?? 0);
-    const newPenalty = Math.max(0, oldPenalty + change);
+    const newPenalty = Math.max(0, Math.round(oldPenalty + change));
     return {
       woundId: wound.id,
       woundName: wound.name,

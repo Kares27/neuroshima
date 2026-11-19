@@ -423,12 +423,12 @@ export class NeuroshimaAreas {
     return auraVisibility(effect.flags?.neuroshima) !== -1
       && (isV14() || effect.getFlag("neuroshima", "auraRender") === true);
   }
-  static auraAppearance(effect, token) {
+  static auraAppearance(effect, token, level = token.level?.id ?? token.level) {
     if (!isV14()) return {};
     return {
       visibility: auraVisibility(effect.flags?.neuroshima),
       attachment: { token: token.id },
-      ...(token.level ? { levels: [typeof token.level === "string" ? token.level : token.level.id] } : {})
+      ...(level ? { levels: [level] } : {})
     };
   }
   static pixelsPerUnit(scene = canvas.scene) {
@@ -462,8 +462,11 @@ export class NeuroshimaAreas {
     }
     return { x: Number(document.x ?? 0), y: Number(document.y ?? 0) };
   }
-  static contains(document, x, y, elevation = 0) {
-    if (document.documentName === "Region" || document.shapes) return document.testPoint({ x, y, elevation });
+  static contains(document, x, y, elevation = 0, level = null) {
+    if (document.documentName === "Region" || document.shapes) {
+      if (level != null && document.includedInLevel?.(level) === false) return false;
+      return document.testPoint({ x, y, elevation });
+    }
     const center = this.center(document);
     const object = document.object ?? canvas.templates?.get(document.id);
     if (object?.shape) return object.shape.contains(x - center.x, y - center.y);

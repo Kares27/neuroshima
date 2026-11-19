@@ -2,7 +2,7 @@ import {
     DEFAULT_UNARMED_DAMAGE_TABLE,
     UNARMED_DAMAGE_TYPES,
     normalizeUnarmedDamageTable
-} from "../../combat/unarmed.js";
+} from "../../combat/melee-system.js";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 

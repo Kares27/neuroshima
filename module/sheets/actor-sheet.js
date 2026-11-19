@@ -11,13 +11,13 @@ import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { getConditions } from "../apps/config/condition-config.js";
 import { NeuroshimaGrenadeRollDialog } from "../apps/dialogs/grenade-roll-dialog.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
-import { createUnarmedWeapon, getUnarmedDamageProfile } from "../combat/unarmed.js";
+import { createUnarmedWeapon, getUnarmedDamageProfile } from "../combat/melee-system.js";
 import {
   AmmunitionResolver,
   createAmmoSnapshot,
   getAmmoCategory,
   getMagazineAmmoCategory
-} from "../combat/ammunition-resolver.js";
+} from "../combat/combat.js";
 
 
 /**

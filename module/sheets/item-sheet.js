@@ -3,7 +3,7 @@ import { clampArmor, normalizeGearType, installMod, attachMod, detachMod, remove
 import { NEUROSHIMA } from "../config.js";
 import { TraitBrowserApp } from "../apps/trait-browser.js";
 import { openTraitSnapshotItemSheet } from "../apps/trait-snapshot-item-editor.js";
-import { getMagazineAmmoCategory } from "../combat/ammunition-resolver.js";
+import { getMagazineAmmoCategory } from "../combat/combat.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ItemSheetV2 } = foundry.applications.sheets;

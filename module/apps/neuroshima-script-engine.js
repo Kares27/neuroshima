@@ -277,7 +277,7 @@ export class NeuroshimaScript {
   /**
    * The DuelContext for the current melee exchange, if available.
    * Set when the script runs inside afterMeleeAction / beforeMeleeDamage / startDuel / etc.
-   * @returns {import("../combat/combat-api.js").DuelContext|null}
+   * @returns {import("../combat/combat.js").DuelContext|null}
    */
   get meleeDuel() {
     return this._currentArgs?.duel ?? null;
@@ -286,7 +286,7 @@ export class NeuroshimaScript {
   /**
    * The DuelSegmentContext for the current segment, if available.
    * Null for lifecycle triggers that fire outside a segment (startDuel, endDuel).
-   * @returns {import("../combat/combat-api.js").DuelSegmentContext|null}
+   * @returns {import("../combat/combat.js").DuelSegmentContext|null}
    */
   get meleeSegment() {
     return this._currentArgs?.segment ?? null;
@@ -295,7 +295,7 @@ export class NeuroshimaScript {
   /**
    * The MeleeAction that is currently the subject of this trigger, if any.
    * Populated for beforeMeleeAction / afterMeleeAction and damage triggers.
-   * @returns {import("../combat/combat-api.js").MeleeAction|null}
+   * @returns {import("../combat/combat.js").MeleeAction|null}
    */
   get meleeAction() {
     return this._currentArgs?.action ?? null;

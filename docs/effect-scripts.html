@@ -4975,7 +4975,7 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
       <tr><td><code>Damage</code></td><td>Automatycznie przenoszony na aktora po utworzeniu ran lub uszkodzeń pojazdu w pełnym pipeline obrażeń. Obsługuje Pre-Apply i Filter. Efekty konkretnej akcji bestii przechodzą wyłącznie przy obrażeniach zadanych tą akcją.</td></tr>
       <tr><td><code>Other</code></td><td><strong>Template.</strong> Efekt na itemu jest tylko szablonem — nie pojawia się pasywnie w dialogach ani <code>getScripts()</code>. Aktywny dopiero gdy zostanie nałożony na aktora przez <code>convertToApplied()</code> / <code>applyEffect()</code>. Kopie na aktorach stają się <code>owningDocument</code>. Typowe zastosowanie: sztuczki z czasowym efektem (np. "Bez Sznurków").</td></tr>
       <tr><td><code>Aura</code></td><td><strong>Template + automatyczna propagacja.</strong> Efekt jest automatycznie aplikowany do aktorów w promieniu wokół tokena. Kopie na celach mają <code>transferType: owningDocument</code> (nie propagują dalej). Konfiguracja w <strong>Open Advanced Configuration</strong>.</td></tr>
-      <tr><td><code>Area</code></td><td><strong>Template + propagacja przez szablon.</strong> Efekt jest aplikowany do aktorów w obrębie MeasuredTemplate. Kopie na celach mają <code>transferType: owningDocument</code>. Szablon w <strong>Open Advanced Configuration → Place Template</strong>. Tryby: <em>Sustained</em> i <em>Instantaneous</em>.</td></tr>
+      <tr><td><code>Area</code></td><td>Efekt jest nakładany na aktorów w obrębie obszaru statycznego. V13 używa <code>MeasuredTemplate</code>, a V14 <code>Region</code>. Kopie na celach mają <code>transferType: owningDocument</code>. Obszar umieszcza się przez <strong>Open Advanced Configuration → Place Template</strong>. Dostępne tryby to <em>Sustained</em> i <em>Instantaneous</em>.</td></tr>
     </tbody>
   </table>
   <div class="callout warning">
@@ -5018,7 +5018,7 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
       <tr><td>Damage</td><td>Item</td><td><strong>Template.</strong> Efekt jawnie aplikowany na item przy obrażeniach. Obsługa skryptem.</td></tr>
       <tr><td>Other</td><td>Actor / Item</td><td><strong>Template.</strong> Brak pasywnego zbierania — efekt niewidoczny dla <code>getScripts()</code> dopóki nie zostanie nałożony przez <code>convertToApplied()</code> / <code>applyEffect()</code>. Kopie działają jako <code>owningDocument</code>.</td></tr>
       <tr><td>Aura</td><td>Actor</td><td>Automatyczna propagacja do aktorów w promieniu tokena. Kopie w <em>Temporary</em> u celów. Kopie mają <code>transferType: owningDocument</code> — nie re-propagują. Usuwane gdy aktor wyjdzie z zasięgu lub efekt źródłowy zostanie usunięty.</td></tr>
-      <tr><td>Area</td><td>Actor</td><td>Propagacja do aktorów w obrębie MeasuredTemplate. Kopie mają <code>transferType: owningDocument</code>. Szablon statyczny.</td></tr>
+      <tr><td>Area</td><td>Actor</td><td>Propagacja do aktorów w obrębie statycznego obszaru sceny. Kopie mają <code>transferType: owningDocument</code>.</td></tr>
     </tbody>
   </table>
 
@@ -5359,7 +5359,9 @@ args.fields.mod = (args.fields.mod ?? <span class="num">0</span>) + <span class=
     <p style="margin:4px 1rem 6px; font-size:0.88em; color:#888;">
       <code>args.fields.healingModifierAll</code> to dodatkowy bonus procentowy redukcji kary, doliczany do wybranych przez użytkownika modyfikatorów leczenia
       i stosowany do <strong>wszystkich</strong> typów ran przy sukcesie testu.
-      Przykład: apteczka polowa z +5% efektywności leczenia — każde wyleczone obrażenie traci o 5% więcej kary niż normalnie.
+      Przykład: apteczka polowa z +5% efektywności leczenia może obniżyć karę każdej rany o dodatkowe 5 punktów procentowych.
+      Przy wyłączonym wielokrotnym leczeniu pierwsza pomoc może obniżyć karę danej rany łącznie o 5 punktów procentowych,
+      a całe leczenie o 15 względem początkowej kary. Przy zatwierdzaniu raportu system stosuje te limity do aktualnej kary rany.
     </p>
     <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Skrypt dialog:</strong></p>
     <pre><code>args.fields.healingModifierAll += <span class="num">5</span>; <span class="cmt">// +5% do redukcji kary dla wszystkich typów ran</span></code></pre>
@@ -5630,6 +5632,8 @@ return false; // nie blokuj nikogo</span></code></pre>
     albo <code>Region</code> w V14. Promień nadal podajesz w jednostkach sceny.
     Zasięg, filtry i wygląd aury są przeliczane po zmianie efektu, ekwipunku lub tokena.
     Ruch, zmiana rozmiaru i wysokości tokena odświeżają również obecność w utrzymywanych obszarach Area.
+    W V14 środek tokena musi znajdować się w granicach Regionu na piętrze, do którego należy token.
+    Sama zmiana piętra też przelicza nałożone kopie.
     Operacje wykonuje jeden aktywny MG, aby uniknąć równoległego nakładania kopii.
     Zmiana skryptów lub modyfikatorów źródła nie przepisuje zawartości już istniejących kopii.
     Ustawienia widoczności są zachowywane między wersjami. Zapis w V14 ustawia też odpowiednik Render Aura dla V13;

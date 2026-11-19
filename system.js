@@ -42,7 +42,13 @@ import { NeuroshimaMeleeCombat, NeuroshimaCombatTracker, NeuroshimaTokenRuler, M
 import { EncumbranceConfig } from "./module/apps/config/encumbrance-config.js";
 import { CombatConfig, _applyCustomDamageCategories } from "./module/apps/config/combat-config.js";
 import { SettingsTransferConfig } from "./module/apps/config/settings-transfer-config.js";
-import { DEFAULT_UNARMED_DAMAGE_TABLE } from "./module/combat/unarmed.js";
+import {
+  DEFAULT_UNARMED_DAMAGE_TABLE,
+  registerMeleeSystemSettings,
+  registerMeleeSystem,
+  registerMeleeSocket,
+  expireMeleeEffects
+} from "./module/combat/melee-system.js";
 import { DistanceConfig, DEFAULT_DISTANCE_PENALTIES } from "./module/apps/config/distance-config.js";
 import { HealingConfig } from "./module/apps/config/healing-config.js";
 import { ConditionConfig, applyConditionsToStatusEffects, getConditions } from "./module/apps/config/condition-config.js";
@@ -68,12 +74,6 @@ import { GMPayoutApp } from "./module/apps/gm/gm-payout-app.js";
 import { GMReputationApp } from "./module/apps/gm/gm-reputation-app.js";
 
 import { MeleeCombatApp } from "./module/apps/melee-combat-app.js";
-import {
-    registerMeleeSystemSettings,
-    registerMeleeSystem,
-    registerMeleeSocket,
-    expireMeleeEffects
-} from "./module/combat/melee-system.js";
 import { registerMeleeSystemUI } from "./module/apps/melee-system-ui.js";
 
 
@@ -3407,7 +3407,8 @@ Hooks.on("preUpdateToken", (tokenDocument, changes, options) => {
         y: changes.y ?? tokenDocument.y,
         width: changes.width ?? tokenDocument.width,
         height: changes.height ?? tokenDocument.height,
-        elevation: changes.elevation ?? tokenDocument.elevation
+        elevation: changes.elevation ?? tokenDocument.elevation,
+        level: changes.level ?? tokenDocument.level
     };
 });
 
@@ -3427,7 +3428,8 @@ Hooks.on("moveToken", async (tokenDocument, movement) => {
     await NeuroshimaAuraManager.refreshAllAuras(tokenDocument, {
         x: destination?.x ?? tokenDocument.x, y: destination?.y ?? tokenDocument.y,
         width: tokenDocument.width, height: tokenDocument.height,
-        elevation: destination?.elevation ?? tokenDocument.elevation
+        elevation: destination?.elevation ?? tokenDocument.elevation,
+        level: destination?.level ?? tokenDocument.level
     });
 });
 
@@ -3553,7 +3555,8 @@ Hooks.on(`delete${NeuroshimaAreas.documentName}`, async (templateDoc, options, u
     if (!managesSceneEffects() || options.ns_skipAreaCleanup) return;
     if (!templateDoc.getFlag("neuroshima", "fromAreaEffect")) return;
     const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
-    await NeuroshimaAuraManager.removeAreaCopies(templateDoc.id, { scene: templateDoc.parent });
+    await NeuroshimaAuraManager.semaphore.add(() =>
+        NeuroshimaAuraManager.removeAreaCopies(templateDoc.id, { scene: templateDoc.parent }));
 });
 
 Hooks.on("createActor", async (actor, options, userId) => {

@@ -8,9 +8,9 @@ import {
   buildMeleeRequiredAction,
   meleePoolDice,
   meleeParticipantFromActor,
-  meleeSessionDuelState
+  meleeSessionDuelState,
+  createUnarmedWeapon
 } from "../combat/melee-system.js";
-import { createUnarmedWeapon } from "../combat/unarmed.js";
 
 
 export class MeleeSessionPresenter {
